@@ -52,7 +52,7 @@ export function AnagramSolverGame() {
     setSelectedLetters([]);
     setAnswer("");
     setShowHint(false);
-    setUsedSets(prev => new Set([...prev, randomIndex]));
+    setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
   }, [usedSets]);
 
   const initGame = useCallback(() => {

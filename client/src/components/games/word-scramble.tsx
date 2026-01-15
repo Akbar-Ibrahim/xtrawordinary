@@ -54,7 +54,7 @@ export function WordScrambleGame() {
     setCurrentWord(randomWord);
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
-    setUsedWords((prev) => new Set([...prev, randomWord.word]));
+    setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
   }, [usedWords]);
 
   const initGame = useCallback(() => {

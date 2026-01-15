@@ -18,7 +18,7 @@ const difficultyColors = {
 };
 
 export function GameCard({ game, index }: GameCardProps) {
-  const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
+  const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
 
   return (
     <motion.div

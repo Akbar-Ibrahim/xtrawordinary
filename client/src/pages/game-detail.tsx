@@ -75,7 +75,7 @@ export default function GameDetail() {
     );
   }
 
-  const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
+  const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const GameComponent = gameComponents[game.slug];
 
   return (
