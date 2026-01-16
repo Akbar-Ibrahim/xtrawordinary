@@ -2,7 +2,15 @@
 
 ## Overview
 
-WordPlay is a web-based word games platform featuring multiple interactive vocabulary games including Word Guessing (Wordle-style), Anagram Solver, and Word Scramble. The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
+WordPlay is a web-based word games platform featuring six interactive vocabulary games:
+- **Word Guessing** - Wordle-style 5-letter word guessing in 6 attempts
+- **Anagram Solver** - Rearrange scrambled letters to form words
+- **Word Scramble** - Unscramble words with category hints and lives system
+- **Definition Match** - Guess the word from its definition
+- **Word Builder** - Fill in missing middle letters with first/last revealed
+- **Word Maker** - Create as many words as possible from a base word
+
+The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
 
 ## User Preferences
 
@@ -48,11 +56,14 @@ The server structure includes:
 Currently, game data is stored in-memory in `server/storage.ts`, but the architecture supports database migration via Drizzle ORM when `DATABASE_URL` is configured.
 
 ### API Endpoints
-- `GET /api/games` - Returns list of all games with metadata
+- `GET /api/games` - Returns list of all 6 games with metadata
 - `GET /api/games/:slug` - Returns individual game details
 - `GET /api/games/word-guessing/words` - Returns array of 5-letter words for Word Guessing game
 - `GET /api/games/anagram-solver/words` - Returns word sets with original, anagram, and hint
 - `GET /api/games/word-scramble/words` - Returns words with category for Word Scramble game
+- `GET /api/games/definition-match/words` - Returns words with definition and part of speech
+- `GET /api/games/word-builder/words` - Returns words with hint and category for fill-in game
+- `GET /api/games/word-maker/words` - Returns base words with derivatives array and maxWords count
 
 ### Shared Code
 The `shared/` directory contains TypeScript types and Zod schemas used by both frontend and backend, ensuring type safety across the full stack. Path aliases (`@shared/*`) enable clean imports.
