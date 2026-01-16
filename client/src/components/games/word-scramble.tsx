@@ -1,28 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart } from "lucide-react";
-
-const WORDS = [
-  { word: "PUZZLE", category: "Games" },
-  { word: "BRIGHT", category: "Adjective" },
-  { word: "MONKEY", category: "Animal" },
-  { word: "CASTLE", category: "Building" },
-  { word: "FROZEN", category: "Temperature" },
-  { word: "PLANET", category: "Space" },
-  { word: "GUITAR", category: "Music" },
-  { word: "JUNGLE", category: "Nature" },
-  { word: "DRAGON", category: "Fantasy" },
-  { word: "MARKET", category: "Place" },
-  { word: "RHYTHM", category: "Music" },
-  { word: "SILVER", category: "Metal" },
-];
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2 } from "lucide-react";
+import type { ScrambleWord } from "@shared/schema";
 
 export function WordScrambleGame() {
-  const [currentWord, setCurrentWord] = useState(WORDS[0]);
+  const { data: words = [], isLoading, error } = useQuery<ScrambleWord[]>({
+    queryKey: ["/api/games/word-scramble/words"],
+  });
+
+  const [currentWord, setCurrentWord] = useState<ScrambleWord | null>(null);
   const [scrambledWord, setScrambledWord] = useState("");
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -45,7 +36,7 @@ export function WordScrambleGame() {
   };
 
   const selectNewWord = useCallback(() => {
-    const availableWords = WORDS.filter((w) => !usedWords.has(w.word));
+    const availableWords = words.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
       setGameStatus("won");
       return;
@@ -55,27 +46,31 @@ export function WordScrambleGame() {
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
-  }, [usedWords]);
+  }, [usedWords, words]);
 
   const initGame = useCallback(() => {
+    if (words.length === 0) return;
     setScore(0);
     setLevel(1);
     setLives(3);
     setGameStatus("playing");
     setWordsCompleted(0);
     setUsedWords(new Set());
-    const randomWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
     setCurrentWord(randomWord);
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
-  }, []);
+  }, [words]);
 
   useEffect(() => {
-    initGame();
-  }, []);
+    if (words.length > 0 && !currentWord) {
+      initGame();
+    }
+  }, [words, currentWord, initGame]);
 
   const checkAnswer = () => {
+    if (!currentWord) return;
     if (userInput.toUpperCase() === currentWord.word) {
       setFeedback("correct");
       const points = 100 + level * 20;
@@ -120,6 +115,33 @@ export function WordScrambleGame() {
       checkAnswer();
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-12 text-center">
+          <p className="text-destructive">Failed to load game data</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!currentWord) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -257,7 +279,7 @@ export function WordScrambleGame() {
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground">
-                  Words completed: {wordsCompleted} / {WORDS.length}
+                  Words completed: {wordsCompleted} / {words.length}
                 </div>
               </CardContent>
             </Card>

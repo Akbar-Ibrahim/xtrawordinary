@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Lightbulb, Trophy, X } from "lucide-react";
+import { RotateCcw, Lightbulb, Trophy, X, Loader2 } from "lucide-react";
 
-const WORDS = ["REACT", "SOUND", "BRAIN", "FLAME", "CRISP", "GRADE", "PLANT", "SWIFT", "GLOBE", "QUEST"];
 const MAX_ATTEMPTS = 6;
 
 type LetterStatus = "correct" | "present" | "absent" | "empty";
@@ -16,6 +16,10 @@ interface LetterCell {
 }
 
 export function WordGuessingGame() {
+  const { data: words = [], isLoading, error } = useQuery<string[]>({
+    queryKey: ["/api/games/word-guessing/words"],
+  });
+
   const [targetWord, setTargetWord] = useState("");
   const [guesses, setGuesses] = useState<LetterCell[][]>([]);
   const [currentGuess, setCurrentGuess] = useState("");
@@ -24,17 +28,20 @@ export function WordGuessingGame() {
   const [shake, setShake] = useState(false);
 
   const initGame = useCallback(() => {
-    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    if (words.length === 0) return;
+    const word = words[Math.floor(Math.random() * words.length)];
     setTargetWord(word);
     setGuesses([]);
     setCurrentGuess("");
     setGameStatus("playing");
     setUsedLetters(new Map());
-  }, []);
+  }, [words]);
 
   useEffect(() => {
-    initGame();
-  }, [initGame]);
+    if (words.length > 0 && !targetWord) {
+      initGame();
+    }
+  }, [words, targetWord, initGame]);
 
   const checkGuess = (guess: string): LetterCell[] => {
     const result: LetterCell[] = [];
@@ -179,6 +186,29 @@ export function WordGuessingGame() {
     }
     return rows;
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-12 text-center">
+          <p className="text-destructive">Failed to load game data</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

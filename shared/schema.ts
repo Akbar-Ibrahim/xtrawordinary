@@ -20,3 +20,24 @@ export const gameSchema = z.object({
 export type Game = z.infer<typeof gameSchema>;
 
 export const gamesListSchema = z.array(gameSchema);
+
+// Word Guessing game words
+export const wordGuessingWordsSchema = z.array(z.string());
+export type WordGuessingWords = z.infer<typeof wordGuessingWordsSchema>;
+
+// Anagram Solver word sets
+export const anagramWordSetSchema = z.object({
+  original: z.string(),
+  anagram: z.string(),
+  hint: z.string(),
+});
+export type AnagramWordSet = z.infer<typeof anagramWordSetSchema>;
+export const anagramWordSetsSchema = z.array(anagramWordSetSchema);
+
+// Word Scramble words
+export const scrambleWordSchema = z.object({
+  word: z.string(),
+  category: z.string(),
+});
+export type ScrambleWord = z.infer<typeof scrambleWordSchema>;
+export const scrambleWordsSchema = z.array(scrambleWordSchema);

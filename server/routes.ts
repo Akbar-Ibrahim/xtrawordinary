@@ -15,6 +15,34 @@ export async function registerRoutes(
     }
   });
 
+  // Game-specific word data endpoints (must be before :slug route)
+  app.get("/api/games/word-guessing/words", async (_req, res) => {
+    try {
+      const words = await storage.getWordGuessingWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch words" });
+    }
+  });
+
+  app.get("/api/games/anagram-solver/words", async (_req, res) => {
+    try {
+      const wordSets = await storage.getAnagramWordSets();
+      res.json(wordSets);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word sets" });
+    }
+  });
+
+  app.get("/api/games/word-scramble/words", async (_req, res) => {
+    try {
+      const words = await storage.getScrambleWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch words" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;

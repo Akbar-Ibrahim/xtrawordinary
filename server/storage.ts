@@ -1,9 +1,46 @@
-import type { Game } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord } from "@shared/schema";
 
 export interface IStorage {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
+  getWordGuessingWords(): Promise<string[]>;
+  getAnagramWordSets(): Promise<AnagramWordSet[]>;
+  getScrambleWords(): Promise<ScrambleWord[]>;
 }
+
+// Word Guessing words (5-letter words)
+const wordGuessingWords: string[] = [
+  "REACT", "SOUND", "BRAIN", "FLAME", "CRISP", 
+  "GRADE", "PLANT", "SWIFT", "GLOBE", "QUEST"
+];
+
+// Anagram Solver word sets
+const anagramWordSets: AnagramWordSet[] = [
+  { original: "LISTEN", anagram: "SILENT", hint: "Without sound" },
+  { original: "DANGER", anagram: "GARDEN", hint: "A place to grow flowers" },
+  { original: "EARTH", anagram: "HEART", hint: "It pumps blood" },
+  { original: "DUSTY", anagram: "STUDY", hint: "What students do" },
+  { original: "NIGHT", anagram: "THING", hint: "An object or item" },
+  { original: "ANGEL", anagram: "ANGLE", hint: "Geometry term" },
+  { original: "SAVES", anagram: "VASES", hint: "Hold flowers" },
+  { original: "BORED", anagram: "ROBED", hint: "Wearing a robe" },
+];
+
+// Word Scramble words with categories
+const scrambleWords: ScrambleWord[] = [
+  { word: "PUZZLE", category: "Games" },
+  { word: "BRIGHT", category: "Adjective" },
+  { word: "MONKEY", category: "Animal" },
+  { word: "CASTLE", category: "Building" },
+  { word: "FROZEN", category: "Temperature" },
+  { word: "PLANET", category: "Space" },
+  { word: "GUITAR", category: "Music" },
+  { word: "JUNGLE", category: "Nature" },
+  { word: "DRAGON", category: "Fantasy" },
+  { word: "MARKET", category: "Place" },
+  { word: "RHYTHM", category: "Music" },
+  { word: "SILVER", category: "Metal" },
+];
 
 const gamesData: Game[] = [
   {
@@ -78,6 +115,18 @@ export class MemStorage implements IStorage {
 
   async getGameBySlug(slug: string): Promise<Game | undefined> {
     return this.games.find((game) => game.slug === slug);
+  }
+
+  async getWordGuessingWords(): Promise<string[]> {
+    return wordGuessingWords;
+  }
+
+  async getAnagramWordSets(): Promise<AnagramWordSet[]> {
+    return anagramWordSets;
+  }
+
+  async getScrambleWords(): Promise<ScrambleWord[]> {
+    return scrambleWords;
   }
 }
 

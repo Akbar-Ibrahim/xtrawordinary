@@ -1,24 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Shuffle, Trophy, Timer, CheckCircle, XCircle } from "lucide-react";
-
-const WORD_SETS = [
-  { original: "LISTEN", anagram: "SILENT", hint: "Without sound" },
-  { original: "DANGER", anagram: "GARDEN", hint: "A place to grow flowers" },
-  { original: "EARTH", anagram: "HEART", hint: "It pumps blood" },
-  { original: "DUSTY", anagram: "STUDY", hint: "What students do" },
-  { original: "NIGHT", anagram: "THING", hint: "An object or item" },
-  { original: "ANGEL", anagram: "ANGLE", hint: "Geometry term" },
-  { original: "SAVES", anagram: "VASES", hint: "Hold flowers" },
-  { original: "BORED", anagram: "ROBED", hint: "Wearing a robe" },
-];
+import { RotateCcw, Shuffle, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import type { AnagramWordSet } from "@shared/schema";
 
 export function AnagramSolverGame() {
-  const [currentSet, setCurrentSet] = useState(WORD_SETS[0]);
+  const { data: wordSets = [], isLoading, error } = useQuery<AnagramWordSet[]>({
+    queryKey: ["/api/games/anagram-solver/words"],
+  });
+
+  const [currentSet, setCurrentSet] = useState<AnagramWordSet | null>(null);
   const [shuffledLetters, setShuffledLetters] = useState<string[]>([]);
   const [selectedLetters, setSelectedLetters] = useState<number[]>([]);
   const [answer, setAnswer] = useState("");
@@ -40,40 +34,43 @@ export function AnagramSolverGame() {
   };
 
   const selectNewWord = useCallback(() => {
-    const availableIndices = WORD_SETS.map((_, i) => i).filter(i => !usedSets.has(i));
+    const availableIndices = wordSets.map((_, i) => i).filter(i => !usedSets.has(i));
     if (availableIndices.length === 0) {
       setGameStatus("won");
       return;
     }
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-    const newSet = WORD_SETS[randomIndex];
+    const newSet = wordSets[randomIndex];
     setCurrentSet(newSet);
     setShuffledLetters(shuffleArray(newSet.original.split("")));
     setSelectedLetters([]);
     setAnswer("");
     setShowHint(false);
     setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
-  }, [usedSets]);
+  }, [usedSets, wordSets]);
 
   const initGame = useCallback(() => {
+    if (wordSets.length === 0) return;
     setScore(0);
     setStreak(0);
     setTimeLeft(60);
     setGameStatus("playing");
     setUsedSets(new Set());
-    const randomIndex = Math.floor(Math.random() * WORD_SETS.length);
-    const newSet = WORD_SETS[randomIndex];
+    const randomIndex = Math.floor(Math.random() * wordSets.length);
+    const newSet = wordSets[randomIndex];
     setCurrentSet(newSet);
     setShuffledLetters(shuffleArray(newSet.original.split("")));
     setSelectedLetters([]);
     setAnswer("");
     setShowHint(false);
     setUsedSets(new Set([randomIndex]));
-  }, []);
+  }, [wordSets]);
 
   useEffect(() => {
-    initGame();
-  }, []);
+    if (wordSets.length > 0 && !currentSet) {
+      initGame();
+    }
+  }, [wordSets, currentSet, initGame]);
 
   useEffect(() => {
     if (gameStatus !== "playing") return;
@@ -103,6 +100,7 @@ export function AnagramSolverGame() {
   };
 
   const checkAnswer = () => {
+    if (!currentSet) return;
     if (answer.toUpperCase() === currentSet.anagram) {
       setFeedback("correct");
       const points = showHint ? 50 : 100;
@@ -120,6 +118,7 @@ export function AnagramSolverGame() {
   };
 
   const reshuffleLetters = () => {
+    if (!currentSet) return;
     setShuffledLetters(shuffleArray(currentSet.original.split("")));
     setSelectedLetters([]);
     setAnswer("");
@@ -130,6 +129,33 @@ export function AnagramSolverGame() {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-12 text-center">
+          <p className="text-destructive">Failed to load game data</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!currentSet) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
