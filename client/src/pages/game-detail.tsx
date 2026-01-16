@@ -22,6 +22,9 @@ import { WordScrambleGame } from "@/components/games/word-scramble";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { WordBuilderGame } from "@/components/games/word-builder";
 import { WordMakerGame } from "@/components/games/word-maker";
+import { WordLengthGame } from "@/components/games/word-length";
+import { LetterPositionGame } from "@/components/games/letter-position";
+import { ContainsLettersGame } from "@/components/games/contains-letters";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -36,6 +39,9 @@ const gameComponents: Record<string, React.ComponentType> = {
   "definition-match": DefinitionMatchGame,
   "word-builder": WordBuilderGame,
   "word-maker": WordMakerGame,
+  "word-length": WordLengthGame,
+  "letter-position": LetterPositionGame,
+  "contains-letters": ContainsLettersGame,
 };
 
 export default function GameDetail() {
