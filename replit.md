@@ -2,13 +2,16 @@
 
 ## Overview
 
-WordPlay is a web-based word games platform featuring six interactive vocabulary games:
+WordPlay is a web-based word games platform featuring nine interactive vocabulary games:
 - **Word Guessing** - Wordle-style 5-letter word guessing in 6 attempts
 - **Anagram Solver** - Rearrange scrambled letters to form words
 - **Word Scramble** - Unscramble words with category hints and lives system
 - **Definition Match** - Guess the word from its definition
 - **Word Builder** - Fill in missing middle letters with first/last revealed
 - **Word Maker** - Create as many words as possible from a base word
+- **Length Challenge** - 5-level progressive word length game with constraints (starts with, ends with, contains)
+- **Position Master** - 2-level game where words must have specific letter at specific position
+- **Letter Hunt** - 2-level game where words must contain specific required letters
 
 The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
 
@@ -56,7 +59,7 @@ The server structure includes:
 Currently, game data is stored in-memory in `server/storage.ts`, but the architecture supports database migration via Drizzle ORM when `DATABASE_URL` is configured.
 
 ### API Endpoints
-- `GET /api/games` - Returns list of all 6 games with metadata
+- `GET /api/games` - Returns list of all 9 games with metadata
 - `GET /api/games/:slug` - Returns individual game details
 - `GET /api/games/word-guessing/words` - Returns array of 5-letter words for Word Guessing game
 - `GET /api/games/anagram-solver/words` - Returns word sets with original, anagram, and hint
@@ -64,6 +67,11 @@ Currently, game data is stored in-memory in `server/storage.ts`, but the archite
 - `GET /api/games/definition-match/words` - Returns words with definition and part of speech
 - `GET /api/games/word-builder/words` - Returns words with hint and category for fill-in game
 - `GET /api/games/word-maker/words` - Returns base words with derivatives array and maxWords count
+- `GET /api/games/word-dictionary` - Returns shared word dictionary (~400 words) for validation
+- `POST /api/games/validate-word` - Validates a word against the dictionary (body: { word: string })
+- `GET /api/games/word-length/config` - Returns Length Challenge game configuration
+- `GET /api/games/letter-position/config` - Returns Position Master game configuration
+- `GET /api/games/contains-letters/config` - Returns Letter Hunt game configuration
 
 ### Shared Code
 The `shared/` directory contains TypeScript types and Zod schemas used by both frontend and backend, ensuring type safety across the full stack. Path aliases (`@shared/*`) enable clean imports.
