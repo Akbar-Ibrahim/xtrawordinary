@@ -41,3 +41,30 @@ export const scrambleWordSchema = z.object({
 });
 export type ScrambleWord = z.infer<typeof scrambleWordSchema>;
 export const scrambleWordsSchema = z.array(scrambleWordSchema);
+
+// Definition Match words (word + definition)
+export const definitionWordSchema = z.object({
+  word: z.string(),
+  definition: z.string(),
+  partOfSpeech: z.string(),
+});
+export type DefinitionWord = z.infer<typeof definitionWordSchema>;
+export const definitionWordsSchema = z.array(definitionWordSchema);
+
+// Word Builder words (word with start/end revealed)
+export const builderWordSchema = z.object({
+  word: z.string(),
+  hint: z.string(),
+  category: z.string(),
+});
+export type BuilderWord = z.infer<typeof builderWordSchema>;
+export const builderWordsSchema = z.array(builderWordSchema);
+
+// Word Maker words (base word + possible derivatives)
+export const makerWordSchema = z.object({
+  baseWord: z.string(),
+  derivatives: z.array(z.string()),
+  maxWords: z.number(),
+});
+export type MakerWord = z.infer<typeof makerWordSchema>;
+export const makerWordsSchema = z.array(makerWordSchema);

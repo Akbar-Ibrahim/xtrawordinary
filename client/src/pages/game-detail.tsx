@@ -19,6 +19,9 @@ import type { Game } from "@shared/schema";
 import { WordGuessingGame } from "@/components/games/word-guessing";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
+import { DefinitionMatchGame } from "@/components/games/definition-match";
+import { WordBuilderGame } from "@/components/games/word-builder";
+import { WordMakerGame } from "@/components/games/word-maker";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -30,6 +33,9 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-guessing": WordGuessingGame,
   "anagram-solver": AnagramSolverGame,
   "word-scramble": WordScrambleGame,
+  "definition-match": DefinitionMatchGame,
+  "word-builder": WordBuilderGame,
+  "word-maker": WordMakerGame,
 };
 
 export default function GameDetail() {

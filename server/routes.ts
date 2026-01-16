@@ -43,6 +43,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/definition-match/words", async (_req, res) => {
+    try {
+      const words = await storage.getDefinitionWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch definition words" });
+    }
+  });
+
+  app.get("/api/games/word-builder/words", async (_req, res) => {
+    try {
+      const words = await storage.getBuilderWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch builder words" });
+    }
+  });
+
+  app.get("/api/games/word-maker/words", async (_req, res) => {
+    try {
+      const words = await storage.getMakerWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch maker words" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;
