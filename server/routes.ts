@@ -70,6 +70,59 @@ export async function registerRoutes(
     }
   });
 
+  // Word dictionary and validation endpoints for new games
+  app.get("/api/games/word-dictionary", async (_req, res) => {
+    try {
+      const dictionary = await storage.getWordDictionary();
+      res.json(dictionary);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word dictionary" });
+    }
+  });
+
+  app.post("/api/games/validate-word", async (req, res) => {
+    try {
+      const { word } = req.body;
+      if (!word || typeof word !== "string") {
+        return res.status(400).json({ valid: false, message: "Word is required" });
+      }
+      const valid = await storage.validateWord(word);
+      res.json({ valid, message: valid ? "Valid word!" : "Not in dictionary" });
+    } catch (error) {
+      res.status(500).json({ valid: false, message: "Validation failed" });
+    }
+  });
+
+  // Word Length game config
+  app.get("/api/games/word-length/config", async (_req, res) => {
+    try {
+      const config = await storage.getWordLengthConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word length config" });
+    }
+  });
+
+  // Letter Position game config
+  app.get("/api/games/letter-position/config", async (_req, res) => {
+    try {
+      const config = await storage.getLetterPositionConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch letter position config" });
+    }
+  });
+
+  // Contains game config
+  app.get("/api/games/contains-letters/config", async (_req, res) => {
+    try {
+      const config = await storage.getContainsConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch contains config" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;

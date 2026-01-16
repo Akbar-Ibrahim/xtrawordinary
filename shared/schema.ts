@@ -68,3 +68,36 @@ export const makerWordSchema = z.object({
 });
 export type MakerWord = z.infer<typeof makerWordSchema>;
 export const makerWordsSchema = z.array(makerWordSchema);
+
+// Shared word dictionary for validation-based games
+export const wordDictionarySchema = z.array(z.string());
+export type WordDictionary = z.infer<typeof wordDictionarySchema>;
+
+// Word validation response
+export const wordValidationResponseSchema = z.object({
+  valid: z.boolean(),
+  message: z.string().optional(),
+});
+export type WordValidationResponse = z.infer<typeof wordValidationResponseSchema>;
+
+// Word Length game configuration
+export const wordLengthConfigSchema = z.object({
+  wordsPerLevel: z.number(),
+  timePerLevel: z.number(), // seconds
+});
+export type WordLengthConfig = z.infer<typeof wordLengthConfigSchema>;
+
+// Letter Position game configuration  
+export const letterPositionConfigSchema = z.object({
+  wordsPerLevel: z.number(),
+  timePerLevel: z.number(), // seconds
+});
+export type LetterPositionConfig = z.infer<typeof letterPositionConfigSchema>;
+
+// Contains game configuration
+export const containsConfigSchema = z.object({
+  wordsPerLevel: z.number(),
+  timePerLevel: z.number(), // seconds
+  letterSets: z.array(z.array(z.string())), // groups of letters for the game
+});
+export type ContainsConfig = z.infer<typeof containsConfigSchema>;

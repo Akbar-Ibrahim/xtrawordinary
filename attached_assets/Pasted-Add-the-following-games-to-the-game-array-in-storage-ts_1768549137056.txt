@@ -1,0 +1,43 @@
+Add the following games to the game[] array in storage.ts in the backend. After that, create the game pages on the front-end with the instructions provided:
+
+- Word Length: A certain number is provided, the player has to provide words that are that number long within a time frame. 
+First level: This level, only a number is provided. For example, form 7(or any number) letter words.
+Second level: Form 7(or any number) letter words that starts with "a"(or any letter)
+Third level: Form 7(or any number) letter words that ends with "a"(or any letter)
+Fourth level: Form 7(or any number) letter words that starts with "a"(or any letter), and also contains the letter "d"(or any letter)
+Fifth level: Form 7(or any number) letter words that ends with "a"(or any letter), and also contains the letter "d"(or any letter)
+Note: Each level requires player to enter 20 words.
+Since we currently don't have a database of all English words, what you should do is have an array of a few dozen words on the backend. We'll pretend those are all the words. 
+When a player enters a word, the following should happen:
+- make sure their word complies with the constraint. For example, if we ask them to enter a seven letter word that starts with letter "a", we have to ensure they entered a seven letter word that starts with letter "a". If they don't, the word is not accepted until they modify it and enter a correct word.
+- When they enter a correct word, we make an API call to the back-end and check our sample array if the word they entered is present in it. If it isn't we tell them that's not a valid word. If it's present in the array, edit field is cleared for them to enter the next word.
+
+- Letter Position: 
+First level of this game: A certain number and letter will be provided, the player is to enter a word with that certain letter at the position of the given number. For example, "4 and e": The player has to provide a word whose 4th letter is "e". For this level, the player has to enter 10 or 20 words that fulfil the same constraint within a time frame.
+Second level: Same general idea as the first level, except that, the constraint changes with every word. For example, when they start, they may get "5 and c", if they get it correctly, the constraint for the next word they have to form could be "2 and d". The randomness is what makes this level more difficult. For extra difficulty, this also has a time frame within which they have to provide their answer.
+Note: Each level requires player to enter 20 words.
+Since we currently don't have a database of all English words, what you should do is have an array of a few dozen words on the backend. We'll pretend those are all the words. 
+When a player enters a word, the following should happen:
+- make sure their word complies with the constraint. For example, if we ask them to enter a word whose 5th letter is "c", they have to enter a word whose 5th letter is "c". If they don't, the word is not accepted until they modify it and enter a correct word.
+- When they enter a correct word, we make an API call to the back-end and check our sample array if the word they entered is present in it. If it isn't we tell them that's not a valid word. If it's present in the array, edit field is cleared for them to enter the next word.
+
+
+- Contains: A group of random letters will be given. The goal is to have the player form words that contain those letters within a time frame. 
+The letters given should be at least half the length of the words they have to form.
+The letters can come one after another or not. By that, I mean, they may or may not follow the order in which they appear in the word.
+For example, the letters given can be "e, t, f, a" - these letters are present in the word "beautiful", "fatherly", "favourite".
+First level: Only one group of letters are provided for all the words the player enters in this level.
+Second level: A new group of random letters is provided for every word the player has to enter.
+Note: Each level requires player to enter 20 words.
+Since we currently don't have a database of all English words, what you should do is have an array of a few dozen words on the backend. We'll pretend those are all the words. 
+When a player enters a word, the following should happen:
+- make sure their word complies with the constraint. If they don't, the word is not accepted until they modify it and enter a correct word.
+- When they enter a correct word, we make an API call to the back-end and check our sample array if the word they entered is present in it. If it isn't we tell them that's not a valid word. If it's present in the array, edit field is cleared for them to enter the next word.
+
+
+Further instructions:
+- Feel free to suggest better names for the games
+- Don't forget to fill in the remaining values in the game array for each entry(description, long description, color etc)
+- All game word data should be fetched from the backend
+- For words with multiple levels or rounds, the rules of the next round should be displayed after completion of the previous level or round. This should be implemented on all games, not just the recently added ones.
+- These new games being added now should all use the same sample array from the backend.
