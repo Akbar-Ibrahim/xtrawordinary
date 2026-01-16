@@ -10,6 +10,53 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader
 import { apiRequest } from "@/lib/queryClient";
 import type { ContainsConfig, WordValidationResponse } from "@shared/schema";
 
+function generateLettersFromDictionary(dictionary: string[], minWords: number = 10): string[] {
+  const letterCounts: Record<string, number> = {};
+  
+  for (const word of dictionary) {
+    const letters = Array.from(new Set(word.split("")));
+    for (const letter of letters) {
+      letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+    }
+  }
+  
+  const sortedLetters = Object.entries(letterCounts)
+    .filter(([_, count]) => count >= minWords)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3)
+    .map(([letter]) => letter);
+  
+  if (sortedLetters.length < 3) {
+    return ["E", "A", "T"];
+  }
+  
+  const matchingWords = dictionary.filter(w => 
+    sortedLetters.every(letter => w.includes(letter))
+  );
+  
+  if (matchingWords.length < minWords) {
+    const commonLetters = Object.entries(letterCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([letter]) => letter);
+    
+    for (let i = 0; i < commonLetters.length - 2; i++) {
+      for (let j = i + 1; j < commonLetters.length - 1; j++) {
+        for (let k = j + 1; k < commonLetters.length; k++) {
+          const combo = [commonLetters[i], commonLetters[j], commonLetters[k]];
+          const matches = dictionary.filter(w => combo.every(l => w.includes(l)));
+          if (matches.length >= minWords) {
+            return combo;
+          }
+        }
+      }
+    }
+    return [commonLetters[0], commonLetters[1]];
+  }
+  
+  return sortedLetters;
+}
+
 function validateContainsLetters(word: string, letters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -22,8 +69,12 @@ function validateContainsLetters(word: string, letters: string[]): { valid: bool
 }
 
 export function ContainsLettersGame() {
-  const { data: config, isLoading } = useQuery<ContainsConfig>({
+  const { data: config, isLoading: configLoading } = useQuery<ContainsConfig>({
     queryKey: ["/api/games/contains-letters/config"],
+  });
+
+  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
+    queryKey: ["/api/games/word-dictionary"],
   });
 
   const validateMutation = useMutation({
@@ -46,11 +97,7 @@ export function ContainsLettersGame() {
 
   const wordsPerLevel = config?.wordsPerLevel || 20;
   const timePerLevel = config?.timePerLevel || 120;
-  const letterSets = config?.letterSets || [["E", "T", "A"]];
-
-  const getRandomLetters = useCallback(() => {
-    return letterSets[Math.floor(Math.random() * letterSets.length)];
-  }, [letterSets]);
+  const isLoading = configLoading || dictLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -67,8 +114,9 @@ export function ContainsLettersGame() {
   }, []);
 
   const initGame = useCallback(() => {
+    if (dictionary.length === 0) return;
     setLevel(1);
-    setCurrentLetters(getRandomLetters());
+    setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
@@ -77,11 +125,12 @@ export function ContainsLettersGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [timePerLevel, startTimer, getRandomLetters]);
+  }, [dictionary, timePerLevel, startTimer]);
 
   const startNextLevel = useCallback(() => {
+    if (dictionary.length === 0) return;
     setLevel(2);
-    setCurrentLetters(getRandomLetters());
+    setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
     setGameStatus("playing");
@@ -89,22 +138,22 @@ export function ContainsLettersGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [timePerLevel, startTimer, getRandomLetters]);
+  }, [dictionary, timePerLevel, startTimer]);
 
   useEffect(() => {
-    if (config && currentLetters.length === 0) {
-      setCurrentLetters(getRandomLetters());
+    if (dictionary.length > 0 && currentLetters.length === 0) {
+      setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
     }
-  }, [config, currentLetters.length, getRandomLetters]);
+  }, [dictionary, currentLetters.length]);
 
   useEffect(() => {
-    if (config && gameStatus === "playing" && timerRef.current === null && currentLetters.length > 0) {
+    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && currentLetters.length > 0) {
       startTimer();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [config, gameStatus, startTimer, currentLetters.length]);
+  }, [dictionary, gameStatus, startTimer, currentLetters.length]);
 
   const checkAnswer = async () => {
     if (!userInput.trim()) return;
@@ -149,7 +198,7 @@ export function ContainsLettersGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          setCurrentLetters(getRandomLetters());
+          setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
         }
       }, 500);
     } catch {

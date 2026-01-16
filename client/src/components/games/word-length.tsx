@@ -25,25 +25,72 @@ const levelDescriptions = [
   "Form {length}-letter words ending with '{endsWith}' containing '{contains}'"
 ];
 
-function generateConstraint(level: number): LevelConstraint {
-  const letters = "ABCDEFGHIJKLMNOPRSTW".split("");
-  const getRandomLetter = () => letters[Math.floor(Math.random() * letters.length)];
-  const length = Math.floor(Math.random() * 3) + 5;
+function generateConstraintFromDictionary(level: number, dictionary: string[], minWords: number = 10): LevelConstraint {
+  const lengths = [5, 6, 7, 8];
   
-  switch (level) {
-    case 1:
-      return { length };
-    case 2:
-      return { length, startsWith: getRandomLetter() };
-    case 3:
-      return { length, endsWith: getRandomLetter() };
-    case 4:
-      return { length, startsWith: getRandomLetter(), contains: getRandomLetter() };
-    case 5:
-      return { length, endsWith: getRandomLetter(), contains: getRandomLetter() };
-    default:
-      return { length };
+  for (const length of lengths) {
+    const wordsOfLength = dictionary.filter(w => w.length === length);
+    if (wordsOfLength.length < minWords) continue;
+    
+    switch (level) {
+      case 1:
+        if (wordsOfLength.length >= minWords) {
+          return { length };
+        }
+        break;
+      case 2: {
+        const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
+        for (const letter of startLetters.sort(() => Math.random() - 0.5)) {
+          if (wordsOfLength.filter(w => w.startsWith(letter)).length >= minWords) {
+            return { length, startsWith: letter };
+          }
+        }
+        break;
+      }
+      case 3: {
+        const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
+        for (const letter of endLetters.sort(() => Math.random() - 0.5)) {
+          if (wordsOfLength.filter(w => w.endsWith(letter)).length >= minWords) {
+            return { length, endsWith: letter };
+          }
+        }
+        break;
+      }
+      case 4: {
+        const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
+        for (const startLetter of startLetters.sort(() => Math.random() - 0.5)) {
+          const matching = wordsOfLength.filter(w => w.startsWith(startLetter));
+          if (matching.length >= minWords) {
+            const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(1).split(""))));
+            for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
+              if (matching.filter(w => w.slice(1).includes(containsLetter)).length >= minWords) {
+                return { length, startsWith: startLetter, contains: containsLetter };
+              }
+            }
+            return { length, startsWith: startLetter };
+          }
+        }
+        break;
+      }
+      case 5: {
+        const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
+        for (const endLetter of endLetters.sort(() => Math.random() - 0.5)) {
+          const matching = wordsOfLength.filter(w => w.endsWith(endLetter));
+          if (matching.length >= minWords) {
+            const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(0, -1).split(""))));
+            for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
+              if (matching.filter(w => w.slice(0, -1).includes(containsLetter)).length >= minWords) {
+                return { length, endsWith: endLetter, contains: containsLetter };
+              }
+            }
+            return { length, endsWith: endLetter };
+          }
+        }
+        break;
+      }
+    }
   }
+  return { length: 5 };
 }
 
 function formatConstraint(level: number, constraint: LevelConstraint): string {
@@ -74,8 +121,12 @@ function validateConstraint(word: string, constraint: LevelConstraint): { valid:
 }
 
 export function WordLengthGame() {
-  const { data: config, isLoading } = useQuery<WordLengthConfig>({
+  const { data: config, isLoading: configLoading } = useQuery<WordLengthConfig>({
     queryKey: ["/api/games/word-length/config"],
+  });
+
+  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
+    queryKey: ["/api/games/word-dictionary"],
   });
 
   const validateMutation = useMutation({
@@ -86,7 +137,7 @@ export function WordLengthGame() {
   });
 
   const [level, setLevel] = useState(1);
-  const [constraint, setConstraint] = useState<LevelConstraint>(() => generateConstraint(1));
+  const [constraint, setConstraint] = useState<LevelConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
@@ -98,6 +149,7 @@ export function WordLengthGame() {
 
   const wordsPerLevel = config?.wordsPerLevel || 20;
   const timePerLevel = config?.timePerLevel || 120;
+  const isLoading = configLoading || dictLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -114,8 +166,9 @@ export function WordLengthGame() {
   }, []);
 
   const initGame = useCallback(() => {
+    if (dictionary.length === 0) return;
     setLevel(1);
-    setConstraint(generateConstraint(1));
+    setConstraint(generateConstraintFromDictionary(1, dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
@@ -124,12 +177,13 @@ export function WordLengthGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [timePerLevel, startTimer]);
+  }, [dictionary, timePerLevel, startTimer]);
 
   const startNextLevel = useCallback(() => {
+    if (dictionary.length === 0) return;
     const newLevel = level + 1;
     setLevel(newLevel);
-    setConstraint(generateConstraint(newLevel));
+    setConstraint(generateConstraintFromDictionary(newLevel, dictionary, 10));
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
     setGameStatus("playing");
@@ -137,19 +191,25 @@ export function WordLengthGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [level, timePerLevel, startTimer]);
+  }, [dictionary, level, timePerLevel, startTimer]);
 
   useEffect(() => {
-    if (config && gameStatus === "playing" && timerRef.current === null) {
+    if (dictionary.length > 0 && !constraint) {
+      setConstraint(generateConstraintFromDictionary(1, dictionary, 10));
+    }
+  }, [dictionary, constraint]);
+
+  useEffect(() => {
+    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && constraint) {
       startTimer();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [config, gameStatus, startTimer]);
+  }, [dictionary, gameStatus, startTimer, constraint]);
 
   const checkAnswer = async () => {
-    if (!userInput.trim()) return;
+    if (!userInput.trim() || !constraint) return;
 
     const upperWord = userInput.toUpperCase();
 
@@ -204,7 +264,7 @@ export function WordLengthGame() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !constraint) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">
@@ -352,7 +412,7 @@ export function WordLengthGame() {
                 <div className="bg-muted/50 rounded-lg p-4 text-left">
                   <p className="font-medium mb-2">Level {level + 1} Rules:</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatConstraint(level + 1, generateConstraint(level + 1))}
+                    {levelDescriptions[level].replace("{length}", "N").replace("{startsWith}", "X").replace("{endsWith}", "X").replace("{contains}", "Y")}
                   </p>
                 </div>
                 <Button onClick={startNextLevel} className="gap-2" data-testid="button-next-level">

@@ -15,11 +15,22 @@ type PositionConstraint = {
   letter: string;
 };
 
-function generateConstraint(): PositionConstraint {
-  const letters = "ABCDEFGHILMNOPRSTW".split("");
-  const letter = letters[Math.floor(Math.random() * letters.length)];
-  const position = Math.floor(Math.random() * 5) + 2;
-  return { position, letter };
+function generateConstraintFromDictionary(dictionary: string[], minWords: number = 10): PositionConstraint {
+  const positions = [2, 3, 4, 5];
+  
+  for (const position of positions.sort(() => Math.random() - 0.5)) {
+    const validWords = dictionary.filter(w => w.length >= position);
+    if (validWords.length < minWords) continue;
+    
+    const letters = Array.from(new Set(validWords.map(w => w[position - 1])));
+    for (const letter of letters.sort(() => Math.random() - 0.5)) {
+      const matching = validWords.filter(w => w[position - 1] === letter);
+      if (matching.length >= minWords) {
+        return { position, letter };
+      }
+    }
+  }
+  return { position: 2, letter: "A" };
 }
 
 function validateConstraint(word: string, constraint: PositionConstraint): { valid: boolean; message: string } {
@@ -35,8 +46,12 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
 }
 
 export function LetterPositionGame() {
-  const { data: config, isLoading } = useQuery<LetterPositionConfig>({
+  const { data: config, isLoading: configLoading } = useQuery<LetterPositionConfig>({
     queryKey: ["/api/games/letter-position/config"],
+  });
+
+  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
+    queryKey: ["/api/games/word-dictionary"],
   });
 
   const validateMutation = useMutation({
@@ -47,7 +62,7 @@ export function LetterPositionGame() {
   });
 
   const [level, setLevel] = useState(1);
-  const [constraint, setConstraint] = useState<PositionConstraint>(() => generateConstraint());
+  const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
@@ -59,6 +74,7 @@ export function LetterPositionGame() {
 
   const wordsPerLevel = config?.wordsPerLevel || 20;
   const timePerLevel = config?.timePerLevel || 120;
+  const isLoading = configLoading || dictLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -75,8 +91,9 @@ export function LetterPositionGame() {
   }, []);
 
   const initGame = useCallback(() => {
+    if (dictionary.length === 0) return;
     setLevel(1);
-    setConstraint(generateConstraint());
+    setConstraint(generateConstraintFromDictionary(dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
@@ -85,11 +102,12 @@ export function LetterPositionGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [timePerLevel, startTimer]);
+  }, [dictionary, timePerLevel, startTimer]);
 
   const startNextLevel = useCallback(() => {
+    if (dictionary.length === 0) return;
     setLevel(2);
-    setConstraint(generateConstraint());
+    setConstraint(generateConstraintFromDictionary(dictionary, 10));
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
     setGameStatus("playing");
@@ -97,19 +115,25 @@ export function LetterPositionGame() {
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [timePerLevel, startTimer]);
+  }, [dictionary, timePerLevel, startTimer]);
 
   useEffect(() => {
-    if (config && gameStatus === "playing" && timerRef.current === null) {
+    if (dictionary.length > 0 && !constraint) {
+      setConstraint(generateConstraintFromDictionary(dictionary, 10));
+    }
+  }, [dictionary, constraint]);
+
+  useEffect(() => {
+    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && constraint) {
       startTimer();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [config, gameStatus, startTimer]);
+  }, [dictionary, gameStatus, startTimer, constraint]);
 
   const checkAnswer = async () => {
-    if (!userInput.trim()) return;
+    if (!userInput.trim() || !constraint) return;
 
     const upperWord = userInput.toUpperCase();
 
@@ -151,7 +175,7 @@ export function LetterPositionGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          setConstraint(generateConstraint());
+          setConstraint(generateConstraintFromDictionary(dictionary, 10));
         }
       }, 500);
     } catch {
@@ -166,7 +190,7 @@ export function LetterPositionGame() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !constraint) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">
