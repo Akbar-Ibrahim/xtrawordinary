@@ -299,9 +299,53 @@ function validateVariation(word: string, variation: Variation): { valid: boolean
   return { valid: true, message: "" };
 }
 
-export function VowelMasterGame() {
+type SelectedVariation = 1 | 2 | 3 | 4 | 5;
+
+const variationOptions: { id: SelectedVariation; name: string; description: string }[] = [
+  { id: 1, name: "Consonant Count", description: "Words with exactly 2, 3, or 4 consonants" },
+  { id: 2, name: "Vowel Count", description: "Words with exactly 2, 3, or 4 vowels" },
+  { id: 3, name: "Start & End Consonant", description: "Words beginning and ending with consonants" },
+  { id: 4, name: "Start Vowel, End Consonant", description: "Words starting with a vowel, ending with a consonant" },
+  { id: 5, name: "Start Consonant, End Vowel", description: "Words starting with a consonant, ending with a vowel" },
+];
+
+function generateSpecificVariation(variationId: SelectedVariation, dictionary: string[]): Variation {
+  const minWords = 25;
+  
+  switch (variationId) {
+    case 1: {
+      for (const count of [3, 2, 4]) {
+        const matching = dictionary.filter(w => countConsonants(w) === count);
+        if (matching.length >= minWords) {
+          return { type: "consonant_count", description: `Words with exactly ${count} consonants`, params: { count } };
+        }
+      }
+      return { type: "consonant_count", description: "Words with exactly 3 consonants", params: { count: 3 } };
+    }
+    case 2: {
+      for (const count of [2, 3, 4]) {
+        const matching = dictionary.filter(w => countVowels(w) === count);
+        if (matching.length >= minWords) {
+          return { type: "vowel_count", description: `Words with exactly ${count} vowels`, params: { count } };
+        }
+      }
+      return { type: "vowel_count", description: "Words with exactly 2 vowels", params: { count: 2 } };
+    }
+    case 3: {
+      return { type: "start_end_consonant", description: "Words that start AND end with a consonant", params: {} };
+    }
+    case 4: {
+      return { type: "start_vowel_end_consonant", description: "Words that start with a vowel and end with a consonant", params: {} };
+    }
+    case 5: {
+      return { type: "start_consonant_end_vowel", description: "Words that start with a consonant and end with a vowel", params: {} };
+    }
+  }
+}
+
+export function LetterBalanceGame() {
   const { data: config, isLoading: configLoading } = useQuery<VowelConsonantConfig>({
-    queryKey: ["/api/games/vowel-master/config"],
+    queryKey: ["/api/games/letter-balance/config"],
   });
 
   const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
@@ -315,13 +359,14 @@ export function VowelMasterGame() {
     },
   });
 
+  const [selectedVariation, setSelectedVariation] = useState<SelectedVariation | null>(null);
   const [round, setRound] = useState(1);
   const [variation, setVariation] = useState<Variation | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(12);
-  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost" | "roundComplete">("playing");
+  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost" | "roundComplete">("menu");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -346,10 +391,11 @@ export function VowelMasterGame() {
     }, 1000);
   }, [timePerWord]);
 
-  const initGame = useCallback(() => {
+  const startGame = useCallback((varId: SelectedVariation) => {
     if (dictionary.length === 0) return;
+    setSelectedVariation(varId);
     setRound(1);
-    setVariation(generateVariationFromDictionary(dictionary, 10));
+    setVariation(generateSpecificVariation(varId, dictionary));
     setScore(0);
     setWordsCompleted(0);
     setGameStatus("playing");
@@ -360,23 +406,17 @@ export function VowelMasterGame() {
   }, [dictionary, startTimer]);
 
   const startNextRound = useCallback(() => {
-    if (dictionary.length === 0) return;
+    if (dictionary.length === 0 || !selectedVariation) return;
     const newRound = round + 1;
     setRound(newRound);
-    setVariation(generateVariationFromDictionary(dictionary, 10));
+    setVariation(generateSpecificVariation(selectedVariation, dictionary));
     setWordsCompleted(0);
     setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [dictionary, round, startTimer]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && !variation) {
-      setVariation(generateVariationFromDictionary(dictionary, 10));
-    }
-  }, [dictionary, variation]);
+  }, [dictionary, round, selectedVariation, startTimer]);
 
   useEffect(() => {
     if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && variation) {
@@ -446,13 +486,46 @@ export function VowelMasterGame() {
     }
   };
 
-  if (isLoading || !variation) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
       </Card>
+    );
+  }
+
+  if (gameStatus === "menu") {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-center mb-6">Choose Your Challenge</h3>
+            <div className="grid gap-3">
+              {variationOptions.map((option) => (
+                <motion.div
+                  key={option.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 px-6 flex flex-col items-start text-left gap-1"
+                    onClick={() => startGame(option.id)}
+                    data-testid={`button-var-${option.id}`}
+                  >
+                    <span className="font-semibold">{option.name}</span>
+                    <span className="text-sm text-muted-foreground font-normal">
+                      {option.description}
+                    </span>
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -477,12 +550,12 @@ export function VowelMasterGame() {
           <Button
             variant="outline"
             size="sm"
-            onClick={initGame}
+            onClick={() => setGameStatus("menu")}
             className="gap-1.5"
             data-testid="button-restart"
           >
             <RotateCcw className="h-4 w-4" />
-            Restart
+            Back to Menu
           </Button>
         </div>
       </div>
@@ -499,7 +572,7 @@ export function VowelMasterGame() {
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-4">
                   <motion.div
-                    key={variation.description}
+                    key={variation?.description}
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="flex items-center justify-center gap-2"
@@ -507,7 +580,7 @@ export function VowelMasterGame() {
                     <Type className="h-6 w-6 text-primary" />
                   </motion.div>
                   <Badge variant="secondary" className="text-sm px-4 py-2" data-testid="badge-constraint">
-                    {variation.description}
+                    {variation?.description}
                   </Badge>
                   <Progress value={(wordsCompleted / wordsPerRound) * 100} className="h-2" />
                   <p className="text-sm text-muted-foreground">
@@ -635,7 +708,7 @@ export function VowelMasterGame() {
                   )}
                 </motion.div>
                 <h3 className="text-2xl font-bold">
-                  {gameStatus === "won" ? "Vowel Master!" : "Time's Up!"}
+                  {gameStatus === "won" ? "Letter Balance Master!" : "Time's Up!"}
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
@@ -645,7 +718,7 @@ export function VowelMasterGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={initGame} data-testid="button-play-again">
+                <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
                   Play Again
                 </Button>
               </CardContent>

@@ -133,13 +133,13 @@ export async function registerRoutes(
     }
   });
 
-  // Vowel Master game config
-  app.get("/api/games/vowel-master/config", async (_req, res) => {
+  // Letter Balance game config
+  app.get("/api/games/letter-balance/config", async (_req, res) => {
     try {
       const config = await storage.getVowelConsonantConfig();
       res.json(config);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch vowel master config" });
+      res.status(500).json({ message: "Failed to fetch letter balance config" });
     }
   });
 

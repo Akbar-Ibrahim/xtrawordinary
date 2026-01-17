@@ -17,12 +17,20 @@ type LevelConstraint = {
   contains?: string;
 };
 
-const levelDescriptions = [
+const variationDescriptions = [
   "Form {length}-letter words",
   "Form {length}-letter words starting with '{startsWith}'",
   "Form {length}-letter words ending with '{endsWith}'",
   "Form {length}-letter words starting with '{startsWith}' containing '{contains}'",
   "Form {length}-letter words ending with '{endsWith}' containing '{contains}'"
+];
+
+const variationOptions = [
+  { id: 1, name: "Length Only", description: "Form words of a specific length" },
+  { id: 2, name: "Starts With", description: "Same length + must start with a specific letter" },
+  { id: 3, name: "Ends With", description: "Same length + must end with a specific letter" },
+  { id: 4, name: "Starts & Contains", description: "Same length + starts with letter + contains letter" },
+  { id: 5, name: "Ends & Contains", description: "Same length + ends with letter + contains letter" },
 ];
 
 function generateConstraintFromDictionary(level: number, dictionary: string[], minWords: number = 10): LevelConstraint {
@@ -93,8 +101,8 @@ function generateConstraintFromDictionary(level: number, dictionary: string[], m
   return { length: 5 };
 }
 
-function formatConstraint(level: number, constraint: LevelConstraint): string {
-  let desc = levelDescriptions[level - 1];
+function formatConstraint(variation: number, constraint: LevelConstraint): string {
+  let desc = variationDescriptions[variation - 1];
   desc = desc.replace("{length}", String(constraint.length));
   if (constraint.startsWith) desc = desc.replace("{startsWith}", constraint.startsWith);
   if (constraint.endsWith) desc = desc.replace("{endsWith}", constraint.endsWith);
@@ -136,19 +144,19 @@ export function WordLengthGame() {
     },
   });
 
-  const [level, setLevel] = useState(1);
+  const [variation, setVariation] = useState<number>(1);
   const [constraint, setConstraint] = useState<LevelConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
-  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost" | "levelComplete">("playing");
+  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const wordsPerLevel = config?.wordsPerLevel || 20;
-  const timePerLevel = config?.timePerLevel || 120;
+  const wordsPerVariation = config?.wordsPerLevel || 20;
+  const timePerVariation = config?.timePerLevel || 120;
   const isLoading = configLoading || dictLoading;
 
   const startTimer = useCallback(() => {
@@ -165,39 +173,19 @@ export function WordLengthGame() {
     }, 1000);
   }, []);
 
-  const initGame = useCallback(() => {
+  const startGame = useCallback((varId: number) => {
     if (dictionary.length === 0) return;
-    setLevel(1);
-    setConstraint(generateConstraintFromDictionary(1, dictionary, 10));
+    setVariation(varId);
+    setConstraint(generateConstraintFromDictionary(varId, dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
+    setTimeLeft(timePerVariation);
     setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     startTimer();
-  }, [dictionary, timePerLevel, startTimer]);
-
-  const startNextLevel = useCallback(() => {
-    if (dictionary.length === 0) return;
-    const newLevel = level + 1;
-    setLevel(newLevel);
-    setConstraint(generateConstraintFromDictionary(newLevel, dictionary, 10));
-    setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
-    setGameStatus("playing");
-    setUsedWords(new Set());
-    setUserInput("");
-    setFeedback(null);
-    startTimer();
-  }, [dictionary, level, timePerLevel, startTimer]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && !constraint) {
-      setConstraint(generateConstraintFromDictionary(1, dictionary, 10));
-    }
-  }, [dictionary, constraint]);
+  }, [dictionary, timePerVariation, startTimer]);
 
   useEffect(() => {
     if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && constraint) {
@@ -236,20 +224,16 @@ export function WordLengthGame() {
 
       setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
-      setScore((prev) => prev + 100 + level * 20);
+      setScore((prev) => prev + 100 + variation * 20);
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerLevel) {
+        if (newWordsCompleted >= wordsPerVariation) {
           if (timerRef.current) clearInterval(timerRef.current);
-          if (level >= 5) {
-            setGameStatus("won");
-          } else {
-            setGameStatus("levelComplete");
-          }
+          setGameStatus("won");
         }
       }, 500);
     } catch {
@@ -264,13 +248,46 @@ export function WordLengthGame() {
     }
   };
 
-  if (isLoading || !constraint) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </CardContent>
       </Card>
+    );
+  }
+
+  if (gameStatus === "menu") {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-center mb-6">Choose Your Challenge</h3>
+            <div className="grid gap-3">
+              {variationOptions.map((option) => (
+                <motion.div
+                  key={option.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 px-6 flex flex-col items-start text-left gap-1"
+                    onClick={() => startGame(option.id)}
+                    data-testid={`button-var-${option.id}`}
+                  >
+                    <span className="font-semibold">Variation {option.id}: {option.name}</span>
+                    <span className="text-sm text-muted-foreground font-normal">
+                      {option.description}
+                    </span>
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -282,9 +299,9 @@ export function WordLengthGame() {
             <Trophy className="h-3.5 w-3.5" />
             {score} pts
           </Badge>
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
+          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-variation">
             <Zap className="h-3.5 w-3.5" />
-            Level {level}/5
+            Variation {variation}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -295,12 +312,12 @@ export function WordLengthGame() {
           <Button
             variant="outline"
             size="sm"
-            onClick={initGame}
+            onClick={() => setGameStatus("menu")}
             className="gap-1.5"
             data-testid="button-restart"
           >
             <RotateCcw className="h-4 w-4" />
-            Restart
+            Back to Menu
           </Button>
         </div>
       </div>
@@ -317,11 +334,11 @@ export function WordLengthGame() {
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-2">
                   <Badge variant="secondary" className="text-sm" data-testid="badge-constraint">
-                    {formatConstraint(level, constraint)}
+                    {constraint && formatConstraint(variation, constraint)}
                   </Badge>
-                  <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
+                  <Progress value={(wordsCompleted / wordsPerVariation) * 100} className="h-2" />
                   <p className="text-sm text-muted-foreground">
-                    {wordsCompleted} / {wordsPerLevel} words
+                    {wordsCompleted} / {wordsPerVariation} words
                   </p>
                 </div>
 
@@ -331,7 +348,7 @@ export function WordLengthGame() {
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
-                      placeholder={`Enter a ${constraint.length}-letter word...`}
+                      placeholder={`Enter a ${constraint?.length || 5}-letter word...`}
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
@@ -390,38 +407,6 @@ export function WordLengthGame() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : gameStatus === "levelComplete" ? (
-          <motion.div
-            key="levelComplete"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <Card className="border-accent">
-              <CardContent className="p-6 text-center space-y-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", bounce: 0.5 }}
-                >
-                  <CheckCircle className="h-16 w-16 mx-auto text-accent" />
-                </motion.div>
-                <h3 className="text-2xl font-bold">Level {level} Complete!</h3>
-                <p className="text-muted-foreground">
-                  Get ready for the next challenge!
-                </p>
-                <div className="bg-muted/50 rounded-lg p-4 text-left">
-                  <p className="font-medium mb-2">Level {level + 1} Rules:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {levelDescriptions[level].replace("{length}", "N").replace("{startsWith}", "X").replace("{endsWith}", "X").replace("{contains}", "Y")}
-                  </p>
-                </div>
-                <Button onClick={startNextLevel} className="gap-2" data-testid="button-next-level">
-                  Start Level {level + 1}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
         ) : (
           <motion.div
             key="result"
@@ -446,13 +431,13 @@ export function WordLengthGame() {
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
-                    ? "You completed all 5 levels!"
-                    : `You reached Level ${level} with ${wordsCompleted} words`}
+                    ? `You completed Variation ${variation}!`
+                    : `You completed ${wordsCompleted} words`}
                 </p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={initGame} data-testid="button-play-again">
+                <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
                   Play Again
                 </Button>
               </CardContent>

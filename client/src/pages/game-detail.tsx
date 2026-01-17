@@ -26,7 +26,7 @@ import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { ContainsLettersGame } from "@/components/games/contains-letters";
 import { WordChainGame } from "@/components/games/word-chain";
-import { VowelMasterGame } from "@/components/games/vowel-master";
+import { LetterBalanceGame } from "@/components/games/letter-balance";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -45,7 +45,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "letter-position": LetterPositionGame,
   "contains-letters": ContainsLettersGame,
   "word-chain": WordChainGame,
-  "vowel-master": VowelMasterGame,
+  "letter-balance": LetterBalanceGame,
 };
 
 export default function GameDetail() {
