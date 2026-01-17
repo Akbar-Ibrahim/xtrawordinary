@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig } from "@shared/schema";
 
 export interface IStorage {
   getGames(): Promise<Game[]>;
@@ -14,6 +14,8 @@ export interface IStorage {
   getWordLengthConfig(): Promise<WordLengthConfig>;
   getLetterPositionConfig(): Promise<LetterPositionConfig>;
   getContainsConfig(): Promise<ContainsConfig>;
+  getWordChainConfig(): Promise<WordChainConfig>;
+  getVowelConsonantConfig(): Promise<VowelConsonantConfig>;
 }
 
 // Word Guessing words (5-letter words)
@@ -164,6 +166,18 @@ const containsConfig: ContainsConfig = {
     ["P", "L", "A"],
     ["D", "I", "N"]
   ]
+};
+
+// Word Chain game config (Beginning and End)
+const wordChainConfig: WordChainConfig = {
+  wordsPerLevel: 100,
+  timePerWord: 10 // 10 seconds per word to keep players on their toes
+};
+
+// Vowel Consonant game config
+const vowelConsonantConfig: VowelConsonantConfig = {
+  wordsPerRound: 20,
+  timePerWord: 12 // 12 seconds per word
 };
 
 const gamesData: Game[] = [
@@ -338,6 +352,46 @@ const gamesData: Game[] = [
     icon: "Search",
     color: "hsl(320, 70%, 50%)",
     playCount: 4120
+  },
+  {
+    id: "10",
+    slug: "word-chain",
+    name: "Word Chain",
+    description: "Create words using the ending letters of the previous word in a back-and-forth chain.",
+    longDescription: "Engage in a word chain battle! We give you a word, and you must form a new word starting with its last letter (or last two letters in advanced modes). The chain goes back and forth - we respond with our word, and you counter. Complete 100 words per level to advance! Quick thinking required as the timer runs for each word.",
+    rules: [
+      "Variation 1, Level 1: Your word must start with the last letter of our word",
+      "Variation 1, Level 2: Same as above, plus your word must match our word's length",
+      "Variation 2, Level 1: Your word must start with the last TWO letters of our word",
+      "Variation 2, Level 2: Same as above, plus your word must match our word's length",
+      "Complete 100 valid words per level to advance",
+      "Beat the timer for each word or lose!"
+    ],
+    difficulty: "hard",
+    estimatedTime: "10-15 min",
+    icon: "Link",
+    color: "hsl(170, 65%, 45%)",
+    playCount: 3560
+  },
+  {
+    id: "11",
+    slug: "vowel-master",
+    name: "Vowel Master",
+    description: "Form words based on vowel and consonant requirements across many variations.",
+    longDescription: "Master the art of vowels and consonants! This versatile game offers many variations - form words with specific numbers of vowels or consonants, words that start or end with certain letter types, or even words containing all five vowels. Each round presents a new challenge!",
+    rules: [
+      "Form words matching the current vowel/consonant requirement",
+      "Variations include: specific consonant/vowel counts, length constraints",
+      "Words starting/ending with vowels or consonants",
+      "Words containing specific vowels or consonants",
+      "Complete 20 words per round before time runs out",
+      "New variation each round - stay sharp!"
+    ],
+    difficulty: "medium",
+    estimatedTime: "8-12 min",
+    icon: "Type",
+    color: "hsl(250, 65%, 55%)",
+    playCount: 3240
   }
 ];
 
@@ -398,6 +452,14 @@ export class MemStorage implements IStorage {
 
   async getContainsConfig(): Promise<ContainsConfig> {
     return containsConfig;
+  }
+
+  async getWordChainConfig(): Promise<WordChainConfig> {
+    return wordChainConfig;
+  }
+
+  async getVowelConsonantConfig(): Promise<VowelConsonantConfig> {
+    return vowelConsonantConfig;
   }
 }
 

@@ -123,6 +123,26 @@ export async function registerRoutes(
     }
   });
 
+  // Word Chain game config
+  app.get("/api/games/word-chain/config", async (_req, res) => {
+    try {
+      const config = await storage.getWordChainConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word chain config" });
+    }
+  });
+
+  // Vowel Master game config
+  app.get("/api/games/vowel-master/config", async (_req, res) => {
+    try {
+      const config = await storage.getVowelConsonantConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch vowel master config" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;

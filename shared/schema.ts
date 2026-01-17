@@ -101,3 +101,17 @@ export const containsConfigSchema = z.object({
   letterSets: z.array(z.array(z.string())), // groups of letters for the game
 });
 export type ContainsConfig = z.infer<typeof containsConfigSchema>;
+
+// Beginning and End game configuration
+export const wordChainConfigSchema = z.object({
+  wordsPerLevel: z.number(),
+  timePerWord: z.number(), // seconds per word entry
+});
+export type WordChainConfig = z.infer<typeof wordChainConfigSchema>;
+
+// Consonants and Vowels game configuration
+export const vowelConsonantConfigSchema = z.object({
+  wordsPerRound: z.number(),
+  timePerWord: z.number(), // seconds per word entry
+});
+export type VowelConsonantConfig = z.infer<typeof vowelConsonantConfigSchema>;

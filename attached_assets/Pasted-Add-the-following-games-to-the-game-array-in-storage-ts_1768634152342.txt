@@ -1,0 +1,56 @@
+Add the following games to the game[] array in storage.ts in the backend. After that, create the game pages on the front-end with the instructions provided:
+
+1. Beginning and End: 
+We provide a word to the player, they have to use the last letter of our word to form a word. Then, we use the last letter of their word to form a word, and they use the last letter of our word to form a word. And on and on. 
+This game has two variations:
+First variation:
+First level: Player has to use the last letter of our word to form a word.
+Second level: Everything with the previous level, except that the word they enter must be of the same length as the word we provide them.
+
+Second variation:
+First level: They need to use the last two letters of the word we provide them to for their word. For example, if we give them the word "place", their word must start with "ce".
+Second level: Everything with the previous level, except that the word they enter must be of the same length as the word we provide them.
+
+Note: Each level requires player to enter 100 words.
+Since we currently don't have a database of all English words, what you should do for now, is use the wordDictionary array that you created previously. If you need to add more words to that array, please, do so.
+When a player enters a word, the following should happen:
+- make sure their word complies with the constraint. If it does not, the word is not accepted until they modify it and enter a correct word. So, here, for example, for the first level, whatever word they enter must begin with the last letter of the word we provide. And for the second level, whatever word they enter must begin with the last two letters of the word we provide.
+- When they enter a correct word, we make an API call to the back-end and check our sample array if the word they entered is present in it. If it isn't we tell them that's not a valid word. If it's present in the array, edit field is cleared for them to enter the next word.
+- Player must not be allowed to enter a word they've already entered before. So, if they do that, we tell them they already entered that word.
+- What time frame should we allow for them to enter a word? The way I want this is to work is, for every time they have to enter a word, there should be a count down. If they don't enter the word in that window, they lose. So, the time frame should be such that it keeps the players on their toes.
+
+
+2. Consonants and Vowels:
+For this game, I want there to be many variations. Here are the ones I have in mind.
+- have players enter words that have a given number of consonants. For example, words that have 2 consonants. "dog"
+- have players enter words that have a given number of vowels. For example, words that have 3 vowels. "lease"
+- have players enter words of a specific length that have a given number of consonants. For example, 8-letter words that have 3 consonants.
+- have players enter words of a specific length that have a given number of vowels. For example, 6-letter words with 4 vowels.
+- have players enter words that contain all the vowels. For example, the word "delusional" has all the vowels.
+- have players enter words that have specific vowels. For example, the words they enter must contain the vowels "u", "I", "e"
+- have players enter words that have specific consonants. For example, the words they enter must contain the consonants "b", "t", "r".
+- have players enter words of any length that begin and end with a consonant. For example, "brass"
+- have players enter words of a specific length that begin and end with a consonant.  For example, 6-letter words that begin and end with a consonant.
+- have players enter words of any length that begin and end with a vowel. For example, "elevate"
+- have players enter words of a specific length that begin and end with a vowel. For example, 8-letter words that begin and end with a vowel.
+- have players enter words of a specific length that begin with a vowel and end with a consonant.
+- have players enter words of a specific length that begin with a consonant and end with a vowel.
+- have players enter words of any length that begin with a vowel and end with a consonant.
+- have players enter words of any length that begin with a consonant and end with a vowel.
+
+
+Since we currently don't have a database of all English words, what you should do for now, is use the wordDictionary array that you created previously. If you need to add more words to that array, please, do so.
+When a player enters a word, the following should happen:
+- make sure their word complies with the constraint. If it does not, the word is not accepted until they modify it and enter a correct word. So, consonants and vowels should be where they should be. A notification is displayed to them that the word they entered is invalid.
+- When they enter a correct word, we make an API call to the back-end and check our sample array if the word they entered is present in it. If it isn't we tell them that's not a valid word. If it's present in the array, edit field is cleared for them to enter the next word.
+- Player must not be allowed to enter a word they've already entered before. So, if they do that, we tell them they already entered that word.
+- What time frame should we allow for them to enter a word? The way I want this is to work is, for every time they have to enter a word, there should be a count down. If they don't enter the word in that window, they lose. So, the time frame should be such that it keeps the players on their toes.
+
+
+
+Further instructions:
+- Feel free to suggest better names for the games
+- Don't forget to fill in the remaining values in the game array for each entry(description, long description, color etc)
+- All game word data should be fetched from the backend
+- For words with multiple levels or rounds, the rules of the next round should be displayed after completion of the previous level or round.
+
