@@ -51,16 +51,13 @@ function isConsonant(char: string): boolean {
   return /[A-Z]/i.test(char) && !isVowel(char);
 }
 
-function generateVariationFromDictionary(dictionary: string[], minWords: number = 10): Variation {
+function generateVariationFromDictionary(dictionary: string[], minWords: number = 25): Variation {
   const variations: VariationType[] = [
     "consonant_count",
     "vowel_count",
     "start_end_consonant",
-    "start_end_vowel",
     "start_vowel_end_consonant",
-    "start_consonant_end_vowel",
-    "specific_vowels",
-    "specific_consonants"
+    "start_consonant_end_vowel"
   ];
   
   for (const variationType of variations.sort(() => Math.random() - 0.5)) {
@@ -97,17 +94,6 @@ function generateVariationFromDictionary(dictionary: string[], minWords: number 
           return {
             type: "start_end_consonant",
             description: "Words that start AND end with a consonant",
-            params: {}
-          };
-        }
-        break;
-      }
-      case "start_end_vowel": {
-        const matching = dictionary.filter(w => isVowel(w[0]) && isVowel(w[w.length - 1]));
-        if (matching.length >= minWords) {
-          return {
-            type: "start_end_vowel",
-            description: "Words that start AND end with a vowel",
             params: {}
           };
         }

@@ -27,6 +27,40 @@ function getRandomWord(dictionary: string[], excludeWords: Set<string>, constrai
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+function getComputerWord(
+  dictionary: string[], 
+  excludeWords: Set<string>, 
+  playerWord: string | null, 
+  variation: 1 | 2, 
+  level: 1 | 2
+): string | null {
+  let candidates = dictionary.filter(w => !excludeWords.has(w));
+  
+  if (playerWord) {
+    const startsWith = variation === 1 ? playerWord[playerWord.length - 1] : playerWord.slice(-2);
+    candidates = candidates.filter(w => w.startsWith(startsWith));
+    if (level === 2) {
+      candidates = candidates.filter(w => w.length === playerWord.length);
+    }
+  }
+  
+  if (candidates.length === 0) return null;
+
+  const viableCandidates = candidates.filter(word => {
+    const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
+    const nextCandidates = dictionary.filter(w => 
+      !excludeWords.has(w) && 
+      w !== word && 
+      w.startsWith(nextStartsWith) &&
+      (level === 1 || w.length === word.length)
+    );
+    return nextCandidates.length >= 1;
+  });
+  
+  if (viableCandidates.length === 0) return null;
+  return viableCandidates[Math.floor(Math.random() * viableCandidates.length)];
+}
+
 export function WordChainGame() {
   const { data: config, isLoading: configLoading } = useQuery<WordChainConfig>({
     queryKey: ["/api/games/word-chain/config"],
@@ -107,22 +141,7 @@ export function WordChainGame() {
 
   const generateNextWord = useCallback((playerWord?: string) => {
     if (dictionary.length === 0) return null;
-    
-    let constraint: { startsWith?: string; length?: number } = {};
-    
-    if (playerWord) {
-      if (variation === 1) {
-        constraint.startsWith = playerWord[playerWord.length - 1];
-      } else {
-        constraint.startsWith = playerWord.slice(-2);
-      }
-      if (level === 2) {
-        constraint.length = playerWord.length;
-      }
-    }
-    
-    const nextWord = getRandomWord(dictionary, usedWords, constraint);
-    return nextWord;
+    return getComputerWord(dictionary, usedWords, playerWord || null, variation, level);
   }, [dictionary, usedWords, variation, level]);
 
   const startGame = useCallback((v: Variation, l: Level) => {
@@ -137,7 +156,7 @@ export function WordChainGame() {
     setUserInput("");
     setFeedback(null);
     
-    const firstWord = getRandomWord(dictionary, new Set(), l === 2 ? { length: 5 } : undefined);
+    const firstWord = getComputerWord(dictionary, new Set(), null, v, l);
     if (!firstWord) return;
     
     setCurrentWord(firstWord);
