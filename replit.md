@@ -129,8 +129,24 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
 ### January 2026 - Security: Dictionary Protection
 - **Dictionary Endpoint Removed**: Removed `/api/games/word-dictionary` endpoint to prevent dictionary exposure
 - **Secure Validation Pattern**: All constraint-based games now follow this pattern:
-  1. Backend generates constraints (via `/config` endpoints) - constraints validated server-side
+  1. Frontend generates constraints locally using simple randomization (no dictionary scan needed)
   2. Frontend checks constraint locally for immediate feedback (e.g., word length, starts with letter)
   3. Frontend calls `POST /api/games/validate-word` to verify word exists in dictionary
 - **Games Updated**: Length Challenge, Position Master, Letter Hunt, Word Chain
 - **Known Issue**: Word Chain timer occasionally shows "Time's Up!" immediately on certain transitions (likely HMR-related)
+
+### January 2026 - Scalable Constraint Generation
+- **Local Constraint Generation**: Removed backend config and constraint endpoints for scalability
+  - Letter Hunt: Generates 2-3 random letters from alphabet on frontend
+  - Position Master: Generates random position (1-8) and random letter on frontend
+  - Length Challenge: Generates random length (3-8) and optional constraints on frontend
+  - Word Chain: Uses hardcoded config (wordsPerLevel: 100, timePerWord: 10)
+- **Removed Backend Endpoints**: 
+  - `/api/games/word-length/config` and `/api/games/word-length/constraint`
+  - `/api/games/letter-position/config` and `/api/games/letter-position/constraint`
+  - `/api/games/contains-letters/config` and `/api/games/contains-letters/constraint`
+  - `/api/games/word-chain/config`
+- **Retained Backend Endpoints**:
+  - `POST /api/games/validate-word` - Secure word validation
+  - `GET /api/games/letter-balance/config` - Letter Balance still uses backend config
+  - `POST /api/games/word-chain/start` and `POST /api/games/word-chain/computer-word` - Require dictionary access
