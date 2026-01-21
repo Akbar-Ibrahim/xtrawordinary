@@ -1,0 +1,30 @@
+Make the following modifications:
+
+1. Adjustment to fetching data on some games.
+For Word Builder, Length Challenge, Position Master, Letter Hunt, Letter Balance and Word Chain, do not pre-fetch all the words from the API. Here's what you should do instead.
+- When the player enters a word, after doing all the client side validation like checking if letters are where they're supposed to be or if they are the specified length, make an API call to check if the word exists in storage.tsx/external dummy API. Again, do not pre-fetch all the words. 
+
+
+2. For the home page, as well as all the game pages, I want the following alterations:
+- Currently, we're fetching data from storage.tsx. But I want you to also fetch the games(in the case of the home page) and the words(in the case of the individual games) from a dummy external API. Here's what I have in mind:
+- Have a check. Maybe if dev is "LOCAL", fetch from storage.tsx, else fetch from external API.
+- The data from the dummy external API should have the same schema/structure as the data from storage.tsx so, it shouldn't affect our front-end code and should work perfectly as if we're fetching from storage.tsx.
+
+3. Word Builder
+This game displays the first and last letter, with blank boxes between them representing the missing letters. I want you to do the following:
+- When the player presses enter or clicks submit after entering their word, fill the blank boxes up with the letters from the answer they have typed
+
+4. Anagram
+- Don't scramble the original word. The goal is for them to use the unscrambled original word and enter as many anagrams using that word.
+- The structure of the data should be something like this:
+{
+    "original": "SPEAR",
+    "anagrams": ["SPARE", "PEARS"]
+}
+
+- So, using the object above, the anagrams array should contain a list of anagrams.
+- The player is meant to enter all the words that are present in the anagrams array in the above object.
+
+
+5. Automatic input focus.
+- For games that require player to enter input, make the input field activated after they click play.
