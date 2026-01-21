@@ -88,42 +88,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-length/config", async (_req, res) => {
-    try {
-      const config = await dataSource.getWordLengthConfig();
-      res.json(config);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch word length config" });
-    }
-  });
-
-  app.get("/api/games/letter-position/config", async (_req, res) => {
-    try {
-      const config = await dataSource.getLetterPositionConfig();
-      res.json(config);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch letter position config" });
-    }
-  });
-
-  app.get("/api/games/contains-letters/config", async (_req, res) => {
-    try {
-      const config = await dataSource.getContainsConfig();
-      res.json(config);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch contains config" });
-    }
-  });
-
-  app.get("/api/games/word-chain/config", async (_req, res) => {
-    try {
-      const config = await dataSource.getWordChainConfig();
-      res.json(config);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch word chain config" });
-    }
-  });
-
+  // Letter Balance config - still needed for that game
   app.get("/api/games/letter-balance/config", async (_req, res) => {
     try {
       const config = await dataSource.getVowelConsonantConfig();
@@ -133,36 +98,7 @@ export async function registerRoutes(
     }
   });
 
-  // Constraint generation endpoints
-  app.post("/api/games/word-length/constraint", async (req, res) => {
-    try {
-      const { level } = req.body;
-      const constraint = await dataSource.generateLengthConstraint(level || 1);
-      res.json(constraint);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to generate constraint" });
-    }
-  });
-
-  app.get("/api/games/letter-position/constraint", async (_req, res) => {
-    try {
-      const constraint = await dataSource.generatePositionConstraint();
-      res.json(constraint);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to generate constraint" });
-    }
-  });
-
-  app.get("/api/games/contains-letters/constraint", async (_req, res) => {
-    try {
-      const constraint = await dataSource.generateContainsConstraint();
-      res.json(constraint);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to generate constraint" });
-    }
-  });
-
-  // Word Chain endpoints
+  // Word Chain endpoints - need dictionary access for computer responses
   app.post("/api/games/word-chain/start", async (req, res) => {
     try {
       const { variation, level } = req.body;

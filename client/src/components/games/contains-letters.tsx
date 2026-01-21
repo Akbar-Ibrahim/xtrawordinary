@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,15 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { ContainsConfig, WordValidationResponse } from "@shared/schema";
+import type { WordValidationResponse } from "@shared/schema";
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+// Generate random letters for the constraint
+function generateRandomLetters(count: number): string[] {
+  const shuffled = [...ALPHABET].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
 
 // Local constraint validation (does word contain required letters?)
 function validateContainsLetters(word: string, letters: string[]): { valid: boolean; message: string } {
@@ -23,23 +31,11 @@ function validateContainsLetters(word: string, letters: string[]): { valid: bool
 }
 
 export function ContainsLettersGame() {
-  const { data: config, isLoading: configLoading } = useQuery<ContainsConfig>({
-    queryKey: ["/api/games/contains-letters/config"],
-  });
-
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
-    },
-  });
-
-  // Get constraint from backend
-  const constraintMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("GET", "/api/games/contains-letters/constraint");
-      return response.json() as Promise<{ letters: string[] }>;
     },
   });
 
@@ -54,9 +50,8 @@ export function ContainsLettersGame() {
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const wordsPerLevel = config?.wordsPerLevel || 20;
-  const timePerLevel = config?.timePerLevel || 120;
-  const isLoading = configLoading;
+  const wordsPerLevel = 20;
+  const timePerLevel = 120;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -72,8 +67,8 @@ export function ContainsLettersGame() {
     }, 1000);
   }, []);
 
-  // Initialize game - get constraint from backend
-  const initGame = useCallback(async () => {
+  // Initialize game - generate random letters locally
+  const initGame = useCallback(() => {
     setLevel(1);
     setScore(0);
     setWordsCompleted(0);
@@ -81,43 +76,29 @@ export function ContainsLettersGame() {
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    
-    try {
-      const result = await constraintMutation.mutateAsync();
-      setCurrentLetters(result.letters);
-      setGameStatus("playing");
-      startTimer();
-    } catch {
-      setFeedback({ type: "invalid", message: "Error starting game" });
-    }
-  }, [constraintMutation, timePerLevel, startTimer]);
+    setCurrentLetters(generateRandomLetters(2)); // Level 1: 2 letters
+    setGameStatus("playing");
+    startTimer();
+  }, [timePerLevel, startTimer]);
 
-  // Start next level - get new constraint from backend
-  const startNextLevel = useCallback(async () => {
+  // Start next level - generate new random letters locally
+  const startNextLevel = useCallback(() => {
     setLevel(2);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    
-    try {
-      const result = await constraintMutation.mutateAsync();
-      setCurrentLetters(result.letters);
-      setGameStatus("playing");
-      startTimer();
-    } catch {
-      setFeedback({ type: "invalid", message: "Error starting level" });
-    }
-  }, [constraintMutation, timePerLevel, startTimer]);
+    setCurrentLetters(generateRandomLetters(3)); // Level 2: 3 letters
+    setGameStatus("playing");
+    startTimer();
+  }, [timePerLevel, startTimer]);
 
   // Auto-start game on first load
   useEffect(() => {
-    if (currentLetters.length === 0 && !constraintMutation.isPending) {
-      constraintMutation.mutateAsync().then(result => {
-        setCurrentLetters(result.letters);
-        startTimer();
-      }).catch(() => {});
+    if (currentLetters.length === 0) {
+      setCurrentLetters(generateRandomLetters(2));
+      startTimer();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -157,7 +138,7 @@ export function ContainsLettersGame() {
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
-      setTimeout(async () => {
+      setTimeout(() => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerLevel) {
           if (timerRef.current) clearInterval(timerRef.current);
@@ -167,11 +148,8 @@ export function ContainsLettersGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          // Get new constraint from backend for next word in level 2
-          try {
-            const result = await constraintMutation.mutateAsync();
-            setCurrentLetters(result.letters);
-          } catch {}
+          // Level 2: new random letters after each word
+          setCurrentLetters(generateRandomLetters(3));
         }
       }, 500);
     } catch {
@@ -186,7 +164,7 @@ export function ContainsLettersGame() {
     }
   };
 
-  if (isLoading || currentLetters.length === 0) {
+  if (currentLetters.length === 0) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">

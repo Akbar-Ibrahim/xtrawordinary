@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2 } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { WordLengthConfig, WordValidationResponse } from "@shared/schema";
+import type { WordValidationResponse } from "@shared/schema";
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 type LevelConstraint = {
   length: number;
@@ -16,6 +18,27 @@ type LevelConstraint = {
   endsWith?: string;
   contains?: string;
 };
+
+// Generate random constraint based on variation
+function generateConstraint(variation: number): LevelConstraint {
+  const length = Math.floor(Math.random() * 6) + 3; // 3-8 letters
+  const randomLetter = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  
+  switch (variation) {
+    case 1:
+      return { length };
+    case 2:
+      return { length, startsWith: randomLetter() };
+    case 3:
+      return { length, endsWith: randomLetter() };
+    case 4:
+      return { length, startsWith: randomLetter(), contains: randomLetter() };
+    case 5:
+      return { length, endsWith: randomLetter(), contains: randomLetter() };
+    default:
+      return { length };
+  }
+}
 
 const variationDescriptions = [
   "Form {length}-letter words",
@@ -62,23 +85,11 @@ function validateConstraint(word: string, constraint: LevelConstraint): { valid:
 }
 
 export function WordLengthGame() {
-  const { data: config, isLoading: configLoading } = useQuery<WordLengthConfig>({
-    queryKey: ["/api/games/word-length/config"],
-  });
-
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
-    },
-  });
-
-  // Get constraint from backend
-  const constraintMutation = useMutation({
-    mutationFn: async (level: number) => {
-      const response = await apiRequest("POST", "/api/games/word-length/constraint", { level });
-      return response.json() as Promise<LevelConstraint>;
     },
   });
 
@@ -93,9 +104,8 @@ export function WordLengthGame() {
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const wordsPerVariation = config?.wordsPerLevel || 20;
-  const timePerVariation = config?.timePerLevel || 120;
-  const isLoading = configLoading;
+  const wordsPerVariation = 20;
+  const timePerVariation = 120;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -111,8 +121,8 @@ export function WordLengthGame() {
     }, 1000);
   }, []);
 
-  // Start game - get constraint from backend
-  const startGame = useCallback(async (varId: number) => {
+  // Start game - generate constraint locally
+  const startGame = useCallback((varId: number) => {
     setVariation(varId);
     setScore(0);
     setWordsCompleted(0);
@@ -120,16 +130,10 @@ export function WordLengthGame() {
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    
-    try {
-      const result = await constraintMutation.mutateAsync(varId);
-      setConstraint(result);
-      setGameStatus("playing");
-      startTimer();
-    } catch {
-      setFeedback({ type: "invalid", message: "Error starting game" });
-    }
-  }, [constraintMutation, timePerVariation, startTimer]);
+    setConstraint(generateConstraint(varId));
+    setGameStatus("playing");
+    startTimer();
+  }, [timePerVariation, startTimer]);
 
   useEffect(() => {
     return () => {
@@ -188,16 +192,6 @@ export function WordLengthGame() {
       checkAnswer();
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (gameStatus === "menu") {
     return (

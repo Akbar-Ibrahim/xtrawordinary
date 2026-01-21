@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +8,12 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { WordChainConfig, WordValidationResponse } from "@shared/schema";
+import type { WordValidationResponse } from "@shared/schema";
 
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
 export function WordChainGame() {
-  const { data: config, isLoading: configLoading } = useQuery<WordChainConfig>({
-    queryKey: ["/api/games/word-chain/config"],
-  });
 
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
@@ -56,9 +53,8 @@ export function WordChainGame() {
   const [timerActive, setTimerActive] = useState(false);
   const [timerKey, setTimerKey] = useState(0);
 
-  const wordsPerLevel = config?.wordsPerLevel || 100;
-  const timePerWord = config?.timePerWord || 10;
-  const isLoading = configLoading;
+  const wordsPerLevel = 100;
+  const timePerWord = 10;
 
   const getConstraint = useCallback(() => {
     if (!currentWord) return null;
@@ -247,16 +243,6 @@ export function WordChainGame() {
       checkAnswer();
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (gameStatus === "menu") {
     return (

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +8,21 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { LetterPositionConfig, WordValidationResponse } from "@shared/schema";
+import type { WordValidationResponse } from "@shared/schema";
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 type PositionConstraint = {
   position: number;
   letter: string;
 };
+
+// Generate random position (1-8) and random letter
+function generateRandomConstraint(): PositionConstraint {
+  const position = Math.floor(Math.random() * 8) + 1; // 1-8
+  const letter = ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  return { position, letter };
+}
 
 // Local constraint validation (does word have required letter at position?)
 function validateConstraint(word: string, constraint: PositionConstraint): { valid: boolean; message: string } {
@@ -29,23 +38,11 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
 }
 
 export function LetterPositionGame() {
-  const { data: config, isLoading: configLoading } = useQuery<LetterPositionConfig>({
-    queryKey: ["/api/games/letter-position/config"],
-  });
-
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
-    },
-  });
-
-  // Get constraint from backend
-  const constraintMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("GET", "/api/games/letter-position/constraint");
-      return response.json() as Promise<PositionConstraint>;
     },
   });
 
@@ -60,9 +57,8 @@ export function LetterPositionGame() {
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const wordsPerLevel = config?.wordsPerLevel || 20;
-  const timePerLevel = config?.timePerLevel || 120;
-  const isLoading = configLoading;
+  const wordsPerLevel = 20;
+  const timePerLevel = 120;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -78,8 +74,8 @@ export function LetterPositionGame() {
     }, 1000);
   }, []);
 
-  // Initialize game - get constraint from backend
-  const initGame = useCallback(async () => {
+  // Initialize game - generate random constraint locally
+  const initGame = useCallback(() => {
     setLevel(1);
     setScore(0);
     setWordsCompleted(0);
@@ -87,43 +83,29 @@ export function LetterPositionGame() {
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    
-    try {
-      const result = await constraintMutation.mutateAsync();
-      setConstraint(result);
-      setGameStatus("playing");
-      startTimer();
-    } catch {
-      setFeedback({ type: "invalid", message: "Error starting game" });
-    }
-  }, [constraintMutation, timePerLevel, startTimer]);
+    setConstraint(generateRandomConstraint());
+    setGameStatus("playing");
+    startTimer();
+  }, [timePerLevel, startTimer]);
 
-  // Start next level - get new constraint from backend
-  const startNextLevel = useCallback(async () => {
+  // Start next level - generate new random constraint locally
+  const startNextLevel = useCallback(() => {
     setLevel(2);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    
-    try {
-      const result = await constraintMutation.mutateAsync();
-      setConstraint(result);
-      setGameStatus("playing");
-      startTimer();
-    } catch {
-      setFeedback({ type: "invalid", message: "Error starting level" });
-    }
-  }, [constraintMutation, timePerLevel, startTimer]);
+    setConstraint(generateRandomConstraint());
+    setGameStatus("playing");
+    startTimer();
+  }, [timePerLevel, startTimer]);
 
   // Auto-start game on first load
   useEffect(() => {
-    if (!constraint && !constraintMutation.isPending) {
-      constraintMutation.mutateAsync().then(result => {
-        setConstraint(result);
-        startTimer();
-      }).catch(() => {});
+    if (!constraint) {
+      setConstraint(generateRandomConstraint());
+      startTimer();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -163,7 +145,7 @@ export function LetterPositionGame() {
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
-      setTimeout(async () => {
+      setTimeout(() => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerLevel) {
           if (timerRef.current) clearInterval(timerRef.current);
@@ -173,13 +155,8 @@ export function LetterPositionGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          // Level 2: get new constraint for each word
-          try {
-            const newConstraint = await constraintMutation.mutateAsync();
-            setConstraint(newConstraint);
-          } catch {
-            // Keep current constraint if fetch fails
-          }
+          // Level 2: new random constraint for each word
+          setConstraint(generateRandomConstraint());
         }
       }, 500);
     } catch {
@@ -194,7 +171,7 @@ export function LetterPositionGame() {
     }
   };
 
-  if (isLoading || !constraint) {
+  if (!constraint) {
     return (
       <Card>
         <CardContent className="p-12 flex items-center justify-center">
