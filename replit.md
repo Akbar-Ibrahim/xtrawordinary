@@ -69,8 +69,7 @@ Currently, game data is stored in-memory in `server/storage.ts`, but the archite
 - `GET /api/games/definition-match/words` - Returns words with definition and part of speech
 - `GET /api/games/word-builder/words` - Returns words with hint and category for fill-in game
 - `GET /api/games/word-maker/words` - Returns base words with derivatives array and maxWords count
-- `GET /api/games/word-dictionary` - Returns shared word dictionary (~400 words) for validation
-- `POST /api/games/validate-word` - Validates a word against the dictionary (body: { word: string })
+- `POST /api/games/validate-word` - Validates a word against the dictionary (body: { word: string }) - SECURE: Dictionary never exposed to frontend
 - `GET /api/games/word-length/config` - Returns Length Challenge game configuration
 - `GET /api/games/letter-position/config` - Returns Position Master game configuration
 - `GET /api/games/contains-letters/config` - Returns Letter Hunt game configuration
@@ -126,3 +125,12 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
   - Games auto-focus input field when game starts or moves to next word
   - Implemented using `useRef` with `setTimeout(() => inputRef.current?.focus(), 100)`
   - Applied to: Anagram Solver, Word Builder, Word Scramble, Definition Match, Word Maker
+
+### January 2026 - Security: Dictionary Protection
+- **Dictionary Endpoint Removed**: Removed `/api/games/word-dictionary` endpoint to prevent dictionary exposure
+- **Secure Validation Pattern**: All constraint-based games now follow this pattern:
+  1. Backend generates constraints (via `/config` endpoints) - constraints validated server-side
+  2. Frontend checks constraint locally for immediate feedback (e.g., word length, starts with letter)
+  3. Frontend calls `POST /api/games/validate-word` to verify word exists in dictionary
+- **Games Updated**: Length Challenge, Position Master, Letter Hunt, Word Chain
+- **Known Issue**: Word Chain timer occasionally shows "Time's Up!" immediately on certain transitions (likely HMR-related)
