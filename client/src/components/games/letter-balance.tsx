@@ -331,10 +331,7 @@ export function LetterBalanceGame() {
     queryKey: ["/api/games/letter-balance/config"],
   });
 
-  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
-    queryKey: ["/api/games/word-dictionary"],
-  });
-
+  // Word validation is done via backend API - no pre-fetching of dictionary
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -362,7 +359,7 @@ export function LetterBalanceGame() {
 
   const wordsPerLevel = config?.wordsPerRound || 20;
   const timePerWord = config?.timePerWord || 12;
-  const isLoading = configLoading || dictLoading;
+  const isLoading = configLoading;
   
   // Use ref to always have latest timePerWord value
   const timePerWordRef = useRef<number>(12);
