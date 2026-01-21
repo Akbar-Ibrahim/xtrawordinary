@@ -73,14 +73,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-dictionary", async (_req, res) => {
-    try {
-      const dictionary = await dataSource.getWordDictionary();
-      res.json(dictionary);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch word dictionary" });
-    }
-  });
+  // Dictionary endpoint removed for security - words validated only via /api/games/validate-word
 
   app.post("/api/games/validate-word", async (req, res) => {
     try {

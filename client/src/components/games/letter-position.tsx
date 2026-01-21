@@ -163,7 +163,7 @@ export function LetterPositionGame() {
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerLevel) {
           if (timerRef.current) clearInterval(timerRef.current);
@@ -173,7 +173,13 @@ export function LetterPositionGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          setConstraint(generateConstraintFromDictionary(dictionary, 10));
+          // Level 2: get new constraint for each word
+          try {
+            const newConstraint = await constraintMutation.mutateAsync();
+            setConstraint(newConstraint);
+          } catch {
+            // Keep current constraint if fetch fails
+          }
         }
       }, 500);
     } catch {
