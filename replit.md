@@ -4,7 +4,7 @@
 
 WordPlay is a web-based word games platform featuring eleven interactive vocabulary games:
 - **Word Guessing** - Wordle-style 5-letter word guessing in 6 attempts
-- **Anagram Solver** - Rearrange scrambled letters to form words
+- **Anagram Solver** - Find all anagrams of a given base word
 - **Word Scramble** - Unscramble words with category hints and lives system
 - **Definition Match** - Guess the word from its definition
 - **Word Builder** - Fill in missing middle letters with first/last revealed
@@ -64,7 +64,7 @@ Currently, game data is stored in-memory in `server/storage.ts`, but the archite
 - `GET /api/games` - Returns list of all 11 games with metadata
 - `GET /api/games/:slug` - Returns individual game details
 - `GET /api/games/word-guessing/words` - Returns array of 5-letter words for Word Guessing game
-- `GET /api/games/anagram-solver/words` - Returns word sets with original, anagram, and hint
+- `GET /api/games/anagram-solver/words` - Returns word sets with original word and array of anagrams
 - `GET /api/games/word-scramble/words` - Returns words with category for Word Scramble game
 - `GET /api/games/definition-match/words` - Returns words with definition and part of speech
 - `GET /api/games/word-builder/words` - Returns words with hint and category for fill-in game
@@ -107,3 +107,22 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
 - Vite with React plugin
 - Replit-specific plugins for development experience (error overlay, cartographer, dev banner)
 - esbuild for production server bundling
+
+## Recent Changes
+
+### January 2026 - DEV_MODE and Game Enhancements
+- **DEV_MODE Environment Variable**: Added `DEV_MODE` environment variable to toggle between LOCAL storage and external API
+  - `DEV_MODE=LOCAL` uses in-memory data from `server/storage.ts`
+  - Other values use external API from `server/externalApi.ts`
+  - Routes in `server/routes.ts` use `dataSource` based on DEV_MODE setting
+- **Anagram Solver Restructured**: Changed from single anagram per word to multiple anagrams
+  - Schema updated: `AnagramWordSet` now has `anagrams: string[]` instead of single `anagram: string`
+  - Players are shown a base word and must find all valid anagrams
+  - Displays found count (e.g., "2 / 4 found") with found words shown as badges
+- **Word Builder Visual Feedback**: Enhanced to show typed letters in blank boxes before validation
+  - User input fills the displayed letter boxes on submit
+  - Shows colored feedback (green for correct, red for wrong) on the filled boxes
+- **Auto-Focus on Input Fields**: Added across all text-input games
+  - Games auto-focus input field when game starts or moves to next word
+  - Implemented using `useRef` with `setTimeout(() => inputRef.current?.focus(), 100)`
+  - Applied to: Anagram Solver, Word Builder, Word Scramble, Definition Match, Word Maker

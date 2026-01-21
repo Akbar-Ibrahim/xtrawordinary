@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Shuffle, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { RotateCcw, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import type { AnagramWordSet } from "@shared/schema";
 
 export function AnagramSolverGame() {
@@ -13,25 +14,15 @@ export function AnagramSolverGame() {
   });
 
   const [currentSet, setCurrentSet] = useState<AnagramWordSet | null>(null);
-  const [shuffledLetters, setShuffledLetters] = useState<string[]>([]);
-  const [selectedLetters, setSelectedLetters] = useState<number[]>([]);
-  const [answer, setAnswer] = useState("");
+  const [userInput, setUserInput] = useState("");
+  const [foundAnagrams, setFoundAnagrams] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(90);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "timeup">("playing");
-  const [showHint, setShowHint] = useState(false);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "duplicate"; message: string } | null>(null);
   const [usedSets, setUsedSets] = useState<Set<number>>(new Set());
-
-  const shuffleArray = (arr: string[]) => {
-    const shuffled = [...arr];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
     const availableIndices = wordSets.map((_, i) => i).filter(i => !usedSets.has(i));
@@ -42,28 +33,26 @@ export function AnagramSolverGame() {
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
     const newSet = wordSets[randomIndex];
     setCurrentSet(newSet);
-    setShuffledLetters(shuffleArray(newSet.original.split("")));
-    setSelectedLetters([]);
-    setAnswer("");
-    setShowHint(false);
+    setFoundAnagrams([]);
+    setUserInput("");
     setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedSets, wordSets]);
 
   const initGame = useCallback(() => {
     if (wordSets.length === 0) return;
     setScore(0);
     setStreak(0);
-    setTimeLeft(60);
+    setTimeLeft(90);
     setGameStatus("playing");
     setUsedSets(new Set());
+    setFoundAnagrams([]);
     const randomIndex = Math.floor(Math.random() * wordSets.length);
     const newSet = wordSets[randomIndex];
     setCurrentSet(newSet);
-    setShuffledLetters(shuffleArray(newSet.original.split("")));
-    setSelectedLetters([]);
-    setAnswer("");
-    setShowHint(false);
+    setUserInput("");
     setUsedSets(new Set([randomIndex]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [wordSets]);
 
   useEffect(() => {
@@ -86,42 +75,43 @@ export function AnagramSolverGame() {
     return () => clearInterval(timer);
   }, [gameStatus]);
 
-  const handleLetterClick = (index: number) => {
-    if (selectedLetters.includes(index)) {
-      setSelectedLetters(prev => prev.filter(i => i !== index));
-      setAnswer(prev => {
-        const idx = selectedLetters.indexOf(index);
-        return prev.slice(0, idx) + prev.slice(idx + 1);
-      });
-    } else {
-      setSelectedLetters(prev => [...prev, index]);
-      setAnswer(prev => prev + shuffledLetters[index]);
-    }
-  };
-
   const checkAnswer = () => {
-    if (!currentSet) return;
-    if (answer.toUpperCase() === currentSet.anagram) {
-      setFeedback("correct");
-      const points = showHint ? 50 : 100;
-      setScore(prev => prev + points + (streak * 10));
+    if (!currentSet || !userInput.trim()) return;
+    
+    const upperInput = userInput.toUpperCase().trim();
+    
+    if (foundAnagrams.includes(upperInput)) {
+      setFeedback({ type: "duplicate", message: "Already found!" });
+      setTimeout(() => setFeedback(null), 1000);
+      return;
+    }
+    
+    if (currentSet.anagrams.includes(upperInput)) {
+      setFeedback({ type: "correct", message: "Correct!" });
+      const newFoundAnagrams = [...foundAnagrams, upperInput];
+      setFoundAnagrams(newFoundAnagrams);
+      setScore(prev => prev + 100 + (streak * 10));
       setStreak(prev => prev + 1);
+      setUserInput("");
+      
       setTimeout(() => {
         setFeedback(null);
-        selectNewWord();
-      }, 1000);
+        if (newFoundAnagrams.length === currentSet.anagrams.length) {
+          setScore(prev => prev + 200);
+          selectNewWord();
+        }
+      }, 500);
     } else {
-      setFeedback("wrong");
+      setFeedback({ type: "wrong", message: "Not a valid anagram!" });
       setStreak(0);
       setTimeout(() => setFeedback(null), 1000);
     }
   };
 
-  const reshuffleLetters = () => {
-    if (!currentSet) return;
-    setShuffledLetters(shuffleArray(currentSet.original.split("")));
-    setSelectedLetters([]);
-    setAnswer("");
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      checkAnswer();
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -205,88 +195,95 @@ export function AnagramSolverGame() {
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Rearrange the letters to form a word
+                    Find all anagrams of this word
                   </p>
-                  {showHint && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-sm text-primary font-medium"
-                    >
-                      Hint: {currentSet.hint}
-                    </motion.p>
-                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {foundAnagrams.length} / {currentSet.anagrams.length} found
+                  </p>
                 </div>
 
-                <div className="flex justify-center gap-2 flex-wrap">
-                  {shuffledLetters.map((letter, index) => (
-                    <motion.button
+                <motion.div
+                  key={currentSet.original}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex justify-center gap-2 flex-wrap"
+                >
+                  {currentSet.original.split("").map((letter, index) => (
+                    <motion.div
                       key={index}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleLetterClick(index)}
-                      className={`w-12 h-12 sm:w-14 sm:h-14 text-xl font-bold rounded-md border-2 transition-all ${
-                        selectedLetters.includes(index)
-                          ? "bg-primary text-primary-foreground border-primary scale-90 opacity-50"
-                          : "bg-card hover-elevate"
-                      }`}
+                      initial={{ opacity: 0, rotateY: 90 }}
+                      animate={{ opacity: 1, rotateY: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="w-12 h-14 sm:w-14 sm:h-16 flex items-center justify-center text-2xl font-bold rounded-md bg-primary text-primary-foreground"
                       data-testid={`letter-${index}`}
                     >
                       {letter}
-                    </motion.button>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
 
-                <div className="flex justify-center">
-                  <div
-                    className={`min-w-[200px] h-14 flex items-center justify-center rounded-md border-2 border-dashed text-xl font-bold tracking-wider ${
-                      feedback === "correct"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : feedback === "wrong"
-                        ? "border-destructive bg-destructive/10 text-destructive"
-                        : "border-muted"
-                    }`}
-                    data-testid="answer-display"
-                  >
-                    {answer || (
-                      <span className="text-muted-foreground text-base font-normal">
-                        Click letters above
-                      </span>
-                    )}
-                    {feedback === "correct" && (
-                      <CheckCircle className="h-5 w-5 ml-2 text-accent" />
-                    )}
-                    {feedback === "wrong" && (
-                      <XCircle className="h-5 w-5 ml-2 text-destructive" />
+                <div className="max-w-sm mx-auto space-y-4">
+                  <div className="relative">
+                    <Input
+                      ref={inputRef}
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Type an anagram..."
+                      className={`text-center text-lg font-semibold tracking-wider uppercase ${
+                        feedback?.type === "correct"
+                          ? "border-accent bg-accent/10"
+                          : feedback?.type === "wrong" || feedback?.type === "duplicate"
+                          ? "border-destructive bg-destructive/10"
+                          : ""
+                      }`}
+                      data-testid="input-anagram"
+                    />
+                    {feedback && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        {feedback.type === "correct" ? (
+                          <CheckCircle className="h-5 w-5 text-accent" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-destructive" />
+                        )}
+                      </motion.div>
                     )}
                   </div>
-                </div>
 
-                <div className="flex justify-center gap-2 flex-wrap">
-                  <Button
-                    variant="outline"
-                    onClick={reshuffleLetters}
-                    className="gap-1.5"
-                    data-testid="button-shuffle"
-                  >
-                    <Shuffle className="h-4 w-4" />
-                    Shuffle
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowHint(true)}
-                    disabled={showHint}
-                    data-testid="button-hint"
-                  >
-                    Show Hint (-50pts)
-                  </Button>
+                  {feedback && feedback.type !== "correct" && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center text-sm text-destructive"
+                    >
+                      {feedback.message}
+                    </motion.p>
+                  )}
+
                   <Button
                     onClick={checkAnswer}
-                    disabled={answer.length !== currentSet.anagram.length}
+                    disabled={!userInput.trim()}
+                    className="w-full"
                     data-testid="button-submit"
                   >
                     Submit
                   </Button>
                 </div>
+
+                {foundAnagrams.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <p className="w-full text-center text-sm text-muted-foreground mb-2">Found:</p>
+                    {foundAnagrams.map((word) => (
+                      <Badge key={word} variant="secondary" className="text-sm">
+                        {word}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -304,8 +301,8 @@ export function AnagramSolverGame() {
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
-                    ? "You solved all the anagrams!"
-                    : `You scored ${score} points!`}
+                    ? "You found all the anagrams!"
+                    : `You found ${foundAnagrams.length} anagrams!`}
                 </p>
                 <div className="text-3xl font-bold text-primary">{score} points</div>
                 <Button onClick={initGame} data-testid="button-play-again">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,7 @@ export function WordScrambleGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrambleWord = (word: string): string => {
     const letters = word.split("");
@@ -46,6 +47,7 @@ export function WordScrambleGame() {
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, words]);
 
   const initGame = useCallback(() => {
@@ -61,6 +63,7 @@ export function WordScrambleGame() {
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [words]);
 
   useEffect(() => {
@@ -229,6 +232,7 @@ export function WordScrambleGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}

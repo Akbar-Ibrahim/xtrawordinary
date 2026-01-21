@@ -25,11 +25,10 @@ export const gamesListSchema = z.array(gameSchema);
 export const wordGuessingWordsSchema = z.array(z.string());
 export type WordGuessingWords = z.infer<typeof wordGuessingWordsSchema>;
 
-// Anagram Solver word sets
+// Anagram Solver word sets (new structure with multiple anagrams)
 export const anagramWordSetSchema = z.object({
   original: z.string(),
-  anagram: z.string(),
-  hint: z.string(),
+  anagrams: z.array(z.string()),
 });
 export type AnagramWordSet = z.infer<typeof anagramWordSetSchema>;
 export const anagramWordSetsSchema = z.array(anagramWordSetSchema);

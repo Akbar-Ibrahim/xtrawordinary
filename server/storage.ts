@@ -24,16 +24,16 @@ const wordGuessingWords: string[] = [
   "GRADE", "PLANT", "SWIFT", "GLOBE", "QUEST"
 ];
 
-// Anagram Solver word sets
+// Anagram Solver word sets - new structure with multiple anagrams
 const anagramWordSets: AnagramWordSet[] = [
-  { original: "LISTEN", anagram: "SILENT", hint: "Without sound" },
-  { original: "DANGER", anagram: "GARDEN", hint: "A place to grow flowers" },
-  { original: "EARTH", anagram: "HEART", hint: "It pumps blood" },
-  { original: "DUSTY", anagram: "STUDY", hint: "What students do" },
-  { original: "NIGHT", anagram: "THING", hint: "An object or item" },
-  { original: "ANGEL", anagram: "ANGLE", hint: "Geometry term" },
-  { original: "SAVES", anagram: "VASES", hint: "Hold flowers" },
-  { original: "BORED", anagram: "ROBED", hint: "Wearing a robe" },
+  { original: "SPEAR", anagrams: ["SPARE", "PEARS", "REAPS", "PARES"] },
+  { original: "HEART", anagrams: ["EARTH", "HATER", "RATHE"] },
+  { original: "LISTEN", anagrams: ["SILENT", "ENLIST", "TINSEL"] },
+  { original: "TASTE", anagrams: ["STATE", "TATES"] },
+  { original: "NIGHT", anagrams: ["THING"] },
+  { original: "ANGEL", anagrams: ["ANGLE", "GLEAN"] },
+  { original: "STARE", anagrams: ["TEARS", "RATES", "ASTER"] },
+  { original: "STREAM", anagrams: ["MASTER", "TAMERS"] },
 ];
 
 // Word Scramble words with categories
@@ -236,13 +236,13 @@ const gamesData: Game[] = [
     id: "2",
     slug: "anagram-solver",
     name: "Anagram Solver",
-    description: "Rearrange scrambled letters to form meaningful words.",
-    longDescription: "Challenge yourself to unscramble words against the clock! You'll be given a set of jumbled letters, and your task is to rearrange them to form the correct word. Use hints if you get stuck, but be careful - using hints reduces your score. How many can you solve before time runs out?",
+    description: "Use the given word to find all possible anagrams.",
+    longDescription: "Challenge yourself with anagram puzzles! You'll be shown a word, and your task is to find all the anagram variations that can be formed from its letters. How many can you discover?",
     rules: [
-      "Rearrange the scrambled letters to form a word",
-      "Click letters to select them in order",
-      "Use the shuffle button to rearrange the letters",
-      "Hints are available but reduce your score by 50 points",
+      "You are given a base word",
+      "Enter all the anagrams you can find",
+      "Each anagram uses the exact same letters",
+      "Find all anagrams to complete the round",
       "Build streaks for bonus points"
     ],
     difficulty: "easy",

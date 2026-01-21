@@ -1,6 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { externalApi } from "./externalApi";
+
+const isLocalMode = process.env.DEV_MODE === "LOCAL";
+const dataSource = isLocalMode ? storage : externalApi;
 
 export async function registerRoutes(
   httpServer: Server,
@@ -8,17 +12,16 @@ export async function registerRoutes(
 ): Promise<Server> {
   app.get("/api/games", async (_req, res) => {
     try {
-      const games = await storage.getGames();
+      const games = await dataSource.getGames();
       res.json(games);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch games" });
     }
   });
 
-  // Game-specific word data endpoints (must be before :slug route)
   app.get("/api/games/word-guessing/words", async (_req, res) => {
     try {
-      const words = await storage.getWordGuessingWords();
+      const words = await dataSource.getWordGuessingWords();
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch words" });
@@ -27,7 +30,7 @@ export async function registerRoutes(
 
   app.get("/api/games/anagram-solver/words", async (_req, res) => {
     try {
-      const wordSets = await storage.getAnagramWordSets();
+      const wordSets = await dataSource.getAnagramWordSets();
       res.json(wordSets);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word sets" });
@@ -36,7 +39,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-scramble/words", async (_req, res) => {
     try {
-      const words = await storage.getScrambleWords();
+      const words = await dataSource.getScrambleWords();
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch words" });
@@ -45,7 +48,7 @@ export async function registerRoutes(
 
   app.get("/api/games/definition-match/words", async (_req, res) => {
     try {
-      const words = await storage.getDefinitionWords();
+      const words = await dataSource.getDefinitionWords();
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch definition words" });
@@ -54,7 +57,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-builder/words", async (_req, res) => {
     try {
-      const words = await storage.getBuilderWords();
+      const words = await dataSource.getBuilderWords();
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch builder words" });
@@ -63,17 +66,16 @@ export async function registerRoutes(
 
   app.get("/api/games/word-maker/words", async (_req, res) => {
     try {
-      const words = await storage.getMakerWords();
+      const words = await dataSource.getMakerWords();
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch maker words" });
     }
   });
 
-  // Word dictionary and validation endpoints for new games
   app.get("/api/games/word-dictionary", async (_req, res) => {
     try {
-      const dictionary = await storage.getWordDictionary();
+      const dictionary = await dataSource.getWordDictionary();
       res.json(dictionary);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word dictionary" });
@@ -86,57 +88,52 @@ export async function registerRoutes(
       if (!word || typeof word !== "string") {
         return res.status(400).json({ valid: false, message: "Word is required" });
       }
-      const valid = await storage.validateWord(word);
+      const valid = await dataSource.validateWord(word);
       res.json({ valid, message: valid ? "Valid word!" : "Not in dictionary" });
     } catch (error) {
       res.status(500).json({ valid: false, message: "Validation failed" });
     }
   });
 
-  // Word Length game config
   app.get("/api/games/word-length/config", async (_req, res) => {
     try {
-      const config = await storage.getWordLengthConfig();
+      const config = await dataSource.getWordLengthConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word length config" });
     }
   });
 
-  // Letter Position game config
   app.get("/api/games/letter-position/config", async (_req, res) => {
     try {
-      const config = await storage.getLetterPositionConfig();
+      const config = await dataSource.getLetterPositionConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch letter position config" });
     }
   });
 
-  // Contains game config
   app.get("/api/games/contains-letters/config", async (_req, res) => {
     try {
-      const config = await storage.getContainsConfig();
+      const config = await dataSource.getContainsConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contains config" });
     }
   });
 
-  // Word Chain game config
   app.get("/api/games/word-chain/config", async (_req, res) => {
     try {
-      const config = await storage.getWordChainConfig();
+      const config = await dataSource.getWordChainConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word chain config" });
     }
   });
 
-  // Letter Balance game config
   app.get("/api/games/letter-balance/config", async (_req, res) => {
     try {
-      const config = await storage.getVowelConsonantConfig();
+      const config = await dataSource.getVowelConsonantConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch letter balance config" });
@@ -146,7 +143,7 @@ export async function registerRoutes(
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;
-      const game = await storage.getGameBySlug(slug);
+      const game = await dataSource.getGameBySlug(slug);
       if (!game) {
         return res.status(404).json({ message: "Game not found" });
       }

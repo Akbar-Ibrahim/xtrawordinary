@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ export function DefinitionMatchGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showAnswer, setShowAnswer] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
     const availableWords = words.filter((w) => !usedWords.has(w.word));
@@ -34,6 +35,7 @@ export function DefinitionMatchGame() {
     setUserInput("");
     setShowAnswer(false);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, words]);
 
   const initGame = useCallback(() => {
@@ -48,6 +50,7 @@ export function DefinitionMatchGame() {
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [words]);
 
   useEffect(() => {
@@ -184,6 +187,7 @@ export function DefinitionMatchGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       onKeyDown={handleKeyDown}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,14 +7,25 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Heart, Loader2 } from "lucide-react";
 import type { BuilderWord } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+
+type WordValidationResponse = { valid: boolean; message?: string };
 
 export function WordBuilderGame() {
   const { data: words = [], isLoading, error } = useQuery<BuilderWord[]>({
     queryKey: ["/api/games/word-builder/words"],
   });
 
+  const validateMutation = useMutation({
+    mutationFn: async (word: string) => {
+      const response = await apiRequest("POST", "/api/games/validate-word", { word });
+      return response.json() as Promise<WordValidationResponse>;
+    },
+  });
+
   const [currentWord, setCurrentWord] = useState<BuilderWord | null>(null);
   const [userInput, setUserInput] = useState("");
+  const [displayedLetters, setDisplayedLetters] = useState<string[]>([]);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [wordsCompleted, setWordsCompleted] = useState(0);
@@ -22,13 +33,17 @@ export function WordBuilderGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const getDisplayWord = (word: string) => {
-    if (word.length <= 2) return word;
-    const first = word[0];
-    const last = word[word.length - 1];
-    const middle = "_".repeat(word.length - 2);
-    return first + middle + last;
+  const getDisplayWord = (word: string): string[] => {
+    if (word.length <= 2) return word.split("");
+    const result: string[] = [];
+    result.push(word[0]);
+    for (let i = 1; i < word.length - 1; i++) {
+      result.push("_");
+    }
+    result.push(word[word.length - 1]);
+    return result;
   };
 
   const selectNewWord = useCallback(() => {
@@ -39,9 +54,11 @@ export function WordBuilderGame() {
     }
     const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
     setCurrentWord(randomWord);
+    setDisplayedLetters(getDisplayWord(randomWord.word));
     setUserInput("");
     setShowHint(false);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, words]);
 
   const initGame = useCallback(() => {
@@ -54,8 +71,10 @@ export function WordBuilderGame() {
     setShowHint(false);
     const randomWord = words[Math.floor(Math.random() * words.length)];
     setCurrentWord(randomWord);
+    setDisplayedLetters(getDisplayWord(randomWord.word));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [words]);
 
   useEffect(() => {
@@ -64,9 +83,15 @@ export function WordBuilderGame() {
     }
   }, [words, currentWord, initGame]);
 
-  const checkAnswer = () => {
-    if (!currentWord) return;
-    if (userInput.toUpperCase().trim() === currentWord.word.toUpperCase()) {
+  const checkAnswer = async () => {
+    if (!currentWord || !userInput.trim()) return;
+    
+    const upperInput = userInput.toUpperCase().trim();
+    
+    const newDisplayedLetters = upperInput.split("");
+    setDisplayedLetters(newDisplayedLetters);
+
+    if (upperInput === currentWord.word.toUpperCase()) {
       setFeedback("correct");
       const points = showHint ? 50 : 100;
       setScore((prev) => prev + points);
@@ -84,7 +109,12 @@ export function WordBuilderGame() {
         }
         return newLives;
       });
-      setTimeout(() => setFeedback(null), 1000);
+      setTimeout(() => {
+        setFeedback(null);
+        if (currentWord) {
+          setDisplayedLetters(getDisplayWord(currentWord.word));
+        }
+      }, 1500);
     }
   };
 
@@ -121,7 +151,6 @@ export function WordBuilderGame() {
     return null;
   }
 
-  const displayWord = getDisplayWord(currentWord.word);
   const middleLength = currentWord.word.length - 2;
 
   return (
@@ -189,16 +218,22 @@ export function WordBuilderGame() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex justify-center gap-1.5 sm:gap-2 flex-wrap"
                 >
-                  {displayWord.split("").map((char, index) => (
+                  {displayedLetters.map((char, index) => (
                     <motion.div
-                      key={index}
+                      key={`${currentWord.word}-${index}`}
                       initial={{ opacity: 0, rotateY: 90 }}
                       animate={{ opacity: 1, rotateY: 0 }}
                       transition={{ delay: index * 0.05 }}
                       className={`w-10 h-12 sm:w-12 sm:h-14 flex items-center justify-center text-xl font-bold rounded-md ${
                         char === "_"
                           ? "bg-muted border-2 border-dashed border-primary/50"
-                          : "bg-primary text-primary-foreground"
+                          : index === 0 || index === displayedLetters.length - 1
+                          ? "bg-primary text-primary-foreground"
+                          : feedback === "correct"
+                          ? "bg-accent text-accent-foreground"
+                          : feedback === "wrong"
+                          ? "bg-destructive text-destructive-foreground"
+                          : "bg-secondary text-secondary-foreground"
                       }`}
                       data-testid={`letter-${index}`}
                     >
@@ -223,6 +258,7 @@ export function WordBuilderGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
@@ -264,10 +300,14 @@ export function WordBuilderGame() {
                     </Button>
                     <Button
                       onClick={checkAnswer}
-                      disabled={userInput.length !== currentWord.word.length}
+                      disabled={userInput.length !== currentWord.word.length || validateMutation.isPending}
                       data-testid="button-submit"
                     >
-                      Submit
+                      {validateMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Submit"
+                      )}
                     </Button>
                   </div>
                 </div>

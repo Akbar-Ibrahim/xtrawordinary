@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +22,7 @@ export function WordMakerGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "duplicate" | null>(null);
   const [usedBaseWords, setUsedBaseWords] = useState<Set<string>>(new Set());
   const [roundsCompleted, setRoundsCompleted] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const canFormWord = (word: string, baseWord: string): boolean => {
     const baseCounts: Record<string, number> = {};
@@ -48,6 +49,7 @@ export function WordMakerGame() {
     setFoundWords(new Set());
     setUserInput("");
     setUsedBaseWords((prev) => new Set(Array.from(prev).concat(randomWord.baseWord)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedBaseWords, words]);
 
   const initGame = useCallback(() => {
@@ -61,6 +63,7 @@ export function WordMakerGame() {
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [words]);
 
   useEffect(() => {
@@ -242,6 +245,7 @@ export function WordMakerGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
