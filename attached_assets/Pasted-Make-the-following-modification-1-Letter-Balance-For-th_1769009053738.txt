@@ -1,0 +1,25 @@
+Make the following modification:
+
+1. Letter Balance
+- For the Consonant Count variation, it should not be fixed to 2, 3, or 4. It can be anywhere from 2 to 7. This variation should have multiple levels, starting from 2 and up to 7. But the player should be able to choose which of the levels they want to play. If they finish a level, give them the choice to proceed to the next level.
+There should also be an advanced level: In this level, for every word they enter, the constraint changes. For example, for the first word, they might have to enter a word with 3 consonants. For the second word, they might have to enter a word with 6 consonants etc. This level randomizes the constraint for each word.
+
+- For the Vowel Count variation, it should not be fixed to 2, 3, or 4. It can be anywhere from 2 to 7. This variation should have multiple levels, starting from 2 and up to 7. But the player should be able to choose which of the levels they want to play. If they finish a level, give them the choice to proceed to the next level.
+There should also be an advanced level: In this level, for every word they enter, the constraint changes. For example, for the first word, they might have to enter a word with 3 vowels. For the second word, they might have to enter a word with 6 vowels etc. This level randomizes the constraint for each word.
+
+- Include a variation where words must start and end with vowels. This variation should have multiple levels. The difference in levels is the word length. The levels should go from 4-letter words to 12-letter words. Players should be able to choose which level they want to play. If they finish a level, give them the choice to proceed to the next level.
+There should also be an advanced level: In this level, for every word they enter, the constraint changes. For example, for the first word, they might have to enter a 5-letter word that start and end with a vowel. For the second word, they might have to enter a 7-letter word that start and end with a vowel etc. This level randomizes the constraint for each word.
+
+
+- Modify the Start and End Consonant variation to include the following:
+This variation should have multiple levels. The difference in levels is the word length. The levels should go from 4-letter words to 12-letter words. Players should be able to choose which level they want to play. If they finish a level, give them the choice to proceed to the next level.
+There should also be an advanced level: In this level, for every word they enter, the constraint changes. For example, for the first word, they might have to enter a 5-letter word that start and end with a consonant. For the second word, they might have to enter a 7-letter word that start and end with a consonant etc. This level randomizes the constraint for each word.
+
+- Modify the Start Vowel, End Consonant and the Start Consonant, End Vowel variations with the following:
+This variations should have multiple levels. The difference in levels is the word length. The levels should go from 4-letter words to 12-letter words. Players should be able to choose which level they want to play. If they finish a level, give them the choice to proceed to the next level.
+There should be an advanced level that randomizes the constraint for each word.
+
+
+- A second variation of Consonant Count and Vowel Count.
+In addition to the variations Consonant Count and Vowel Count, create a separate variation. For this variation, when you specify the number of vowels or consonants, you should also specify the length of the word. For example: A word that has 3 vowels/consonants and is 7 letters long.
+Note: Perhaps, call this variations: "Consonant Count: reloaded"/"Vowel Count: reloaded"(Or something more ominous :))
