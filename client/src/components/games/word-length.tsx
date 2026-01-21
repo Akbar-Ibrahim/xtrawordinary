@@ -33,74 +33,6 @@ const variationOptions = [
   { id: 5, name: "Ends & Contains", description: "Same length + ends with letter + contains letter" },
 ];
 
-function generateConstraintFromDictionary(level: number, dictionary: string[], minWords: number = 10): LevelConstraint {
-  const lengths = [5, 6, 7, 8];
-  
-  for (const length of lengths) {
-    const wordsOfLength = dictionary.filter(w => w.length === length);
-    if (wordsOfLength.length < minWords) continue;
-    
-    switch (level) {
-      case 1:
-        if (wordsOfLength.length >= minWords) {
-          return { length };
-        }
-        break;
-      case 2: {
-        const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
-        for (const letter of startLetters.sort(() => Math.random() - 0.5)) {
-          if (wordsOfLength.filter(w => w.startsWith(letter)).length >= minWords) {
-            return { length, startsWith: letter };
-          }
-        }
-        break;
-      }
-      case 3: {
-        const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
-        for (const letter of endLetters.sort(() => Math.random() - 0.5)) {
-          if (wordsOfLength.filter(w => w.endsWith(letter)).length >= minWords) {
-            return { length, endsWith: letter };
-          }
-        }
-        break;
-      }
-      case 4: {
-        const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
-        for (const startLetter of startLetters.sort(() => Math.random() - 0.5)) {
-          const matching = wordsOfLength.filter(w => w.startsWith(startLetter));
-          if (matching.length >= minWords) {
-            const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(1).split(""))));
-            for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
-              if (matching.filter(w => w.slice(1).includes(containsLetter)).length >= minWords) {
-                return { length, startsWith: startLetter, contains: containsLetter };
-              }
-            }
-            return { length, startsWith: startLetter };
-          }
-        }
-        break;
-      }
-      case 5: {
-        const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
-        for (const endLetter of endLetters.sort(() => Math.random() - 0.5)) {
-          const matching = wordsOfLength.filter(w => w.endsWith(endLetter));
-          if (matching.length >= minWords) {
-            const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(0, -1).split(""))));
-            for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
-              if (matching.filter(w => w.slice(0, -1).includes(containsLetter)).length >= minWords) {
-                return { length, endsWith: endLetter, contains: containsLetter };
-              }
-            }
-            return { length, endsWith: endLetter };
-          }
-        }
-        break;
-      }
-    }
-  }
-  return { length: 5 };
-}
-
 function formatConstraint(variation: number, constraint: LevelConstraint): string {
   let desc = variationDescriptions[variation - 1];
   desc = desc.replace("{length}", String(constraint.length));
@@ -110,6 +42,7 @@ function formatConstraint(variation: number, constraint: LevelConstraint): strin
   return desc;
 }
 
+// Local constraint validation (length, starts with, ends with, contains)
 function validateConstraint(word: string, constraint: LevelConstraint): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -133,14 +66,19 @@ export function WordLengthGame() {
     queryKey: ["/api/games/word-length/config"],
   });
 
-  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
-    queryKey: ["/api/games/word-dictionary"],
-  });
-
+  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
+    },
+  });
+
+  // Get constraint from backend
+  const constraintMutation = useMutation({
+    mutationFn: async (level: number) => {
+      const response = await apiRequest("POST", "/api/games/word-length/constraint", { level });
+      return response.json() as Promise<LevelConstraint>;
     },
   });
 
@@ -157,7 +95,7 @@ export function WordLengthGame() {
 
   const wordsPerVariation = config?.wordsPerLevel || 20;
   const timePerVariation = config?.timePerLevel || 120;
-  const isLoading = configLoading || dictLoading;
+  const isLoading = configLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -173,28 +111,31 @@ export function WordLengthGame() {
     }, 1000);
   }, []);
 
-  const startGame = useCallback((varId: number) => {
-    if (dictionary.length === 0) return;
+  // Start game - get constraint from backend
+  const startGame = useCallback(async (varId: number) => {
     setVariation(varId);
-    setConstraint(generateConstraintFromDictionary(varId, dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerVariation);
-    setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    startTimer();
-  }, [dictionary, timePerVariation, startTimer]);
+    
+    try {
+      const result = await constraintMutation.mutateAsync(varId);
+      setConstraint(result);
+      setGameStatus("playing");
+      startTimer();
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting game" });
+    }
+  }, [constraintMutation, timePerVariation, startTimer]);
 
   useEffect(() => {
-    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && constraint) {
-      startTimer();
-    }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [dictionary, gameStatus, startTimer, constraint]);
+  }, []);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || !constraint) return;

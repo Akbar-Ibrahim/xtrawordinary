@@ -15,24 +15,7 @@ type PositionConstraint = {
   letter: string;
 };
 
-function generateConstraintFromDictionary(dictionary: string[], minWords: number = 10): PositionConstraint {
-  const positions = [2, 3, 4, 5];
-  
-  for (const position of positions.sort(() => Math.random() - 0.5)) {
-    const validWords = dictionary.filter(w => w.length >= position);
-    if (validWords.length < minWords) continue;
-    
-    const letters = Array.from(new Set(validWords.map(w => w[position - 1])));
-    for (const letter of letters.sort(() => Math.random() - 0.5)) {
-      const matching = validWords.filter(w => w[position - 1] === letter);
-      if (matching.length >= minWords) {
-        return { position, letter };
-      }
-    }
-  }
-  return { position: 2, letter: "A" };
-}
-
+// Local constraint validation (does word have required letter at position?)
 function validateConstraint(word: string, constraint: PositionConstraint): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -50,14 +33,19 @@ export function LetterPositionGame() {
     queryKey: ["/api/games/letter-position/config"],
   });
 
-  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
-    queryKey: ["/api/games/word-dictionary"],
-  });
-
+  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
+    },
+  });
+
+  // Get constraint from backend
+  const constraintMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/games/letter-position/constraint");
+      return response.json() as Promise<PositionConstraint>;
     },
   });
 
@@ -74,7 +62,7 @@ export function LetterPositionGame() {
 
   const wordsPerLevel = config?.wordsPerLevel || 20;
   const timePerLevel = config?.timePerLevel || 120;
-  const isLoading = configLoading || dictLoading;
+  const isLoading = configLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -90,47 +78,57 @@ export function LetterPositionGame() {
     }, 1000);
   }, []);
 
-  const initGame = useCallback(() => {
-    if (dictionary.length === 0) return;
+  // Initialize game - get constraint from backend
+  const initGame = useCallback(async () => {
     setLevel(1);
-    setConstraint(generateConstraintFromDictionary(dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
-    setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    startTimer();
-  }, [dictionary, timePerLevel, startTimer]);
+    
+    try {
+      const result = await constraintMutation.mutateAsync();
+      setConstraint(result);
+      setGameStatus("playing");
+      startTimer();
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting game" });
+    }
+  }, [constraintMutation, timePerLevel, startTimer]);
 
-  const startNextLevel = useCallback(() => {
-    if (dictionary.length === 0) return;
+  // Start next level - get new constraint from backend
+  const startNextLevel = useCallback(async () => {
     setLevel(2);
-    setConstraint(generateConstraintFromDictionary(dictionary, 10));
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
-    setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    startTimer();
-  }, [dictionary, timePerLevel, startTimer]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && !constraint) {
-      setConstraint(generateConstraintFromDictionary(dictionary, 10));
-    }
-  }, [dictionary, constraint]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && constraint) {
+    
+    try {
+      const result = await constraintMutation.mutateAsync();
+      setConstraint(result);
+      setGameStatus("playing");
       startTimer();
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting level" });
+    }
+  }, [constraintMutation, timePerLevel, startTimer]);
+
+  // Auto-start game on first load
+  useEffect(() => {
+    if (!constraint && !constraintMutation.isPending) {
+      constraintMutation.mutateAsync().then(result => {
+        setConstraint(result);
+        startTimer();
+      }).catch(() => {});
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [dictionary, gameStatus, startTimer, constraint]);
+  }, []);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || !constraint) return;

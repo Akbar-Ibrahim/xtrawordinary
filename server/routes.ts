@@ -140,6 +140,61 @@ export async function registerRoutes(
     }
   });
 
+  // Constraint generation endpoints
+  app.post("/api/games/word-length/constraint", async (req, res) => {
+    try {
+      const { level } = req.body;
+      const constraint = await dataSource.generateLengthConstraint(level || 1);
+      res.json(constraint);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate constraint" });
+    }
+  });
+
+  app.get("/api/games/letter-position/constraint", async (_req, res) => {
+    try {
+      const constraint = await dataSource.generatePositionConstraint();
+      res.json(constraint);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate constraint" });
+    }
+  });
+
+  app.get("/api/games/contains-letters/constraint", async (_req, res) => {
+    try {
+      const constraint = await dataSource.generateContainsConstraint();
+      res.json(constraint);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate constraint" });
+    }
+  });
+
+  // Word Chain endpoints
+  app.post("/api/games/word-chain/start", async (req, res) => {
+    try {
+      const { variation, level } = req.body;
+      const word = await dataSource.getWordChainStartWord(variation || 1, level || 1);
+      res.json({ word });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get start word" });
+    }
+  });
+
+  app.post("/api/games/word-chain/computer-word", async (req, res) => {
+    try {
+      const { playerWord, variation, level, usedWords } = req.body;
+      const word = await dataSource.getWordChainComputerWord(
+        playerWord, 
+        variation || 1, 
+        level || 1, 
+        usedWords || []
+      );
+      res.json({ word });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get computer word" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;

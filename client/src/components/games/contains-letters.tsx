@@ -10,53 +10,7 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader
 import { apiRequest } from "@/lib/queryClient";
 import type { ContainsConfig, WordValidationResponse } from "@shared/schema";
 
-function generateLettersFromDictionary(dictionary: string[], minWords: number = 10): string[] {
-  const letterCounts: Record<string, number> = {};
-  
-  for (const word of dictionary) {
-    const letters = Array.from(new Set(word.split("")));
-    for (const letter of letters) {
-      letterCounts[letter] = (letterCounts[letter] || 0) + 1;
-    }
-  }
-  
-  const sortedLetters = Object.entries(letterCounts)
-    .filter(([_, count]) => count >= minWords)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 3)
-    .map(([letter]) => letter);
-  
-  if (sortedLetters.length < 3) {
-    return ["E", "A", "T"];
-  }
-  
-  const matchingWords = dictionary.filter(w => 
-    sortedLetters.every(letter => w.includes(letter))
-  );
-  
-  if (matchingWords.length < minWords) {
-    const commonLetters = Object.entries(letterCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([letter]) => letter);
-    
-    for (let i = 0; i < commonLetters.length - 2; i++) {
-      for (let j = i + 1; j < commonLetters.length - 1; j++) {
-        for (let k = j + 1; k < commonLetters.length; k++) {
-          const combo = [commonLetters[i], commonLetters[j], commonLetters[k]];
-          const matches = dictionary.filter(w => combo.every(l => w.includes(l)));
-          if (matches.length >= minWords) {
-            return combo;
-          }
-        }
-      }
-    }
-    return [commonLetters[0], commonLetters[1]];
-  }
-  
-  return sortedLetters;
-}
-
+// Local constraint validation (does word contain required letters?)
 function validateContainsLetters(word: string, letters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -73,14 +27,19 @@ export function ContainsLettersGame() {
     queryKey: ["/api/games/contains-letters/config"],
   });
 
-  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
-    queryKey: ["/api/games/word-dictionary"],
-  });
-
+  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
+    },
+  });
+
+  // Get constraint from backend
+  const constraintMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/games/contains-letters/constraint");
+      return response.json() as Promise<{ letters: string[] }>;
     },
   });
 
@@ -97,7 +56,7 @@ export function ContainsLettersGame() {
 
   const wordsPerLevel = config?.wordsPerLevel || 20;
   const timePerLevel = config?.timePerLevel || 120;
-  const isLoading = configLoading || dictLoading;
+  const isLoading = configLoading;
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -113,47 +72,57 @@ export function ContainsLettersGame() {
     }, 1000);
   }, []);
 
-  const initGame = useCallback(() => {
-    if (dictionary.length === 0) return;
+  // Initialize game - get constraint from backend
+  const initGame = useCallback(async () => {
     setLevel(1);
-    setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
     setScore(0);
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
-    setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    startTimer();
-  }, [dictionary, timePerLevel, startTimer]);
+    
+    try {
+      const result = await constraintMutation.mutateAsync();
+      setCurrentLetters(result.letters);
+      setGameStatus("playing");
+      startTimer();
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting game" });
+    }
+  }, [constraintMutation, timePerLevel, startTimer]);
 
-  const startNextLevel = useCallback(() => {
-    if (dictionary.length === 0) return;
+  // Start next level - get new constraint from backend
+  const startNextLevel = useCallback(async () => {
     setLevel(2);
-    setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
     setWordsCompleted(0);
     setTimeLeft(timePerLevel);
-    setGameStatus("playing");
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    startTimer();
-  }, [dictionary, timePerLevel, startTimer]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && currentLetters.length === 0) {
-      setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
-    }
-  }, [dictionary, currentLetters.length]);
-
-  useEffect(() => {
-    if (dictionary.length > 0 && gameStatus === "playing" && timerRef.current === null && currentLetters.length > 0) {
+    
+    try {
+      const result = await constraintMutation.mutateAsync();
+      setCurrentLetters(result.letters);
+      setGameStatus("playing");
       startTimer();
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting level" });
+    }
+  }, [constraintMutation, timePerLevel, startTimer]);
+
+  // Auto-start game on first load
+  useEffect(() => {
+    if (currentLetters.length === 0 && !constraintMutation.isPending) {
+      constraintMutation.mutateAsync().then(result => {
+        setCurrentLetters(result.letters);
+        startTimer();
+      }).catch(() => {});
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [dictionary, gameStatus, startTimer, currentLetters.length]);
+  }, []);
 
   const checkAnswer = async () => {
     if (!userInput.trim()) return;
@@ -188,7 +157,7 @@ export function ContainsLettersGame() {
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerLevel) {
           if (timerRef.current) clearInterval(timerRef.current);
@@ -198,7 +167,11 @@ export function ContainsLettersGame() {
             setGameStatus("levelComplete");
           }
         } else if (level === 2) {
-          setCurrentLetters(generateLettersFromDictionary(dictionary, 10));
+          // Get new constraint from backend for next word in level 2
+          try {
+            const result = await constraintMutation.mutateAsync();
+            setCurrentLetters(result.letters);
+          } catch {}
         }
       }, 500);
     } catch {

@@ -1,5 +1,22 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig } from "@shared/schema";
 
+// Constraint types for games
+export type LengthConstraint = {
+  length: number;
+  startsWith?: string;
+  endsWith?: string;
+  contains?: string;
+};
+
+export type PositionConstraint = {
+  position: number;
+  letter: string;
+};
+
+export type ContainsConstraint = {
+  letters: string[];
+};
+
 export interface IStorage {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
@@ -16,6 +33,13 @@ export interface IStorage {
   getContainsConfig(): Promise<ContainsConfig>;
   getWordChainConfig(): Promise<WordChainConfig>;
   getVowelConsonantConfig(): Promise<VowelConsonantConfig>;
+  // Constraint generation methods
+  generateLengthConstraint(level: number): Promise<LengthConstraint>;
+  generatePositionConstraint(): Promise<PositionConstraint>;
+  generateContainsConstraint(): Promise<ContainsConstraint>;
+  // Word Chain methods
+  getWordChainStartWord(variation: number, level: number): Promise<string | null>;
+  getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null>;
 }
 
 // Word Guessing words (5-letter words)
@@ -494,6 +518,198 @@ export class MemStorage implements IStorage {
 
   async getVowelConsonantConfig(): Promise<VowelConsonantConfig> {
     return vowelConsonantConfig;
+  }
+
+  // Generate constraint for Length Challenge game
+  async generateLengthConstraint(level: number): Promise<LengthConstraint> {
+    const lengths = [5, 6, 7, 8];
+    const minWords = 10;
+    
+    for (const length of lengths) {
+      const wordsOfLength = wordDictionary.filter(w => w.length === length);
+      if (wordsOfLength.length < minWords) continue;
+      
+      switch (level) {
+        case 1:
+          if (wordsOfLength.length >= minWords) {
+            return { length };
+          }
+          break;
+        case 2: {
+          const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
+          for (const letter of startLetters.sort(() => Math.random() - 0.5)) {
+            if (wordsOfLength.filter(w => w.startsWith(letter)).length >= minWords) {
+              return { length, startsWith: letter };
+            }
+          }
+          break;
+        }
+        case 3: {
+          const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
+          for (const letter of endLetters.sort(() => Math.random() - 0.5)) {
+            if (wordsOfLength.filter(w => w.endsWith(letter)).length >= minWords) {
+              return { length, endsWith: letter };
+            }
+          }
+          break;
+        }
+        case 4: {
+          const startLetters = Array.from(new Set(wordsOfLength.map(w => w[0])));
+          for (const startLetter of startLetters.sort(() => Math.random() - 0.5)) {
+            const matching = wordsOfLength.filter(w => w.startsWith(startLetter));
+            if (matching.length >= minWords) {
+              const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(1).split(""))));
+              for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
+                if (matching.filter(w => w.slice(1).includes(containsLetter)).length >= minWords) {
+                  return { length, startsWith: startLetter, contains: containsLetter };
+                }
+              }
+              return { length, startsWith: startLetter };
+            }
+          }
+          break;
+        }
+        case 5: {
+          const endLetters = Array.from(new Set(wordsOfLength.map(w => w[w.length - 1])));
+          for (const endLetter of endLetters.sort(() => Math.random() - 0.5)) {
+            const matching = wordsOfLength.filter(w => w.endsWith(endLetter));
+            if (matching.length >= minWords) {
+              const containsLetters = Array.from(new Set(matching.flatMap(w => w.slice(0, -1).split(""))));
+              for (const containsLetter of containsLetters.sort(() => Math.random() - 0.5)) {
+                if (matching.filter(w => w.slice(0, -1).includes(containsLetter)).length >= minWords) {
+                  return { length, endsWith: endLetter, contains: containsLetter };
+                }
+              }
+              return { length, endsWith: endLetter };
+            }
+          }
+          break;
+        }
+      }
+    }
+    return { length: 5 };
+  }
+
+  // Generate constraint for Position Master game
+  async generatePositionConstraint(): Promise<PositionConstraint> {
+    const positions = [2, 3, 4, 5];
+    const minWords = 10;
+    
+    for (const position of positions.sort(() => Math.random() - 0.5)) {
+      const validWords = wordDictionary.filter(w => w.length >= position);
+      if (validWords.length < minWords) continue;
+      
+      const letters = Array.from(new Set(validWords.map(w => w[position - 1])));
+      for (const letter of letters.sort(() => Math.random() - 0.5)) {
+        const matching = validWords.filter(w => w[position - 1] === letter);
+        if (matching.length >= minWords) {
+          return { position, letter };
+        }
+      }
+    }
+    return { position: 2, letter: "A" };
+  }
+
+  // Generate constraint for Letter Hunt game
+  async generateContainsConstraint(): Promise<ContainsConstraint> {
+    const minWords = 10;
+    const letterCounts: Record<string, number> = {};
+    
+    for (const word of wordDictionary) {
+      const letters = Array.from(new Set(word.split("")));
+      for (const letter of letters) {
+        letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+      }
+    }
+    
+    const sortedLetters = Object.entries(letterCounts)
+      .filter(([_, count]) => count >= minWords)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
+      .map(([letter]) => letter);
+    
+    if (sortedLetters.length < 3) {
+      return { letters: ["E", "A", "T"] };
+    }
+    
+    const matchingWords = wordDictionary.filter(w => 
+      sortedLetters.every(letter => w.includes(letter))
+    );
+    
+    if (matchingWords.length < minWords) {
+      const commonLetters = Object.entries(letterCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([letter]) => letter);
+      
+      for (let i = 0; i < commonLetters.length - 2; i++) {
+        for (let j = i + 1; j < commonLetters.length - 1; j++) {
+          for (let k = j + 1; k < commonLetters.length; k++) {
+            const combo = [commonLetters[i], commonLetters[j], commonLetters[k]];
+            const matches = wordDictionary.filter(w => combo.every(l => w.includes(l)));
+            if (matches.length >= minWords) {
+              return { letters: combo };
+            }
+          }
+        }
+      }
+      return { letters: [commonLetters[0], commonLetters[1]] };
+    }
+    
+    return { letters: sortedLetters };
+  }
+
+  // Get starting word for Word Chain
+  async getWordChainStartWord(variation: number, level: number): Promise<string | null> {
+    // Pick a random word that has good chaining potential
+    const candidates = wordDictionary.filter(word => {
+      const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
+      const nextCandidates = wordDictionary.filter(w => 
+        w !== word && 
+        w.startsWith(nextStartsWith) &&
+        (level === 1 || w.length === word.length)
+      );
+      return nextCandidates.length >= 3;
+    });
+    
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  // Get computer's response word for Word Chain
+  async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> {
+    const usedSet = new Set(usedWords.map(w => w.toUpperCase()));
+    const upperPlayerWord = playerWord.toUpperCase();
+    
+    // Find words that start with the required letters
+    const startsWith = variation === 1 ? upperPlayerWord[upperPlayerWord.length - 1] : upperPlayerWord.slice(-2);
+    
+    let candidates = wordDictionary.filter(w => 
+      !usedSet.has(w) && 
+      w.startsWith(startsWith)
+    );
+    
+    // Level 2: same length requirement
+    if (level === 2) {
+      candidates = candidates.filter(w => w.length === upperPlayerWord.length);
+    }
+    
+    if (candidates.length === 0) return null;
+    
+    // Prefer words that have good follow-up options for the player
+    const viableCandidates = candidates.filter(word => {
+      const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
+      const nextCandidates = wordDictionary.filter(w => 
+        !usedSet.has(w) && 
+        w !== word && 
+        w.startsWith(nextStartsWith) &&
+        (level === 1 || w.length === word.length)
+      );
+      return nextCandidates.length >= 1;
+    });
+    
+    if (viableCandidates.length === 0) return null;
+    return viableCandidates[Math.floor(Math.random() * viableCandidates.length)];
   }
 }
 

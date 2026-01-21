@@ -13,67 +13,32 @@ import type { WordChainConfig, WordValidationResponse } from "@shared/schema";
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-function getRandomWord(dictionary: string[], excludeWords: Set<string>, constraint?: { startsWith?: string; length?: number }): string | null {
-  let candidates = dictionary.filter(w => !excludeWords.has(w));
-  
-  if (constraint?.startsWith) {
-    candidates = candidates.filter(w => w.startsWith(constraint.startsWith!));
-  }
-  if (constraint?.length) {
-    candidates = candidates.filter(w => w.length === constraint.length);
-  }
-  
-  if (candidates.length === 0) return null;
-  return candidates[Math.floor(Math.random() * candidates.length)];
-}
-
-function getComputerWord(
-  dictionary: string[], 
-  excludeWords: Set<string>, 
-  playerWord: string | null, 
-  variation: 1 | 2, 
-  level: 1 | 2
-): string | null {
-  let candidates = dictionary.filter(w => !excludeWords.has(w));
-  
-  if (playerWord) {
-    const startsWith = variation === 1 ? playerWord[playerWord.length - 1] : playerWord.slice(-2);
-    candidates = candidates.filter(w => w.startsWith(startsWith));
-    if (level === 2) {
-      candidates = candidates.filter(w => w.length === playerWord.length);
-    }
-  }
-  
-  if (candidates.length === 0) return null;
-
-  const viableCandidates = candidates.filter(word => {
-    const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
-    const nextCandidates = dictionary.filter(w => 
-      !excludeWords.has(w) && 
-      w !== word && 
-      w.startsWith(nextStartsWith) &&
-      (level === 1 || w.length === word.length)
-    );
-    return nextCandidates.length >= 1;
-  });
-  
-  if (viableCandidates.length === 0) return null;
-  return viableCandidates[Math.floor(Math.random() * viableCandidates.length)];
-}
-
 export function WordChainGame() {
   const { data: config, isLoading: configLoading } = useQuery<WordChainConfig>({
     queryKey: ["/api/games/word-chain/config"],
   });
 
-  const { data: dictionary = [], isLoading: dictLoading } = useQuery<string[]>({
-    queryKey: ["/api/games/word-dictionary"],
-  });
-
+  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
       return response.json() as Promise<WordValidationResponse>;
+    },
+  });
+
+  // Get start word from backend
+  const startWordMutation = useMutation({
+    mutationFn: async ({ variation, level }: { variation: number; level: number }) => {
+      const response = await apiRequest("POST", "/api/games/word-chain/start", { variation, level });
+      return response.json() as Promise<{ word: string | null }>;
+    },
+  });
+
+  // Get computer word from backend
+  const computerWordMutation = useMutation({
+    mutationFn: async ({ playerWord, variation, level, usedWords }: { playerWord: string; variation: number; level: number; usedWords: string[] }) => {
+      const response = await apiRequest("POST", "/api/games/word-chain/computer-word", { playerWord, variation, level, usedWords });
+      return response.json() as Promise<{ word: string | null }>;
     },
   });
 
@@ -88,11 +53,12 @@ export function WordChainGame() {
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [chainHistory, setChainHistory] = useState<{ word: string; isPlayer: boolean }[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timerKey, setTimerKey] = useState(0);
 
   const wordsPerLevel = config?.wordsPerLevel || 100;
   const timePerWord = config?.timePerWord || 10;
-  const isLoading = configLoading || dictLoading;
+  const isLoading = configLoading;
 
   const getConstraint = useCallback(() => {
     if (!currentWord) return null;
@@ -103,6 +69,7 @@ export function WordChainGame() {
     }
   }, [currentWord, variation]);
 
+  // Validate user word constraints locally (chain rules)
   const validateUserWord = useCallback((word: string): { valid: boolean; message: string } => {
     const upperWord = word.toUpperCase();
     const constraint = getConstraint();
@@ -110,11 +77,7 @@ export function WordChainGame() {
     if (!constraint) return { valid: false, message: "No active word" };
     
     if (!upperWord.startsWith(constraint.startsWith!)) {
-      if (variation === 1) {
-        return { valid: false, message: `Word must start with '${constraint.startsWith}'` };
-      } else {
-        return { valid: false, message: `Word must start with '${constraint.startsWith}'` };
-      }
+      return { valid: false, message: `Word must start with '${constraint.startsWith}'` };
     }
     
     if (level === 2 && upperWord.length !== currentWord.length) {
@@ -122,30 +85,45 @@ export function WordChainGame() {
     }
     
     return { valid: true, message: "" };
-  }, [getConstraint, variation, level, currentWord]);
+  }, [getConstraint, level, currentWord]);
 
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    setTimeLeft(timePerWord);
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          setGameStatus("lost");
-          return 0;
-        }
-        return prev - 1;
-      });
+  // Timer effect - runs when timerActive or timerKey changes
+  useEffect(() => {
+    if (!timerActive || gameStatus !== "playing") return;
+    
+    // Start countdown from timePerWord
+    let remaining = timePerWord;
+    setTimeLeft(remaining);
+    
+    const intervalId = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(intervalId);
+        setTimerActive(false);
+        setTimeLeft(0);
+        setGameStatus("lost");
+      } else {
+        setTimeLeft(remaining);
+      }
     }, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [timerActive, timerKey, timePerWord, gameStatus]);
+
+  // Reset timer helper
+  const resetTimer = useCallback(() => {
+    setTimerActive(false);
+    setTimerKey(k => k + 1);
+    setTimeLeft(timePerWord);
+    // Use setTimeout to ensure state is updated before starting
+    setTimeout(() => setTimerActive(true), 0);
   }, [timePerWord]);
 
-  const generateNextWord = useCallback((playerWord?: string) => {
-    if (dictionary.length === 0) return null;
-    return getComputerWord(dictionary, usedWords, playerWord || null, variation, level);
-  }, [dictionary, usedWords, variation, level]);
-
-  const startGame = useCallback((v: Variation, l: Level) => {
-    if (dictionary.length === 0) return;
+  // Start game - get first word from backend
+  const startGame = useCallback(async (v: Variation, l: Level) => {
+    // Stop any existing timer and increment key
+    setTimerActive(false);
+    setTimerKey(k => k + 1);
     
     setVariation(v);
     setLevel(l);
@@ -155,16 +133,26 @@ export function WordChainGame() {
     setChainHistory([]);
     setUserInput("");
     setFeedback(null);
+    setTimeLeft(timePerWord);
     
-    const firstWord = getComputerWord(dictionary, new Set(), null, v, l);
-    if (!firstWord) return;
-    
-    setCurrentWord(firstWord);
-    setUsedWords(new Set([firstWord]));
-    setChainHistory([{ word: firstWord, isPlayer: false }]);
-    setGameStatus("playing");
-    startTimer();
-  }, [dictionary, startTimer]);
+    try {
+      const result = await startWordMutation.mutateAsync({ variation: v, level: l });
+      if (!result.word) {
+        setFeedback({ type: "invalid", message: "Could not start game" });
+        return;
+      }
+      
+      setCurrentWord(result.word);
+      setUsedWords(new Set([result.word]));
+      setChainHistory([{ word: result.word, isPlayer: false }]);
+      setGameStatus("playing");
+      
+      // Start timer after state updates
+      setTimerActive(true);
+    } catch {
+      setFeedback({ type: "invalid", message: "Error starting game" });
+    }
+  }, [startWordMutation, timePerWord]);
 
   const startNextLevel = useCallback(() => {
     if (level === 1) {
@@ -172,23 +160,19 @@ export function WordChainGame() {
     }
   }, [level, variation, startGame]);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
   const checkAnswer = async () => {
     if (!userInput.trim()) return;
 
     const upperWord = userInput.toUpperCase();
 
+    // Check if already used
     if (usedWords.has(upperWord)) {
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
     }
 
+    // Validate chain constraint locally first
     const constraintCheck = validateUserWord(upperWord);
     if (!constraintCheck.valid) {
       setFeedback({ type: "wrong", message: constraintCheck.message });
@@ -196,6 +180,7 @@ export function WordChainGame() {
       return;
     }
 
+    // Then validate word exists via backend
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
@@ -204,10 +189,12 @@ export function WordChainGame() {
         return;
       }
 
-      if (timerRef.current) clearInterval(timerRef.current);
+      // Stop timer while processing
+      setTimerActive(false);
       
       setFeedback({ type: "correct", message: "Correct!" });
-      const newUsedWords = new Set(Array.from(usedWords).concat(upperWord));
+      const newUsedWordsArray = Array.from(usedWords).concat(upperWord);
+      const newUsedWords = new Set(newUsedWordsArray);
       setUsedWords(newUsedWords);
       setChainHistory(prev => [...prev, { word: upperWord, isPlayer: true }]);
       setScore((prev) => prev + 50 + level * 25 + variation * 10);
@@ -215,7 +202,7 @@ export function WordChainGame() {
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setFeedback(null);
         
         if (newWordsCompleted >= wordsPerLevel) {
@@ -227,16 +214,27 @@ export function WordChainGame() {
           return;
         }
 
-        const nextWord = generateNextWord(upperWord);
-        if (!nextWord) {
+        // Get computer's response word from backend
+        try {
+          const computerResult = await computerWordMutation.mutateAsync({
+            playerWord: upperWord,
+            variation,
+            level,
+            usedWords: newUsedWordsArray
+          });
+          
+          if (!computerResult.word) {
+            setGameStatus("won");
+            return;
+          }
+          
+          setCurrentWord(computerResult.word);
+          setUsedWords(prev => new Set(Array.from(prev).concat(computerResult.word!)));
+          setChainHistory(prev => [...prev, { word: computerResult.word!, isPlayer: false }]);
+          resetTimer();
+        } catch {
           setGameStatus("won");
-          return;
         }
-        
-        setCurrentWord(nextWord);
-        setUsedWords(prev => new Set(Array.from(prev).concat(nextWord)));
-        setChainHistory(prev => [...prev, { word: nextWord, isPlayer: false }]);
-        startTimer();
       }, 500);
     } catch {
       setFeedback({ type: "invalid", message: "Error validating word" });
