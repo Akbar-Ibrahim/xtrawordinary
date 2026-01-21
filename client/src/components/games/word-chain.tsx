@@ -50,11 +50,13 @@ export function WordChainGame() {
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [chainHistory, setChainHistory] = useState<{ word: string; isPlayer: boolean }[]>([]);
-  const [timerActive, setTimerActive] = useState(false);
-  const [timerKey, setTimerKey] = useState(0);
 
   const wordsPerLevel = 100;
   const timePerWord = 10;
+  
+  // Timer state
+  const [timerRunning, setTimerRunning] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const getConstraint = useCallback(() => {
     if (!currentWord) return null;
@@ -83,43 +85,53 @@ export function WordChainGame() {
     return { valid: true, message: "" };
   }, [getConstraint, level, currentWord]);
 
-  // Timer effect - runs when timerActive or timerKey changes
+  // Timer effect - runs each second when timer is running
   useEffect(() => {
-    if (!timerActive || gameStatus !== "playing") return;
+    // Only run if timer should be running and game is playing
+    if (!timerRunning || gameStatus !== "playing") return;
     
-    // Start countdown from timePerWord
-    let remaining = timePerWord;
-    setTimeLeft(remaining);
+    // Don't start countdown if timeLeft isn't properly initialized
+    if (timeLeft <= 0) return;
     
-    const intervalId = setInterval(() => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        clearInterval(intervalId);
-        setTimerActive(false);
-        setTimeLeft(0);
-        setGameStatus("lost");
-      } else {
-        setTimeLeft(remaining);
-      }
+    // Schedule next tick
+    const timeoutId = setTimeout(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          setTimerRunning(false);
+          setGameStatus("lost");
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
     
-    return () => clearInterval(intervalId);
-  }, [timerActive, timerKey, timePerWord, gameStatus]);
+    return () => clearTimeout(timeoutId);
+  }, [timerRunning, timeLeft, gameStatus]);
+
+  // Start timer function - sets time first, then enables timer
+  const startTimer = useCallback(() => {
+    setTimerRunning(false); // Ensure clean state
+    setTimeLeft(timePerWord);
+    // Small delay to ensure state is updated
+    requestAnimationFrame(() => {
+      setTimerRunning(true);
+    });
+  }, [timePerWord]);
+
+  // Stop timer function  
+  const stopTimer = useCallback(() => {
+    setTimerRunning(false);
+  }, []);
 
   // Reset timer helper
   const resetTimer = useCallback(() => {
-    setTimerActive(false);
-    setTimerKey(k => k + 1);
-    setTimeLeft(timePerWord);
-    // Use setTimeout to ensure state is updated before starting
-    setTimeout(() => setTimerActive(true), 0);
-  }, [timePerWord]);
+    startTimer();
+  }, [startTimer]);
 
   // Start game - get first word from backend
   const startGame = useCallback(async (v: Variation, l: Level) => {
-    // Stop any existing timer and increment key
-    setTimerActive(false);
-    setTimerKey(k => k + 1);
+    // Stop any existing timer
+    stopTimer();
     
     setVariation(v);
     setLevel(l);
@@ -144,11 +156,11 @@ export function WordChainGame() {
       setGameStatus("playing");
       
       // Start timer after state updates
-      setTimerActive(true);
+      startTimer();
     } catch {
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
-  }, [startWordMutation, timePerWord]);
+  }, [startWordMutation, timePerWord, stopTimer, startTimer]);
 
   const startNextLevel = useCallback(() => {
     if (level === 1) {
@@ -186,7 +198,7 @@ export function WordChainGame() {
       }
 
       // Stop timer while processing
-      setTimerActive(false);
+      stopTimer();
       
       setFeedback({ type: "correct", message: "Correct!" });
       const newUsedWordsArray = Array.from(usedWords).concat(upperWord);
