@@ -142,7 +142,7 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
   - Challenge 3: Find words containing 4 required letters
   - Challenge 4: Find words containing 5 required letters
   - Challenge 5: Find words containing 6 required letters
-  - Challenge Advanced: Random letter count (2-6) changes after every submission attempt
+  - Challenge Advanced: Random letter count (2-6) changes after every valid word submission
 - **Challenge Selection Menu**: Players can choose any challenge from a "Choose Your Challenge" screen
 - **Completion Options**: After completing a challenge, players see "Next Challenge" and "Play Again" buttons (Advanced only shows "Play Again")
 

@@ -132,9 +132,6 @@ export function ContainsLettersGame() {
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => {
         setFeedback(null);
-        if (challenge === "advanced") {
-          setCurrentLetters(generateLettersForChallenge("advanced"));
-        }
       }, 1500);
       return;
     }
@@ -144,9 +141,6 @@ export function ContainsLettersGame() {
       setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => {
         setFeedback(null);
-        if (challenge === "advanced") {
-          setCurrentLetters(generateLettersForChallenge("advanced"));
-        }
       }, 1500);
       return;
     }
@@ -157,9 +151,6 @@ export function ContainsLettersGame() {
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
-          if (challenge === "advanced") {
-            setCurrentLetters(generateLettersForChallenge("advanced"));
-          }
         }, 1500);
         return;
       }
@@ -187,9 +178,6 @@ export function ContainsLettersGame() {
       setFeedback({ type: "invalid", message: "Error validating word" });
       setTimeout(() => {
         setFeedback(null);
-        if (challenge === "advanced") {
-          setCurrentLetters(generateLettersForChallenge("advanced"));
-        }
       }, 1500);
     }
   };
