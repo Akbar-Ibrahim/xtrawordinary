@@ -24,20 +24,46 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; l
 };
 
 function generateRandomLetters(count: number): string[] {
-  const shuffled = [...ALPHABET].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  const letters: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const randomIndex = Math.floor(Math.random() * ALPHABET.length);
+    letters.push(ALPHABET[randomIndex]);
+  }
+  return letters;
 }
 
 function getRandomLetterCount(): number {
   return Math.floor(Math.random() * 5) + 2;
 }
 
-function validateContainsLetters(word: string, letters: string[]): { valid: boolean; message: string } {
+function validateContainsLetters(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
-  for (const letter of letters) {
-    if (!upperWord.includes(letter)) {
-      return { valid: false, message: `Word must contain the letter '${letter}'` };
+  // Count occurrences of each required letter
+  const requiredCounts: Record<string, number> = {};
+  for (const letter of requiredLetters) {
+    requiredCounts[letter] = (requiredCounts[letter] || 0) + 1;
+  }
+  
+  // Count occurrences of each letter in the word
+  const wordCounts: Record<string, number> = {};
+  for (const char of upperWord) {
+    wordCounts[char] = (wordCounts[char] || 0) + 1;
+  }
+  
+  // Check that word has EXACTLY the required count for each required letter
+  for (const [letter, requiredCount] of Object.entries(requiredCounts)) {
+    const wordCount = wordCounts[letter] || 0;
+    if (wordCount !== requiredCount) {
+      if (wordCount < requiredCount) {
+        if (requiredCount === 1) {
+          return { valid: false, message: `Word must contain the letter "${letter}"` };
+        } else {
+          return { valid: false, message: `Word must contain "${letter}" exactly ${requiredCount} times (has ${wordCount})` };
+        }
+      } else {
+        return { valid: false, message: `Word has too many "${letter}"s (need ${requiredCount}, has ${wordCount})` };
+      }
     }
   }
   return { valid: true, message: "" };
