@@ -12,13 +12,26 @@ import type { WordValidationResponse } from "@shared/schema";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-// Generate random letters for the constraint
+type Challenge = 1 | 2 | 3 | 4 | 5 | "advanced";
+
+const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; letterCount: number | "random" }> = {
+  1: { name: "Challenge 1", description: "Find words containing 2 letters", letterCount: 2 },
+  2: { name: "Challenge 2", description: "Find words containing 3 letters", letterCount: 3 },
+  3: { name: "Challenge 3", description: "Find words containing 4 letters", letterCount: 4 },
+  4: { name: "Challenge 4", description: "Find words containing 5 letters", letterCount: 5 },
+  5: { name: "Challenge 5", description: "Find words containing 6 letters", letterCount: 6 },
+  advanced: { name: "Challenge Advanced", description: "Random letter count for each word!", letterCount: "random" },
+};
+
 function generateRandomLetters(count: number): string[] {
   const shuffled = [...ALPHABET].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
 
-// Local constraint validation (does word contain required letters?)
+function getRandomLetterCount(): number {
+  return Math.floor(Math.random() * 5) + 2;
+}
+
 function validateContainsLetters(word: string, letters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -30,8 +43,13 @@ function validateContainsLetters(word: string, letters: string[]): { valid: bool
   return { valid: true, message: "" };
 }
 
+function getNextChallenge(current: Challenge): Challenge | null {
+  if (current === "advanced") return null;
+  if (current === 5) return null;
+  return (current + 1) as Challenge;
+}
+
 export function ContainsLettersGame() {
-  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -39,71 +57,71 @@ export function ContainsLettersGame() {
     },
   });
 
-  const [level, setLevel] = useState(1);
+  const [challenge, setChallenge] = useState<Challenge>(1);
   const [currentLetters, setCurrentLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
-  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost" | "levelComplete">("playing");
+  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const wordsPerLevel = 20;
-  const timePerLevel = 120;
+  const wordsToComplete = 20;
+  const timePerChallenge = 120;
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    stopTimer();
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          stopTimer();
           setGameStatus("lost");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
+  }, [stopTimer]);
+
+  const generateLettersForChallenge = useCallback((c: Challenge): string[] => {
+    const config = CHALLENGE_CONFIG[c];
+    const count = config.letterCount === "random" ? getRandomLetterCount() : config.letterCount;
+    return generateRandomLetters(count);
   }, []);
 
-  // Initialize game - generate random letters locally
-  const initGame = useCallback(() => {
-    setLevel(1);
+  const startGame = useCallback((c: Challenge) => {
+    stopTimer();
+    setChallenge(c);
     setScore(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
+    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setCurrentLetters(generateRandomLetters(2)); // Level 1: 2 letters
+    setCurrentLetters(generateLettersForChallenge(c));
     setGameStatus("playing");
     startTimer();
-  }, [timePerLevel, startTimer]);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge]);
 
-  // Start next level - generate new random letters locally
-  const startNextLevel = useCallback(() => {
-    setLevel(2);
-    setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
-    setUsedWords(new Set());
-    setUserInput("");
-    setFeedback(null);
-    setCurrentLetters(generateRandomLetters(3)); // Level 2: 3 letters
-    setGameStatus("playing");
-    startTimer();
-  }, [timePerLevel, startTimer]);
+  const goToMenu = useCallback(() => {
+    stopTimer();
+    setGameStatus("menu");
+  }, [stopTimer]);
 
-  // Auto-start game on first load
   useEffect(() => {
-    if (currentLetters.length === 0) {
-      setCurrentLetters(generateRandomLetters(2));
-      startTimer();
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    return () => stopTimer();
+  }, [stopTimer]);
 
   const checkAnswer = async () => {
     if (!userInput.trim()) return;
@@ -112,14 +130,24 @@ export function ContainsLettersGame() {
 
     if (usedWords.has(upperWord)) {
       setFeedback({ type: "invalid", message: "Already used this word!" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        if (challenge === "advanced") {
+          setCurrentLetters(generateLettersForChallenge("advanced"));
+        }
+      }, 1500);
       return;
     }
 
     const constraintCheck = validateContainsLetters(upperWord, currentLetters);
     if (!constraintCheck.valid) {
       setFeedback({ type: "wrong", message: constraintCheck.message });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        if (challenge === "advanced") {
+          setCurrentLetters(generateLettersForChallenge("advanced"));
+        }
+      }, 1500);
       return;
     }
 
@@ -127,34 +155,42 @@ export function ContainsLettersGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         setFeedback({ type: "invalid", message: "Not a valid word!" });
-        setTimeout(() => setFeedback(null), 1500);
+        setTimeout(() => {
+          setFeedback(null);
+          if (challenge === "advanced") {
+            setCurrentLetters(generateLettersForChallenge("advanced"));
+          }
+        }, 1500);
         return;
       }
 
       setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
-      setScore((prev) => prev + 100 + level * 25);
+      
+      const challengeBonus = challenge === "advanced" ? 50 : (challenge as number) * 25;
+      setScore((prev) => prev + 100 + challengeBonus);
+      
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerLevel) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          if (level >= 2) {
-            setGameStatus("won");
-          } else {
-            setGameStatus("levelComplete");
-          }
-        } else if (level === 2) {
-          // Level 2: new random letters after each word
-          setCurrentLetters(generateRandomLetters(3));
+        if (newWordsCompleted >= wordsToComplete) {
+          stopTimer();
+          setGameStatus("won");
+        } else if (challenge === "advanced") {
+          setCurrentLetters(generateLettersForChallenge("advanced"));
         }
       }, 500);
     } catch {
       setFeedback({ type: "invalid", message: "Error validating word" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        if (challenge === "advanced") {
+          setCurrentLetters(generateLettersForChallenge("advanced"));
+        }
+      }, 1500);
     }
   };
 
@@ -164,11 +200,42 @@ export function ContainsLettersGame() {
     }
   };
 
-  if (currentLetters.length === 0) {
+  if (gameStatus === "menu") {
     return (
       <Card>
-        <CardContent className="p-12 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <CardContent className="p-6 space-y-6">
+          <div className="text-center space-y-2">
+            <Search className="h-12 w-12 mx-auto text-primary" />
+            <h3 className="text-xl font-bold">Choose Your Challenge</h3>
+            <p className="text-muted-foreground text-sm">
+              Find words containing the required letters!
+            </p>
+          </div>
+          
+          <div className="grid gap-3">
+            {([1, 2, 3, 4, 5, "advanced"] as Challenge[]).map((c) => {
+              const config = CHALLENGE_CONFIG[c];
+              return (
+                <Button
+                  key={c}
+                  onClick={() => startGame(c)}
+                  variant={c === "advanced" ? "default" : "outline"}
+                  className="w-full justify-start gap-3 h-auto py-3"
+                  data-testid={`button-challenge-${c}`}
+                >
+                  <Badge variant={c === "advanced" ? "secondary" : "outline"} className="shrink-0">
+                    {c === "advanced" ? "ADV" : c}
+                  </Badge>
+                  <div className="text-left">
+                    <div className="font-semibold">{config.name}</div>
+                    <div className="text-xs text-muted-foreground font-normal">
+                      {config.description}
+                    </div>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
     );
@@ -182,9 +249,12 @@ export function ContainsLettersGame() {
             <Trophy className="h-3.5 w-3.5" />
             {score} pts
           </Badge>
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
+          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
             <Zap className="h-3.5 w-3.5" />
-            Level {level}/2
+            {CHALLENGE_CONFIG[challenge].name}
+          </Badge>
+          <Badge variant="secondary" className="gap-1.5" data-testid="badge-progress">
+            {wordsCompleted}/{wordsToComplete}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -195,12 +265,12 @@ export function ContainsLettersGame() {
           <Button
             variant="outline"
             size="sm"
-            onClick={initGame}
+            onClick={goToMenu}
             className="gap-1.5"
-            data-testid="button-restart"
+            data-testid="button-menu"
           >
             <RotateCcw className="h-4 w-4" />
-            Restart
+            Menu
           </Button>
         </div>
       </div>
@@ -239,11 +309,11 @@ export function ContainsLettersGame() {
                       </motion.div>
                     ))}
                   </motion.div>
-                  <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
+                  <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-2" />
                   <p className="text-sm text-muted-foreground">
-                    {wordsCompleted} / {wordsPerLevel} words
+                    {wordsCompleted} / {wordsToComplete} words
                   </p>
-                  {level === 2 && (
+                  {challenge === "advanced" && (
                     <Badge variant="secondary" className="text-xs">
                       Letters change after each word!
                     </Badge>
@@ -253,6 +323,7 @@ export function ContainsLettersGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
@@ -315,9 +386,9 @@ export function ContainsLettersGame() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : gameStatus === "levelComplete" ? (
+        ) : gameStatus === "won" ? (
           <motion.div
-            key="levelComplete"
+            key="won"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
@@ -328,58 +399,66 @@ export function ContainsLettersGame() {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  <CheckCircle className="h-16 w-16 mx-auto text-accent" />
+                  <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Level 1 Complete!</h3>
+                <h3 className="text-2xl font-bold">{CHALLENGE_CONFIG[challenge].name} Complete!</h3>
                 <p className="text-muted-foreground">
-                  Get ready for the next challenge!
+                  You found {wordsCompleted} words!
                 </p>
-                <div className="bg-muted/50 rounded-lg p-4 text-left">
-                  <p className="font-medium mb-2">Level 2 Rules:</p>
-                  <p className="text-sm text-muted-foreground">
-                    Same concept, but you'll get a new group of required letters after each correct word!
-                  </p>
+                <div className="space-y-1">
+                  <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={startNextLevel} className="gap-2" data-testid="button-next-level">
-                  Start Level 2
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button onClick={() => startGame(challenge)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Play Again
+                  </Button>
+                  {challenge !== "advanced" && getNextChallenge(challenge) && (
+                    <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                      Next Challenge
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                  {challenge !== "advanced" && (
+                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                      Back to Menu
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
         ) : (
           <motion.div
-            key="result"
+            key="lost"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Card className={gameStatus === "won" ? "border-accent" : "border-destructive"}>
+            <Card className="border-destructive">
               <CardContent className="p-6 text-center space-y-4">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  {gameStatus === "won" ? (
-                    <Trophy className="h-16 w-16 mx-auto text-accent" />
-                  ) : (
-                    <XCircle className="h-16 w-16 mx-auto text-destructive" />
-                  )}
+                  <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">
-                  {gameStatus === "won" ? "Letter Hunter!" : "Time's Up!"}
-                </h3>
+                <h3 className="text-2xl font-bold">Time's Up!</h3>
                 <p className="text-muted-foreground">
-                  {gameStatus === "won"
-                    ? "You completed both levels!"
-                    : `You reached Level ${level} with ${wordsCompleted} words`}
+                  You found {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={initGame} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Play Again
+                  </Button>
+                  <Button onClick={goToMenu} variant="outline" data-testid="button-back-menu">
+                    Back to Menu
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
