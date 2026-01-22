@@ -11,7 +11,7 @@ WordPlay is a web-based word games platform featuring eleven interactive vocabul
 - **Word Maker** - Create as many words as possible from a base word
 - **Length Challenge** - 5-level progressive word length game with constraints (starts with, ends with, contains)
 - **Position Master** - 2-level game where words must have specific letter at specific position
-- **Letter Hunt** - 2-level game where words must contain specific required letters
+- **Letter Hunt** - 6 challenge variations where words must contain specific required letters (2-6 letters, plus Advanced with random letter count per word)
 - **Word Chain** - 2 variations (last letter vs last two letters) with 2 levels each; back-and-forth chaining between player and computer
 - **Letter Balance** - 5 challenge variations with vowel/consonant constraints (e.g., "words with 3 consonants")
 
@@ -135,9 +135,20 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
 - **Games Updated**: Length Challenge, Position Master, Letter Hunt, Word Chain
 - **Known Issue**: Word Chain timer occasionally shows "Time's Up!" immediately on certain transitions (likely HMR-related)
 
+### January 2026 - Letter Hunt Challenge System
+- **Replaced levels with challenges**: Letter Hunt now has 6 standalone challenge variations
+  - Challenge 1: Find words containing 2 required letters
+  - Challenge 2: Find words containing 3 required letters
+  - Challenge 3: Find words containing 4 required letters
+  - Challenge 4: Find words containing 5 required letters
+  - Challenge 5: Find words containing 6 required letters
+  - Challenge Advanced: Random letter count (2-6) changes after every submission attempt
+- **Challenge Selection Menu**: Players can choose any challenge from a "Choose Your Challenge" screen
+- **Completion Options**: After completing a challenge, players see "Next Challenge" and "Play Again" buttons (Advanced only shows "Play Again")
+
 ### January 2026 - Scalable Constraint Generation
 - **Local Constraint Generation**: Removed backend config and constraint endpoints for scalability
-  - Letter Hunt: Generates 2-3 random letters from alphabet on frontend
+  - Letter Hunt: Generates 2-6 random letters from alphabet on frontend based on challenge
   - Position Master: Generates random position (1-8) and random letter on frontend
   - Length Challenge: Generates random length (3-8) and optional constraints on frontend
   - Word Chain: Uses hardcoded config (wordsPerLevel: 100, timePerWord: 10)
