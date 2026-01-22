@@ -376,14 +376,14 @@ const gamesData: Game[] = [
     id: "8",
     slug: "letter-position",
     name: "Position Master",
-    description: "Enter words where a specific letter appears at a specific position.",
-    longDescription: "Put your word knowledge to the ultimate test! You'll be given a position number and a letter - form words where that letter appears exactly at that position. Level 1 keeps the constraint constant, while Level 2 changes it after every word!",
+    description: "Find words with the right letter at the right position!",
+    longDescription: "Put your word knowledge to the ultimate test! You'll be given a position number and a letter - form words where that letter appears exactly at that position. Choose from 2 challenge variations to test your skills!",
     rules: [
       "Form words with the given letter at the specified position",
-      "Level 1: Same constraint for all 20 words",
-      "Level 2: Constraint changes after each correct word",
+      "Challenge 1: Same constraint for all 20 words",
+      "Challenge 2: Constraint changes after each correct word",
       "Words must be valid English words",
-      "Beat the clock to complete each level"
+      "Beat the clock to complete the challenge"
     ],
     difficulty: "hard",
     estimatedTime: "6-10 min",

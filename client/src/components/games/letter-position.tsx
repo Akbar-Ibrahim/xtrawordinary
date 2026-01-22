@@ -6,15 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
+type Challenge = 1 | 2;
+
 type PositionConstraint = {
   position: number;
   letter: string;
+};
+
+const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; changesPerWord: boolean }> = {
+  1: { name: "Challenge 1", description: "Same position & letter for all words", changesPerWord: false },
+  2: { name: "Challenge 2", description: "Position & letter change after each word!", changesPerWord: true },
 };
 
 // Generate random position (1-8) and random letter
@@ -46,71 +53,66 @@ export function LetterPositionGame() {
     },
   });
 
-  const [level, setLevel] = useState(1);
+  const [challenge, setChallenge] = useState<Challenge>(1);
+  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
-  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost" | "levelComplete">("playing");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const wordsPerLevel = 20;
-  const timePerLevel = 120;
+  const wordsPerChallenge = 20;
+  const timePerChallenge = 120;
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    stopTimer();
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          stopTimer();
           setGameStatus("lost");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, []);
+  }, [stopTimer]);
 
-  // Initialize game - generate random constraint locally
-  const initGame = useCallback(() => {
-    setLevel(1);
+  // Start game with selected challenge
+  const startGame = useCallback((c: Challenge) => {
+    stopTimer();
+    setChallenge(c);
     setScore(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
+    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     setConstraint(generateRandomConstraint());
     setGameStatus("playing");
     startTimer();
-  }, [timePerLevel, startTimer]);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, [startTimer, stopTimer, timePerChallenge]);
 
-  // Start next level - generate new random constraint locally
-  const startNextLevel = useCallback(() => {
-    setLevel(2);
-    setWordsCompleted(0);
-    setTimeLeft(timePerLevel);
-    setUsedWords(new Set());
-    setUserInput("");
-    setFeedback(null);
-    setConstraint(generateRandomConstraint());
-    setGameStatus("playing");
-    startTimer();
-  }, [timePerLevel, startTimer]);
+  const goToMenu = useCallback(() => {
+    stopTimer();
+    setGameStatus("menu");
+  }, [stopTimer]);
 
-  // Auto-start game on first load
   useEffect(() => {
-    if (!constraint) {
-      setConstraint(generateRandomConstraint());
-      startTimer();
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    return () => stopTimer();
+  }, [stopTimer]);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || !constraint) return;
@@ -140,22 +142,21 @@ export function LetterPositionGame() {
 
       setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
-      setScore((prev) => prev + 100 + level * 30);
+      
+      const challengeBonus = challenge * 30;
+      setScore((prev) => prev + 100 + challengeBonus);
+      
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerLevel) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          if (level >= 2) {
-            setGameStatus("won");
-          } else {
-            setGameStatus("levelComplete");
-          }
-        } else if (level === 2) {
-          // Level 2: new random constraint for each word
+        if (newWordsCompleted >= wordsPerChallenge) {
+          stopTimer();
+          setGameStatus("won");
+        } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
+          // Challenge 2: new random constraint for each word
           setConstraint(generateRandomConstraint());
         }
       }, 500);
@@ -170,6 +171,53 @@ export function LetterPositionGame() {
       checkAnswer();
     }
   };
+
+  const getNextChallenge = (current: Challenge): Challenge | null => {
+    if (current === 2) return null;
+    return 2;
+  };
+
+  // Challenge selection menu
+  if (gameStatus === "menu") {
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-6">
+          <div className="text-center space-y-2">
+            <MapPin className="h-12 w-12 mx-auto text-primary" />
+            <h3 className="text-xl font-bold">Choose Your Challenge</h3>
+            <p className="text-muted-foreground text-sm">
+              Find words with the right letter at the right position!
+            </p>
+          </div>
+          
+          <div className="grid gap-3">
+            {([1, 2] as Challenge[]).map((c) => {
+              const config = CHALLENGE_CONFIG[c];
+              return (
+                <Button
+                  key={c}
+                  onClick={() => startGame(c)}
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3"
+                  data-testid={`button-challenge-${c}`}
+                >
+                  <Badge variant="outline" className="shrink-0">
+                    {c}
+                  </Badge>
+                  <div className="text-left">
+                    <div className="font-semibold">{config.name}</div>
+                    <div className="text-xs text-muted-foreground font-normal">
+                      {config.description}
+                    </div>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!constraint) {
     return (
@@ -189,9 +237,9 @@ export function LetterPositionGame() {
             <Trophy className="h-3.5 w-3.5" />
             {score} pts
           </Badge>
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
+          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
             <Zap className="h-3.5 w-3.5" />
-            Level {level}/2
+            {CHALLENGE_CONFIG[challenge].name}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -202,12 +250,12 @@ export function LetterPositionGame() {
           <Button
             variant="outline"
             size="sm"
-            onClick={initGame}
+            onClick={goToMenu}
             className="gap-1.5"
-            data-testid="button-restart"
+            data-testid="button-menu"
           >
-            <RotateCcw className="h-4 w-4" />
-            Restart
+            <Menu className="h-4 w-4" />
+            Menu
           </Button>
         </div>
       </div>
@@ -243,11 +291,11 @@ export function LetterPositionGame() {
                     <MapPin className="h-4 w-4" />
                     <span>Position {constraint.position} must be letter '{constraint.letter}'</span>
                   </div>
-                  <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
+                  <Progress value={(wordsCompleted / wordsPerChallenge) * 100} className="h-2" />
                   <p className="text-sm text-muted-foreground">
-                    {wordsCompleted} / {wordsPerLevel} words
+                    {wordsCompleted} / {wordsPerChallenge} words
                   </p>
-                  {level === 2 && (
+                  {CHALLENGE_CONFIG[challenge].changesPerWord && (
                     <Badge variant="secondary" className="text-xs">
                       Constraint changes after each word!
                     </Badge>
@@ -257,6 +305,7 @@ export function LetterPositionGame() {
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
                     <Input
+                      ref={inputRef}
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
@@ -319,9 +368,9 @@ export function LetterPositionGame() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : gameStatus === "levelComplete" ? (
+        ) : gameStatus === "won" ? (
           <motion.div
-            key="levelComplete"
+            key="won"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
@@ -332,58 +381,66 @@ export function LetterPositionGame() {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  <CheckCircle className="h-16 w-16 mx-auto text-accent" />
+                  <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Level 1 Complete!</h3>
+                <h3 className="text-2xl font-bold">Position Master!</h3>
                 <p className="text-muted-foreground">
-                  Get ready for the next challenge!
+                  You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
-                <div className="bg-muted/50 rounded-lg p-4 text-left">
-                  <p className="font-medium mb-2">Level 2 Rules:</p>
-                  <p className="text-sm text-muted-foreground">
-                    Same concept, but the position and letter will change after each correct word!
-                  </p>
+                <div className="space-y-1">
+                  <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={startNextLevel} className="gap-2" data-testid="button-next-level">
-                  Start Level 2
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button onClick={() => startGame(challenge)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Play Again
+                  </Button>
+                  {getNextChallenge(challenge) && (
+                    <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                      Next Challenge
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                  {challenge !== 2 && (
+                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                      Back to Menu
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </motion.div>
         ) : (
           <motion.div
-            key="result"
+            key="lost"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <Card className={gameStatus === "won" ? "border-accent" : "border-destructive"}>
+            <Card className="border-destructive">
               <CardContent className="p-6 text-center space-y-4">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  {gameStatus === "won" ? (
-                    <Trophy className="h-16 w-16 mx-auto text-accent" />
-                  ) : (
-                    <XCircle className="h-16 w-16 mx-auto text-destructive" />
-                  )}
+                  <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">
-                  {gameStatus === "won" ? "Position Master!" : "Time's Up!"}
-                </h3>
+                <h3 className="text-2xl font-bold">Time's Up!</h3>
                 <p className="text-muted-foreground">
-                  {gameStatus === "won"
-                    ? "You completed both levels!"
-                    : `You reached Level ${level} with ${wordsCompleted} words`}
+                  You completed {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={initGame} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Try Again
+                  </Button>
+                  <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                    Back to Menu
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
