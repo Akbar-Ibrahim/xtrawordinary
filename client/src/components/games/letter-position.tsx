@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
 
 type Challenge = 1 | 2;
 
@@ -24,10 +25,10 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; c
   2: { name: "Challenge 2", description: "Position & letter change after each word!", changesPerWord: true },
 };
 
-// Generate random position (1-8) and random letter
+// Generate random position (1-8) and random letter (excluding rare letters J, Q, X, V, Z)
 function generateRandomConstraint(): PositionConstraint {
   const position = Math.floor(Math.random() * 8) + 1; // 1-8
-  const letter = ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  const letter = POSITION_ALPHABET[Math.floor(Math.random() * POSITION_ALPHABET.length)];
   return { position, letter };
 }
 
