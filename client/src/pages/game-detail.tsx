@@ -27,6 +27,7 @@ import { LetterPositionGame } from "@/components/games/letter-position";
 import { ContainsLettersGame } from "@/components/games/contains-letters";
 import { WordChainGame } from "@/components/games/word-chain";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
+import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -46,6 +47,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "contains-letters": ContainsLettersGame,
   "word-chain": WordChainGame,
   "letter-balance": LetterBalanceGame,
+  "letter-frequency": LetterFrequencyGame,
 };
 
 export default function GameDetail() {

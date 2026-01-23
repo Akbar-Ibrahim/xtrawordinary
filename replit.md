@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based word games platform featuring eleven interactive vocabulary games:
+WordPlay is a web-based word games platform featuring twelve interactive vocabulary games:
 - **Word Guessing** - Wordle-style 5-letter word guessing in 6 attempts
 - **Anagram Solver** - Find all anagrams of a given base word
 - **Word Scramble** - Unscramble words with category hints and lives system
@@ -10,10 +10,11 @@ WordPlay is a web-based word games platform featuring eleven interactive vocabul
 - **Word Builder** - Fill in missing middle letters with first/last revealed
 - **Word Maker** - Create as many words as possible from a base word
 - **Length Challenge** - 5-level progressive word length game with constraints (starts with, ends with, contains)
-- **Position Master** - 2-level game where words must have specific letter at specific position
+- **Position Master** - 2 challenge variations where words must have specific letter at specific position
 - **Letter Hunt** - 6 challenge variations where words must contain specific required letters (2-6 letters, plus Advanced with random letter count per word)
 - **Word Chain** - 2 variations (last letter vs last two letters) with 2 levels each; back-and-forth chaining between player and computer
 - **Letter Balance** - 5 challenge variations with vowel/consonant constraints (e.g., "words with 3 consonants")
+- **Letter Frequency** - 5 challenge variations where a specific letter must appear exactly N times (2, 3, 4, 5+, or Random)
 
 The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
 

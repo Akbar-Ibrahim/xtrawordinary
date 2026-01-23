@@ -451,6 +451,27 @@ const gamesData: Game[] = [
     icon: "Type",
     color: "hsl(250, 65%, 55%)",
     playCount: 3240
+  },
+  {
+    id: "12",
+    slug: "letter-frequency",
+    name: "Letter Frequency",
+    description: "Find words where a specific letter appears exactly N times!",
+    longDescription: "Test your vocabulary with letter frequency challenges! You'll be given a letter and a count - form words where that letter appears exactly that many times. Progress through increasingly difficult challenges from 2 occurrences up to 5+!",
+    rules: [
+      "Form words with the required letter appearing exactly the specified number of times",
+      "Challenge 1: Find words with exactly 2 occurrences of a letter",
+      "Challenge 2: Find words with exactly 3 occurrences",
+      "Challenge 3: Find words with exactly 4 occurrences",
+      "Challenge 4: Find words with 5+ occurrences",
+      "Challenge Random: Frequency changes after each correct word",
+      "Words must be valid English words"
+    ],
+    difficulty: "hard",
+    estimatedTime: "6-10 min",
+    icon: "Hash",
+    color: "hsl(320, 70%, 50%)",
+    playCount: 0
   }
 ];
 
