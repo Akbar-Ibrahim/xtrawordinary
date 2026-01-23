@@ -11,6 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
 
 type LevelConstraint = {
   length: number;
@@ -23,6 +24,7 @@ type LevelConstraint = {
 function generateConstraint(variation: number): LevelConstraint {
   const length = Math.floor(Math.random() * 6) + 3; // 3-8 letters
   const randomLetter = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  const randomEndLetter = () => ENDS_WITH_ALPHABET[Math.floor(Math.random() * ENDS_WITH_ALPHABET.length)];
   
   switch (variation) {
     case 1:
@@ -30,11 +32,11 @@ function generateConstraint(variation: number): LevelConstraint {
     case 2:
       return { length, startsWith: randomLetter() };
     case 3:
-      return { length, endsWith: randomLetter() };
+      return { length, endsWith: randomEndLetter() };
     case 4:
       return { length, startsWith: randomLetter(), contains: randomLetter() };
     case 5:
-      return { length, endsWith: randomLetter(), contains: randomLetter() };
+      return { length, endsWith: randomEndLetter(), contains: randomLetter() };
     default:
       return { length };
   }
