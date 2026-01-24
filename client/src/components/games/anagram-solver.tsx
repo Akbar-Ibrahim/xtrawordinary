@@ -9,10 +9,12 @@ import { RotateCcw, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-
 import type { AnagramWordSet } from "@shared/schema";
 
 export function AnagramSolverGame() {
-  const { data: wordSets = [], isLoading, error } = useQuery<AnagramWordSet[]>({
+  const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
     queryKey: ["/api/games/anagram-solver/words"],
+    refetchOnMount: "always",
   });
 
+  const [activeWordSets, setActiveWordSets] = useState<AnagramWordSet[]>([]);
   const [currentSet, setCurrentSet] = useState<AnagramWordSet | null>(null);
   const [userInput, setUserInput] = useState("");
   const [foundAnagrams, setFoundAnagrams] = useState<string[]>([]);
@@ -25,35 +27,38 @@ export function AnagramSolverGame() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
-    const availableIndices = wordSets.map((_, i) => i).filter(i => !usedSets.has(i));
+    const availableIndices = activeWordSets.map((_, i) => i).filter(i => !usedSets.has(i));
     if (availableIndices.length === 0) {
       setGameStatus("won");
       return;
     }
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-    const newSet = wordSets[randomIndex];
+    const newSet = activeWordSets[randomIndex];
     setCurrentSet(newSet);
     setFoundAnagrams([]);
     setUserInput("");
     setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedSets, wordSets]);
+  }, [usedSets, activeWordSets]);
 
-  const initGame = useCallback(() => {
-    if (wordSets.length === 0) return;
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWordSets = result.data || [];
+    if (freshWordSets.length === 0) return;
+    setActiveWordSets(freshWordSets);
     setScore(0);
     setStreak(0);
     setTimeLeft(90);
     setGameStatus("playing");
     setUsedSets(new Set());
     setFoundAnagrams([]);
-    const randomIndex = Math.floor(Math.random() * wordSets.length);
-    const newSet = wordSets[randomIndex];
+    const randomIndex = Math.floor(Math.random() * freshWordSets.length);
+    const newSet = freshWordSets[randomIndex];
     setCurrentSet(newSet);
     setUserInput("");
     setUsedSets(new Set([randomIndex]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [wordSets]);
+  }, [refetch]);
 
   useEffect(() => {
     if (wordSets.length > 0 && !currentSet) {

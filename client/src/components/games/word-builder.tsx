@@ -12,8 +12,9 @@ import { apiRequest } from "@/lib/queryClient";
 type WordValidationResponse = { valid: boolean; message?: string };
 
 export function WordBuilderGame() {
-  const { data: words = [], isLoading, error } = useQuery<BuilderWord[]>({
+  const { data: words = [], isLoading, error, refetch } = useQuery<BuilderWord[]>({
     queryKey: ["/api/games/word-builder/words"],
+    refetchOnMount: "always",
   });
 
   const validateMutation = useMutation({
@@ -23,6 +24,7 @@ export function WordBuilderGame() {
     },
   });
 
+  const [activeWords, setActiveWords] = useState<BuilderWord[]>([]);
   const [currentWord, setCurrentWord] = useState<BuilderWord | null>(null);
   const [userInput, setUserInput] = useState("");
   const [displayedLetters, setDisplayedLetters] = useState<string[]>([]);
@@ -47,7 +49,7 @@ export function WordBuilderGame() {
   };
 
   const selectNewWord = useCallback(() => {
-    const availableWords = words.filter((w) => !usedWords.has(w.word));
+    const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
       setGameStatus("won");
       return;
@@ -59,23 +61,26 @@ export function WordBuilderGame() {
     setShowHint(false);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, words]);
+  }, [usedWords, activeWords]);
 
-  const initGame = useCallback(() => {
-    if (words.length === 0) return;
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWords = result.data || [];
+    if (freshWords.length === 0) return;
+    setActiveWords(freshWords);
     setScore(0);
     setLives(3);
     setWordsCompleted(0);
     setGameStatus("playing");
     setUsedWords(new Set());
     setShowHint(false);
-    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
     setCurrentWord(randomWord);
     setDisplayedLetters(getDisplayWord(randomWord.word));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words]);
+  }, [refetch]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {

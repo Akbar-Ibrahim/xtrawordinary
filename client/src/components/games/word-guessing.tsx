@@ -16,10 +16,12 @@ interface LetterCell {
 }
 
 export function WordGuessingGame() {
-  const { data: words = [], isLoading, error } = useQuery<string[]>({
+  const { data: words = [], isLoading, error, refetch } = useQuery<string[]>({
     queryKey: ["/api/games/word-guessing/words"],
+    refetchOnMount: "always",
   });
 
+  const [activeWords, setActiveWords] = useState<string[]>([]);
   const [targetWord, setTargetWord] = useState("");
   const [guesses, setGuesses] = useState<LetterCell[][]>([]);
   const [currentGuess, setCurrentGuess] = useState("");
@@ -27,15 +29,18 @@ export function WordGuessingGame() {
   const [usedLetters, setUsedLetters] = useState<Map<string, LetterStatus>>(new Map());
   const [shake, setShake] = useState(false);
 
-  const initGame = useCallback(() => {
-    if (words.length === 0) return;
-    const word = words[Math.floor(Math.random() * words.length)];
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWords = result.data || [];
+    if (freshWords.length === 0) return;
+    setActiveWords(freshWords);
+    const word = freshWords[Math.floor(Math.random() * freshWords.length)];
     setTargetWord(word);
     setGuesses([]);
     setCurrentGuess("");
     setGameStatus("playing");
     setUsedLetters(new Map());
-  }, [words]);
+  }, [refetch]);
 
   useEffect(() => {
     if (words.length > 0 && !targetWord) {

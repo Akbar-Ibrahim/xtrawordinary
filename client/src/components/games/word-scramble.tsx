@@ -9,10 +9,12 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader
 import type { ScrambleWord } from "@shared/schema";
 
 export function WordScrambleGame() {
-  const { data: words = [], isLoading, error } = useQuery<ScrambleWord[]>({
+  const { data: words = [], isLoading, error, refetch } = useQuery<ScrambleWord[]>({
     queryKey: ["/api/games/word-scramble/words"],
+    refetchOnMount: "always",
   });
 
+  const [activeWords, setActiveWords] = useState<ScrambleWord[]>([]);
   const [currentWord, setCurrentWord] = useState<ScrambleWord | null>(null);
   const [scrambledWord, setScrambledWord] = useState("");
   const [userInput, setUserInput] = useState("");
@@ -37,7 +39,7 @@ export function WordScrambleGame() {
   };
 
   const selectNewWord = useCallback(() => {
-    const availableWords = words.filter((w) => !usedWords.has(w.word));
+    const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
       setGameStatus("won");
       return;
@@ -48,23 +50,26 @@ export function WordScrambleGame() {
     setUserInput("");
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, words]);
+  }, [usedWords, activeWords]);
 
-  const initGame = useCallback(() => {
-    if (words.length === 0) return;
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWords = result.data || [];
+    if (freshWords.length === 0) return;
+    setActiveWords(freshWords);
     setScore(0);
     setLevel(1);
     setLives(3);
     setGameStatus("playing");
     setWordsCompleted(0);
     setUsedWords(new Set());
-    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
     setCurrentWord(randomWord);
     setScrambledWord(scrambleWord(randomWord.word));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words]);
+  }, [refetch]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {

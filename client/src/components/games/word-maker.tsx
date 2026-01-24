@@ -10,10 +10,12 @@ import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2 } from "luci
 import type { MakerWord } from "@shared/schema";
 
 export function WordMakerGame() {
-  const { data: words = [], isLoading, error } = useQuery<MakerWord[]>({
+  const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
     queryKey: ["/api/games/word-maker/words"],
+    refetchOnMount: "always",
   });
 
+  const [activeWords, setActiveWords] = useState<MakerWord[]>([]);
   const [currentWord, setCurrentWord] = useState<MakerWord | null>(null);
   const [userInput, setUserInput] = useState("");
   const [foundWords, setFoundWords] = useState<Set<string>>(new Set());
@@ -39,7 +41,7 @@ export function WordMakerGame() {
   };
 
   const selectNewWord = useCallback(() => {
-    const availableWords = words.filter((w) => !usedBaseWords.has(w.baseWord));
+    const availableWords = activeWords.filter((w) => !usedBaseWords.has(w.baseWord));
     if (availableWords.length === 0) {
       setGameStatus("won");
       return;
@@ -50,21 +52,24 @@ export function WordMakerGame() {
     setUserInput("");
     setUsedBaseWords((prev) => new Set(Array.from(prev).concat(randomWord.baseWord)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedBaseWords, words]);
+  }, [usedBaseWords, activeWords]);
 
-  const initGame = useCallback(() => {
-    if (words.length === 0) return;
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWords = result.data || [];
+    if (freshWords.length === 0) return;
+    setActiveWords(freshWords);
     setScore(0);
     setRoundsCompleted(0);
     setGameStatus("playing");
     setUsedBaseWords(new Set());
     setFoundWords(new Set());
-    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words]);
+  }, [refetch]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
