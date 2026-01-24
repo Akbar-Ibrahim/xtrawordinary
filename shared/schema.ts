@@ -46,6 +46,7 @@ export const definitionWordSchema = z.object({
   word: z.string(),
   definition: z.string(),
   partOfSpeech: z.string(),
+  synonyms: z.array(z.string()).optional(),
 });
 export type DefinitionWord = z.infer<typeof definitionWordSchema>;
 export const definitionWordsSchema = z.array(definitionWordSchema);

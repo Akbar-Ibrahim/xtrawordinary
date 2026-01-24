@@ -78,16 +78,16 @@ const scrambleWords: ScrambleWord[] = [
 
 // Definition Match words
 const definitionWords: DefinitionWord[] = [
-  { word: "LUMINOUS", definition: "Emitting or reflecting light; shining brightly", partOfSpeech: "adjective" },
-  { word: "EPHEMERAL", definition: "Lasting for a very short time; fleeting", partOfSpeech: "adjective" },
-  { word: "ELOQUENT", definition: "Fluent or persuasive in speaking or writing", partOfSpeech: "adjective" },
-  { word: "RESILIENT", definition: "Able to recover quickly from difficulties", partOfSpeech: "adjective" },
-  { word: "SERENE", definition: "Calm, peaceful, and untroubled", partOfSpeech: "adjective" },
-  { word: "OBSCURE", definition: "Not clearly expressed or easily understood", partOfSpeech: "adjective" },
-  { word: "MEANDER", definition: "To follow a winding course; to wander aimlessly", partOfSpeech: "verb" },
-  { word: "PONDER", definition: "To think about something carefully before making a decision", partOfSpeech: "verb" },
-  { word: "CHERISH", definition: "To protect and care for lovingly; to hold dear", partOfSpeech: "verb" },
-  { word: "FLOURISH", definition: "To grow or develop in a healthy or vigorous way", partOfSpeech: "verb" },
+  { word: "LUMINOUS", definition: "Emitting or reflecting light; shining brightly", partOfSpeech: "adjective", synonyms: ["bright", "radiant", "glowing", "shining"] },
+  { word: "EPHEMERAL", definition: "Lasting for a very short time; fleeting", partOfSpeech: "adjective", synonyms: ["fleeting", "transient", "brief", "momentary"] },
+  { word: "ELOQUENT", definition: "Fluent or persuasive in speaking or writing", partOfSpeech: "adjective", synonyms: ["articulate", "expressive", "fluent"] },
+  { word: "RESILIENT", definition: "Able to recover quickly from difficulties", partOfSpeech: "adjective", synonyms: ["tough", "flexible", "adaptable", "strong"] },
+  { word: "SERENE", definition: "Calm, peaceful, and untroubled", partOfSpeech: "adjective", synonyms: ["peaceful", "calm", "tranquil"] },
+  { word: "OBSCURE", definition: "Not clearly expressed or easily understood", partOfSpeech: "adjective", synonyms: ["unclear", "vague", "ambiguous", "cryptic"] },
+  { word: "MEANDER", definition: "To follow a winding course; to wander aimlessly", partOfSpeech: "verb", synonyms: ["wander", "roam", "stroll"] },
+  { word: "PONDER", definition: "To think about something carefully before making a decision", partOfSpeech: "verb", synonyms: ["consider", "contemplate", "reflect", "think"] },
+  { word: "CHERISH", definition: "To protect and care for lovingly; to hold dear", partOfSpeech: "verb", synonyms: ["treasure", "value", "love"] },
+  { word: "FLOURISH", definition: "To grow or develop in a healthy or vigorous way", partOfSpeech: "verb", synonyms: ["thrive", "prosper", "bloom", "grow"] },
 ];
 
 // Word Builder words (first and last letters shown)
