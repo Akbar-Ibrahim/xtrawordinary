@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2 } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRight, Menu } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
@@ -374,9 +374,36 @@ export function WordLengthGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
-                <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => startGame(variation)} 
+                    className="gap-1.5"
+                    data-testid="button-play-again"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Play Again
+                  </Button>
+                  {gameStatus === "won" && variation < 5 && (
+                    <Button 
+                      onClick={() => startGame(variation + 1)} 
+                      className="gap-1.5"
+                      data-testid="button-next-challenge"
+                    >
+                      Next Challenge
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setGameStatus("menu")} 
+                    className="gap-1.5"
+                    data-testid="button-back-menu"
+                  >
+                    <Menu className="h-4 w-4" />
+                    Back to Menu
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
