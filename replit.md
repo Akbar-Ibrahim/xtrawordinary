@@ -127,6 +127,12 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
   - Implemented using `useRef` with `setTimeout(() => inputRef.current?.focus(), 100)`
   - Applied to: Anagram Solver, Word Builder, Word Scramble, Definition Match, Word Maker
 
+### January 2026 - Fresh Word Fetching Pattern
+- **Refetch on Mount**: All games that pre-fetch words now use `refetchOnMount: "always"` to fetch fresh data when players return
+- **Active Words State**: Games use `activeWords` (or `activeWordSets`) local state populated from refetch result in `initGame()`
+- **Consistent Session**: All word selection within a game session uses the local `activeWords` state, ensuring players don't see stale cached words
+- **Games Updated**: Word Guessing, Anagram Solver, Word Scramble, Word Builder, Word Maker, Definition Match
+
 ### January 2026 - Security: Dictionary Protection
 - **Dictionary Endpoint Removed**: Removed `/api/games/word-dictionary` endpoint to prevent dictionary exposure
 - **Secure Validation Pattern**: All constraint-based games now follow this pattern:
