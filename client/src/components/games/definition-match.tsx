@@ -9,10 +9,12 @@ import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2 } from "luci
 import type { DefinitionWord } from "@shared/schema";
 
 export function DefinitionMatchGame() {
-  const { data: words = [], isLoading, error } = useQuery<DefinitionWord[]>({
+  const { data: words = [], isLoading, error, refetch } = useQuery<DefinitionWord[]>({
     queryKey: ["/api/games/definition-match/words"],
+    refetchOnMount: "always",
   });
 
+  const [activeWords, setActiveWords] = useState<DefinitionWord[]>([]);
   const [currentWord, setCurrentWord] = useState<DefinitionWord | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -25,7 +27,7 @@ export function DefinitionMatchGame() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
-    const availableWords = words.filter((w) => !usedWords.has(w.word));
+    const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
       setGameStatus("won");
       return;
@@ -36,22 +38,25 @@ export function DefinitionMatchGame() {
     setShowAnswer(false);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, words]);
+  }, [usedWords, activeWords]);
 
-  const initGame = useCallback(() => {
-    if (words.length === 0) return;
+  const initGame = useCallback(async () => {
+    const result = await refetch();
+    const freshWords = result.data || [];
+    if (freshWords.length === 0) return;
+    setActiveWords(freshWords);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
     setGameStatus("playing");
     setUsedWords(new Set());
     setShowAnswer(false);
-    const randomWord = words[Math.floor(Math.random() * words.length)];
+    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words]);
+  }, [refetch]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
@@ -170,6 +175,16 @@ export function DefinitionMatchGame() {
                     <p className="text-lg sm:text-xl text-muted-foreground italic">
                       "{currentWord.definition}"
                     </p>
+                    {currentWord.synonyms && currentWord.synonyms.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 justify-center mt-2" data-testid="synonyms-container">
+                        <span className="text-sm text-muted-foreground">Synonyms:</span>
+                        {currentWord.synonyms.slice(0, 3).map((synonym, index) => (
+                          <Badge key={synonym} variant="outline" className="text-xs" data-testid={`badge-synonym-${index}`}>
+                            {synonym}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </motion.div>
                 </div>
 
@@ -189,7 +204,7 @@ export function DefinitionMatchGame() {
                     <Input
                       ref={inputRef}
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
+                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Type the word..."
                       className={`text-center text-lg font-semibold tracking-wider ${
@@ -237,7 +252,7 @@ export function DefinitionMatchGame() {
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground">
-                  Words completed: {wordsCompleted} / {words.length}
+                  Words completed: {wordsCompleted} / {activeWords.length}
                 </div>
               </CardContent>
             </Card>
