@@ -222,7 +222,7 @@ export function AnagramSolverGame() {
                       className="w-12 h-14 sm:w-14 sm:h-16 flex items-center justify-center text-2xl font-bold rounded-md bg-primary text-primary-foreground"
                       data-testid={`letter-${index}`}
                     >
-                      {letter}
+                      {letter.toUpperCase()}
                     </motion.div>
                   ))}
                 </motion.div>

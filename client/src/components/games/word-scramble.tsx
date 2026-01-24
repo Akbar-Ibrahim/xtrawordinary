@@ -229,7 +229,7 @@ export function WordScrambleGame() {
                       className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center text-xl font-bold rounded-md bg-primary text-primary-foreground"
                       data-testid={`scrambled-letter-${index}`}
                     >
-                      {letter}
+                      {letter.toUpperCase()}
                     </motion.div>
                   ))}
                 </motion.div>
