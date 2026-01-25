@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil } from "lucide-react";
 import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -91,6 +91,14 @@ export function WordStackGame() {
       initGame();
     }
   }, [puzzles, currentPuzzle, initGame]);
+
+  const editLevel = (levelIndex: number) => {
+    if (levelIndex === 0) return;
+    setStack(stack.slice(0, levelIndex));
+    setUserInput("");
+    setFeedback(null);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
 
   const checkAnswer = async () => {
     if (!currentPuzzle || !userInput.trim() || validateMutation.isPending) return;
@@ -213,9 +221,11 @@ export function WordStackGame() {
     );
   }
 
-  const targetLength = currentPuzzle.targetWord.length;
+  const targetWord = currentPuzzle.targetWord.toUpperCase();
+  const targetLength = targetWord.length;
   const requiredLength = getRequiredLength();
   const levelsRemaining = targetLength - (stack[stack.length - 1]?.length || 2);
+  const isStackComplete = stack.length > 0 && stack[stack.length - 1].length === targetLength;
 
   return (
     <div className="space-y-6">
@@ -240,7 +250,7 @@ export function WordStackGame() {
             <div className="flex items-center justify-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
               <span className="text-sm text-muted-foreground" data-testid="text-progress">
-                Build to {targetLength} letters • {levelsRemaining} level{levelsRemaining !== 1 ? "s" : ""} remaining
+                Build to: <span className="font-bold text-primary">{targetWord}</span> • {levelsRemaining} level{levelsRemaining !== 1 ? "s" : ""} remaining
               </span>
             </div>
             {showHint && (
@@ -251,14 +261,35 @@ export function WordStackGame() {
           </div>
 
           <div className="flex flex-col items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center mb-2"
+            >
+              <div className="flex gap-1" data-testid="target-word-row">
+                {targetWord.split("").map((letter, j) => (
+                  <div
+                    key={j}
+                    data-testid={`target-letter-${j}`}
+                    className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-md border-2 bg-primary text-primary-foreground border-primary"
+                  >
+                    {letter}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <div className="w-full border-t border-muted-foreground/20 my-2" />
+
             <AnimatePresence>
-              {Array.from({ length: targetLength - 1 }, (_, i) => {
-                const wordLength = i + 2;
+              {Array.from({ length: targetLength - 3 }, (_, i) => {
+                const wordLength = targetLength - 1 - i;
                 const stackIndex = wordLength - 2;
                 const word = stack[stackIndex];
                 const isCurrent = wordLength === requiredLength && !word;
                 const isCompleted = word !== undefined;
                 const isFuture = !isCompleted && !isCurrent;
+                const canEdit = isCompleted && stackIndex > 0;
 
                 return (
                   <motion.div
@@ -266,9 +297,13 @@ export function WordStackGame() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex justify-center"
+                    className="flex justify-center items-center gap-2"
                   >
-                    <div className="flex gap-1">
+                    <div 
+                      className={`flex gap-1 ${canEdit ? "cursor-pointer hover-elevate rounded-lg p-1 -m-1" : ""}`}
+                      onClick={() => canEdit && editLevel(stackIndex)}
+                      data-testid={`level-row-${wordLength}`}
+                    >
                       {Array.from({ length: wordLength }, (_, j) => {
                         const letter = word?.[j] || "";
                         return (
@@ -289,10 +324,39 @@ export function WordStackGame() {
                         );
                       })}
                     </div>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={() => editLevel(stackIndex)}
+                        data-testid={`button-edit-${wordLength}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
                   </motion.div>
                 );
-              }).reverse()}
+              })}
             </AnimatePresence>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center mt-1"
+            >
+              <div className="flex gap-1" data-testid="start-word-row">
+                {stack[0]?.split("").map((letter, j) => (
+                  <div
+                    key={j}
+                    data-testid={`start-letter-${j}`}
+                    className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-md border-2 bg-secondary text-secondary-foreground border-secondary"
+                  >
+                    {letter}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
 
           <AnimatePresence>
@@ -322,53 +386,55 @@ export function WordStackGame() {
             )}
           </AnimatePresence>
 
-          <div className="space-y-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">
-                Enter a <span className="font-bold text-foreground">{requiredLength}-letter word</span> containing all letters from "<span className="font-bold text-primary">{stack[stack.length - 1]}</span>"
-              </p>
-            </div>
-
-            <div className="flex gap-2 max-w-md mx-auto">
-              <Input
-                ref={inputRef}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value.toUpperCase())}
-                onKeyDown={handleKeyDown}
-                placeholder={`${requiredLength}-letter word...`}
-                maxLength={requiredLength}
-                className="text-center text-lg font-bold uppercase"
-                disabled={validateMutation.isPending}
-                data-testid="input-word"
-              />
-              <Button 
-                onClick={checkAnswer} 
-                disabled={!userInput.trim() || validateMutation.isPending}
-                data-testid="button-submit"
-              >
-                {validateMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Add"
-                )}
-              </Button>
-            </div>
-
-            {!showHint && (
+          {!isStackComplete && (
+            <div className="space-y-4">
               <div className="text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowHint(true)}
-                  className="text-muted-foreground"
-                  data-testid="button-hint"
+                <p className="text-sm text-muted-foreground mb-2">
+                  Enter a <span className="font-bold text-foreground">{requiredLength}-letter word</span> containing all letters from "<span className="font-bold text-primary">{stack[stack.length - 1]}</span>"
+                </p>
+              </div>
+
+              <div className="flex gap-2 max-w-md mx-auto">
+                <Input
+                  ref={inputRef}
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`${requiredLength}-letter word...`}
+                  maxLength={requiredLength}
+                  className="text-center text-lg font-bold uppercase"
+                  disabled={validateMutation.isPending}
+                  data-testid="input-word"
+                />
+                <Button 
+                  onClick={checkAnswer} 
+                  disabled={!userInput.trim() || validateMutation.isPending}
+                  data-testid="button-submit"
                 >
-                  <Lightbulb className="mr-2 h-4 w-4" />
-                  Show Hint (reduced points)
+                  {validateMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Add"
+                  )}
                 </Button>
               </div>
-            )}
-          </div>
+
+              {!showHint && (
+                <div className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowHint(true)}
+                    className="text-muted-foreground"
+                    data-testid="button-hint"
+                  >
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Show Hint (reduced points)
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
