@@ -115,3 +115,12 @@ export const vowelConsonantConfigSchema = z.object({
   timePerWord: z.number(), // seconds per word entry
 });
 export type VowelConsonantConfig = z.infer<typeof vowelConsonantConfigSchema>;
+
+// Word Stack puzzle (build from 2-letter word up to target word)
+export const wordStackPuzzleSchema = z.object({
+  targetWord: z.string(),
+  startWord: z.string(), // 2-letter starting word
+  hint: z.string(),
+});
+export type WordStackPuzzle = z.infer<typeof wordStackPuzzleSchema>;
+export const wordStackPuzzlesSchema = z.array(wordStackPuzzleSchema);

@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle } from "@shared/schema";
 
 // Constraint types for games
 export type LengthConstraint = {
@@ -26,6 +26,7 @@ export interface IStorage {
   getDefinitionWords(): Promise<DefinitionWord[]>;
   getBuilderWords(): Promise<BuilderWord[]>;
   getMakerWords(): Promise<MakerWord[]>;
+  getWordStackPuzzles(): Promise<WordStackPuzzle[]>;
   getWordDictionary(): Promise<string[]>;
   validateWord(word: string): Promise<boolean>;
   getWordLengthConfig(): Promise<WordLengthConfig>;
@@ -235,6 +236,20 @@ const vowelConsonantConfig: VowelConsonantConfig = {
   wordsPerRound: 20,
   timePerWord: 12 // 12 seconds per word
 };
+
+// Word Stack puzzles - build from 2-letter word to target word
+const wordStackPuzzles: WordStackPuzzle[] = [
+  { targetWord: "PERSONAL", startWord: "OR", hint: "Relating to an individual" },
+  { targetWord: "STARTING", startWord: "AT", hint: "Beginning something" },
+  { targetWord: "STRANGER", startWord: "AN", hint: "Someone you don't know" },
+  { targetWord: "CREATING", startWord: "AT", hint: "Making something new" },
+  { targetWord: "PLEASANT", startWord: "AS", hint: "Enjoyable or agreeable" },
+  { targetWord: "TEACHING", startWord: "AT", hint: "Educating others" },
+  { targetWord: "REACHING", startWord: "IN", hint: "Extending towards" },
+  { targetWord: "BREAKING", startWord: "IN", hint: "Causing to separate" },
+  { targetWord: "TREATING", startWord: "AT", hint: "Dealing with something" },
+  { targetWord: "CLEANING", startWord: "AN", hint: "Making tidy" },
+];
 
 const gamesData: Game[] = [
   {
@@ -472,6 +487,25 @@ const gamesData: Game[] = [
     icon: "Hash",
     color: "hsl(320, 70%, 50%)",
     playCount: 0
+  },
+  {
+    id: "13",
+    slug: "word-stack",
+    name: "Word Stack",
+    description: "Build words one letter at a time from a 2-letter base to the target word!",
+    longDescription: "Stack your way to the target! Start with a 2-letter word and build up by adding one letter at a time. Each new word must contain all the letters from the previous word. Can you reach the top of the stack?",
+    rules: [
+      "Start with a given 2-letter word",
+      "Add one letter to form a new valid word",
+      "Each word must contain all letters from the previous word",
+      "Continue until you reach the target word length",
+      "Use the hint to guide you toward the target word"
+    ],
+    difficulty: "hard",
+    estimatedTime: "5-8 min",
+    icon: "Layers",
+    color: "hsl(25, 85%, 55%)",
+    playCount: 0
   }
 ];
 
@@ -512,6 +546,10 @@ export class MemStorage implements IStorage {
 
   async getMakerWords(): Promise<MakerWord[]> {
     return makerWords;
+  }
+
+  async getWordStackPuzzles(): Promise<WordStackPuzzle[]> {
+    return wordStackPuzzles;
   }
 
   async getWordDictionary(): Promise<string[]> {

@@ -73,6 +73,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-stack/puzzles", async (_req, res) => {
+    try {
+      const puzzles = await dataSource.getWordStackPuzzles();
+      res.json(puzzles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word stack puzzles" });
+    }
+  });
+
   // Dictionary endpoint removed for security - words validated only via /api/games/validate-word
 
   app.post("/api/games/validate-word", async (req, res) => {
