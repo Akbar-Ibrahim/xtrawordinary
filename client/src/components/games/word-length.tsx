@@ -46,8 +46,8 @@ const variationDescriptions = [
   "Form {length}-letter words",
   "Form {length}-letter words starting with '{startsWith}'",
   "Form {length}-letter words ending with '{endsWith}'",
-  "Form {length}-letter words starting with '{startsWith}' containing '{contains}'",
-  "Form {length}-letter words ending with '{endsWith}' containing '{contains}'"
+  "Form {length}-letter words starting with '{startsWith}' with '{contains}' inside (not at end)",
+  "Form {length}-letter words ending with '{endsWith}' with '{contains}' inside (not at start)"
 ];
 
 const variationOptions = [
@@ -68,7 +68,7 @@ function formatConstraint(variation: number, constraint: LevelConstraint): strin
 }
 
 // Local constraint validation (length, starts with, ends with, contains)
-function validateConstraint(word: string, constraint: LevelConstraint): { valid: boolean; message: string } {
+function validateConstraint(word: string, constraint: LevelConstraint, variation: number): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
   if (upperWord.length !== constraint.length) {
@@ -80,8 +80,20 @@ function validateConstraint(word: string, constraint: LevelConstraint): { valid:
   if (constraint.endsWith && !upperWord.endsWith(constraint.endsWith)) {
     return { valid: false, message: `Word must end with '${constraint.endsWith}'` };
   }
-  if (constraint.contains && !upperWord.includes(constraint.contains)) {
-    return { valid: false, message: `Word must contain '${constraint.contains}'` };
+  if (constraint.contains) {
+    // For variation 4 (Starts & Contains): contains letter must not be at the last position only
+    // For variation 5 (Ends & Contains): contains letter must not be at the first position only
+    const containsLetter = constraint.contains;
+    const middlePart = variation === 4 
+      ? upperWord.slice(0, -1)  // Exclude last letter
+      : variation === 5 
+        ? upperWord.slice(1)    // Exclude first letter
+        : upperWord;
+    
+    if (!middlePart.includes(containsLetter)) {
+      const positionHint = variation === 4 ? " (not just at the end)" : variation === 5 ? " (not just at the start)" : "";
+      return { valid: false, message: `Word must contain '${containsLetter}'${positionHint}` };
+    }
   }
   return { valid: true, message: "" };
 }
@@ -154,7 +166,7 @@ export function WordLengthGame() {
       return;
     }
 
-    const constraintCheck = validateConstraint(upperWord, constraint);
+    const constraintCheck = validateConstraint(upperWord, constraint, variation);
     if (!constraintCheck.valid) {
       setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
