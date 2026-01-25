@@ -612,19 +612,10 @@ export class ExternalApiClient implements IExternalApi {
   }
 
   // Get starting word for Word Chain
-  async getWordChainStartWord(variation: number, level: number): Promise<string | null> {
-    const candidates = wordDictionary.filter(word => {
-      const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
-      const nextCandidates = wordDictionary.filter(w => 
-        w !== word && 
-        w.startsWith(nextStartsWith) &&
-        (level === 1 || w.length === word.length)
-      );
-      return nextCandidates.length >= 3;
-    });
-    
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+  async getWordChainStartWord(_variation: number, _level: number): Promise<string | null> {
+    // Pick a random word from the dictionary
+    if (wordDictionary.length === 0) return null;
+    return wordDictionary[Math.floor(Math.random() * wordDictionary.length)];
   }
 
   // Get computer's response word for Word Chain
@@ -632,6 +623,7 @@ export class ExternalApiClient implements IExternalApi {
     const usedSet = new Set(usedWords.map(w => w.toUpperCase()));
     const upperPlayerWord = playerWord.toUpperCase();
     
+    // Find words that start with the required letters (last 1 or 2 letters of player's word)
     const startsWith = variation === 1 ? upperPlayerWord[upperPlayerWord.length - 1] : upperPlayerWord.slice(-2);
     
     let candidates = wordDictionary.filter(w => 
@@ -639,25 +631,13 @@ export class ExternalApiClient implements IExternalApi {
       w.startsWith(startsWith)
     );
     
+    // Level 2: same length requirement
     if (level === 2) {
       candidates = candidates.filter(w => w.length === upperPlayerWord.length);
     }
     
     if (candidates.length === 0) return null;
-    
-    const viableCandidates = candidates.filter(word => {
-      const nextStartsWith = variation === 1 ? word[word.length - 1] : word.slice(-2);
-      const nextCandidates = wordDictionary.filter(w => 
-        !usedSet.has(w) && 
-        w !== word && 
-        w.startsWith(nextStartsWith) &&
-        (level === 1 || w.length === word.length)
-      );
-      return nextCandidates.length >= 1;
-    });
-    
-    if (viableCandidates.length === 0) return null;
-    return viableCandidates[Math.floor(Math.random() * viableCandidates.length)];
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 }
 
