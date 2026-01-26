@@ -56,7 +56,7 @@ export function WordStackGame() {
   const isBuildUp = selectedChallenge === "build-up";
 
   const getRequiredLength = useCallback(() => {
-    if (stack.length === 0) return isBuildUp ? 3 : (currentPuzzle?.targetWord.length || 7) - 1;
+    if (stack.length === 0) return isBuildUp ? 2 : (currentPuzzle?.targetWord.length || 7) - 1;
     const lastWord = stack[stack.length - 1];
     return isBuildUp ? lastWord.length + 1 : lastWord.length - 1;
   }, [stack, isBuildUp, currentPuzzle]);
@@ -94,7 +94,7 @@ export function WordStackGame() {
     const randomPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
     setCurrentPuzzle(randomPuzzle);
     if (isBuildUp) {
-      setStack([randomPuzzle.startWord]);
+      setStack([]);
     } else {
       setStack([randomPuzzle.targetWord.toUpperCase()]);
     }
@@ -122,7 +122,7 @@ export function WordStackGame() {
     setCurrentPuzzle(randomPuzzle);
     
     if (challenge === "build-up") {
-      setStack([randomPuzzle.startWord]);
+      setStack([]);
     } else {
       setStack([randomPuzzle.targetWord.toUpperCase()]);
     }
@@ -142,7 +142,7 @@ export function WordStackGame() {
   };
 
   const editLevel = (levelIndex: number) => {
-    if (levelIndex === 0) return;
+    if (!isBuildUp && levelIndex === 0) return;
     setStack(stack.slice(0, levelIndex));
     setUserInput("");
     setFeedback(null);
@@ -167,7 +167,7 @@ export function WordStackGame() {
     }
 
     if (isBuildUp) {
-      if (!containsAllLetters(upperInput, previousWord)) {
+      if (previousWord && !containsAllLetters(upperInput, previousWord)) {
         setFeedback({ type: "wrong", message: `Must contain all letters from "${previousWord}"` });
         setTimeout(() => {
           setFeedback(null);
@@ -509,7 +509,7 @@ function BuildUpPyramid({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center mb-2"
+        className="flex justify-center"
       >
         <div className="flex gap-1" data-testid="target-word-row">
           {targetWord.split("").map((letter, j) => (
@@ -524,17 +524,15 @@ function BuildUpPyramid({
         </div>
       </motion.div>
 
-      <div className="w-full border-t border-muted-foreground/20 my-2" />
-
       <AnimatePresence>
-        {Array.from({ length: targetLength - 3 }, (_, i) => {
+        {Array.from({ length: targetLength - 2 }, (_, i) => {
           const wordLength = targetLength - 1 - i;
           const stackIndex = wordLength - 2;
           const word = stack[stackIndex];
           const isCurrent = wordLength === requiredLength && !word;
           const isCompleted = word !== undefined;
           const isFuture = !isCompleted && !isCurrent;
-          const canEdit = isCompleted && stackIndex > 0;
+          const canEdit = isCompleted;
 
           return (
             <motion.div
@@ -584,24 +582,6 @@ function BuildUpPyramid({
           );
         })}
       </AnimatePresence>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center mt-1"
-      >
-        <div className="flex gap-1" data-testid="start-word-row">
-          {stack[0]?.split("").map((letter, j) => (
-            <div
-              key={j}
-              data-testid={`start-letter-${j}`}
-              className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-md border-2 bg-secondary text-secondary-foreground border-secondary"
-            >
-              {letter}
-            </div>
-          ))}
-        </div>
-      </motion.div>
     </div>
   );
 }
@@ -628,7 +608,7 @@ function BreakDownPyramid({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-center mb-1"
+        className="flex justify-center"
       >
         <div className="flex gap-1" data-testid="end-word-row">
           {Array.from({ length: 2 }, (_, j) => {
@@ -649,8 +629,6 @@ function BreakDownPyramid({
           })}
         </div>
       </motion.div>
-
-      <div className="w-full border-t border-muted-foreground/20 my-2" />
 
       <AnimatePresence>
         {Array.from({ length: targetLength - 3 }, (_, i) => {
