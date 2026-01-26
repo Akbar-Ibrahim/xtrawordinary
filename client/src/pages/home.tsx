@@ -5,21 +5,10 @@ import { motion } from "framer-motion";
 import { Gamepad2, Sparkles } from "lucide-react";
 import type { Game } from "@shared/schema";
 
-const PRIORITY_GAMES = ["word-stack", "letter-hunt", "position-master", "length-challenge"];
-
 export default function Home() {
   const { data: games, isLoading, error } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
-
-  const sortedGames = games ? (() => {
-    const prioritySet = new Set(PRIORITY_GAMES);
-    const priorityGames = PRIORITY_GAMES
-      .map(slug => games.find(g => g.slug === slug))
-      .filter((g): g is Game => g !== undefined);
-    const rest = games.filter(g => !prioritySet.has(g.slug));
-    return [...priorityGames, ...rest];
-  })() : undefined;
 
   return (
     <div className="min-h-screen">
@@ -78,9 +67,9 @@ export default function Home() {
                 Unable to load games. Please try again later.
               </p>
             </motion.div>
-          ) : sortedGames && sortedGames.length > 0 ? (
+          ) : games && games.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedGames.map((game, index) => (
+              {games.map((game, index) => (
                 <GameCard key={game.id} game={game} index={index} />
               ))}
             </div>
