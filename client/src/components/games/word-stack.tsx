@@ -110,13 +110,19 @@ export function WordStackGame() {
 
     if (upperInput.length !== requiredLength) {
       setFeedback({ type: "wrong", message: `Word must be ${requiredLength} letters` });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
       return;
     }
 
     if (!containsAllLetters(upperInput, previousWord)) {
       setFeedback({ type: "wrong", message: `Must contain all letters from "${previousWord}"` });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
       return;
     }
 
@@ -124,7 +130,10 @@ export function WordStackGame() {
       const result = await validateMutation.mutateAsync(upperInput);
       if (!result.valid) {
         setFeedback({ type: "invalid", message: "Not a valid word!" });
-        setTimeout(() => setFeedback(null), 1500);
+        setTimeout(() => {
+          setFeedback(null);
+          inputRef.current?.focus();
+        }, 1500);
         return;
       }
 
@@ -153,7 +162,10 @@ export function WordStackGame() {
       }
     } catch {
       setFeedback({ type: "invalid", message: "Validation failed" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
     }
   };
 
