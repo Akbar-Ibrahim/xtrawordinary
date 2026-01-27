@@ -562,7 +562,7 @@ function BuildUpPyramid({
                             : "bg-muted/30 border-muted-foreground/20 text-muted-foreground/40"}
                       `}
                     >
-                      {isCompleted ? letter : isFuture ? "?" : ""}
+                      {isCompleted ? letter : ""}
                     </div>
                   );
                 })}
@@ -623,7 +623,7 @@ function BreakDownPyramid({
                     : "bg-muted/30 border-muted-foreground/20 text-muted-foreground/40"
                 }`}
               >
-                {isComplete ? letter : "?"}
+                {isComplete ? letter : ""}
               </div>
             );
           })}
@@ -668,7 +668,7 @@ function BreakDownPyramid({
                             : "bg-muted/30 border-muted-foreground/20 text-muted-foreground/40"}
                       `}
                     >
-                      {isCompleted ? letter : isFuture ? "?" : ""}
+                      {isCompleted ? letter : ""}
                     </div>
                   );
                 })}
