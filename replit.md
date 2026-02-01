@@ -14,7 +14,7 @@ WordPlay is a web-based word games platform featuring thirteen interactive vocab
 - **Letter Hunt** - 6 challenge variations where words must contain specific required letters (2-6 letters, plus Advanced with random letter count per word)
 - **Word Chain** - 2 variations (last letter vs last two letters) with 2 levels each; back-and-forth chaining between player and computer
 - **Letter Balance** - 5 challenge variations with vowel/consonant constraints (e.g., "words with 3 consonants")
-- **Letter Frequency** - 5 challenge variations where a specific letter must appear exactly N times (2, 3, 4, 5+, or Random)
+- **Letter Frequency** - 6 challenge variations where a specific letter must appear exactly N times (2, 3, 4, 5+, Random, or Multi-Letter where 2-3 letters must each appear at least 2 times)
 - **Word Stack** - 2 challenge variations: "Build Up" (add letters from 2-letter base to target) and "Break Down" (remove letters from target to reach 2 letters)
 
 The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
