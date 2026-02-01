@@ -118,6 +118,7 @@ export function WordLengthGame() {
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const wordsPerVariation = 20;
   const timePerVariation = 120;
@@ -148,6 +149,7 @@ export function WordLengthGame() {
     setConstraint(generateConstraint(varId));
     setGameStatus("playing");
     startTimer();
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [timePerVariation, startTimer]);
 
   useEffect(() => {
@@ -163,14 +165,20 @@ export function WordLengthGame() {
 
     if (usedWords.has(upperWord)) {
       setFeedback({ type: "invalid", message: "Already used this word!" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
       return;
     }
 
     const constraintCheck = validateConstraint(upperWord, constraint, variation);
     if (!constraintCheck.valid) {
       setFeedback({ type: "wrong", message: constraintCheck.message });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
       return;
     }
 
@@ -178,7 +186,10 @@ export function WordLengthGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         setFeedback({ type: "invalid", message: "Not a valid word!" });
-        setTimeout(() => setFeedback(null), 1500);
+        setTimeout(() => {
+          setFeedback(null);
+          inputRef.current?.focus();
+        }, 1500);
         return;
       }
 
@@ -194,17 +205,16 @@ export function WordLengthGame() {
         if (newWordsCompleted >= wordsPerVariation) {
           if (timerRef.current) clearInterval(timerRef.current);
           setGameStatus("won");
+        } else {
+          inputRef.current?.focus();
         }
       }, 500);
     } catch {
       setFeedback({ type: "invalid", message: "Error validating word" });
-      setTimeout(() => setFeedback(null), 1500);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      checkAnswer();
+      setTimeout(() => {
+        setFeedback(null);
+        inputRef.current?.focus();
+      }, 1500);
     }
   };
 
@@ -292,59 +302,70 @@ export function WordLengthGame() {
                   </p>
                 </div>
 
-                <div className="max-w-sm mx-auto space-y-4">
-                  <div className="relative">
-                    <Input
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
-                      onKeyDown={handleKeyDown}
-                      placeholder={`Enter a ${constraint?.length || 5}-letter word...`}
-                      className={`text-center text-lg font-semibold tracking-wider uppercase ${
-                        feedback?.type === "correct"
-                          ? "border-accent bg-accent/10"
-                          : feedback?.type === "wrong" || feedback?.type === "invalid"
-                          ? "border-destructive bg-destructive/10"
-                          : ""
-                      }`}
-                      data-testid="input-word"
-                    />
-                    {feedback && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="flex justify-center gap-2">
+                    {constraint && Array.from({ length: constraint.length }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-10 h-10 border-2 border-primary/30 rounded flex items-center justify-center text-xl font-bold bg-primary/5"
+                        data-testid={`letter-box-${i}`}
                       >
-                        {feedback.type === "correct" ? (
-                          <CheckCircle className="h-5 w-5 text-accent" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        )}
-                      </motion.div>
-                    )}
+                        {userInput[i]?.toUpperCase() || ""}
+                      </div>
+                    ))}
                   </div>
 
-                  {feedback && feedback.type !== "correct" && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-sm text-destructive"
-                    >
-                      {feedback.message}
-                    </motion.p>
-                  )}
-
-                  <Button
-                    onClick={checkAnswer}
-                    disabled={!userInput.trim() || validateMutation.isPending}
-                    className="w-full"
-                    data-testid="button-submit"
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      checkAnswer();
+                    }}
+                    className="flex gap-2"
                   >
-                    {validateMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Submit"
+                    <Input
+                      ref={inputRef}
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      placeholder={`Enter a ${constraint?.length || 5}-letter word...`}
+                      className="text-center text-lg uppercase"
+                      maxLength={constraint?.length || 8}
+                      disabled={validateMutation.isPending}
+                      data-testid="input-word"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={!userInput.trim() || validateMutation.isPending}
+                      data-testid="button-submit"
+                    >
+                      {validateMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Submit"
+                      )}
+                    </Button>
+                  </form>
+
+                  <AnimatePresence mode="wait">
+                    {feedback && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className={`flex items-center justify-center gap-2 ${
+                          feedback.type === "correct"
+                            ? "text-accent"
+                            : "text-destructive"
+                        }`}
+                      >
+                        {feedback.type === "correct" ? (
+                          <CheckCircle className="h-5 w-5" />
+                        ) : (
+                          <XCircle className="h-5 w-5" />
+                        )}
+                        <span className="font-medium" data-testid="text-feedback">{feedback.message}</span>
+                      </motion.div>
                     )}
-                  </Button>
+                  </AnimatePresence>
                 </div>
 
                 <div className="flex flex-wrap gap-1 justify-center">
