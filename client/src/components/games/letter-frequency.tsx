@@ -10,6 +10,7 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader
 import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   A: 5, B: 3, C: 4, D: 4, E: 5, F: 3, G: 4, H: 4, I: 5, J: 2, K: 3, L: 4, M: 4,
@@ -96,6 +97,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 }
 
 export function LetterFrequencyGame() {
+  const { playSound } = useSound();
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -132,6 +134,7 @@ export function LetterFrequencyGame() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           stopTimer();
+          playSound("lose");
           setGameStatus("lost");
           return 0;
         }
@@ -177,6 +180,7 @@ export function LetterFrequencyGame() {
     const upperWord = userInput.toUpperCase();
 
     if (usedWords.has(upperWord)) {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -189,7 +193,8 @@ export function LetterFrequencyGame() {
         : { valid: false, message: "No constraint" };
     
     if (!constraintCheck.valid) {
-      setFeedback({ type: "wrong", message: constraintCheck.message });
+      playSound("wrong");
+        setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
     }
@@ -197,12 +202,14 @@ export function LetterFrequencyGame() {
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
-        setFeedback({ type: "invalid", message: "Not a valid word!" });
+        playSound("wrong");
+          setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
       }
 
-      setFeedback({ type: "correct", message: "Correct!" });
+      playSound("correct");
+        setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
       const countBonus = challenge === "multi" && multiConstraint
@@ -215,6 +222,7 @@ export function LetterFrequencyGame() {
 
       if (newWordsCompleted >= wordsPerChallenge) {
         stopTimer();
+        playSound("win");
         setGameStatus("won");
       } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
         if (challenge === "multi") {
@@ -230,6 +238,7 @@ export function LetterFrequencyGame() {
         inputRef.current?.focus();
       }, 500);
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
       setTimeout(() => setFeedback(null), 1500);
     }

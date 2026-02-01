@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
+import { SoundProvider } from "@/lib/sound-provider";
 import { Navigation } from "@/components/navigation";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
@@ -25,7 +26,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <TooltipProvider>
+        <SoundProvider>
+          <TooltipProvider>
           <div className="min-h-screen bg-background">
             <Navigation />
             <main>
@@ -33,7 +35,8 @@ function App() {
             </main>
           </div>
           <Toaster />
-        </TooltipProvider>
+          </TooltipProvider>
+        </SoundProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

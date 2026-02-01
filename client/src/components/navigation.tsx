@@ -1,12 +1,14 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme-provider";
-import { Sun, Moon, Gamepad2, Home, Info } from "lucide-react";
+import { useSound } from "@/lib/sound-provider";
+import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { soundEnabled, toggleSound } = useSound();
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
@@ -50,6 +52,18 @@ export function Navigation() {
               </Link>
             );
           })}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSound}
+            data-testid="button-sound-toggle"
+          >
+            {soundEnabled ? (
+              <Volume2 className="h-5 w-5" />
+            ) : (
+              <VolumeX className="h-5 w-5" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="icon"

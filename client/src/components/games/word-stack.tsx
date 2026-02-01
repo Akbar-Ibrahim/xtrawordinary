@@ -9,6 +9,7 @@ import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pe
 import { ShareResults } from "@/components/share-results";
 import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useSound } from "@/lib/sound-provider";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = "build-up" | "break-down" | null;
@@ -29,6 +30,7 @@ const challenges = [
 ];
 
 export function WordStackGame() {
+  const { playSound } = useSound();
   const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordStackPuzzle[]>({
     queryKey: ["/api/games/word-stack/puzzles"],
     refetchOnMount: "always",
@@ -159,6 +161,7 @@ export function WordStackGame() {
     const targetLength = currentPuzzle.targetWord.length;
 
     if (upperInput.length !== requiredLength) {
+      playSound("wrong");
       setFeedback({ type: "wrong", message: `Word must be ${requiredLength} letters` });
       setTimeout(() => {
         setFeedback(null);
@@ -169,6 +172,7 @@ export function WordStackGame() {
 
     if (isBuildUp) {
       if (previousWord && !containsAllLetters(upperInput, previousWord)) {
+        playSound("wrong");
         setFeedback({ type: "wrong", message: `Must contain all letters from "${previousWord}"` });
         setTimeout(() => {
           setFeedback(null);
@@ -178,6 +182,7 @@ export function WordStackGame() {
       }
     } else {
       if (!isValidLetterRemoval(upperInput, previousWord)) {
+        playSound("wrong");
         setFeedback({ type: "wrong", message: `Must be "${previousWord}" with one letter removed` });
         setTimeout(() => {
           setFeedback(null);
@@ -190,6 +195,7 @@ export function WordStackGame() {
     try {
       const result = await validateMutation.mutateAsync(upperInput);
       if (!result.valid) {
+        playSound("wrong");
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
@@ -210,6 +216,7 @@ export function WordStackGame() {
         : upperInput.length === 2;
 
       if (isComplete) {
+        playSound("win");
         setFeedback({ type: "correct", message: "Stack Complete!" });
         setPuzzlesCompleted((prev) => prev + 1);
         const bonusPoints = showHint ? 50 : 100;
@@ -219,6 +226,7 @@ export function WordStackGame() {
           selectNewPuzzle();
         }, 1500);
       } else {
+        playSound("correct");
         setFeedback({ type: "correct", message: isBuildUp ? "Added to stack!" : "Removed a letter!" });
         setTimeout(() => {
           setFeedback(null);
@@ -226,6 +234,7 @@ export function WordStackGame() {
         }, 800);
       }
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Validation failed" });
       setTimeout(() => {
         setFeedback(null);

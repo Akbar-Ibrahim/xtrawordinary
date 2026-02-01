@@ -10,6 +10,7 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRigh
 import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -100,6 +101,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
 }
 
 export function WordLengthGame() {
+  const { playSound } = useSound();
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
@@ -129,6 +131,7 @@ export function WordLengthGame() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
+          playSound("lose");
           setGameStatus("lost");
           return 0;
         }
@@ -164,6 +167,7 @@ export function WordLengthGame() {
     const upperWord = userInput.toUpperCase();
 
     if (usedWords.has(upperWord)) {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => {
         setFeedback(null);
@@ -174,7 +178,8 @@ export function WordLengthGame() {
 
     const constraintCheck = validateConstraint(upperWord, constraint, variation);
     if (!constraintCheck.valid) {
-      setFeedback({ type: "wrong", message: constraintCheck.message });
+      playSound("wrong");
+        setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => {
         setFeedback(null);
         inputRef.current?.focus();
@@ -185,7 +190,8 @@ export function WordLengthGame() {
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
-        setFeedback({ type: "invalid", message: "Not a valid word!" });
+        playSound("wrong");
+          setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
           inputRef.current?.focus();
@@ -193,7 +199,8 @@ export function WordLengthGame() {
         return;
       }
 
-      setFeedback({ type: "correct", message: "Correct!" });
+      playSound("correct");
+        setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       setScore((prev) => prev + 100 + variation * 20);
       const newWordsCompleted = wordsCompleted + 1;
@@ -204,12 +211,14 @@ export function WordLengthGame() {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerVariation) {
           if (timerRef.current) clearInterval(timerRef.current);
+          playSound("win");
           setGameStatus("won");
         } else {
           inputRef.current?.focus();
         }
       }, 500);
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
       setTimeout(() => {
         setFeedback(null);

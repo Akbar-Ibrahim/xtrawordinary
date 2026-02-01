@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import type { DefinitionWord } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 export function DefinitionMatchGame() {
+  const { playSound } = useSound();
   const { data: words = [], isLoading, error, refetch } = useQuery<DefinitionWord[]>({
     queryKey: ["/api/games/definition-match/words"],
     refetchOnMount: "always",
@@ -30,6 +32,7 @@ export function DefinitionMatchGame() {
   const selectNewWord = useCallback(() => {
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
+      playSound("win");
       setGameStatus("won");
       return;
     }
@@ -68,6 +71,7 @@ export function DefinitionMatchGame() {
   const checkAnswer = () => {
     if (!currentWord) return;
     if (userInput.toUpperCase().trim() === currentWord.word.toUpperCase()) {
+      playSound("correct");
       setFeedback("correct");
       const points = 100 + streak * 20;
       setScore((prev) => prev + points);
@@ -78,6 +82,7 @@ export function DefinitionMatchGame() {
         selectNewWord();
       }, 1000);
     } else {
+      playSound("wrong");
       setFeedback("wrong");
       setStreak(0);
       setTimeout(() => setFeedback(null), 1000);

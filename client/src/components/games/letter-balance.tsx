@@ -10,6 +10,7 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowL
 import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -328,6 +329,7 @@ type GameState =
   | "game_over";     // Lost the game
 
 export function LetterBalanceGame() {
+  const { playSound } = useSound();
   const { data: config, isLoading: configLoading } = useQuery<VowelConsonantConfig>({
     queryKey: ["/api/games/letter-balance/config"],
   });
@@ -516,6 +518,7 @@ export function LetterBalanceGame() {
 
     // Check if already used
     if (usedWords.has(upperWord)) {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -524,7 +527,8 @@ export function LetterBalanceGame() {
     // Validate against constraint
     const constraintCheck = currentConstraint.validate(upperWord);
     if (!constraintCheck.valid) {
-      setFeedback({ type: "wrong", message: constraintCheck.message });
+      playSound("wrong");
+        setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
     }
@@ -533,14 +537,16 @@ export function LetterBalanceGame() {
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
-        setFeedback({ type: "invalid", message: "Not a valid word!" });
+        playSound("wrong");
+          setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
       }
 
       clearTimer();
       
-      setFeedback({ type: "correct", message: "Correct!" });
+      playSound("correct");
+        setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
       // Score based on word length and level difficulty
@@ -565,6 +571,7 @@ export function LetterBalanceGame() {
         }
       }, 500);
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
       setTimeout(() => setFeedback(null), 1500);
     }

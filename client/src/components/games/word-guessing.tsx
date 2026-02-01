@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Lightbulb, Trophy, X, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useSound } from "@/lib/sound-provider";
 
 const MAX_ATTEMPTS = 6;
 
@@ -17,6 +18,7 @@ interface LetterCell {
 }
 
 export function WordGuessingGame() {
+  const { playSound } = useSound();
   const { data: words = [], isLoading, error, refetch } = useQuery<string[]>({
     queryKey: ["/api/games/word-guessing/words"],
     refetchOnMount: "always",
@@ -99,9 +101,16 @@ export function WordGuessingGame() {
     setUsedLetters(newUsedLetters);
 
     if (currentGuess === targetWord) {
+      playSound("win");
       setGameStatus("won");
     } else if (newGuesses.length >= MAX_ATTEMPTS) {
+      playSound("lose");
       setGameStatus("lost");
+    } else {
+      const allCorrect = result.every(r => r.status === "correct");
+      if (!allCorrect && result.some(r => r.status === "present" || r.status === "absent")) {
+        playSound("wrong");
+      }
     }
 
     setCurrentGuess("");

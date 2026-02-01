@@ -10,11 +10,13 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader
 import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
 export function WordChainGame() {
+  const { playSound } = useSound();
 
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
@@ -99,6 +101,7 @@ export function WordChainGame() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           setTimerRunning(false);
+          playSound("lose");
           setGameStatus("lost");
           return 0;
         }
@@ -147,6 +150,7 @@ export function WordChainGame() {
     try {
       const result = await startWordMutation.mutateAsync({ variation: v, level: l });
       if (!result.word) {
+        playSound("wrong");
         setFeedback({ type: "invalid", message: "Could not start game" });
         return;
       }
@@ -159,6 +163,7 @@ export function WordChainGame() {
       // Start timer after state updates
       startTimer();
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
   }, [startWordMutation, timePerWord, stopTimer, startTimer]);
@@ -176,6 +181,7 @@ export function WordChainGame() {
 
     // Check if already used
     if (usedWords.has(upperWord)) {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -184,7 +190,8 @@ export function WordChainGame() {
     // Validate chain constraint locally first
     const constraintCheck = validateUserWord(upperWord);
     if (!constraintCheck.valid) {
-      setFeedback({ type: "wrong", message: constraintCheck.message });
+      playSound("wrong");
+        setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
     }
@@ -193,6 +200,7 @@ export function WordChainGame() {
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
+        playSound("wrong");
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
@@ -201,6 +209,7 @@ export function WordChainGame() {
       // Stop timer while processing
       stopTimer();
       
+      playSound("correct");
       setFeedback({ type: "correct", message: "Correct!" });
       const newUsedWordsArray = Array.from(usedWords).concat(upperWord);
       const newUsedWords = new Set(newUsedWordsArray);
@@ -216,8 +225,10 @@ export function WordChainGame() {
         
         if (newWordsCompleted >= wordsPerLevel) {
           if (level >= 2) {
+            playSound("win");
             setGameStatus("won");
           } else {
+            playSound("correct");
             setGameStatus("levelComplete");
           }
           return;
@@ -233,6 +244,7 @@ export function WordChainGame() {
           });
           
           if (!computerResult.word) {
+            playSound("win");
             setGameStatus("won");
             return;
           }
@@ -242,10 +254,12 @@ export function WordChainGame() {
           setChainHistory(prev => [...prev, { word: computerResult.word!, isPlayer: false }]);
           resetTimer();
         } catch {
+          playSound("win");
           setGameStatus("won");
         }
       }, 500);
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
       setTimeout(() => setFeedback(null), 1500);
     }

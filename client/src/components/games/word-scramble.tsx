@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import type { ScrambleWord } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 export function WordScrambleGame() {
+  const { playSound } = useSound();
   const { data: words = [], isLoading, error, refetch } = useQuery<ScrambleWord[]>({
     queryKey: ["/api/games/word-scramble/words"],
     refetchOnMount: "always",
@@ -42,6 +44,7 @@ export function WordScrambleGame() {
   const selectNewWord = useCallback(() => {
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
+      playSound("win");
       setGameStatus("won");
       return;
     }
@@ -81,6 +84,7 @@ export function WordScrambleGame() {
   const checkAnswer = () => {
     if (!currentWord) return;
     if (userInput.toUpperCase() === currentWord.word) {
+      playSound("correct");
       setFeedback("correct");
       const points = 100 + level * 20;
       setScore((prev) => prev + points);
@@ -95,11 +99,15 @@ export function WordScrambleGame() {
         selectNewWord();
       }, 800);
     } else {
+      playSound("wrong");
       setFeedback("wrong");
       setLives((prev) => {
         const newLives = prev - 1;
         if (newLives <= 0) {
-          setTimeout(() => setGameStatus("lost"), 800);
+          setTimeout(() => {
+            playSound("lose");
+            setGameStatus("lost");
+          }, 800);
         }
         return newLives;
       });
@@ -111,6 +119,7 @@ export function WordScrambleGame() {
     setLives((prev) => {
       const newLives = prev - 1;
       if (newLives <= 0) {
+        playSound("lose");
         setGameStatus("lost");
       } else {
         selectNewWord();

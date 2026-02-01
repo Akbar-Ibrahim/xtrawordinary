@@ -8,8 +8,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import type { AnagramWordSet } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 export function AnagramSolverGame() {
+  const { playSound } = useSound();
   const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
     queryKey: ["/api/games/anagram-solver/words"],
     refetchOnMount: "always",
@@ -30,6 +32,7 @@ export function AnagramSolverGame() {
   const selectNewWord = useCallback(() => {
     const availableIndices = activeWordSets.map((_, i) => i).filter(i => !usedSets.has(i));
     if (availableIndices.length === 0) {
+      playSound("win");
       setGameStatus("won");
       return;
     }
@@ -87,12 +90,14 @@ export function AnagramSolverGame() {
     const upperInput = userInput.toUpperCase().trim();
     
     if (foundAnagrams.includes(upperInput)) {
+      playSound("wrong");
       setFeedback({ type: "duplicate", message: "Already found!" });
       setTimeout(() => setFeedback(null), 1000);
       return;
     }
     
     if (currentSet.anagrams.includes(upperInput)) {
+      playSound("correct");
       setFeedback({ type: "correct", message: "Correct!" });
       const newFoundAnagrams = [...foundAnagrams, upperInput];
       setFoundAnagrams(newFoundAnagrams);
@@ -108,6 +113,7 @@ export function AnagramSolverGame() {
         }
       }, 500);
     } else {
+      playSound("wrong");
       setFeedback({ type: "wrong", message: "Not a valid anagram!" });
       setStreak(0);
       setTimeout(() => setFeedback(null), 1000);

@@ -9,10 +9,12 @@ import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Heart, Loader2 } fr
 import { ShareResults } from "@/components/share-results";
 import type { BuilderWord } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useSound } from "@/lib/sound-provider";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 
 export function WordBuilderGame() {
+  const { playSound } = useSound();
   const { data: words = [], isLoading, error, refetch } = useQuery<BuilderWord[]>({
     queryKey: ["/api/games/word-builder/words"],
     refetchOnMount: "always",
@@ -52,6 +54,7 @@ export function WordBuilderGame() {
   const selectNewWord = useCallback(() => {
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
+      playSound("win");
       setGameStatus("won");
       return;
     }
@@ -98,6 +101,7 @@ export function WordBuilderGame() {
     setDisplayedLetters(newDisplayedLetters);
 
     if (upperInput === currentWord.word.toUpperCase()) {
+      playSound("correct");
       setFeedback("correct");
       const points = showHint ? 50 : 100;
       setScore((prev) => prev + points);
@@ -107,11 +111,15 @@ export function WordBuilderGame() {
         selectNewWord();
       }, 1000);
     } else {
+      playSound("wrong");
       setFeedback("wrong");
       setLives((prev) => {
         const newLives = prev - 1;
         if (newLives <= 0) {
-          setTimeout(() => setGameStatus("lost"), 800);
+          setTimeout(() => {
+            playSound("lose");
+            setGameStatus("lost");
+          }, 800);
         }
         return newLives;
       });

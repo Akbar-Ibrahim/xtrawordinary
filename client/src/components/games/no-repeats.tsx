@@ -10,6 +10,7 @@ import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader
 import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -40,6 +41,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 }
 
 export function NoRepeatsGame() {
+  const { playSound } = useSound();
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -74,6 +76,7 @@ export function NoRepeatsGame() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           stopTimer();
+          playSound("lose");
           setGameStatus("lost");
           return 0;
         }
@@ -118,6 +121,7 @@ export function NoRepeatsGame() {
     const config = CHALLENGE_CONFIG[challenge];
 
     if (word.length !== config.wordLength) {
+      playSound("wrong");
       setFeedback({ type: "wrong", message: `Word must be exactly ${config.wordLength} letters` });
       setTimeout(() => setFeedback(null), 2000);
       return;
@@ -131,12 +135,14 @@ export function NoRepeatsGame() {
       const repeatedLetters = Object.entries(letterCounts)
         .filter(([_, count]) => count > 1)
         .map(([letter]) => letter);
+      playSound("wrong");
       setFeedback({ type: "wrong", message: `Letter${repeatedLetters.length > 1 ? "s" : ""} '${repeatedLetters.join("', '")}' repeated - all letters must be unique!` });
       setTimeout(() => setFeedback(null), 2000);
       return;
     }
 
     if (usedWords.has(word)) {
+      playSound("wrong");
       setFeedback({ type: "wrong", message: "You already used this word!" });
       setTimeout(() => setFeedback(null), 2000);
       return;
@@ -149,17 +155,21 @@ export function NoRepeatsGame() {
         setScore((prev) => prev + wordScore);
         setWordsCompleted((prev) => prev + 1);
         setUsedWords((prev) => new Set(Array.from(prev).concat(word)));
+        playSound("correct");
         setFeedback({ type: "correct", message: `+${wordScore} points!` });
         setUserInput("");
 
         if (wordsCompleted + 1 >= wordsPerChallenge) {
           stopTimer();
+          playSound("win");
           setGameStatus("won");
         }
       } else {
+        playSound("wrong");
         setFeedback({ type: "invalid", message: "Not a valid word in our dictionary" });
       }
     } catch {
+      playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
     }
     setTimeout(() => setFeedback(null), 2000);

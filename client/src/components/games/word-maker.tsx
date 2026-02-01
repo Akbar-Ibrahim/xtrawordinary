@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import type { MakerWord } from "@shared/schema";
+import { useSound } from "@/lib/sound-provider";
 
 export function WordMakerGame() {
+  const { playSound } = useSound();
   const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
     queryKey: ["/api/games/word-maker/words"],
     refetchOnMount: "always",
@@ -44,6 +46,7 @@ export function WordMakerGame() {
   const selectNewWord = useCallback(() => {
     const availableWords = activeWords.filter((w) => !usedBaseWords.has(w.baseWord));
     if (availableWords.length === 0) {
+      playSound("win");
       setGameStatus("won");
       return;
     }
@@ -83,18 +86,21 @@ export function WordMakerGame() {
     const word = userInput.toUpperCase().trim();
     
     if (word.length < 3) {
+      playSound("wrong");
       setFeedback("wrong");
       setTimeout(() => setFeedback(null), 800);
       return;
     }
 
     if (foundWords.has(word)) {
+      playSound("wrong");
       setFeedback("duplicate");
       setTimeout(() => setFeedback(null), 800);
       return;
     }
 
     if (!canFormWord(word, currentWord.baseWord)) {
+      playSound("wrong");
       setFeedback("wrong");
       setTimeout(() => setFeedback(null), 800);
       return;
@@ -105,6 +111,7 @@ export function WordMakerGame() {
       .includes(word);
 
     if (isValidDerivative) {
+      playSound("correct");
       setFeedback("correct");
       const newFoundWords = new Set(foundWords).add(word);
       setFoundWords(newFoundWords);
@@ -121,6 +128,7 @@ export function WordMakerGame() {
         setTimeout(() => setFeedback(null), 500);
       }
     } else {
+      playSound("wrong");
       setFeedback("wrong");
       setTimeout(() => setFeedback(null), 800);
     }
