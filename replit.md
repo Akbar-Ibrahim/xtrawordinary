@@ -169,3 +169,12 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
   - `POST /api/games/validate-word` - Secure word validation
   - `GET /api/games/letter-balance/config` - Letter Balance still uses backend config
   - `POST /api/games/word-chain/start` and `POST /api/games/word-chain/computer-word` - Require dictionary access
+
+### February 2026 - Social Sharing Feature
+- **ShareResults Component**: Added reusable component (`client/src/components/share-results.tsx`) for sharing game results
+  - Share via X (Twitter), Facebook, Copy to clipboard, and native share (on supported devices)
+  - Dynamically generates share text with game name, score, words completed, challenge name
+  - Includes game URL for easy sharing
+- **Integrated into all 14 games**: ShareResults component added to completion screens across all games
+  - Placed after score display, before action buttons (Play Again, Next Challenge, etc.)
+  - Respects win/loss state to generate appropriate share messages

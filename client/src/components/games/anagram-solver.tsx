@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { AnagramWordSet } from "@shared/schema";
 
 export function AnagramSolverGame() {
@@ -310,6 +311,12 @@ export function AnagramSolverGame() {
                     : `You found ${foundAnagrams.length} anagrams!`}
                 </p>
                 <div className="text-3xl font-bold text-primary">{score} points</div>
+                <ShareResults
+                  gameName="Anagram Solver"
+                  gameSlug="anagram-solver"
+                  score={score}
+                  isWin={gameStatus === "won"}
+                />
                 <Button onClick={initGame} data-testid="button-play-again">
                   Play Again
                 </Button>

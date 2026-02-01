@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Heart, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { BuilderWord } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -356,6 +357,13 @@ export function WordBuilderGame() {
                     {wordsCompleted} words completed
                   </div>
                 </div>
+                <ShareResults
+                  gameName="Word Builder"
+                  gameSlug="word-builder"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  isWin={gameStatus === "won"}
+                />
                 <Button onClick={initGame} data-testid="button-play-again">
                   Play Again
                 </Button>

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRight, Menu } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
@@ -386,6 +387,13 @@ export function WordLengthGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
+                <ShareResults
+                  gameName="Length Challenge"
+                  gameSlug="word-length"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  isWin={gameStatus === "won"}
+                />
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button 
                     variant="outline" 

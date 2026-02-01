@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
@@ -512,6 +513,13 @@ export function WordChainGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
+                <ShareResults
+                  gameName="Word Chain"
+                  gameSlug="word-chain"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  isWin={gameStatus === "won"}
+                />
                 <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
                   Play Again
                 </Button>

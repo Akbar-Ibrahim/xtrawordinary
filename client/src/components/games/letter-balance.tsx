@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
 
@@ -747,6 +748,15 @@ export function LetterBalanceGame() {
               <Trophy className="h-4 w-4" />
               {score} points
             </Badge>
+
+            <ShareResults
+              gameName="Letter Balance"
+              gameSlug="letter-balance"
+              score={score}
+              wordsCompleted={wordsCompleted}
+              challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
+              isWin={true}
+            />
             
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
               {canContinue && (
@@ -805,6 +815,15 @@ export function LetterBalanceGame() {
               <Trophy className="h-4 w-4" />
               {score} points
             </Badge>
+
+            <ShareResults
+              gameName="Letter Balance"
+              gameSlug="letter-balance"
+              score={score}
+              wordsCompleted={wordsCompleted}
+              challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
+              isWin={false}
+            />
             
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
               <Button

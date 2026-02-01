@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Hash, Menu } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
@@ -447,6 +448,14 @@ export function LetterFrequencyGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
+                <ShareResults
+                  gameName="Letter Frequency"
+                  gameSlug="letter-frequency"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  challengeName={CHALLENGE_CONFIG[challenge].name}
+                  isWin={true}
+                />
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button onClick={() => startGame(challenge)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
                     <RotateCcw className="h-4 w-4 mr-2" />
@@ -489,6 +498,14 @@ export function LetterFrequencyGame() {
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary">{score} points</div>
                 </div>
+                <ShareResults
+                  gameName="Letter Frequency"
+                  gameSlug="letter-frequency"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  challengeName={CHALLENGE_CONFIG[challenge].name}
+                  isWin={false}
+                />
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button onClick={() => startGame(challenge)} data-testid="button-try-again">
                     <RotateCcw className="h-4 w-4 mr-2" />

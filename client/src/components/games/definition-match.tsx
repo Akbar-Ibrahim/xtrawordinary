@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { DefinitionWord } from "@shared/schema";
 
 export function DefinitionMatchGame() {
@@ -277,6 +278,13 @@ export function DefinitionMatchGame() {
                   You matched all the definitions!
                 </p>
                 <div className="text-3xl font-bold text-primary">{score} points</div>
+                <ShareResults
+                  gameName="Definition Match"
+                  gameSlug="definition-match"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  isWin={true}
+                />
                 <Button onClick={initGame} data-testid="button-play-again">
                   Play Again
                 </Button>

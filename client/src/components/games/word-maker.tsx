@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { MakerWord } from "@shared/schema";
 
 export function WordMakerGame() {
@@ -325,6 +326,13 @@ export function WordMakerGame() {
                     {roundsCompleted} rounds completed
                   </div>
                 </div>
+                <ShareResults
+                  gameName="Word Maker"
+                  gameSlug="word-maker"
+                  score={score}
+                  wordsCompleted={roundsCompleted}
+                  isWin={true}
+                />
                 <Button onClick={initGame} data-testid="button-play-again">
                   Play Again
                 </Button>

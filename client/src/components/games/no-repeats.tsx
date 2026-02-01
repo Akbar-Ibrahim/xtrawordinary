@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Fingerprint, Menu } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 
@@ -241,6 +242,15 @@ export function NoRepeatsGame() {
               <span className="text-3xl font-bold" data-testid="text-final-score">{score}</span>
               <span className="text-muted-foreground">points</span>
             </div>
+
+            <ShareResults
+              gameName="No Repeats"
+              gameSlug="no-repeats"
+              score={score}
+              wordsCompleted={wordsCompleted}
+              challengeName={CHALLENGE_CONFIG[challenge].name}
+              isWin={gameStatus === "won"}
+            />
 
             {usedWords.size > 0 && (
               <div className="mb-6">

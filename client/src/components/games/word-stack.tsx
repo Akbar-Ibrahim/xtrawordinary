@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -313,6 +314,13 @@ export function WordStackGame() {
               <p className="text-xl">Final Score: <span className="font-bold text-primary">{score}</span></p>
               <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted}</p>
             </div>
+            <ShareResults
+              gameName="Word Stack"
+              gameSlug="word-stack"
+              score={score}
+              challengeName={selectedChallenge === "buildup" ? "Build Up" : "Break Down"}
+              isWin={true}
+            />
             <div className="flex gap-4 justify-center">
               <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
                 <RotateCcw className="mr-2 h-4 w-4" />

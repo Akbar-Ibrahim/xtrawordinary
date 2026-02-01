@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Lightbulb, Trophy, X, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 
 const MAX_ATTEMPTS = 6;
 
@@ -267,6 +268,12 @@ export function WordGuessingGame() {
                     </p>
                   </div>
                 )}
+                <ShareResults
+                  gameName="Word Guessing"
+                  gameSlug="word-guessing"
+                  score={MAX_ATTEMPTS - guesses.length + 1}
+                  isWin={gameStatus === "won"}
+                />
                 <Button onClick={initGame} className="mt-4" data-testid="button-play-again">
                   Play Again
                 </Button>

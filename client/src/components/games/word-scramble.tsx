@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2 } from "lucide-react";
+import { ShareResults } from "@/components/share-results";
 import type { ScrambleWord } from "@shared/schema";
 
 export function WordScrambleGame() {
@@ -326,6 +327,13 @@ export function WordScrambleGame() {
                     Level {level} • {wordsCompleted} words completed
                   </div>
                 </div>
+                <ShareResults
+                  gameName="Word Scramble"
+                  gameSlug="word-scramble"
+                  score={score}
+                  wordsCompleted={wordsCompleted}
+                  isWin={gameStatus === "won"}
+                />
                 <Button onClick={initGame} data-testid="button-play-again">
                   Play Again
                 </Button>
