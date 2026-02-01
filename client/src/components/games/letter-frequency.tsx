@@ -15,11 +15,18 @@ const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   N: 5, O: 5, P: 4, Q: 2, R: 4, S: 6, T: 5, U: 4, V: 3, W: 3, X: 2, Y: 3, Z: 2
 };
 
-type Challenge = 1 | 2 | 3 | 4 | "random";
+const MULTI_LETTER_POOL = "ABCDEFGHILMNOPRSTUWY".split("");
+
+type Challenge = 1 | 2 | 3 | 4 | "random" | "multi";
 
 type FrequencyConstraint = {
   letter: string;
   count: number;
+};
+
+type MultiLetterConstraint = {
+  letters: string[];
+  minCount: number;
 };
 
 const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; minCount: number; maxCount: number; changesPerWord: boolean }> = {
@@ -28,6 +35,7 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; m
   3: { name: "Challenge 3", description: "Find words with exactly 4 of a letter", minCount: 4, maxCount: 4, changesPerWord: false },
   4: { name: "Challenge 4", description: "Find words with 5+ of a letter", minCount: 5, maxCount: 6, changesPerWord: false },
   "random": { name: "Challenge Random", description: "Frequency changes after each word!", minCount: 2, maxCount: 5, changesPerWord: true },
+  "multi": { name: "Multi-Letter", description: "Each letter must appear at least 2 times", minCount: 2, maxCount: 2, changesPerWord: false },
 };
 
 function getLettersForCount(count: number): string[] {
@@ -45,6 +53,24 @@ function generateConstraint(challenge: Challenge): FrequencyConstraint {
   const letter = validLetters[Math.floor(Math.random() * validLetters.length)];
   
   return { letter, count };
+}
+
+function generateMultiLetterConstraint(): MultiLetterConstraint {
+  const letterCount = Math.random() < 0.5 ? 2 : 3;
+  const shuffled = [...MULTI_LETTER_POOL].sort(() => Math.random() - 0.5);
+  const letters = shuffled.slice(0, letterCount);
+  return { letters, minCount: 2 };
+}
+
+function validateMultiLetterConstraint(word: string, constraint: MultiLetterConstraint): { valid: boolean; message: string } {
+  const upperWord = word.toUpperCase();
+  for (const letter of constraint.letters) {
+    const occurrences = countLetterOccurrences(upperWord, letter);
+    if (occurrences < constraint.minCount) {
+      return { valid: false, message: `'${letter}' must appear at least ${constraint.minCount} times (found ${occurrences})` };
+    }
+  }
+  return { valid: true, message: "" };
 }
 
 function countLetterOccurrences(word: string, letter: string): number {
@@ -79,6 +105,7 @@ export function LetterFrequencyGame() {
   const [challenge, setChallenge] = useState<Challenge>(1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [constraint, setConstraint] = useState<FrequencyConstraint | null>(null);
+  const [multiConstraint, setMultiConstraint] = useState<MultiLetterConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
@@ -121,7 +148,13 @@ export function LetterFrequencyGame() {
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(generateConstraint(c));
+    if (c === "multi") {
+      setConstraint(null);
+      setMultiConstraint(generateMultiLetterConstraint());
+    } else {
+      setMultiConstraint(null);
+      setConstraint(generateConstraint(c));
+    }
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -137,7 +170,8 @@ export function LetterFrequencyGame() {
   }, [stopTimer]);
 
   const checkAnswer = async () => {
-    if (!userInput.trim() || !constraint) return;
+    if (!userInput.trim()) return;
+    if (challenge === "multi" ? !multiConstraint : !constraint) return;
 
     const upperWord = userInput.toUpperCase();
 
@@ -147,7 +181,12 @@ export function LetterFrequencyGame() {
       return;
     }
 
-    const constraintCheck = validateConstraint(upperWord, constraint);
+    const constraintCheck = challenge === "multi" && multiConstraint
+      ? validateMultiLetterConstraint(upperWord, multiConstraint)
+      : constraint
+        ? validateConstraint(upperWord, constraint)
+        : { valid: false, message: "No constraint" };
+    
     if (!constraintCheck.valid) {
       setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
@@ -165,7 +204,9 @@ export function LetterFrequencyGame() {
       setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
-      const countBonus = constraint.count * 20;
+      const countBonus = challenge === "multi" && multiConstraint
+        ? multiConstraint.letters.length * 30
+        : constraint ? constraint.count * 20 : 0;
       setScore((prev) => prev + 100 + countBonus);
       
       const newWordsCompleted = wordsCompleted + 1;
@@ -175,7 +216,11 @@ export function LetterFrequencyGame() {
         stopTimer();
         setGameStatus("won");
       } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
-        setConstraint(generateConstraint(challenge));
+        if (challenge === "multi") {
+          setMultiConstraint(generateMultiLetterConstraint());
+        } else {
+          setConstraint(generateConstraint(challenge));
+        }
       }
 
       setUserInput("");
@@ -222,7 +267,7 @@ export function LetterFrequencyGame() {
                 </div>
 
                 <div className="grid gap-3">
-                  {([1, 2, 3, 4, "random"] as Challenge[]).map((c) => (
+                  {([1, 2, 3, 4, "random", "multi"] as Challenge[]).map((c) => (
                     <Card
                       key={c}
                       className="cursor-pointer hover-elevate"
@@ -234,6 +279,8 @@ export function LetterFrequencyGame() {
                           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
                             {c === "random" ? (
                               <Zap className="h-5 w-5 text-muted-foreground" />
+                            ) : c === "multi" ? (
+                              <Hash className="h-5 w-5 text-muted-foreground" />
                             ) : (
                               <span className="font-bold text-muted-foreground">{c}</span>
                             )}
@@ -287,8 +334,18 @@ export function LetterFrequencyGame() {
 
                 <div className="text-center space-y-4">
                   <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">Find a word with</p>
-                    {constraint && (
+                    <p className="text-sm text-muted-foreground">
+                      {challenge === "multi" ? "Find a word where each letter appears at least 2 times" : "Find a word with"}
+                    </p>
+                    {challenge === "multi" && multiConstraint ? (
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
+                        {multiConstraint.letters.map((letter, idx) => (
+                          <Badge key={idx} variant="default" className="text-2xl px-4 py-2" data-testid={`badge-constraint-${idx}`}>
+                            {letter}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : constraint && (
                       <div className="flex items-center justify-center gap-2">
                         <Badge variant="default" className="text-2xl px-4 py-2" data-testid="badge-constraint">
                           {constraint.count}× {constraint.letter}
