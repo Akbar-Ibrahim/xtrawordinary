@@ -29,6 +29,7 @@ import { WordChainGame } from "@/components/games/word-chain";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { WordStackGame } from "@/components/games/word-stack";
+import { NoRepeatsGame } from "@/components/games/no-repeats";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -50,6 +51,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "letter-balance": LetterBalanceGame,
   "letter-frequency": LetterFrequencyGame,
   "word-stack": WordStackGame,
+  "no-repeats": NoRepeatsGame,
 };
 
 export default function GameDetail() {

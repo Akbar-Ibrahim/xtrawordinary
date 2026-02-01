@@ -506,6 +506,26 @@ const gamesData: Game[] = [
     icon: "Layers",
     color: "hsl(25, 85%, 55%)",
     playCount: 0
+  },
+  {
+    id: "14",
+    slug: "no-repeats",
+    name: "No Repeats",
+    description: "Find words where every letter is unique - no repeating letters allowed!",
+    longDescription: "Challenge your vocabulary with words that have no repeating letters! From 3-letter words to 9-letter masterpieces, every letter in your word must be different. Can you think of words without any duplicate letters?",
+    rules: [
+      "Enter words where every letter is unique (no letter appears more than once)",
+      "Challenge 3: Find 3-letter words with all unique letters",
+      "Challenge 4: Find 4-letter words with all unique letters",
+      "Challenge 5-9: Progressively longer words with unique letters",
+      "Words must be valid English words",
+      "Score points based on word length - longer words earn more!"
+    ],
+    difficulty: "medium",
+    estimatedTime: "5-8 min",
+    icon: "Fingerprint",
+    color: "hsl(180, 70%, 45%)",
+    playCount: 0
   }
 ];
 
