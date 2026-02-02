@@ -49,8 +49,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const soundEnabledRef = useRef(soundEnabled);
 
   useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
     localStorage.setItem("soundEnabled", String(soundEnabled));
   }, [soundEnabled]);
 
@@ -62,7 +64,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const playSound = useCallback((type: SoundType) => {
-    if (!soundEnabled) return;
+    if (!soundEnabledRef.current) return;
 
     try {
       const audioContext = getAudioContext();
@@ -91,7 +93,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.warn("Could not play sound:", error);
     }
-  }, [soundEnabled, getAudioContext]);
+  }, [getAudioContext]);
 
   const toggleSound = useCallback(() => {
     setSoundEnabled((prev) => !prev);
