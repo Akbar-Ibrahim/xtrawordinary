@@ -178,3 +178,19 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
 - **Integrated into all 14 games**: ShareResults component added to completion screens across all games
   - Placed after score display, before action buttons (Play Again, Next Challenge, etc.)
   - Respects win/loss state to generate appropriate share messages
+
+### February 2026 - Sound Effects System
+- **SoundProvider Context**: Added `client/src/lib/sound-provider.tsx` with Web Audio API for programmatic sound generation
+  - Uses refs to avoid stale closures when playSound is captured in memoized callbacks
+  - 6 sound types: correct (pleasant chime), wrong (soft buzzer), win (victory fanfare), lose (descending tones), tick (timer warning), click (button feedback)
+  - No audio files required - all sounds generated via oscillators with frequency/duration/type configuration
+- **Sound Toggle**: Added to navigation header (`client/src/components/navigation.tsx`)
+  - Uses Volume2/VolumeX icons to indicate state
+  - Persists preference to localStorage
+- **Integration**: All 14 games integrated with sound effects
+  - correct: played on valid word submissions
+  - wrong: played on invalid submissions or wrong answers
+  - win: played when completing a challenge successfully
+  - lose: played when running out of lives/time
+  - tick: played on timer warnings
+  - click: available for button interactions
