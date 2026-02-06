@@ -194,3 +194,16 @@ The `shared/` directory contains TypeScript types and Zod schemas used by both f
   - lose: played when running out of lives/time
   - tick: played on timer warnings
   - click: available for button interactions
+
+### February 2026 - Visual & UI Improvements
+- **AnimatedNumber Component**: Added `client/src/components/animated-number.tsx` for smooth score animations
+  - Uses requestAnimationFrame with cubic ease-out for 60fps transitions
+  - Integrated into all 13 score-displaying games (all except Word Guessing which has no score state)
+  - Applied to both gameplay score badges and completion screen score displays
+- **StreakIndicator Component**: Added `client/src/components/streak-indicator.tsx` for consecutive correct answer tracking
+  - Shows animated flame icon with streak count (e.g., "2x") when streak > 1
+  - Uses framer-motion spring animation for entrance/exit and pulsing flame effect
+  - Streak tracking added to 13 games (not Word Guessing - Wordle-style doesn't suit streaks)
+  - Streak increments on correct answers, resets on wrong answers and game restart
+- **Enter Key Support**: All text-input games support Enter to submit (already implemented via onKeyDown handlers)
+- **Bug Fix**: Fixed pre-existing typo in word-stack.tsx ("buildup" → "build-up" to match ChallengeType)
