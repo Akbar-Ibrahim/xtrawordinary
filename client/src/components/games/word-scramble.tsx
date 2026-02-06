@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import type { ScrambleWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 
@@ -22,6 +24,7 @@ export function WordScrambleGame() {
   const [scrambledWord, setScrambledWord] = useState("");
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
   const [lives, setLives] = useState(3);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
@@ -62,6 +65,7 @@ export function WordScrambleGame() {
     if (freshWords.length === 0) return;
     setActiveWords(freshWords);
     setScore(0);
+    setStreak(0);
     setLevel(1);
     setLives(3);
     setGameStatus("playing");
@@ -86,6 +90,7 @@ export function WordScrambleGame() {
     if (userInput.toUpperCase() === currentWord.word) {
       playSound("correct");
       setFeedback("correct");
+      setStreak(prev => prev + 1);
       const points = 100 + level * 20;
       setScore((prev) => prev + points);
       setWordsCompleted((prev) => prev + 1);
@@ -101,6 +106,7 @@ export function WordScrambleGame() {
     } else {
       playSound("wrong");
       setFeedback("wrong");
+      setStreak(0);
       setLives((prev) => {
         const newLives = prev - 1;
         if (newLives <= 0) {
@@ -167,8 +173,9 @@ export function WordScrambleGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
             <Zap className="h-3.5 w-3.5" />
             Level {level}
@@ -331,7 +338,7 @@ export function WordScrambleGame() {
                     : `The word was "${currentWord.word}"`}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">
                     Level {level} • {wordsCompleted} words completed
                   </div>

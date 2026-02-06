@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -47,6 +49,7 @@ export function WordChainGame() {
   const [currentWord, setCurrentWord] = useState<string>("");
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(10);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost" | "levelComplete">("menu");
@@ -140,6 +143,7 @@ export function WordChainGame() {
     setVariation(v);
     setLevel(l);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
     setChainHistory([]);
@@ -182,6 +186,7 @@ export function WordChainGame() {
     // Check if already used
     if (usedWords.has(upperWord)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -191,6 +196,7 @@ export function WordChainGame() {
     const constraintCheck = validateUserWord(upperWord);
     if (!constraintCheck.valid) {
       playSound("wrong");
+      setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -201,6 +207,7 @@ export function WordChainGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
@@ -210,6 +217,7 @@ export function WordChainGame() {
       stopTimer();
       
       playSound("correct");
+      setStreak(prev => prev + 1);
       setFeedback({ type: "correct", message: "Correct!" });
       const newUsedWordsArray = Array.from(usedWords).concat(upperWord);
       const newUsedWords = new Set(newUsedWordsArray);
@@ -321,8 +329,9 @@ export function WordChainGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-progress">
             <Zap className="h-3.5 w-3.5" />
             {wordsCompleted}/{wordsPerLevel}
@@ -525,7 +534,7 @@ export function WordChainGame() {
                     : `You chained ${wordsCompleted} words`}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Word Chain"

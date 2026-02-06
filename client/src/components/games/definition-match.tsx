@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import type { DefinitionWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 
@@ -136,13 +138,9 @@ export function DefinitionMatchGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
-          {streak > 1 && (
-            <Badge className="bg-accent text-accent-foreground" data-testid="badge-streak">
-              {streak}x streak
-            </Badge>
-          )}
+          <StreakIndicator streak={streak} />
         </div>
         <Button
           variant="outline"
@@ -282,7 +280,7 @@ export function DefinitionMatchGame() {
                 <p className="text-muted-foreground">
                   You matched all the definitions!
                 </p>
-                <div className="text-3xl font-bold text-primary">{score} points</div>
+                <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 <ShareResults
                   gameName="Definition Match"
                   gameSlug="definition-match"

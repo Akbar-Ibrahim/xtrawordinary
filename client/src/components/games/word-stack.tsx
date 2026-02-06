@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
@@ -49,6 +51,7 @@ export function WordStackGame() {
   const [stack, setStack] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [puzzlesCompleted, setPuzzlesCompleted] = useState(0);
   const [gameStatus, setGameStatus] = useState<"selecting" | "playing" | "complete">("selecting");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
@@ -116,6 +119,7 @@ export function WordStackGame() {
     setSelectedChallenge(challenge);
     setActivePuzzles(freshPuzzles);
     setScore(0);
+    setStreak(0);
     setPuzzlesCompleted(0);
     setGameStatus("playing");
     setUsedPuzzles(new Set());
@@ -141,6 +145,7 @@ export function WordStackGame() {
     setCurrentPuzzle(null);
     setStack([]);
     setScore(0);
+    setStreak(0);
     setPuzzlesCompleted(0);
   };
 
@@ -162,6 +167,7 @@ export function WordStackGame() {
 
     if (upperInput.length !== requiredLength) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "wrong", message: `Word must be ${requiredLength} letters` });
       setTimeout(() => {
         setFeedback(null);
@@ -173,6 +179,7 @@ export function WordStackGame() {
     if (isBuildUp) {
       if (previousWord && !containsAllLetters(upperInput, previousWord)) {
         playSound("wrong");
+        setStreak(0);
         setFeedback({ type: "wrong", message: `Must contain all letters from "${previousWord}"` });
         setTimeout(() => {
           setFeedback(null);
@@ -183,6 +190,7 @@ export function WordStackGame() {
     } else {
       if (!isValidLetterRemoval(upperInput, previousWord)) {
         playSound("wrong");
+        setStreak(0);
         setFeedback({ type: "wrong", message: `Must be "${previousWord}" with one letter removed` });
         setTimeout(() => {
           setFeedback(null);
@@ -196,6 +204,7 @@ export function WordStackGame() {
       const result = await validateMutation.mutateAsync(upperInput);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
@@ -207,6 +216,7 @@ export function WordStackGame() {
       const newStack = [...stack, upperInput];
       setStack(newStack);
       setUserInput("");
+      setStreak(prev => prev + 1);
       
       const points = showHint ? 25 : 50;
       setScore((prev) => prev + points);
@@ -320,14 +330,14 @@ export function WordStackGame() {
             <Trophy className="h-16 w-16 mx-auto text-yellow-500" />
             <h2 className="text-3xl font-bold">All Puzzles Complete!</h2>
             <div className="space-y-2">
-              <p className="text-xl">Final Score: <span className="font-bold text-primary">{score}</span></p>
+              <p className="text-xl">Final Score: <span className="font-bold text-primary"><AnimatedNumber value={score} /></span></p>
               <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted}</p>
             </div>
             <ShareResults
               gameName="Word Stack"
               gameSlug="word-stack"
               score={score}
-              challengeName={selectedChallenge === "buildup" ? "Build Up" : "Break Down"}
+              challengeName={selectedChallenge === "build-up" ? "Build Up" : "Break Down"}
               isWin={true}
             />
             <div className="flex gap-4 justify-center">
@@ -371,8 +381,9 @@ export function WordStackGame() {
       <div className="flex justify-between items-center flex-wrap gap-2">
         <div className="flex gap-4">
           <Badge variant="secondary" className="text-lg px-4 py-2" data-testid="badge-score">
-            Score: {score}
+            Score: <AnimatedNumber value={score} />
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge variant="outline" className="text-lg px-4 py-2" data-testid="badge-puzzles">
             Puzzles: {puzzlesCompleted}
           </Badge>

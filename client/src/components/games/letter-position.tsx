@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -62,6 +64,7 @@ export function LetterPositionGame() {
   const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
@@ -99,6 +102,7 @@ export function LetterPositionGame() {
     stopTimer();
     setChallenge(c);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
@@ -126,6 +130,7 @@ export function LetterPositionGame() {
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -134,6 +139,7 @@ export function LetterPositionGame() {
     const constraintCheck = validateConstraint(upperWord, constraint);
     if (!constraintCheck.valid) {
       playSound("wrong");
+      setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -143,12 +149,14 @@ export function LetterPositionGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
           setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
       }
 
       playSound("correct");
+      setStreak(prev => prev + 1);
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
@@ -246,8 +254,9 @@ export function LetterPositionGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
             <Zap className="h-3.5 w-3.5" />
             {CHALLENGE_CONFIG[challenge].name}
@@ -399,7 +408,7 @@ export function LetterPositionGame() {
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Position Master"
@@ -449,7 +458,7 @@ export function LetterPositionGame() {
                   You completed {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Position Master"

@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Fingerprint, Menu } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -53,6 +55,7 @@ export function NoRepeatsGame() {
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
@@ -89,6 +92,7 @@ export function NoRepeatsGame() {
     stopTimer();
     setChallenge(c);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
@@ -103,6 +107,7 @@ export function NoRepeatsGame() {
     stopTimer();
     setGameStatus("menu");
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
@@ -122,6 +127,7 @@ export function NoRepeatsGame() {
 
     if (word.length !== config.wordLength) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "wrong", message: `Word must be exactly ${config.wordLength} letters` });
       setTimeout(() => setFeedback(null), 2000);
       return;
@@ -136,6 +142,7 @@ export function NoRepeatsGame() {
         .filter(([_, count]) => count > 1)
         .map(([letter]) => letter);
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "wrong", message: `Letter${repeatedLetters.length > 1 ? "s" : ""} '${repeatedLetters.join("', '")}' repeated - all letters must be unique!` });
       setTimeout(() => setFeedback(null), 2000);
       return;
@@ -143,6 +150,7 @@ export function NoRepeatsGame() {
 
     if (usedWords.has(word)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "wrong", message: "You already used this word!" });
       setTimeout(() => setFeedback(null), 2000);
       return;
@@ -153,6 +161,7 @@ export function NoRepeatsGame() {
       if (result.valid) {
         const wordScore = config.wordLength * 10;
         setScore((prev) => prev + wordScore);
+        setStreak(prev => prev + 1);
         setWordsCompleted((prev) => prev + 1);
         setUsedWords((prev) => new Set(Array.from(prev).concat(word)));
         playSound("correct");
@@ -166,6 +175,7 @@ export function NoRepeatsGame() {
         }
       } else {
         playSound("wrong");
+        setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word in our dictionary" });
       }
     } catch {
@@ -249,7 +259,7 @@ export function NoRepeatsGame() {
             </p>
             <div className="flex items-center justify-center gap-2 mb-6">
               <Zap className="w-5 h-5 text-yellow-500" />
-              <span className="text-3xl font-bold" data-testid="text-final-score">{score}</span>
+              <span className="text-3xl font-bold" data-testid="text-final-score"><AnimatedNumber value={score} /></span>
               <span className="text-muted-foreground">points</span>
             </div>
 
@@ -310,8 +320,9 @@ export function NoRepeatsGame() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-yellow-500" />
-            <span className="font-bold" data-testid="text-score">{score}</span>
+            <span className="font-bold" data-testid="text-score"><AnimatedNumber value={score} /></span>
           </div>
+          <StreakIndicator streak={streak} />
           <div className="flex items-center gap-2">
             <Timer className={`w-4 h-4 ${timeLeft <= 30 ? "text-destructive" : "text-muted-foreground"}`} />
             <span className={`font-mono ${timeLeft <= 30 ? "text-destructive font-bold" : ""}`} data-testid="text-timer">

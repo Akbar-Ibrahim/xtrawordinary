@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -90,6 +92,7 @@ export function ContainsLettersGame() {
   const [currentLetters, setCurrentLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
@@ -133,6 +136,7 @@ export function ContainsLettersGame() {
     stopTimer();
     setChallenge(c);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
@@ -160,6 +164,7 @@ export function ContainsLettersGame() {
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => {
         setFeedback(null);
@@ -170,6 +175,7 @@ export function ContainsLettersGame() {
     const constraintCheck = validateContainsLetters(upperWord, currentLetters);
     if (!constraintCheck.valid) {
       playSound("wrong");
+      setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => {
         setFeedback(null);
@@ -181,6 +187,7 @@ export function ContainsLettersGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
           setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
@@ -191,6 +198,7 @@ export function ContainsLettersGame() {
       playSound("correct");
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      setStreak(prev => prev + 1);
       
       const challengeBonus = challenge === "advanced" ? 50 : (challenge as number) * 25;
       setScore((prev) => prev + 100 + challengeBonus);
@@ -271,8 +279,9 @@ export function ContainsLettersGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
             <Zap className="h-3.5 w-3.5" />
             {CHALLENGE_CONFIG[challenge].name}
@@ -430,7 +439,7 @@ export function ContainsLettersGame() {
                   You found {wordsCompleted} words!
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
@@ -480,7 +489,7 @@ export function ContainsLettersGame() {
                   You found {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"

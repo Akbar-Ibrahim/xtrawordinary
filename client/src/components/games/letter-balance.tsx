@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -351,6 +353,7 @@ export function LetterBalanceGame() {
   // Gameplay state
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(12);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
@@ -439,6 +442,7 @@ export function LetterBalanceGame() {
     // Reset all game state
     setSelectedLevel(level);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
     setUserInput("");
@@ -519,6 +523,7 @@ export function LetterBalanceGame() {
     // Check if already used
     if (usedWords.has(upperWord)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -528,6 +533,7 @@ export function LetterBalanceGame() {
     const constraintCheck = currentConstraint.validate(upperWord);
     if (!constraintCheck.valid) {
       playSound("wrong");
+      setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
       return;
@@ -538,6 +544,7 @@ export function LetterBalanceGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
           setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
         return;
@@ -547,6 +554,7 @@ export function LetterBalanceGame() {
       
       playSound("correct");
         setFeedback({ type: "correct", message: "Correct!" });
+      setStreak(prev => prev + 1);
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
       // Score based on word length and level difficulty
@@ -753,7 +761,7 @@ export function LetterBalanceGame() {
             
             <Badge variant="outline" className="text-lg px-4 py-2 gap-2">
               <Trophy className="h-4 w-4" />
-              {score} points
+              <AnimatedNumber value={score} /> points
             </Badge>
 
             <ShareResults
@@ -820,7 +828,7 @@ export function LetterBalanceGame() {
             
             <Badge variant="outline" className="text-lg px-4 py-2 gap-2">
               <Trophy className="h-4 w-4" />
-              {score} points
+              <AnimatedNumber value={score} /> points
             </Badge>
 
             <ShareResults
@@ -867,8 +875,9 @@ export function LetterBalanceGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           {selectedLevel !== "advanced" && (
             <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
               <Zap className="h-3.5 w-3.5" />

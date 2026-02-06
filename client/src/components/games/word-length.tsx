@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRight, Menu } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
@@ -114,6 +116,7 @@ export function WordLengthGame() {
   const [constraint, setConstraint] = useState<LevelConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
@@ -144,6 +147,7 @@ export function WordLengthGame() {
   const startGame = useCallback((varId: number) => {
     setVariation(varId);
     setScore(0);
+    setStreak(0);
     setWordsCompleted(0);
     setTimeLeft(timePerVariation);
     setUsedWords(new Set());
@@ -168,6 +172,7 @@ export function WordLengthGame() {
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
+      setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => {
         setFeedback(null);
@@ -179,6 +184,7 @@ export function WordLengthGame() {
     const constraintCheck = validateConstraint(upperWord, constraint, variation);
     if (!constraintCheck.valid) {
       playSound("wrong");
+      setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => {
         setFeedback(null);
@@ -191,6 +197,7 @@ export function WordLengthGame() {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
         playSound("wrong");
+        setStreak(0);
           setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
           setFeedback(null);
@@ -200,6 +207,7 @@ export function WordLengthGame() {
       }
 
       playSound("correct");
+      setStreak(prev => prev + 1);
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       setScore((prev) => prev + 100 + variation * 20);
@@ -266,8 +274,9 @@ export function WordLengthGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-variation">
             <Zap className="h-3.5 w-3.5" />
             Variation {variation}
@@ -415,7 +424,7 @@ export function WordLengthGame() {
                     : `You completed ${wordsCompleted} words`}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
                 <ShareResults
                   gameName="Length Challenge"

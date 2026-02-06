@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import type { MakerWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 
@@ -23,6 +25,7 @@ export function WordMakerGame() {
   const [userInput, setUserInput] = useState("");
   const [foundWords, setFoundWords] = useState<Set<string>>(new Set());
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "duplicate" | null>(null);
   const [usedBaseWords, setUsedBaseWords] = useState<Set<string>>(new Set());
@@ -64,6 +67,7 @@ export function WordMakerGame() {
     if (freshWords.length === 0) return;
     setActiveWords(freshWords);
     setScore(0);
+    setStreak(0);
     setRoundsCompleted(0);
     setGameStatus("playing");
     setUsedBaseWords(new Set());
@@ -88,6 +92,7 @@ export function WordMakerGame() {
     if (word.length < 3) {
       playSound("wrong");
       setFeedback("wrong");
+      setStreak(0);
       setTimeout(() => setFeedback(null), 800);
       return;
     }
@@ -95,6 +100,7 @@ export function WordMakerGame() {
     if (foundWords.has(word)) {
       playSound("wrong");
       setFeedback("duplicate");
+      setStreak(0);
       setTimeout(() => setFeedback(null), 800);
       return;
     }
@@ -102,6 +108,7 @@ export function WordMakerGame() {
     if (!canFormWord(word, currentWord.baseWord)) {
       playSound("wrong");
       setFeedback("wrong");
+      setStreak(0);
       setTimeout(() => setFeedback(null), 800);
       return;
     }
@@ -113,6 +120,7 @@ export function WordMakerGame() {
     if (isValidDerivative) {
       playSound("correct");
       setFeedback("correct");
+      setStreak(prev => prev + 1);
       const newFoundWords = new Set(foundWords).add(word);
       setFoundWords(newFoundWords);
       setScore((prev) => prev + word.length * 10);
@@ -130,6 +138,7 @@ export function WordMakerGame() {
     } else {
       playSound("wrong");
       setFeedback("wrong");
+      setStreak(0);
       setTimeout(() => setFeedback(null), 800);
     }
   };
@@ -175,8 +184,9 @@ export function WordMakerGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-rounds">
             <Sparkles className="h-3.5 w-3.5" />
             {roundsCompleted} rounds
@@ -329,7 +339,7 @@ export function WordMakerGame() {
                   You completed all the word challenges!
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">
                     {roundsCompleted} rounds completed
                   </div>

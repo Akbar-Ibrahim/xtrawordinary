@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Heart, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
+import { StreakIndicator } from "@/components/streak-indicator";
 import type { BuilderWord } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
@@ -32,6 +34,7 @@ export function WordBuilderGame() {
   const [userInput, setUserInput] = useState("");
   const [displayedLetters, setDisplayedLetters] = useState<string[]>([]);
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [lives, setLives] = useState(3);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
@@ -73,6 +76,7 @@ export function WordBuilderGame() {
     if (freshWords.length === 0) return;
     setActiveWords(freshWords);
     setScore(0);
+    setStreak(0);
     setLives(3);
     setWordsCompleted(0);
     setGameStatus("playing");
@@ -103,6 +107,7 @@ export function WordBuilderGame() {
     if (upperInput === currentWord.word.toUpperCase()) {
       playSound("correct");
       setFeedback("correct");
+      setStreak(prev => prev + 1);
       const points = showHint ? 50 : 100;
       setScore((prev) => prev + points);
       setWordsCompleted((prev) => prev + 1);
@@ -113,6 +118,7 @@ export function WordBuilderGame() {
     } else {
       playSound("wrong");
       setFeedback("wrong");
+      setStreak(0);
       setLives((prev) => {
         const newLives = prev - 1;
         if (newLives <= 0) {
@@ -173,8 +179,9 @@ export function WordBuilderGame() {
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
             <Trophy className="h-3.5 w-3.5" />
-            {score} pts
+            <AnimatedNumber value={score} /> pts
           </Badge>
+          <StreakIndicator streak={streak} />
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1" data-testid="lives-display">
@@ -360,7 +367,7 @@ export function WordBuilderGame() {
                     : `The word was "${currentWord.word}"`}
                 </p>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold text-primary">{score} points</div>
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">
                     {wordsCompleted} words completed
                   </div>
