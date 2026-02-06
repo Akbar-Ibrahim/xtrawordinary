@@ -176,6 +176,8 @@ export function AnagramSolverGame() {
             variant="outline"
             className={`gap-1.5 ${timeLeft <= 10 ? "text-destructive border-destructive" : ""}`}
             data-testid="badge-timer"
+            role="timer"
+            aria-label={`Time remaining: ${formatTime(timeLeft)}`}
           >
             <Timer className="h-3.5 w-3.5" />
             {formatTime(timeLeft)}
@@ -240,6 +242,7 @@ export function AnagramSolverGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Type an anagram..."
+                      aria-label="Type an anagram"
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
@@ -264,15 +267,17 @@ export function AnagramSolverGame() {
                     )}
                   </div>
 
-                  {feedback && feedback.type !== "correct" && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-sm text-destructive"
-                    >
-                      {feedback.message}
-                    </motion.p>
-                  )}
+                  <div aria-live="polite">
+                    {feedback && feedback.type !== "correct" && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center text-sm text-destructive"
+                      >
+                        {feedback.message}
+                      </motion.p>
+                    )}
+                  </div>
 
                   <Button
                     onClick={checkAnswer}

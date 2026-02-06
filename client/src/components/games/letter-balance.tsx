@@ -896,6 +896,8 @@ export function LetterBalanceGame() {
             variant={timeLeft <= 3 ? "destructive" : "secondary"} 
             className="gap-1.5 min-w-[60px] justify-center" 
             data-testid="badge-timer"
+            role="timer"
+            aria-label={`${timeLeft} seconds remaining`}
           >
             <Timer className="h-3.5 w-3.5" />
             {timeLeft}s
@@ -958,6 +960,7 @@ export function LetterBalanceGame() {
                     onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                     onKeyDown={handleKeyDown}
                     placeholder="Enter a word..."
+                    aria-label="Enter your word"
                     className={`text-center text-lg font-semibold tracking-wider uppercase ${
                       feedback?.type === "correct"
                         ? "border-accent bg-accent/10"
@@ -983,18 +986,20 @@ export function LetterBalanceGame() {
                   )}
                 </div>
 
-                {feedback && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`text-center text-sm font-medium ${
-                      feedback.type === "correct" ? "text-accent" : "text-destructive"
-                    }`}
-                    data-testid="text-feedback"
-                  >
-                    {feedback.message}
-                  </motion.p>
-                )}
+                <div aria-live="polite">
+                  {feedback && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`text-center text-sm font-medium ${
+                        feedback.type === "correct" ? "text-accent" : "text-destructive"
+                      }`}
+                      data-testid="text-feedback"
+                    >
+                      {feedback.message}
+                    </motion.p>
+                  )}
+                </div>
 
                 <Button
                   className="w-full"

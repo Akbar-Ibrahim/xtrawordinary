@@ -56,6 +56,7 @@ export function Navigation() {
             variant="ghost"
             size="icon"
             onClick={toggleSound}
+            aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}
             data-testid="button-sound-toggle"
           >
             {soundEnabled ? (
@@ -68,6 +69,7 @@ export function Navigation() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
+            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
             data-testid="button-theme-toggle"
           >
             {theme === "light" ? (

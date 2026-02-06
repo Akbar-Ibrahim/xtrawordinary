@@ -283,7 +283,7 @@ export function WordLengthGame() {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer">
+          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}>
             <Timer className="h-3.5 w-3.5" />
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
           </Badge>
@@ -345,6 +345,7 @@ export function WordLengthGame() {
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       placeholder={`Enter a ${constraint?.length || 5}-letter word...`}
+                      aria-label="Enter your word"
                       className="text-center text-lg uppercase"
                       maxLength={constraint?.length || 8}
                       disabled={validateMutation.isPending}
@@ -363,27 +364,29 @@ export function WordLengthGame() {
                     </Button>
                   </form>
 
-                  <AnimatePresence mode="wait">
-                    {feedback && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className={`flex items-center justify-center gap-2 ${
-                          feedback.type === "correct"
-                            ? "text-accent"
-                            : "text-destructive"
-                        }`}
-                      >
-                        {feedback.type === "correct" ? (
-                          <CheckCircle className="h-5 w-5" />
-                        ) : (
-                          <XCircle className="h-5 w-5" />
-                        )}
-                        <span className="font-medium" data-testid="text-feedback">{feedback.message}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <div aria-live="polite">
+                    <AnimatePresence mode="wait">
+                      {feedback && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className={`flex items-center justify-center gap-2 ${
+                            feedback.type === "correct"
+                              ? "text-accent"
+                              : "text-destructive"
+                          }`}
+                        >
+                          {feedback.type === "correct" ? (
+                            <CheckCircle className="h-5 w-5" />
+                          ) : (
+                            <XCircle className="h-5 w-5" />
+                          )}
+                          <span className="font-medium" data-testid="text-feedback">{feedback.message}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1 justify-center">

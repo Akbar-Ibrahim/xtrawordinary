@@ -274,6 +274,7 @@ export function WordMakerGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Type a word (3+ letters)..."
+                      aria-label="Enter your word"
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback === "correct"
                           ? "border-accent bg-accent/10"
@@ -285,21 +286,23 @@ export function WordMakerGame() {
                       }`}
                       data-testid="input-word"
                     />
-                    {feedback && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {feedback === "correct" ? (
-                          <CheckCircle className="h-5 w-5 text-accent" />
-                        ) : feedback === "duplicate" ? (
-                          <span className="text-xs text-chart-3 font-medium">Already found!</span>
-                        ) : (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        )}
-                      </motion.div>
-                    )}
+                    <div aria-live="polite">
+                      {feedback && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2"
+                        >
+                          {feedback === "correct" ? (
+                            <CheckCircle className="h-5 w-5 text-accent" />
+                          ) : feedback === "duplicate" ? (
+                            <span className="text-xs text-chart-3 font-medium">Already found!</span>
+                          ) : (
+                            <XCircle className="h-5 w-5 text-destructive" />
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 justify-center">

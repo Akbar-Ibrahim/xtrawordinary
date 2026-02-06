@@ -291,7 +291,7 @@ export function ContainsLettersGame() {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer">
+          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}>
             <Timer className="h-3.5 w-3.5" />
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
           </Badge>
@@ -361,6 +361,7 @@ export function ContainsLettersGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter a word containing those letters..."
+                      aria-label="Enter a word containing the required letters"
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
@@ -385,15 +386,17 @@ export function ContainsLettersGame() {
                     )}
                   </div>
 
-                  {feedback && feedback.type !== "correct" && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-sm text-destructive"
-                    >
-                      {feedback.message}
-                    </motion.p>
-                  )}
+                  <div aria-live="polite">
+                    {feedback && feedback.type !== "correct" && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center text-sm text-destructive"
+                      >
+                        {feedback.message}
+                      </motion.p>
+                    )}
+                  </div>
 
                   <Button
                     onClick={checkAnswer}

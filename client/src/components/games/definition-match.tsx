@@ -211,6 +211,7 @@ export function DefinitionMatchGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Type the word..."
+                      aria-label="Type the word"
                       className={`text-center text-lg font-semibold tracking-wider ${
                         feedback === "correct"
                           ? "border-accent bg-accent/10"
@@ -221,19 +222,21 @@ export function DefinitionMatchGame() {
                       disabled={showAnswer}
                       data-testid="input-answer"
                     />
-                    {feedback && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2"
-                      >
-                        {feedback === "correct" ? (
-                          <CheckCircle className="h-5 w-5 text-accent" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        )}
-                      </motion.div>
-                    )}
+                    <div aria-live="polite">
+                      {feedback && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2"
+                        >
+                          {feedback === "correct" ? (
+                            <CheckCircle className="h-5 w-5 text-accent" aria-label="Correct answer" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-destructive" aria-label="Wrong answer" />
+                          )}
+                        </motion.div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 justify-center">

@@ -338,7 +338,7 @@ export function WordChainGame() {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 3 ? "destructive" : "secondary"} className="gap-1.5 min-w-[60px] justify-center" data-testid="badge-timer">
+          <Badge variant={timeLeft <= 3 ? "destructive" : "secondary"} className="gap-1.5 min-w-[60px] justify-center" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${timeLeft} seconds`}>
             <Timer className="h-3.5 w-3.5" />
             {timeLeft}s
           </Badge>
@@ -411,6 +411,7 @@ export function WordChainGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter your word..."
+                      aria-label="Enter your word"
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
@@ -436,15 +437,17 @@ export function WordChainGame() {
                     )}
                   </div>
 
-                  {feedback && feedback.type !== "correct" && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-sm text-destructive"
-                    >
-                      {feedback.message}
-                    </motion.p>
-                  )}
+                  <div aria-live="polite">
+                    {feedback && feedback.type !== "correct" && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center text-sm text-destructive"
+                      >
+                        {feedback.message}
+                      </motion.p>
+                    )}
+                  </div>
 
                   <Button
                     onClick={checkAnswer}

@@ -433,32 +433,34 @@ export function WordStackGame() {
             />
           )}
 
-          <AnimatePresence>
-            {feedback && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                data-testid={`feedback-${feedback.type}`}
-                className={`text-center p-3 rounded-lg ${
-                  feedback.type === "correct"
-                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                    : feedback.type === "wrong"
-                    ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
-                    : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  {feedback.type === "correct" ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <XCircle className="h-5 w-5" />
-                  )}
-                  <span className="font-medium" data-testid="text-feedback-message">{feedback.message}</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <div aria-live="polite">
+            <AnimatePresence>
+              {feedback && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  data-testid={`feedback-${feedback.type}`}
+                  className={`text-center p-3 rounded-lg ${
+                    feedback.type === "correct"
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+                      : feedback.type === "wrong"
+                      ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                      : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    {feedback.type === "correct" ? (
+                      <CheckCircle className="h-5 w-5" />
+                    ) : (
+                      <XCircle className="h-5 w-5" />
+                    )}
+                    <span className="font-medium" data-testid="text-feedback-message">{feedback.message}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {!isStackComplete && (
             <div className="space-y-4">
@@ -479,6 +481,7 @@ export function WordStackGame() {
                   onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                   onKeyDown={handleKeyDown}
                   placeholder={`${requiredLength}-letter word...`}
+                  aria-label="Enter your word"
                   maxLength={requiredLength}
                   className="text-center text-lg font-bold uppercase"
                   disabled={validateMutation.isPending}
@@ -602,6 +605,7 @@ function BuildUpPyramid({
                   className="h-8 w-8 text-muted-foreground"
                   onClick={() => editLevel(stackIndex)}
                   data-testid={`button-edit-${wordLength}`}
+                  aria-label={`Edit level ${wordLength}`}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -708,6 +712,7 @@ function BreakDownPyramid({
                   className="h-8 w-8 text-muted-foreground"
                   onClick={() => editLevel(stackIndex)}
                   data-testid={`button-edit-${wordLength}`}
+                  aria-label={`Edit level ${wordLength}`}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>

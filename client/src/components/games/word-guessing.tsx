@@ -188,6 +188,7 @@ export function WordGuessingGame() {
               i === guesses.length && shake ? "animate-shake" : ""
             }`}
             data-testid={`cell-${i}-${j}`}
+            aria-label={cell.letter ? `${cell.letter}, ${cell.status === "empty" ? "pending" : cell.status}` : "Empty cell"}
           >
             {cell.letter}
           </motion.div>
@@ -247,17 +248,18 @@ export function WordGuessingGame() {
 
       <Card>
         <CardContent className="p-6">
-          <div className="space-y-1.5">{renderGrid()}</div>
+          <div className="space-y-1.5" aria-label="Word guessing grid" role="grid">{renderGrid()}</div>
         </CardContent>
       </Card>
 
-      <AnimatePresence>
-        {gameStatus !== "playing" && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-          >
+      <div aria-live="polite">
+        <AnimatePresence>
+          {gameStatus !== "playing" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
             <Card className={gameStatus === "won" ? "border-accent" : "border-destructive"}>
               <CardContent className="p-6 text-center">
                 {gameStatus === "won" ? (
@@ -288,9 +290,10 @@ export function WordGuessingGame() {
                 </Button>
               </CardContent>
             </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <div className="space-y-2">
         {keyboard.map((row, i) => (
@@ -306,6 +309,7 @@ export function WordGuessingGame() {
                 } h-12 font-semibold ${getKeyColor(key)}`}
                 disabled={gameStatus !== "playing"}
                 data-testid={`key-${key.toLowerCase()}`}
+                aria-label={key === "BACKSPACE" ? "Backspace" : key === "ENTER" ? "Submit guess" : key}
               >
                 {key === "BACKSPACE" ? "←" : key}
               </Button>

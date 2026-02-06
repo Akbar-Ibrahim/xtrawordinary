@@ -325,7 +325,7 @@ export function NoRepeatsGame() {
           <StreakIndicator streak={streak} />
           <div className="flex items-center gap-2">
             <Timer className={`w-4 h-4 ${timeLeft <= 30 ? "text-destructive" : "text-muted-foreground"}`} />
-            <span className={`font-mono ${timeLeft <= 30 ? "text-destructive font-bold" : ""}`} data-testid="text-timer">
+            <span className={`font-mono ${timeLeft <= 30 ? "text-destructive font-bold" : ""}`} data-testid="text-timer" role="timer" aria-label={`${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds remaining`}>
               {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
             </span>
           </div>
@@ -363,6 +363,7 @@ export function NoRepeatsGame() {
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                 placeholder={`Enter a ${config.wordLength}-letter word...`}
+                aria-label="Enter your word"
                 className="text-center text-lg uppercase"
                 maxLength={config.wordLength}
                 disabled={validateMutation.isPending}
@@ -373,29 +374,31 @@ export function NoRepeatsGame() {
               </Button>
             </form>
 
-            <AnimatePresence mode="wait">
-              {feedback && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className={`flex items-center justify-center gap-2 ${
-                    feedback.type === "correct"
-                      ? "text-accent"
-                      : feedback.type === "wrong"
-                      ? "text-destructive"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {feedback.type === "correct" ? (
-                    <CheckCircle className="w-5 h-5" />
-                  ) : (
-                    <XCircle className="w-5 h-5" />
-                  )}
-                  <span className="font-medium" data-testid="text-feedback">{feedback.message}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div aria-live="polite">
+              <AnimatePresence mode="wait">
+                {feedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className={`flex items-center justify-center gap-2 ${
+                      feedback.type === "correct"
+                        ? "text-accent"
+                        : feedback.type === "wrong"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {feedback.type === "correct" ? (
+                      <CheckCircle className="w-5 h-5" />
+                    ) : (
+                      <XCircle className="w-5 h-5" />
+                    )}
+                    <span className="font-medium" data-testid="text-feedback">{feedback.message}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </CardContent>
       </Card>

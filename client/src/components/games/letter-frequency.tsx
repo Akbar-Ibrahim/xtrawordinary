@@ -334,7 +334,7 @@ export function LetterFrequencyGame() {
                   <Badge variant="secondary" data-testid="badge-challenge">
                     {CHALLENGE_CONFIG[challenge].name}
                   </Badge>
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm" role="timer" aria-label={`Time remaining: ${formatTime(timeLeft)}`}>
                     <Timer className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive" : ""}`} />
                     <span className={timeLeft <= 10 ? "text-destructive font-bold" : ""}>
                       {formatTime(timeLeft)}
@@ -387,6 +387,7 @@ export function LetterFrequencyGame() {
                       onChange={(e) => setUserInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter a word..."
+                      aria-label="Enter your word"
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
@@ -411,16 +412,18 @@ export function LetterFrequencyGame() {
                     )}
                   </div>
 
-                  {feedback && feedback.type !== "correct" && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center text-sm text-destructive"
-                      data-testid="text-feedback"
-                    >
-                      {feedback.message}
-                    </motion.p>
-                  )}
+                  <div aria-live="polite">
+                    {feedback && feedback.type !== "correct" && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center text-sm text-destructive"
+                        data-testid="text-feedback"
+                      >
+                        {feedback.message}
+                      </motion.p>
+                    )}
+                  </div>
 
                   <Button
                     onClick={checkAnswer}
