@@ -124,3 +124,11 @@ export const wordStackPuzzleSchema = z.object({
 });
 export type WordStackPuzzle = z.infer<typeof wordStackPuzzleSchema>;
 export const wordStackPuzzlesSchema = z.array(wordStackPuzzleSchema);
+
+// Word Split puzzle (split target word into smaller valid words)
+export const wordSplitPuzzleSchema = z.object({
+  targetWord: z.string(),
+  hint: z.string(),
+});
+export type WordSplitPuzzle = z.infer<typeof wordSplitPuzzleSchema>;
+export const wordSplitPuzzlesSchema = z.array(wordSplitPuzzleSchema);

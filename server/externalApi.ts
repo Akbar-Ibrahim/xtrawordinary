@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
 
 const gamesData: Game[] = [
   {
@@ -233,6 +233,26 @@ const gamesData: Game[] = [
     icon: "Layers",
     color: "hsl(25, 85%, 55%)",
     playCount: 0
+  },
+  {
+    id: "15",
+    slug: "word-split",
+    name: "Word Split",
+    description: "Split a word into smaller valid words that use all its letters!",
+    longDescription: "Can you break a word apart? You'll be shown a target word, and your challenge is to find smaller words whose letters combine to spell the target word exactly. Each letter can only be used once across all your words. Think strategically - some splits might leave impossible leftovers!",
+    rules: [
+      "You are given a target word to split",
+      "Find smaller words whose letters add up to the target word",
+      "Each letter in the target word can only be used once",
+      "Words must be at least 2 letters long",
+      "You need at least 2 words to complete a split",
+      "All letters must be covered - no leftovers allowed"
+    ],
+    difficulty: "hard",
+    estimatedTime: "5-10 min",
+    icon: "Scissors",
+    color: "hsl(15, 80%, 50%)",
+    playCount: 0
   }
 ];
 
@@ -339,12 +359,41 @@ const wordStackPuzzles: WordStackPuzzle[] = [
   { targetWord: "CLEANING", startWord: "AN", hint: "Making tidy" },
 ];
 
+const wordSplitPuzzles: WordSplitPuzzle[] = [
+  { targetWord: "EDUCATION", hint: "Process of learning" },
+  { targetWord: "CANOPY", hint: "An overhead covering or shelter" },
+  { targetWord: "FORESTRY", hint: "Science of managing forests" },
+  { targetWord: "STEAM", hint: "Water vapor from boiling" },
+  { targetWord: "COPULATE", hint: "To come together" },
+  { targetWord: "CAPITAL", hint: "Chief city or wealth" },
+  { targetWord: "KNOWLEDGE", hint: "Information and understanding" },
+  { targetWord: "MASTER", hint: "An expert or leader" },
+  { targetWord: "CARPET", hint: "Floor covering material" },
+  { targetWord: "CASTLE", hint: "A large fortified building" },
+  { targetWord: "PLANET", hint: "A celestial body orbiting a star" },
+  { targetWord: "BASKET", hint: "Container made of woven material" },
+  { targetWord: "GARDEN", hint: "Area for growing plants" },
+  { targetWord: "FROZEN", hint: "Turned into ice" },
+  { targetWord: "SILVER", hint: "A shiny precious metal" },
+  { targetWord: "BRIDGE", hint: "Structure spanning over water" },
+  { targetWord: "MARKET", hint: "Place for buying and selling" },
+  { targetWord: "ANCHOR", hint: "Heavy device to hold a ship" },
+  { targetWord: "TEMPLE", hint: "A place of worship" },
+  { targetWord: "HONEST", hint: "Truthful and sincere" },
+];
+
 const wordDictionary: string[] = [
+  // 2-letter words for Word Split
+  "AM",
+  // 3-letter words
   "ACE", "ACT", "ADD", "AGE", "AID", "AIM", "AIR", "ALL", "AND", "ANT", "ANY", "APE", "ARC", "ARE", "ARK", "ARM", "ART", "ASH", "ATE",
+  "CAN", "CAP", "CAT", "COP", "OPY",
   "ABLE", "ACHE", "AGED", "AIDE", "AJAR", "ALSO", "AMID", "ARCH", "AREA", "ARMY", "AUNT", "AUTO", "AWAY", "BACK", "BAKE", "BALL", "BAND", "BANK", "BARE", "BARK", "BARN", "BASE", "BATH", "BEAR", "BEAT", "BEEN", "BEER", "BELL", "BELT", "BEND", "BENT", "BEST", "BIKE", "BIRD", "BITE", "BLOW", "BLUE", "BOAT", "BODY", "BOLD", "BOLT", "BOMB", "BOND", "BONE", "BOOK", "BOOM", "BOOT", "BORE", "BORN", "BOSS", "BOTH", "BOWL", "BULK", "BURN", "BURY", "BUSH", "BUSY", "CAFE", "CAGE", "CAKE", "CALL", "CALM", "CAME", "CAMP", "CAPE", "CARD", "CARE", "CART", "CASE", "CASH", "CAST", "CAVE", "CHEF", "CHEW", "CHIN", "CHIP", "CITY", "CLAM", "CLAP", "CLAW", "CLAY", "CLIP", "CLUB", "CLUE", "COAL", "COAT", "CODE", "COIL", "COIN", "COLD", "COME", "CONE", "COOK", "COOL", "COPE", "COPY", "CORD", "CORE", "CORN", "COST", "COZY", "CRAB", "CREW", "CROP", "CROW", "CUBE", "CURE", "CURL", "CUTE",
   "ABOUT", "ABOVE", "ABUSE", "ACTOR", "ADAPT", "ADMIT", "ADOPT", "ADULT", "AFTER", "AGAIN", "AGENT", "AGREE", "AHEAD", "ALARM", "ALBUM", "ALERT", "ALIEN", "ALIGN", "ALIKE", "ALIVE", "ALLEY", "ALLOW", "ALLOY", "ALONE", "ALONG", "ALPHA", "ALTER", "AMAZE", "AMONG", "AMPLE", "ANGEL", "ANGER", "ANGLE", "ANGRY", "ANKLE", "APART", "APPLE", "APPLY", "ARENA", "ARGUE", "ARISE", "ARMOR", "AROMA", "ARROW", "ASIDE", "ASSET", "ATTIC", "AUDIO", "AVOID", "AWAKE", "AWARD", "AWARE", "AWFUL",
   "BADGE", "BAKER", "BEARD", "BEAST", "BEGIN", "BEING", "BELOW", "BENCH", "BERRY", "BIRDS", "BIRTH", "BLACK", "BLADE", "BLAME", "BLAND", "BLANK", "BLAZE", "BLEED", "BLEND", "BLESS", "BLIND", "BLINK", "BLISS", "BLOCK", "BLOND", "BLOOD", "BLOOM", "BLOWN", "BLUES", "BLUNT", "BLUSH", "BOARD", "BOAST", "BOATS", "BONUS", "BOOST", "BOOTH", "BOUND", "BRAIN", "BRAKE", "BRAND", "BRASS", "BRAVE", "BREAD", "BREAK", "BREED", "BRICK", "BRIDE", "BRIEF", "BRING", "BROAD", "BROKE", "BROOK", "BROOM", "BROTH", "BROWN", "BRUSH", "BUILD", "BUILT", "BUNCH", "BURST", "BUYER",
   "CABIN", "CABLE", "CANDY", "CARGO", "CARRY", "CARVE", "CATCH", "CAUSE", "CHAIN", "CHAIR", "CHALK", "CHAMP", "CHAOS", "CHARM", "CHART", "CHASE", "CHEAP", "CHEAT", "CHECK", "CHEEK", "CHEER", "CHESS", "CHEST", "CHICK", "CHIEF", "CHILD", "CHILL", "CHINA", "CHIRP", "CHORD", "CHOSE", "CHUNK", "CINCH", "CIVIL", "CLAIM", "CLAMP", "CLASH", "CLASP", "CLASS", "CLEAN", "CLEAR", "CLERK", "CLICK", "CLIFF", "CLIMB", "CLING", "CLOAK", "CLOCK", "CLONE", "CLOSE", "CLOTH", "CLOUD", "CLOWN", "COACH", "COAST", "COLON", "COLOR", "COMET", "COMIC", "COMMA", "CONCH", "CORAL", "COUCH", "COUGH", "COUNT", "COURT", "COVER", "CRACK", "CRAFT", "CRANE", "CRASH", "CRAWL", "CRAZE", "CRAZY", "CREAM", "CREED", "CREEK", "CREEP", "CREST", "CRIME", "CRISP", "CRONE", "CROOK", "CROSS", "CROWD", "CROWN", "CRUDE", "CRUEL", "CRUSH", "CRUST", "CURVE", "CYCLE",
+  "LEDGE", "STEAM",
+  "CANOPY",
   "ABSORB", "ACCENT", "ACCEPT", "ACCESS", "ACCORD", "ACROSS", "ACTION", "ACTIVE", "ACTUAL", "ADDLED", "ADMIRE", "ADVISE", "AFFECT", "AFFORD", "AFRAID", "AGENDA", "AGREED", "ALBEIT", "AMOUNT", "ANCHOR", "ANNUAL", "ANSWER", "APPEAL", "APPEAR", "ARCADE", "ARGUED", "AROUND", "ARRIVE", "ARTIST", "ASKING", "ASPECT", "ASSERT", "ASSESS", "ASSIGN", "ASSIST", "ASSUME", "ATTACH", "ATTACK", "ATTEND", "AUTHOR", "AVENUE",
   "BACKED", "BAKERY", "BANANA", "BANDED", "BANGER", "BANNER", "BARELY", "BARREN", "BASKET", "BATTEN", "BATTLE", "BEACON", "BEAKER", "BEARER", "BEATEN", "BEAUTY", "BECAME", "BECOME", "BEFORE", "BEHALF", "BEHAVE", "BEHIND", "BELIEF", "BELONG", "BESIDE", "BETTER", "BEYOND", "BIGGER", "BINARY", "BINDER", "BISECT", "BISHOP", "BITTER", "BLANCH", "BLAZER", "BLENDS", "BLIGHT", "BLOCKS", "BLONDE", "BLOODY", "BOARDS", "BOATER", "BODILY", "BOILED", "BOLDER", "BOLTED", "BONNET", "BONNIE", "BONSAI", "BOOKER", "BORDER", "BORING", "BORROW", "BOTTLE", "BOTTOM", "BOUGHT", "BOUNCE", "BOVINE", "BRANCH", "BRANDS", "BREATH", "BRICKS", "BRIDGE", "BRIGHT", "BRINGS", "BRINKS", "BROKEN", "BRONZE", "BROWSE", "BRUISE", "BRUTAL", "BUBBLE", "BUCKET", "BUDGED", "BUDGET", "BUFFED", "BUFFER", "BUFFET", "BUILDS", "BUNDLE", "BUNKER", "BURDEN", "BUREAU", "BURGER", "BURIED", "BURNER", "BUTTON", "BYPASS",
   "CABLES", "CACTUS", "CAESAR", "CALMLY", "CAMPED", "CAMPER", "CAMPUS", "CANCEL", "CANCER", "CANDLE", "CANDOR", "CANNOT", "CANVAS", "CANYON", "CAPITA", "CARBON", "CAREER", "CARING", "CARPET", "CARROT", "CARVED", "CASINO", "CASTLE", "CASUAL", "CAUGHT", "CAUSED", "CAUSAL", "CEMENT", "CENTER", "CEREAL", "CHAINS", "CHAIRS", "CHANCE", "CHANGE", "CHAPEL", "CHARGE", "CHEESE", "CHEQUE", "CHERRY", "CHOICE", "CHOOSE", "CHOSEN", "CHURCH", "CIRCLE", "CIRCUS", "CITIES", "CITING", "CITRUS", "CLAIMS", "CLASSY", "CLAUSE", "CLERGY", "CLEVER", "CLIENT", "CLIMAX", "CLINCH", "CLINIC", "CLIQUE", "CLOSED", "CLOSER", "CLOSET", "CLOUDS", "CLOUDY", "CLUTCH", "COARSE", "COATED", "COBALT", "COBWEB", "COFFEE", "COHERE", "COINED", "COLDLY", "COLLAR", "COLONY", "COLORS", "COLUMN", "COMEDY", "COMING", "COMMIT", "COMMON", "COMPLY", "CONFER", "CONVEX", "COPIED", "COPPER", "CORNER", "CORONA", "COTTON", "COUNTY", "COUPLE", "COURSE", "COUSIN", "COWARD", "CREATE", "CREDIT", "CRISIS", "CRISPY", "CRITIC", "CRUISE", "CUSTOM",
@@ -383,6 +432,7 @@ const wordDictionary: string[] = [
   "ICON", "IDEA", "IDLE", "IDOL", "IFFY", "INCH", "INFO", "INTO", "IRON", "ISLE", "ITCH", "ITEM", "ITSELF",
   "JABS", "JACK", "JADE", "JAIL", "JAMS", "JANE", "JARS", "JAVA", "JAWS", "JAZZ", "JEAN", "JEER", "JELL", "JERK", "JEST", "JETS", "JIFF", "JIGS", "JILT", "JINX", "JOBS", "JOCK", "JOGS", "JOIN", "JOKE", "JOLT", "JOSH", "JOTS", "JOYS", "JUDO", "JUGS", "JUKE", "JUMP", "JUNE", "JUNK", "JURY", "JUST", "JUTS",
   "KALE", "KEEN", "KEEP", "KEGS", "KELP", "KEPT", "KEYS", "KICK", "KIDS", "KILL", "KILN", "KILT", "KIND", "KING", "KINK", "KISS", "KITE", "KITS", "KNEE", "KNEW", "KNIT", "KNOB", "KNOT", "KNOW",
+  "MAST", "OPAL", "PAIL", "REST", "TAIL",
   "LACE", "LACK", "LACY", "LADS", "LADY", "LAID", "LAIR", "LAKE", "LAMB", "LAME", "LAMP", "LAND", "LANE", "LAPS", "LARD", "LARK", "LASH", "LASS", "LAST", "LATE", "LAUD", "LAVA", "LAWN", "LAWS", "LAYS", "LAZY", "LEAD", "LEAF", "LEAK", "LEAN", "LEAP", "LEFT", "LEND", "LENS", "LENT", "LESS", "LEST", "LEVY", "LIAR", "LICE", "LICK", "LIDS", "LIED", "LIEN", "LIES", "LIEU", "LIFE", "LIFT", "LIKE", "LILY", "LIMB", "LIME", "LIMP", "LINE", "LINK", "LINT", "LION", "LIPS", "LIST", "LIVE", "LOAD", "LOAF", "LOAN", "LOBE", "LOCK", "LOFT", "LOGO", "LOGS", "LONE", "LONG", "LOOK", "LOOM", "LOOP", "LOOT", "LORD", "LORE", "LOSE", "LOSS", "LOST", "LOTS", "LOUD", "LOVE", "LUCK", "LUMP", "LUNG", "LURE", "LURK", "LUSH", "LUST",
   "SPARE", "PEARS", "SPEAR", "EARTH", "HEART", "RATES", "STARE", "TEARS", "PARES", "REAPS", "HATER", "RATHE", "SPARES"
 ];
@@ -440,6 +490,7 @@ export interface IExternalApi {
   getContainsConfig(): Promise<ContainsConfig>;
   getWordChainConfig(): Promise<WordChainConfig>;
   getVowelConsonantConfig(): Promise<VowelConsonantConfig>;
+  getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
 }
 
 export class ExternalApiClient implements IExternalApi {
@@ -477,6 +528,10 @@ export class ExternalApiClient implements IExternalApi {
 
   async getWordStackPuzzles(): Promise<WordStackPuzzle[]> {
     return wordStackPuzzles;
+  }
+
+  async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> {
+    return wordSplitPuzzles;
   }
 
   async getWordDictionary(): Promise<string[]> {

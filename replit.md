@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based word games platform featuring thirteen interactive vocabulary games:
+WordPlay is a web-based word games platform featuring fifteen interactive vocabulary games:
 - **Word Guessing** - Wordle-style 5-letter word guessing in 6 attempts
 - **Anagram Solver** - Find all anagrams of a given base word
 - **Word Scramble** - Unscramble words with category hints and lives system
@@ -17,6 +17,7 @@ WordPlay is a web-based word games platform featuring thirteen interactive vocab
 - **Letter Frequency** - 6 challenge variations where a specific letter must appear exactly N times (2, 3, 4, 5+, Random, or Multi-Letter where 2-3 letters must each appear at least 2 times)
 - **Word Stack** - 2 challenge variations: "Build Up" (add letters from 2-letter base to target) and "Break Down" (remove letters from target to reach 2 letters)
 - **No Repeats** - 7 challenge variations (3-9 letter words) where every letter in the word must be unique (no repeating letters)
+- **Word Split** - 3 difficulty tiers (short/medium/long words); split a target word into smaller valid words that use all its letters exactly once
 
 The application is built as a full-stack TypeScript project with a React frontend and Express backend, designed for educational entertainment and vocabulary improvement.
 
@@ -64,7 +65,7 @@ The server structure includes:
 Currently, game data is stored in-memory in `server/storage.ts`, but the architecture supports database migration via Drizzle ORM when `DATABASE_URL` is configured.
 
 ### API Endpoints
-- `GET /api/games` - Returns list of all 13 games with metadata
+- `GET /api/games` - Returns list of all 15 games with metadata
 - `GET /api/games/:slug` - Returns individual game details
 - `GET /api/games/word-guessing/words` - Returns array of 5-letter words for Word Guessing game
 - `GET /api/games/anagram-solver/words` - Returns word sets with original word and array of anagrams
@@ -73,6 +74,7 @@ Currently, game data is stored in-memory in `server/storage.ts`, but the archite
 - `GET /api/games/word-builder/words` - Returns words with hint and category for fill-in game
 - `GET /api/games/word-maker/words` - Returns base words with derivatives array and maxWords count
 - `GET /api/games/word-stack/puzzles` - Returns Word Stack puzzles with targetWord, startWord, and hint
+- `GET /api/games/word-split/puzzles` - Returns Word Split puzzles with targetWord and hint
 - `POST /api/games/validate-word` - Validates a word against the dictionary (body: { word: string }) - SECURE: Dictionary never exposed to frontend
 - `GET /api/games/letter-balance/config` - Returns Letter Balance game configuration
 - `POST /api/games/word-chain/start` - Returns starting word for Word Chain game

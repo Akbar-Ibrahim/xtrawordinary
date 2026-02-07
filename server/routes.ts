@@ -82,6 +82,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-split/puzzles", async (_req, res) => {
+    try {
+      const puzzles = await dataSource.getWordSplitPuzzles();
+      res.json(puzzles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word split puzzles" });
+    }
+  });
+
   // Dictionary endpoint removed for security - words validated only via /api/games/validate-word
 
   app.post("/api/games/validate-word", async (req, res) => {
