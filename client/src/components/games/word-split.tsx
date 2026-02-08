@@ -107,6 +107,7 @@ export function WordSplitGame() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [puzzlesCompleted, setPuzzlesCompleted] = useState(0);
+  const [puzzlesSkipped, setPuzzlesSkipped] = useState(0);
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid" | "doesnt-fit"; message: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +147,7 @@ export function WordSplitGame() {
     setScore(0);
     setStreak(0);
     setPuzzlesCompleted(0);
+    setPuzzlesSkipped(0);
     setUsedPuzzles(new Set());
     setGameState("playing");
 
@@ -160,13 +162,12 @@ export function WordSplitGame() {
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);
     if (!puzzle) {
-      playSound("win");
       setGameState("completed");
       return;
     }
     setUsedPuzzles(prev => new Set([...Array.from(prev), puzzle.targetWord]));
     startPuzzle(puzzle);
-  }, [activePuzzles, usedPuzzles, selectPuzzle, startPuzzle, playSound]);
+  }, [activePuzzles, usedPuzzles, selectPuzzle, startPuzzle]);
 
   useEffect(() => {
     if (puzzles.length > 0 && gameState === "menu" && activePuzzles.length === 0) {
@@ -279,6 +280,7 @@ export function WordSplitGame() {
 
   const skipPuzzle = useCallback(() => {
     setStreak(0);
+    setPuzzlesSkipped(prev => prev + 1);
     nextPuzzle();
   }, [nextPuzzle]);
 
@@ -350,13 +352,16 @@ export function WordSplitGame() {
   }
 
   if (gameState === "completed") {
+    const totalPuzzles = puzzlesCompleted + puzzlesSkipped;
+    const allSolved = puzzlesSkipped === 0 && puzzlesCompleted > 0;
+
     return (
       <div className="space-y-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <Card className="border-accent">
+          <Card className={allSolved ? "border-accent" : ""}>
             <CardContent className="p-6 text-center space-y-4">
               <div aria-live="polite">
                 <motion.div
@@ -364,18 +369,28 @@ export function WordSplitGame() {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  <Trophy className="h-16 w-16 mx-auto text-accent" />
+                  {allSolved ? (
+                    <Trophy className="h-16 w-16 mx-auto text-accent" />
+                  ) : (
+                    <Sparkles className="h-16 w-16 mx-auto text-primary" />
+                  )}
                 </motion.div>
-                <h3 className="text-2xl font-bold">Word Split Champion!</h3>
+                <h3 className="text-2xl font-bold">
+                  {allSolved ? "Word Split Champion!" : "Session Complete"}
+                </h3>
                 <p className="text-muted-foreground">
-                  You completed all the puzzles!
+                  {allSolved
+                    ? "You solved every puzzle!"
+                    : puzzlesCompleted === 0
+                      ? "You skipped all the puzzles. Give it another try!"
+                      : `You solved ${puzzlesCompleted} of ${totalPuzzles} puzzles.`}
                 </p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary" data-testid="text-final-score">
                     <AnimatedNumber value={score} /> points
                   </div>
                   <div className="text-sm text-muted-foreground" data-testid="text-puzzles-completed">
-                    {puzzlesCompleted} puzzles completed
+                    {puzzlesCompleted} of {totalPuzzles} puzzles solved
                   </div>
                 </div>
               </div>
@@ -385,7 +400,7 @@ export function WordSplitGame() {
                 score={score}
                 wordsCompleted={puzzlesCompleted}
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
-                isWin={true}
+                isWin={allSolved}
               />
               <div className="flex gap-2 justify-center flex-wrap">
                 <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
