@@ -264,6 +264,30 @@ const WIN_MESSAGES: string[] = [
   "Genuinely impressive. Not participation-trophy impressive. Actually impressive.",
   "Somewhere, your elementary school English teacher just felt a wave of pride.",
   "This is your sign that you're smarter than you give yourself credit for.",
+
+  // Frat bro
+  "DUUUDE! Bro, that was absolutely LEGENDARY! You crushed it like a keg on a Saturday night!",
+  "Bro. BRO. You just went full beast mode on that! Dude, I'm literally so hyped right now!",
+  "No way, dude! You actually nailed every single one?! Bro, that's insane! Shotgun a word in your honor!",
+  "Dude, you're like the valedictorian of word games, bro! Except way cooler! Way, way cooler!",
+  "BRO! That was filthy! Like, disgusting how good that was, dude! Absolute house performance!",
+  "Dude, I've seen a lot of clutch plays, but bro, THAT was the clutchest clutch that ever clutched!",
+  "Bro, you didn't just win, dude - you DOMINATED. Like, call the dean, we're throwing a rager!",
+  "Duuude, that was so sick, bro! You went harder than finals week and actually came out on top!",
+  "Bro, if word games were a frat, dude, you'd be president. No, you'd be SUPREME president!",
+  "Dude! DUDE! Bro, I can't even right now! That was the most epic thing I've ever witnessed, bro!",
+
+  // Gym bro
+  "LIGHTWEIGHT BABY! You just repped out that word game like it was warm-up weight! Absolute unit!",
+  "That's what peak performance looks like! You just PR'd on vocabulary, bro! Time to hit the protein shake!",
+  "You didn't just lift those words, you THREW them! That's a one-rep max on brain gains right there!",
+  "Sheeesh! Your vocabulary is more shredded than my abs on competition day! Absolutely diced!",
+  "That was a clean set! No spotter needed! You just benched the entire English language!",
+  "Gains aren't just physical, bro! You just bulked up your brain! Looking absolutely THICK with knowledge!",
+  "REST DAY? Nah, you don't need one! You just crushed that harder than leg day! QUADS of intelligence!",
+  "You're not natty, bro. Nobody's that good at word games without some kind of brain supplements!",
+  "That's a pump! I can feel the blood flowing to your cerebral cortex! Flex those brain muscles!",
+  "Bro, that performance was more impressive than a 500-pound deadlift! You just pulled HEAVY on vocab!",
 ];
 
 const LOSS_MESSAGES: string[] = [
@@ -546,6 +570,30 @@ const LOSS_MESSAGES: string[] = [
   "Plot twist: losing is just winning in disguise. A VERY good disguise, but still.",
   "You know what champions do after a loss? They hit 'Play Again.' Just saying.",
   "Bad games build character. And wow, you're building a LOT of character today.",
+
+  // Frat bro (losses)
+  "Bro... dude... bro. That was rough, dude. Like, Monday-morning-exam rough. Yikes, bro.",
+  "Dude, not gonna lie, bro, that was painful to watch. Like watching someone fail a keg stand. Tragic.",
+  "Bro, what happened?! Dude, you came in so confident! It's like you blacked out mid-game, bro!",
+  "Duuude. That was NOT the vibe, bro. That was the opposite of vibes. That was anti-vibes.",
+  "Bro, I say this with love, dude - that was absolutely terrible. Like, pledge-level terrible.",
+  "Dude, even the freshmen are cringing right now, bro. That's how bad that was. FRESHMEN, bro!",
+  "Bro... bro... I don't even know what to say, dude. Just... bro. Hit play again, dude.",
+  "Dude, that was like showing up to a party with no snacks, bro. Disappointing on every level.",
+  "Bro, you fumbled harder than a quarterback in the rain, dude! Just a total catastrophe, bro!",
+  "Dude, I'm not mad, bro. I'm just disappointed. Actually no, bro, I'm a little mad too, dude.",
+
+  // Gym bro (losses)
+  "Bro, you just got CRUSHED. That was worse than skipping leg day. And nobody skips leg day!",
+  "That wasn't even a failed rep, bro. That was showing up to the gym and forgetting how to lift!",
+  "No gains today, bro. Zero. Your brain just atrophied harder than a couch potato's calves!",
+  "Bro, that performance was softer than a rest day pillow. You need to bulk up that vocabulary!",
+  "You just got spotted by the word game and STILL dropped the bar! Embarrassing, bro. Embarrassing!",
+  "That's what happens when you skip brain day, bro! You can't just train chest and expect vocab gains!",
+  "Bro, your mental form was TERRIBLE. Like, rounded back on a deadlift terrible. Go stretch and try again!",
+  "Did you even warm up?! You went in cold and got absolutely SMOKED! Foam roll and come back!",
+  "That was a total deload week for your brain, bro. Weak. Pathetic. Hit the books like you hit the gym!",
+  "Bro, I've seen better performances from someone doing cardio. CARDIO, bro. That's how bad it was.",
 ];
 
 let lastWinIndex = -1;
