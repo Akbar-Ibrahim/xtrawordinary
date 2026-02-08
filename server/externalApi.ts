@@ -85,10 +85,10 @@ const gamesData: Game[] = [
     longDescription: "The first and last letters are locked in place - your job is to fill the blanks by choosing from a pool of letter tiles below. But watch out: the pool contains decoy letters mixed in with the correct ones! Pick wrong and you lose a life. Can you spot the right letters and complete all the words?",
     rules: [
       "The first and last letters are locked and revealed",
-      "Click letters from the pool to fill the blank spaces",
-      "The pool contains the correct letters PLUS decoy letters",
-      "Click a filled letter to return it to the pool",
-      "Wrong words cost you a life - you have 3 lives",
+      "Tap a letter from the pool to guess it",
+      "Correct letters snap into their position automatically",
+      "Wrong letters cost you a life - you have 3 lives",
+      "The pool contains decoy letters mixed in with the real ones",
       "Use the hint button for a clue (costs 50 points)"
     ],
     difficulty: "medium",

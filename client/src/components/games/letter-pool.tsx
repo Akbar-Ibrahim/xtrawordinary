@@ -32,13 +32,11 @@ export function LetterPoolGame() {
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
-  const [nextSlotIndex, setNextSlotIndex] = useState(0);
 
   const setupWord = useCallback((word: LetterPoolWord) => {
     const middleCount = word.word.length - 2;
     setFilledLetters(new Array(middleCount).fill(null));
     setPoolLetters(word.letterPool.map((l, i) => ({ letter: l, used: false, id: i })));
-    setNextSlotIndex(0);
     setShowHint(false);
     setFeedback(null);
   }, []);
@@ -83,16 +81,47 @@ export function LetterPoolGame() {
 
   const handlePoolClick = useCallback((poolId: number) => {
     if (!currentWord || feedback) return;
-    const emptyIndex = filledLetters.indexOf(null);
-    if (emptyIndex === -1) return;
 
     const clickedItem = poolLetters.find(p => p.id === poolId);
     if (!clickedItem || clickedItem.used) return;
 
     playSound("click");
 
+    const middleLetters = currentWord.word.slice(1, -1);
+    const clickedLetter = clickedItem.letter;
+
+    const matchIndex = middleLetters.split("").findIndex(
+      (ch, i) => ch === clickedLetter && filledLetters[i] === null
+    );
+
+    if (matchIndex === -1) {
+      playSound("wrong");
+      setFeedback("wrong");
+      setStreak(0);
+
+      const newPool = poolLetters.map(p =>
+        p.id === poolId ? { ...p, used: true } : p
+      );
+      setPoolLetters(newPool);
+
+      setLives(prev => {
+        const newLives = prev - 1;
+        if (newLives <= 0) {
+          setTimeout(() => {
+            playSound("lose");
+            setGameStatus("lost");
+            setCompletionMessage(getCompletionMessage(false));
+          }, 800);
+        }
+        return newLives;
+      });
+
+      setTimeout(() => setFeedback(null), 800);
+      return;
+    }
+
     const newFilled = [...filledLetters];
-    newFilled[emptyIndex] = `${clickedItem.letter}:${poolId}`;
+    newFilled[matchIndex] = clickedLetter;
 
     const newPool = poolLetters.map(p =>
       p.id === poolId ? { ...p, used: true } : p
@@ -100,69 +129,21 @@ export function LetterPoolGame() {
 
     setFilledLetters(newFilled);
     setPoolLetters(newPool);
-    setNextSlotIndex(emptyIndex + 1);
 
     const allFilled = newFilled.every(l => l !== null);
     if (allFilled) {
-      const builtWord = currentWord.word[0] +
-        newFilled.map(l => l!.split(":")[0]).join("") +
-        currentWord.word[currentWord.word.length - 1];
-
-      if (builtWord === currentWord.word) {
-        playSound("correct");
-        setFeedback("correct");
-        setStreak(prev => prev + 1);
-        const points = showHint ? 50 : 100;
-        setScore(prev => prev + points);
-        setWordsCompleted(prev => prev + 1);
-        setTimeout(() => {
-          setFeedback(null);
-          selectNewWord();
-        }, 1200);
-      } else {
-        playSound("wrong");
-        setFeedback("wrong");
-        setStreak(0);
-        setLives(prev => {
-          const newLives = prev - 1;
-          if (newLives <= 0) {
-            setTimeout(() => {
-              playSound("lose");
-              setGameStatus("lost");
-              setCompletionMessage(getCompletionMessage(false));
-            }, 800);
-          }
-          return newLives;
-        });
-        setTimeout(() => {
-          if (currentWord) {
-            setupWord(currentWord);
-          }
-        }, 1500);
-      }
+      playSound("correct");
+      setFeedback("correct");
+      setStreak(prev => prev + 1);
+      const points = showHint ? 50 : 100;
+      setScore(prev => prev + points);
+      setWordsCompleted(prev => prev + 1);
+      setTimeout(() => {
+        setFeedback(null);
+        selectNewWord();
+      }, 1200);
     }
-  }, [currentWord, filledLetters, poolLetters, feedback, showHint, playSound, selectNewWord, setupWord]);
-
-  const handleFilledClick = useCallback((slotIndex: number) => {
-    if (!currentWord || feedback) return;
-    const value = filledLetters[slotIndex];
-    if (!value) return;
-
-    playSound("click");
-
-    const poolId = parseInt(value.split(":")[1]);
-
-    const newFilled = [...filledLetters];
-    newFilled[slotIndex] = null;
-
-    const newPool = poolLetters.map(p =>
-      p.id === poolId ? { ...p, used: false } : p
-    );
-
-    setFilledLetters(newFilled);
-    setPoolLetters(newPool);
-    setNextSlotIndex(slotIndex);
-  }, [currentWord, filledLetters, poolLetters, feedback, playSound]);
+  }, [currentWord, filledLetters, poolLetters, feedback, showHint, playSound, selectNewWord, lives]);
 
   if (isLoading) {
     return (
@@ -249,7 +230,7 @@ export function LetterPoolGame() {
                     {currentWord.category}
                   </Badge>
                   <p className="text-sm text-muted-foreground">
-                    Pick {middleLength} letter{middleLength > 1 ? "s" : ""} from the pool to complete the word
+                    Tap letters from the pool — correct ones snap into place, wrong ones cost a life
                   </p>
                 </div>
 
@@ -269,28 +250,25 @@ export function LetterPoolGame() {
                     {currentWord.word[0]}
                   </motion.div>
 
-                  {filledLetters.map((value, index) => {
-                    const letter = value ? value.split(":")[0] : null;
+                  {filledLetters.map((letter, index) => {
                     const isEmpty = !letter;
-                    const isNextSlot = index === nextSlotIndex && !feedback;
 
                     return (
                       <motion.div
                         key={`slot-${index}`}
                         initial={{ opacity: 0, rotateY: 90 }}
-                        animate={{ opacity: 1, rotateY: 0 }}
-                        transition={{ delay: (index + 1) * 0.05 }}
-                        onClick={() => !isEmpty && handleFilledClick(index)}
+                        animate={{
+                          opacity: 1,
+                          rotateY: 0,
+                          scale: letter ? [1, 1.15, 1] : 1,
+                        }}
+                        transition={{ delay: isEmpty ? (index + 1) * 0.05 : 0, duration: 0.3 }}
                         className={`w-10 h-12 sm:w-12 sm:h-14 flex items-center justify-center text-xl font-bold rounded-md transition-colors ${
                           isEmpty
-                            ? isNextSlot
-                              ? "bg-muted border-2 border-dashed border-primary"
-                              : "bg-muted border-2 border-dashed border-muted-foreground/30"
+                            ? "bg-muted border-2 border-dashed border-muted-foreground/30"
                             : feedback === "correct"
-                            ? "bg-accent text-accent-foreground cursor-default"
-                            : feedback === "wrong"
-                            ? "bg-destructive text-destructive-foreground cursor-default"
-                            : "bg-secondary text-secondary-foreground cursor-pointer hover-elevate"
+                            ? "bg-accent text-accent-foreground"
+                            : "bg-secondary text-secondary-foreground"
                         }`}
                         data-testid={`slot-${index}`}
                       >
