@@ -207,6 +207,56 @@ const WIN_MESSAGES: string[] = [
   "No mames! You just took over the whole territory! Even the rivals are clapping. Bien hecho.",
   "The familia sends their regards... and their congratulations. You've earned your place, hermano.",
 
+  // Russian mob
+  "Comrade, that was beautiful work. Like poetry, but with more... efficiency. The Bratva approves.",
+  "In Mother Russia, words don't play you - YOU play words. And you played them WELL.",
+  "Da. Very clean. Very professional. You remind me of the old days. The GOOD old days.",
+  "My friend, you handled that like a true Vor. The brotherhood raises a glass of vodka to you.",
+  "Excellent. No loose ends, no mistakes. This is why we keep you around, tovarisch.",
+  "The pakhan himself would nod at this performance. And he does NOT nod easily.",
+  "You moved through those words like winter through Siberia. Cold. Unstoppable. Beautiful.",
+  "Zdorovye! To your victory! You have brought honor to the organization tonight.",
+
+  // Gen Z cowboy
+  "Yeehaw bestie! You really said 'giddy up' and ate that whole game, no crumbs, no cap!",
+  "Okay partner but like... that was lowkey the most slay rodeo I've ever witnessed? Dead.",
+  "You lassoed that W and it's giving... main character on the frontier? Obsessed.",
+  "Howdy bestie! You just ratio'd the entire Wild West and I am HERE for it!",
+  "That was bussin' on the range, pardner! You understood the rootin' tootin' assignment!",
+  "POV: you're a cowpoke who's actually cracked at word games. The saloon is SHOOK.",
+  "No because WHY did you just end that game's whole career?? Yeehaw energy is IMMACULATE.",
+  "You really just rode into the sunset with the biggest W of the century, bestie. Iconic behavior.",
+
+  // Gen Z mob boss
+  "Nah fam, you just ran the whole operation and it's giving... criminal mastermind energy? Slay.",
+  "You made those words an offer they couldn't refuse and honestly? That's so real of you.",
+  "Bestie said 'I AM the don' and proceeded to absolutely body the competition. No cap, respect.",
+  "It's giving... godfather but make it fashion? You just took over the family business, periodt.",
+  "POV: you're the youngest don in history and you're lowkey cracked at word games too. We stan.",
+  "The way you handled that was cold-blooded and also kind of iconic?? The streets are TALKING.",
+  "You really just said 'fuggedaboutit' in the most slay way possible. The famiglia is shook.",
+  "Okay but the way you just casually took over the entire territory? That's literally so valid.",
+
+  // Gen Z pirate
+  "Arrr bestie! You absolutely plundered that game and it's giving... pirate queen energy!",
+  "No because you just sailed through that like it was NOTHING?? Shiver me timbers, slay!",
+  "POV: you're a pirate who's lowkey cracked at word games. The seven seas are SHOOK.",
+  "That treasure was mid but YOUR performance? That was bussin'. Yo ho slay, bestie!",
+  "You really just said 'walk the plank' to every wrong answer. Iconic pirate behavior, no cap.",
+  "The way you commandeered that whole game? Main character on the high seas, honestly.",
+  "Avast, bestie! You ate that and left no crumbs on the poop deck! Dead, I'm so dead.",
+  "Not you casually conquering the Caribbean and serving looks while doing it. Arrr-mazing, periodt.",
+
+  // Australian slang
+  "Strewth, mate! That was an absolute ripper! You smashed it like a true blue legend!",
+  "Fair dinkum, that was bonzer! Reckon you could take on a croc and win after that performance!",
+  "Crikey! You went at that harder than a roo in a boxing ring! Top shelf, ya beauty!",
+  "No wuckas, mate! You nailed it like a tradie on a Monday! Bloody brilliant, that was!",
+  "Stone the crows! That was unreal! You're a deadset champion, mate! Chuckin' a sickie to celebrate!",
+  "You absolute legend! That was grouse! Reckon you deserve a cold one after that effort!",
+  "Oath, mate! You just had a red-hot crack and absolutely cleaned up! Stoked for ya!",
+  "Too easy, mate! You breezed through that like a Bondi wave! Couldn't be more chuffed!",
+
   // Wholesome / encouraging
   "Your brain is a beautiful thing. Look at what it just accomplished!",
   "Every word you got right is proof that you're sharper than you think.",
@@ -438,6 +488,56 @@ const LOSS_MESSAGES: string[] = [
   "Escucha, amigo. Everyone gets one bad day. This was yours. Don't let there be a second.",
   "Ay, carnal. Even the new guys are doing better work than that. Get it together.",
   "The familia is watching, and what they saw was weakness. You know what happens to weakness.",
+
+  // Russian mob
+  "Comrade... that was not good. In fact, that was very, very bad. The Bratva is concerned.",
+  "In Mother Russia, we have a saying: 'The bear does not forgive.' Neither does your score.",
+  "Nyet, nyet, nyet. This is not what we agreed upon. The organization expected better, tovarisch.",
+  "My friend, I must be honest. If this were the old country, we would be having a VERY different conversation.",
+  "The vodka tonight will not be for celebration. It will be for forgetting. Forgetting THIS.",
+  "You performed like a man who has never seen snow. In Russia, that is the worst insult.",
+  "The pakhan sends his... disappointment. That is worse than his anger, my friend. Much worse.",
+  "Da, I saw everything. I wish I hadn't. Some things cannot be unseen, tovarisch.",
+
+  // Gen Z cowboy
+  "Yeehaw but like... sarcastically? Because that was NOT it, bestie. The ranch is cringing.",
+  "Okay pardner, that was lowkey embarrassing? Like the whole frontier saw that and they're SHOOK. Badly.",
+  "You really just fell off the horse and it's giving... tenderfoot energy? Not the vibe, bestie.",
+  "POV: you thought you were that cowpoke but you're actually just a tourist at the dude ranch.",
+  "That was SO not rootin' tootin', partner. The tumbleweeds are rolling away from YOUR score. Oof.",
+  "No because WHY did you just let that game wrangle YOU?? Reverse cowboy energy. Tragic.",
+  "Howdy bestie but also... goodbye? Because your vocabulary just left town and it's not coming back.",
+  "The saloon is quiet. Too quiet. Because everyone is speechless at how bad that was, pardner.",
+
+  // Gen Z mob boss
+  "Fam, you just fumbled the whole operation and it's giving... snitch energy? We need to talk.",
+  "Bestie said 'trust me, I got this' and then proceeded to NOT have it. At all. The famiglia is concerned.",
+  "Nah because that was lowkey embarrassing for the whole family? The streets are NOT impressed.",
+  "It's giving... witness protection program? Because you need to HIDE after that performance.",
+  "POV: the don finds out about your score and it's literally the most unhinged timeline. Yikes.",
+  "The way you just fumbled that was so chaotic and NOT in a slay way. The crew is shook. Negatively.",
+  "You really just brought dishonor to the family name and honestly? That's so not valid, bestie.",
+  "Okay but the way you just lost control of the territory? That's giving amateur hour. The don is LIVID.",
+
+  // Gen Z pirate
+  "Arrr bestie but like... that was giving shipwreck energy? The crew is lowkey mutinying.",
+  "No because you just walked your OWN plank?? Self-sabotage on the high seas, honestly. Tragic.",
+  "POV: you're a pirate who's NOT cracked at word games. The seven seas are laughing. At you.",
+  "That treasure map was upside down and so was your performance. Not the pirate slay we needed.",
+  "You really just sunk your own ship and it's giving... first day on the ocean? Embarrassing, no cap.",
+  "Avast, bestie, but like... we need to revoke your pirate license? That was mid at BEST.",
+  "The way you fumbled that booty was unhinged. And not cute unhinged. Concerning unhinged.",
+  "Davy Jones called and even HE doesn't want your score in his locker. That's how bad it was, periodt.",
+
+  // Australian slang
+  "Crikey, mate! That was an absolute shocker! You've come a proper gutser there, ya drongo!",
+  "Fair suck of the sav, that was woeful! Even a galah could've done better, mate!",
+  "Strewth! That was about as useful as an ashtray on a motorbike! Pull ya socks up!",
+  "Stone the crows, that was rubbish! You played like a stunned mullet out there, mate!",
+  "Mate, that was cactus from the get-go! You were flatter than a lizard drinking! Shocking!",
+  "No wuckas... actually, MANY wuckas! That was dodgier than a two-dollar watch, mate!",
+  "Blimey, you really dropped your bundle there! That performance was as rough as guts!",
+  "Yeah nah, mate. That was cooked. Absolutely cooked. Time for a cold one and a rethink.",
 
   // Wholesome encouragement (for losses)
   "Hey, every expert was once a beginner. You're just building your origin story.",
