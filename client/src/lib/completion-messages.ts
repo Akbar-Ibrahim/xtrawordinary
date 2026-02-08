@@ -117,6 +117,96 @@ const WIN_MESSAGES: string[] = [
   "True mastery is not about knowing every word. It is about letting every word know you.",
   "Namaste. The wordsmith in me honors the wordsmith in you. You are exactly where you need to be.",
 
+  // Southern lady
+  "Well, I do declare! That was the finest display of word-wranglin' I have EVER seen, bless your heart!",
+  "Honey child, you just lit up this game like a firefly on a summer night! I am TICKLED!",
+  "Sugar, if brains were sweet tea, you'd be a whole pitcher of the good stuff!",
+  "Well butter my biscuit and call me impressed! You did that with STYLE, darlin'!",
+  "I'm fixin' to tell everyone at Sunday brunch about this! You were MAGNIFICENT, sweetpea!",
+  "Lord have mercy, you played that smoother than magnolia honey on a warm biscuit!",
+  "My mama always said talent shows up when it's ready, and HONEY, it just showed up!",
+  "Why, I haven't seen anything this impressive since Aunt Mabel won the county spelling bee in '82!",
+
+  // African American street slang
+  "Yo, you went OFF off! That was straight pressure, no question!",
+  "Aight, I see you! You really came through clutchin' like that. Real talk.",
+  "That was cold, fam. Ice cold. You bodied that whole thing, no cap.",
+  "Sheeeesh! You just ran through that like it was nothin'. Big dawg energy!",
+  "You was cookin' the WHOLE time! Had 'em shook from the jump!",
+  "Nah, you different. You really stepped in there and handled ya business. Respect.",
+  "Ayo, that was tough! You snapped on every single word. Period.",
+  "You ate that UP! Not a crumb left! That's how you supposed to come through!",
+
+  // British slang
+  "Absolutely brilliant, mate! You proper smashed it! Chuffed to bits for ya!",
+  "Blimey, that was well good! You've gone and done yourself proud, haven't ya!",
+  "Right then, that was a proper result! You're well sorted, you are!",
+  "Mate, you absolutely bossed it! Not being funny, but that was class!",
+  "Cor blimey! You've only gone and done it! Proper job, that was mint!",
+  "You've had an absolute blinder! Dead impressed, I am. Crackin' stuff!",
+  "Fair play, that was ace! You've smashed it right out the park, ya legend!",
+  "Well in, mate! You've proper mugged off that game! Top marks, innit!",
+
+  // Jamaican slang
+  "Yow! Yuh mash up di game, star! Big tings! Respect due!",
+  "Wah gwaan! Yuh just run di place! Nobody cyaan test yuh, bredren!",
+  "Bless up, massive! Yuh come een like a champion fi real! Big up yuhself!",
+  "Irie vibes all round! Yuh play dat smooth like butter, yuh zimmi!",
+  "Bomboclaat! Yuh just shell dung di whole ting! Nuff respect, selecta!",
+  "Yuh a di real general, fam! Every word lock tight! Walk good, champion!",
+  "One love, bredren! Yuh just show dem how fi dweet! Jah bless!",
+  "Wagwan! Yuh nuh easy! Dat performance deh was WICKEED, yuh dun know!",
+
+  // Pirate
+  "Shiver me timbers! Ye plundered every last word like a true buccaneer! ARRR!",
+  "Avast, ye brilliant scallywag! That be the finest word-smithery on all seven seas!",
+  "Blow me down! Ye sailed through that like the wind was at yer back! Well done, matey!",
+  "Yo ho ho! The captain raises a tankard in yer honor! A finer crew member I never did see!",
+  "By Davy Jones' locker, ye've got the sharpest mind this side of the Caribbean!",
+  "Hoist the colors! A victory this grand deserves a full broadside salute! FIRE!",
+  "Aye aye, ye magnificent sea dog! Ye've earned yer weight in doubloons today!",
+  "Land ho! That treasure of a score be the finest booty any pirate ever claimed!",
+
+  // Airplane pilot / Mayday alert
+  "Ladies and gentlemen, this is your captain speaking. We have reached PEAK PERFORMANCE. Smooth sailing ahead.",
+  "Tower, this is WordPlay One. Requesting permission for a victory flyby. Score is... outstanding.",
+  "All systems nominal. Performance metrics are off the charts. Prepare for a smooth landing into glory.",
+  "Flight WordPlay-747 reporting: all words cleared for landing. Zero turbulence. Textbook performance.",
+  "Attention crew: we have achieved cruising altitude of ABSOLUTE BRILLIANCE. Seatbelt sign is off. Celebrate freely.",
+  "Roger that, control. Confirming a perfect approach. All answers locked in. Touchdown successful.",
+  "This is your pilot. I've been flying for 30 years, and I've never seen instruments read this good. Bravo.",
+  "Mayday, Mayday! Just kidding. Everything is PERFECT up here. Best flight of the season.",
+
+  // Airport announcer
+  "Attention all passengers: Flight Victory has arrived at Gate Awesome. Please collect your bragging rights.",
+  "Paging all players: your connecting flight to the Hall of Fame is now boarding at Gate 1. Final call.",
+  "Attention all passengers: the score currently displayed on the board has been upgraded to First Class.",
+  "This is a gate change announcement: your destination has been changed from 'Okay' to 'Absolutely Incredible.'",
+  "Would the owner of an outstanding performance please report to the information desk? You left everyone speechless.",
+  "Attention all passengers: WordPlay Airlines would like to congratulate today's MVP. You know who you are.",
+  "Final boarding call for Flight Genius, departing from Gate Brilliant. One passenger confirmed. That's you.",
+  "Attention: baggage claim for this round includes one trophy, three compliments, and unlimited respect.",
+
+  // Cowboy
+  "Well, slap my chaps and call me impressed! You rode that game harder than a bull at the rodeo!",
+  "Yeehaw, partner! You just lassoed every word in the corral! That's some mighty fine wranglin'!",
+  "I'll be danged! Ain't seen shootin' that straight since Wild Bill himself! Tip of the hat to ya!",
+  "Saddle up, amigo, 'cause you just rode off into the sunset a WINNER! The frontier salutes ya!",
+  "Well I'll be a rattlesnake's uncle! That was the rootinest, tootinest performance this side of the Pecos!",
+  "You drew faster than a six-shooter at high noon! Ain't nobody outgunnin' you today, cowpoke!",
+  "Reckon I ain't seen a display like that since the great cattle drive of '88! Much obliged, partner!",
+  "That there was Grade-A, prime cut, top-shelf word-slingin'! The ranch hands are hootin' and hollerin'!",
+
+  // Mexican Cartel
+  "Orale, compa! You handled that like a true jefe. Clean. Efficient. No loose ends.",
+  "Respeto, amigo. That was professional-grade work. The plaza is yours tonight.",
+  "Mira, I've seen a lot of players come and go. But you? You're built for this life, carnal.",
+  "Que chingon! You ran that whole operation without breaking a sweat. El patron is impressed.",
+  "Andale! You moved through those words like product through the pipeline. Smooth and untraceable.",
+  "Compadre, that was cold-blooded excellence. The kind of work that earns you a seat at the table.",
+  "No mames! You just took over the whole territory! Even the rivals are clapping. Bien hecho.",
+  "The familia sends their regards... and their congratulations. You've earned your place, hermano.",
+
   // Wholesome / encouraging
   "Your brain is a beautiful thing. Look at what it just accomplished!",
   "Every word you got right is proof that you're sharper than you think.",
@@ -258,6 +348,96 @@ const LOSS_MESSAGES: string[] = [
   "In every wrong answer, there is a lesson. Today, you received many, many lessons.",
   "The candle flickers, but does not go out. Neither shall your spirit. Try again, grasshopper.",
   "Om... Let the wrong answers dissolve like morning dew. Tomorrow you will bloom anew.",
+
+  // Southern lady
+  "Oh, bless your heart, sugar. That was... well, we don't need to talk about it at the dinner table.",
+  "Honey, I love you like family, but that performance was rougher than a cob. Bless it.",
+  "Well, I never! My great-aunt Charlene could've done better, and she's been gone since '97!",
+  "Sweetpea, that was harder to watch than a possum playin' dead on the front porch. Lawd.",
+  "Darlin', I'm gonna pray for your vocabulary tonight. And tomorrow night. And the night after.",
+  "Sugar, I'd say that was a hot mess, but that'd be an insult to hot messes everywhere.",
+  "Oh, honey, no. Just... no. Come sit down and let me fix you some sweet tea. You need it.",
+  "Bless your little heart, you tried. And that's what I'm gonna tell people when they ask.",
+
+  // African American street slang
+  "Bruh. BRUH. What was that? You down bad for real right now.",
+  "Nah, that ain't it, fam. You gotta go back to the lab with that one.",
+  "You got cooked out there. Fried. Extra crispy. No seasoning. Just pain.",
+  "Dawg, that was ROUGH. Like, I'm embarrassed FOR you type rough.",
+  "You fumbled the bag so hard they heard it in the next zip code.",
+  "That was cap. Your whole performance was cap. Come correct next time.",
+  "I ain't gonna hold you, that was tragic. You gotta tighten up, cuz.",
+  "You took an L so big they gotta make a new letter for it.",
+
+  // British slang
+  "Mate, that was absolutely rubbish. Proper pants, that was. Gutted for ya.",
+  "Blimey, you've made a right dog's dinner of that! Shocking, absolutely shocking.",
+  "That was well dodgy, innit? You've proper bottled it there, haven't ya.",
+  "Crikey, what a shambles! You've come a cropper on that one, mate. Mental.",
+  "Not being funny, but that was naff. Properly naff. You've done a mare there.",
+  "That was a right cock-up, wasn't it? You've gone and made a mug of yourself!",
+  "Oh dear. You've absolutely binned that one off. Gobsmacked at how bad that was.",
+  "Mate, you've had a nightmare. An absolute stinker. Back to the drawing board, yeah?",
+
+  // Jamaican slang
+  "Lawd have mercy! Wha happen to yuh, bredren? Dat was ROUGH, yuh nuh see it!",
+  "Cho! Mi cyaan believe weh mi just witness! Yuh need fi go back a school, star!",
+  "Wah gwaan wid dat performance deh? Yuh come een like yuh neva see word before!",
+  "Mi shame fi yuh, massive. Dat was dutty. Go sidung and tink bout weh yuh do.",
+  "Bwoy, yuh get bun PROPER! Di words dem lick yuh dung one by one!",
+  "Bredren, dat was a whole disaster. But nuh worry - every mickle mek a muckle. Try again!",
+  "Yuh just get WASH! But real talk, even Usain did haffi learn fi walk first. Come again!",
+  "Rahtid! Dat neva pretty at ALL. But yuh have heart, mi give yuh dat.",
+
+  // Pirate
+  "Arrr, that was a shipwreck of a performance! Ye'd make Davy Jones himself cringe!",
+  "Blast it all! Ye played like a landlubber who's never seen the open sea! Pathetic, matey!",
+  "Ye scurvy dog! Me parrot could've done better, and he only knows THREE words!",
+  "Walk the plank! That performance be worthy of nothin' less! The crew is NOT impressed!",
+  "By Blackbeard's ghost, that was terrible! Ye'd be swabbin' decks for a month after that!",
+  "Abandon ship! ABANDON SHIP! This performance be sinkin' faster than the Titanic!",
+  "Ye lily-livered bilge rat! I've seen barnacles with better word skills than that!",
+  "The Jolly Roger flies at half-mast today. In memory of your vocabulary. Rest in pieces.",
+
+  // Airplane pilot / Mayday alert
+  "Mayday, Mayday, Mayday! This is WordPlay One declaring an emergency! Score is critically low!",
+  "Ladies and gentlemen, this is your captain. We've experienced severe vocabulary turbulence. Brace for impact.",
+  "Tower, requesting emergency landing. All word engines have failed. I repeat, ALL engines down.",
+  "This is NOT a drill. We have lost cabin pressure, altitude, and apparently all knowledge of the English language.",
+  "Black box recovered. Cause of crash: catastrophic failure of basic spelling skills. No survivors.",
+  "Control tower to WordPlay One: you are WAY off course. Like... not even on the radar anymore.",
+  "Attention passengers: the pilot has turned on the 'We're In Trouble' sign. Please panic accordingly.",
+  "Flight recorder shows: the descent began at Question 1 and never recovered. Thoughts and prayers.",
+
+  // Airport announcer
+  "Attention all passengers: Flight Victory has been indefinitely delayed. We apologize for the inconvenience.",
+  "Paging the owner of a lost vocabulary: it was last seen somewhere around Question 2. Please claim it.",
+  "Attention all passengers: your connecting flight to Success has been CANCELLED due to poor performance.",
+  "This is a final boarding call for Dignity. It appears to have departed without you.",
+  "Attention: the baggage carousel is now displaying your mistakes. There are... quite a few bags.",
+  "We regret to inform you that your upgrade to First Class has been downgraded to the cargo hold.",
+  "Would the player who left their skills at security screening please return to collect them?",
+  "Attention all passengers: the arrival board now reads 'DELAYED' for all your hopes and dreams.",
+
+  // Cowboy
+  "Well, partner, that was rougher than a tumbleweed in a tornado. You got bucked off hard.",
+  "Tarnation! I've seen baby calves with more fight! You got wrangled somethin' fierce, pardner!",
+  "That was a real dust-up, and YOU were the dust. Git along now and practice up, cowpoke.",
+  "Dadgummit! You shot blanks the whole dang round! Even the horses are laughin' at ya!",
+  "Hoo boy. That was uglier than a mud fence in a rainstorm. Best mosey on back to the ranch.",
+  "You rode in like a hero and rode out like a tenderfoot. The saloon's buyin' you a consolation drink.",
+  "Ain't no sugar-coatin' it, amigo. That was a train wreck on the prairie. Choo choo, partner.",
+  "The wanted poster says 'WANTED: Better Vocabulary.' Reward: not embarrassin' yourself next time.",
+
+  // Mexican Cartel
+  "Oye, compa. That was sloppy work. Very sloppy. El jefe is NOT happy.",
+  "Mira, amigo, we gave you a simple job and you couldn't deliver. That's a problem.",
+  "Que paso, carnal? You fell apart out there. In this business, that gets you... reassigned.",
+  "No bueno, hermano. That kind of performance makes people nervous. Very nervous.",
+  "Compadre, I vouched for you. Told them you were reliable. You just made me look like a fool.",
+  "Escucha, amigo. Everyone gets one bad day. This was yours. Don't let there be a second.",
+  "Ay, carnal. Even the new guys are doing better work than that. Get it together.",
+  "The familia is watching, and what they saw was weakness. You know what happens to weakness.",
 
   // Wholesome encouragement (for losses)
   "Hey, every expert was once a beginner. You're just building your origin story.",
