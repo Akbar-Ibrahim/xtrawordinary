@@ -77,6 +77,46 @@ const WIN_MESSAGES: string[] = [
   "My heart beats in consonants and vowels, and they all spell YOUR name.",
   "If love were a word game, you'd win every round. You already won mine.",
 
+  // Medieval king
+  "By royal decree, We declare this victory MAGNIFICENT. The kingdom rejoices!",
+  "Kneel before Us, champion, and rise as Sir Wordsworth of the Realm!",
+  "The crown weighs heavy, but today it sits upon a worthy head. YOUR head.",
+  "Let the heralds sound the trumpets! A feat of linguistic valor has been achieved in Our name!",
+  "We are most pleased. The royal coffers shall be opened in celebration of this triumph!",
+  "Hear ye, hear ye! The sovereign proclaims this the finest display of wit in all the land!",
+  "Our kingdom has known many victories, but few as glorious as this. You honor the throne.",
+  "The royal scribe shall chronicle this moment for eternity. Well fought, loyal subject!",
+
+  // Medieval dueler acknowledging defeat (win = opponent concedes)
+  "I yield! Your blade of intellect has bested mine. I concede with honor.",
+  "Sheathe your sword, champion. The duel is won. I bow to the superior mind.",
+  "A touch! A palpable touch! You have pierced my defenses most skillfully.",
+  "I lay down my quill and concede the field. You are the finer wordsmith this day.",
+  "Never have I faced such a formidable opponent. My steel was no match for your wit.",
+  "The duel is decided. I salute you, worthy adversary, and accept my defeat with grace.",
+  "You have fought with honor and cunning. I withdraw, humbled but wiser for the contest.",
+  "My liege, I have been bested. This challenger's command of words is beyond reproach.",
+
+  // Court / Gen Z lawyer
+  "Your Honour, my client would like the record to reflect that they absolutely ATE that.",
+  "Your Honour, I present Exhibit A: a flawless performance. The defense rests. Mic drop.",
+  "Objection, Your Honour! This level of brilliance should be inadmissible. It's too good.",
+  "Your Honour, we move to dismiss all doubt. My client is, in fact, HIM.",
+  "Let the court note: the defendant scored so hard it constitutes cruel and unusual punishment to the game.",
+  "Your Honour, I'd like to enter a motion that my client be declared 'goated' in perpetuity.",
+  "Counsel for the prosecution concedes. No further questions, Your Honour. We've been cooked.",
+  "Your Honour, the evidence is overwhelming. My client is guilty... of being absolutely cracked at this.",
+
+  // Enlightenment after meditation
+  "Breathe in... breathe out... and notice how effortlessly the correct answers flowed through you.",
+  "The mind is still. The words are clear. You did not force the victory - it arose naturally.",
+  "In the silence between thoughts, the answers revealed themselves. This is the way.",
+  "You did not conquer the game. You became one with it. And in that oneness, there was only victory.",
+  "The lotus blooms. The fog lifts. What remains is clarity, peace, and an excellent score.",
+  "Observe how the letters arranged themselves without struggle. You were merely the vessel.",
+  "True mastery is not about knowing every word. It is about letting every word know you.",
+  "Namaste. The wordsmith in me honors the wordsmith in you. You are exactly where you need to be.",
+
   // Wholesome / encouraging
   "Your brain is a beautiful thing. Look at what it just accomplished!",
   "Every word you got right is proof that you're sharper than you think.",
@@ -178,6 +218,46 @@ const LOSS_MESSAGES: string[] = [
   "I'm starting to think the letters themselves conspired against you. Trust no vowel.",
   "That was suspicious. Not suspicious-good. The other kind of suspicious.",
   "Either you're a genius playing 4D chess, or... well, let's go with the 4D chess theory.",
+
+  // Medieval king
+  "The crown is DISPLEASED. This performance brings shame upon the royal court.",
+  "We hereby banish this score from the kingdom. Guards! Remove it from Our sight!",
+  "The royal treasury invested in your training, and THIS is the return? Unacceptable.",
+  "By Our scepter, We have witnessed peasants with more command of the tongue.",
+  "Let the record show: the throne is NOT amused. A period of reflection is hereby ordered.",
+  "We expected a champion and received... whatever that was. The dungeon awaits improvement.",
+  "The kingdom's enemies would tremble less after watching this display. Deeply concerning.",
+  "Our court jester performs with more linguistic precision. And that is NOT a compliment.",
+
+  // Medieval dueler acknowledging defeat (loss = you are the defeated dueler)
+  "I yield... you have bested me, but know that I shall return stronger. This I swear on my sword.",
+  "My blade falters. My wit dulls. You have won this bout, but the war of words is far from over.",
+  "I kneel in defeat, but I kneel with HONOR. Not everyone can say that after such a thrashing.",
+  "The field is yours. I retreat to sharpen my mind as one would sharpen a dulled blade.",
+  "A thousand duels I have fought, and yet this one shall haunt me. Well played, adversary.",
+  "I remove my gauntlet and cast it not in challenge, but in surrender. You were the superior.",
+  "My second shall carry me from this field, but my pride? That was already carried away.",
+  "The crowd falls silent. The defeated dueler bows. There is no shame in losing to a master.",
+
+  // Court / Gen Z lawyer
+  "Your Honour, my client pleads... not great. We'd like to request a retrial, respectfully.",
+  "Your Honour, the defense would like to strike this entire performance from the record. Please.",
+  "Objection! On what grounds? On the grounds that this score is emotionally devastating, Your Honour.",
+  "Your Honour, we move for a mistrial. My client was clearly not in their right mind.",
+  "Let the court record show that my client's performance was, and I quote, 'down bad.'",
+  "Your Honour, I'd like to recuse myself. I can no longer defend what I just witnessed.",
+  "The prosecution rests, Your Honour. Honestly, they didn't even need to try that hard.",
+  "Your Honour, my client would like to plead the Fifth. And the Sixth. And every amendment after that.",
+
+  // Enlightenment after meditation
+  "Breathe in... breathe out... and gently release your attachment to winning. Let it go.",
+  "The path to enlightenment is paved with failed word games. You are making excellent progress.",
+  "Do not mourn the lost points. They were never truly yours. Nothing is. This is freedom.",
+  "The universe does not judge your score. Only you judge your score. So stop judging your score.",
+  "Be like water - formless, shapeless, and apparently also unable to spell correctly.",
+  "In every wrong answer, there is a lesson. Today, you received many, many lessons.",
+  "The candle flickers, but does not go out. Neither shall your spirit. Try again, grasshopper.",
+  "Om... Let the wrong answers dissolve like morning dew. Tomorrow you will bloom anew.",
 
   // Wholesome encouragement (for losses)
   "Hey, every expert was once a beginner. You're just building your origin story.",
