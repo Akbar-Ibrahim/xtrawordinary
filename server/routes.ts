@@ -55,12 +55,12 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-builder/words", async (_req, res) => {
+  app.get("/api/games/letter-pool/words", async (_req, res) => {
     try {
-      const words = await dataSource.getBuilderWords();
+      const words = await dataSource.getLetterPoolWords();
       res.json(words);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch builder words" });
+      res.status(500).json({ message: "Failed to fetch letter pool words" });
     }
   });
 

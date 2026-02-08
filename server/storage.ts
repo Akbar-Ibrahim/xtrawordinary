@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, BuilderWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
 
 // Constraint types for games
 export type LengthConstraint = {
@@ -24,7 +24,7 @@ export interface IStorage {
   getAnagramWordSets(): Promise<AnagramWordSet[]>;
   getScrambleWords(): Promise<ScrambleWord[]>;
   getDefinitionWords(): Promise<DefinitionWord[]>;
-  getBuilderWords(): Promise<BuilderWord[]>;
+  getLetterPoolWords(): Promise<LetterPoolWord[]>;
   getMakerWords(): Promise<MakerWord[]>;
   getWordStackPuzzles(): Promise<WordStackPuzzle[]>;
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
@@ -92,8 +92,25 @@ const definitionWords: DefinitionWord[] = [
   { word: "FLOURISH", definition: "To grow or develop in a healthy or vigorous way", partOfSpeech: "verb", synonyms: ["thrive", "prosper", "bloom", "grow"] },
 ];
 
-// Word Builder words (first and last letters shown)
-const builderWords: BuilderWord[] = [
+function generateLetterPool(word: string, decoyCount: number = 4): string[] {
+  const middleLetters = word.slice(1, -1).split("");
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const wordLetters = new Set(word.split(""));
+  const decoyOptions = alphabet.split("").filter(l => !wordLetters.has(l));
+  const decoys: string[] = [];
+  const shuffledDecoys = decoyOptions.sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(decoyCount, shuffledDecoys.length); i++) {
+    decoys.push(shuffledDecoys[i]);
+  }
+  const pool = [...middleLetters, ...decoys];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+}
+
+const letterPoolBaseWords = [
   { word: "ADVENTURE", hint: "An exciting experience or undertaking", category: "Experience" },
   { word: "BEAUTIFUL", hint: "Pleasing to the senses", category: "Appearance" },
   { word: "CHALLENGE", hint: "A task that tests abilities", category: "Activity" },
@@ -360,20 +377,21 @@ const gamesData: Game[] = [
   },
   {
     id: "5",
-    slug: "word-builder",
-    name: "Word Builder",
-    description: "Fill in the missing middle letters to complete the word.",
-    longDescription: "Put your spelling skills to the test! You'll see the first and last letters of a word, with blanks in between. Use the hint and category to figure out the complete word. The fewer hints you use, the more points you earn!",
+    slug: "letter-pool",
+    name: "Letter Pool",
+    description: "Pick the right letters from the pool to complete the word!",
+    longDescription: "The first and last letters are locked in place - your job is to fill the blanks by choosing from a pool of letter tiles below. But watch out: the pool contains decoy letters mixed in with the correct ones! Pick wrong and you lose a life. Can you spot the right letters and complete all the words?",
     rules: [
-      "The first and last letters are revealed",
-      "Fill in the missing middle letters",
-      "Use the hint for clues about the word's meaning",
-      "Category tells you what type of word it is",
-      "Score based on speed and accuracy"
+      "The first and last letters are locked and revealed",
+      "Click letters from the pool to fill the blank spaces",
+      "The pool contains the correct letters PLUS decoy letters",
+      "Click a filled letter to return it to the pool",
+      "Wrong words cost you a life - you have 3 lives",
+      "Use the hint button for a clue (costs 50 points)"
     ],
     difficulty: "medium",
     estimatedTime: "4-6 min",
-    icon: "PenTool",
+    icon: "LayoutGrid",
     color: "hsl(340, 75%, 55%)",
     playCount: 6420
   },
@@ -610,8 +628,11 @@ export class MemStorage implements IStorage {
     return definitionWords;
   }
 
-  async getBuilderWords(): Promise<BuilderWord[]> {
-    return builderWords;
+  async getLetterPoolWords(): Promise<LetterPoolWord[]> {
+    return letterPoolBaseWords.map(w => ({
+      ...w,
+      letterPool: generateLetterPool(w.word),
+    }));
   }
 
   async getMakerWords(): Promise<MakerWord[]> {

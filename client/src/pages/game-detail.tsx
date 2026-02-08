@@ -20,7 +20,7 @@ import { WordGuessingGame } from "@/components/games/word-guessing";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
-import { WordBuilderGame } from "@/components/games/word-builder";
+import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordMakerGame } from "@/components/games/word-maker";
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
@@ -43,7 +43,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "anagram-solver": AnagramSolverGame,
   "word-scramble": WordScrambleGame,
   "definition-match": DefinitionMatchGame,
-  "word-builder": WordBuilderGame,
+  "letter-pool": LetterPoolGame,
   "word-maker": WordMakerGame,
   "word-length": WordLengthGame,
   "letter-position": LetterPositionGame,

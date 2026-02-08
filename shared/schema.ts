@@ -51,14 +51,15 @@ export const definitionWordSchema = z.object({
 export type DefinitionWord = z.infer<typeof definitionWordSchema>;
 export const definitionWordsSchema = z.array(definitionWordSchema);
 
-// Word Builder words (word with start/end revealed)
-export const builderWordSchema = z.object({
+// Letter Pool words (word with locked first/last, pool of letters including decoys)
+export const letterPoolWordSchema = z.object({
   word: z.string(),
   hint: z.string(),
   category: z.string(),
+  letterPool: z.array(z.string()),
 });
-export type BuilderWord = z.infer<typeof builderWordSchema>;
-export const builderWordsSchema = z.array(builderWordSchema);
+export type LetterPoolWord = z.infer<typeof letterPoolWordSchema>;
+export const letterPoolWordsSchema = z.array(letterPoolWordSchema);
 
 // Word Maker words (base word + possible derivatives)
 export const makerWordSchema = z.object({

@@ -22,7 +22,7 @@ Drizzle ORM is configured for PostgreSQL, with schema defined in `shared/schema.
 ### API Endpoints
 The API provides endpoints for:
 - Retrieving lists and details of all 15 games.
-- Fetching specific word sets for various games (e.g., Word Guessing, Anagram Solver, Word Scramble).
+- Fetching specific word sets for various games (e.g., Word Guessing, Anagram Solver, Word Scramble, Letter Pool).
 - Validating words against a secure, server-side dictionary (`POST /api/games/validate-word`).
 - Game-specific configurations and interactions (e.g., Letter Balance config, Word Chain start/computer word).
 - No dictionary endpoint is exposed to the frontend, ensuring security.
