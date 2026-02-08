@@ -12,6 +12,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = "build-up" | "break-down" | null;
@@ -57,6 +58,7 @@ export function WordStackGame() {
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isBuildUp = selectedChallenge === "build-up";
@@ -94,6 +96,7 @@ export function WordStackGame() {
   const selectNewPuzzle = useCallback(() => {
     const availablePuzzles = activePuzzles.filter((p) => !usedPuzzles.has(p.targetWord));
     if (availablePuzzles.length === 0) {
+      setCompletionMessage(getCompletionMessage(true));
       setGameStatus("complete");
       return;
     }
@@ -332,6 +335,7 @@ export function WordStackGame() {
             <div className="space-y-2">
               <p className="text-xl">Final Score: <span className="font-bold text-primary"><AnimatedNumber value={score} /></span></p>
               <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted}</p>
+              <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
             </div>
             <ShareResults
               gameName="Word Stack"

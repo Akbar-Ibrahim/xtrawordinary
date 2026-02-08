@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -96,6 +97,7 @@ export function ContainsLettersGame() {
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [completionMessage, setCompletionMessage] = useState("");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -118,6 +120,7 @@ export function ContainsLettersGame() {
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -212,6 +215,7 @@ export function ContainsLettersGame() {
         if (newWordsCompleted >= wordsToComplete) {
           stopTimer();
           playSound("win");
+          setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         } else if (challenge === "advanced") {
           setCurrentLetters(generateLettersForChallenge("advanced"));
@@ -441,6 +445,7 @@ export function ContainsLettersGame() {
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words!
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
@@ -491,6 +496,7 @@ export function ContainsLettersGame() {
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>

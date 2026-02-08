@@ -23,6 +23,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { WordSplitPuzzle } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { apiRequest } from "@/lib/queryClient";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 type Difficulty = "short" | "medium" | "long";
 type GameState = "menu" | "playing" | "completed" | "failed";
@@ -110,6 +111,7 @@ export function WordSplitGame() {
   const [puzzlesSkipped, setPuzzlesSkipped] = useState(0);
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid" | "doesnt-fit"; message: string } | null>(null);
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectPuzzle = useCallback((puzzleList: WordSplitPuzzle[], used: Set<string>) => {
@@ -284,6 +286,13 @@ export function WordSplitGame() {
     nextPuzzle();
   }, [nextPuzzle]);
 
+  useEffect(() => {
+    if (gameState === "completed") {
+      const allSolved = puzzlesSkipped === 0 && puzzlesCompleted > 0;
+      setCompletionMessage(getCompletionMessage(allSolved));
+    }
+  }, [gameState, puzzlesSkipped, puzzlesCompleted]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       submitWord();
@@ -385,6 +394,7 @@ export function WordSplitGame() {
                       ? "You skipped all the puzzles. Give it another try!"
                       : `You solved ${puzzlesCompleted} of ${totalPuzzles} puzzles.`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary" data-testid="text-final-score">
                     <AnimatedNumber value={score} /> points

@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Lightbulb, Trophy, X, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const MAX_ATTEMPTS = 6;
 
@@ -31,6 +32,7 @@ export function WordGuessingGame() {
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [usedLetters, setUsedLetters] = useState<Map<string, LetterStatus>>(new Map());
   const [shake, setShake] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
 
   const initGame = useCallback(async () => {
     const result = await refetch();
@@ -103,9 +105,11 @@ export function WordGuessingGame() {
     if (currentGuess === targetWord) {
       playSound("win");
       setGameStatus("won");
+      setCompletionMessage(getCompletionMessage(true));
     } else if (newGuesses.length >= MAX_ATTEMPTS) {
       playSound("lose");
       setGameStatus("lost");
+      setCompletionMessage(getCompletionMessage(false));
     } else {
       const allCorrect = result.every(r => r.status === "correct");
       if (!allCorrect && result.some(r => r.status === "present" || r.status === "absent")) {
@@ -269,6 +273,7 @@ export function WordGuessingGame() {
                     <p className="text-muted-foreground">
                       You guessed the word in {guesses.length} attempts!
                     </p>
+                    <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -277,6 +282,7 @@ export function WordGuessingGame() {
                     <p className="text-muted-foreground">
                       The word was <span className="font-bold">{targetWord}</span>
                     </p>
+                    <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                   </div>
                 )}
                 <ShareResults

@@ -11,6 +11,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { ScrambleWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 export function WordScrambleGame() {
   const { playSound } = useSound();
@@ -31,6 +32,7 @@ export function WordScrambleGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrambleWord = (word: string): string => {
@@ -49,6 +51,7 @@ export function WordScrambleGame() {
     if (availableWords.length === 0) {
       playSound("win");
       setGameStatus("won");
+      setCompletionMessage(getCompletionMessage(true));
       return;
     }
     const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
@@ -113,6 +116,7 @@ export function WordScrambleGame() {
           setTimeout(() => {
             playSound("lose");
             setGameStatus("lost");
+            setCompletionMessage(getCompletionMessage(false));
           }, 800);
         }
         return newLives;
@@ -127,6 +131,7 @@ export function WordScrambleGame() {
       if (newLives <= 0) {
         playSound("lose");
         setGameStatus("lost");
+        setCompletionMessage(getCompletionMessage(false));
       } else {
         selectNewWord();
       }
@@ -340,6 +345,7 @@ export function WordScrambleGame() {
                     ? "You unscrambled all the words!"
                     : `The word was "${currentWord.word}"`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">

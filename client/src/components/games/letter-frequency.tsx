@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   A: 5, B: 3, C: 4, D: 4, E: 5, F: 3, G: 4, H: 4, I: 5, J: 2, K: 3, L: 4, M: 4,
@@ -109,6 +110,7 @@ export function LetterFrequencyGame() {
 
   const [challenge, setChallenge] = useState<Challenge>(1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [completionMessage, setCompletionMessage] = useState("");
   const [constraint, setConstraint] = useState<FrequencyConstraint | null>(null);
   const [multiConstraint, setMultiConstraint] = useState<MultiLetterConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
@@ -138,6 +140,7 @@ export function LetterFrequencyGame() {
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -231,6 +234,7 @@ export function LetterFrequencyGame() {
       if (newWordsCompleted >= wordsPerChallenge) {
         stopTimer();
         playSound("win");
+        setCompletionMessage(getCompletionMessage(true));
         setGameStatus("won");
       } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
         if (challenge === "multi") {
@@ -466,6 +470,7 @@ export function LetterFrequencyGame() {
                 <p className="text-muted-foreground">
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
@@ -516,6 +521,7 @@ export function LetterFrequencyGame() {
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>

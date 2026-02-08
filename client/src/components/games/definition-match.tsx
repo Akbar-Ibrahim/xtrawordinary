@@ -11,6 +11,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { DefinitionWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 export function DefinitionMatchGame() {
   const { playSound } = useSound();
@@ -29,6 +30,7 @@ export function DefinitionMatchGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showAnswer, setShowAnswer] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
@@ -36,6 +38,7 @@ export function DefinitionMatchGame() {
     if (availableWords.length === 0) {
       playSound("win");
       setGameStatus("won");
+      setCompletionMessage(getCompletionMessage(true));
       return;
     }
     const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
@@ -283,6 +286,7 @@ export function DefinitionMatchGame() {
                 <p className="text-muted-foreground">
                   You matched all the definitions!
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 <ShareResults
                   gameName="Definition Match"

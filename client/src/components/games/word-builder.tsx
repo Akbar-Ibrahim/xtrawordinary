@@ -12,6 +12,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { BuilderWord } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 
@@ -41,6 +42,7 @@ export function WordBuilderGame() {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const getDisplayWord = (word: string): string[] => {
@@ -59,6 +61,7 @@ export function WordBuilderGame() {
     if (availableWords.length === 0) {
       playSound("win");
       setGameStatus("won");
+      setCompletionMessage(getCompletionMessage(true));
       return;
     }
     const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
@@ -125,6 +128,7 @@ export function WordBuilderGame() {
           setTimeout(() => {
             playSound("lose");
             setGameStatus("lost");
+            setCompletionMessage(getCompletionMessage(false));
           }, 800);
         }
         return newLives;
@@ -369,6 +373,7 @@ export function WordBuilderGame() {
                     ? "You completed all the words!"
                     : `The word was "${currentWord.word}"`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">

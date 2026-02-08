@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -358,6 +359,7 @@ export function LetterBalanceGame() {
   const [timeLeft, setTimeLeft] = useState(12);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const [completionMessage, setCompletionMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeftRef = useRef<number>(12);
   const isPlayingRef = useRef<boolean>(false);
@@ -416,6 +418,7 @@ export function LetterBalanceGame() {
           timerRef.current = null;
         }
         isPlayingRef.current = false;
+        setCompletionMessage(getCompletionMessage(false));
         setGameState("game_over");
       }
     }, 1000);
@@ -568,6 +571,7 @@ export function LetterBalanceGame() {
       setTimeout(() => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerLevel) {
+          setCompletionMessage(getCompletionMessage(true));
           setGameState("level_complete");
         } else {
           // Generate new constraint for advanced mode
@@ -757,6 +761,7 @@ export function LetterBalanceGame() {
                     }!`
                 }
               </p>
+              <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
             </div>
             
             <Badge variant="outline" className="text-lg px-4 py-2 gap-2">
@@ -824,6 +829,7 @@ export function LetterBalanceGame() {
               <p className="text-muted-foreground mt-2">
                 You completed {wordsCompleted} words
               </p>
+              <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
             </div>
             
             <Badge variant="outline" className="text-lg px-4 py-2 gap-2">

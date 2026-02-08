@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 type Variation = 1 | 2;
 type Level = 1 | 2;
@@ -56,6 +57,7 @@ export function WordChainGame() {
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [chainHistory, setChainHistory] = useState<{ word: string; isPlayer: boolean }[]>([]);
+  const [completionMessage, setCompletionMessage] = useState("");
 
   const wordsPerLevel = 100;
   const timePerWord = 10;
@@ -105,6 +107,7 @@ export function WordChainGame() {
         if (prev <= 1) {
           setTimerRunning(false);
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -234,6 +237,7 @@ export function WordChainGame() {
         if (newWordsCompleted >= wordsPerLevel) {
           if (level >= 2) {
             playSound("win");
+            setCompletionMessage(getCompletionMessage(true));
             setGameStatus("won");
           } else {
             playSound("correct");
@@ -253,6 +257,7 @@ export function WordChainGame() {
           
           if (!computerResult.word) {
             playSound("win");
+            setCompletionMessage(getCompletionMessage(true));
             setGameStatus("won");
             return;
           }
@@ -263,6 +268,7 @@ export function WordChainGame() {
           resetTimer();
         } catch {
           playSound("win");
+          setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         }
       }, 500);
@@ -536,6 +542,7 @@ export function WordChainGame() {
                     ? "You completed the word chain!"
                     : `You chained ${wordsCompleted} words`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>

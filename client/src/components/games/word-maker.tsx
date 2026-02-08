@@ -12,6 +12,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { MakerWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 export function WordMakerGame() {
   const { playSound } = useSound();
@@ -27,6 +28,7 @@ export function WordMakerGame() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");
+  const [completionMessage, setCompletionMessage] = useState("");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "duplicate" | null>(null);
   const [usedBaseWords, setUsedBaseWords] = useState<Set<string>>(new Set());
   const [roundsCompleted, setRoundsCompleted] = useState(0);
@@ -50,6 +52,7 @@ export function WordMakerGame() {
     const availableWords = activeWords.filter((w) => !usedBaseWords.has(w.baseWord));
     if (availableWords.length === 0) {
       playSound("win");
+      setCompletionMessage(getCompletionMessage(true));
       setGameStatus("won");
       return;
     }
@@ -341,6 +344,7 @@ export function WordMakerGame() {
                 <p className="text-muted-foreground">
                   You completed all the word challenges!
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   <div className="text-sm text-muted-foreground">

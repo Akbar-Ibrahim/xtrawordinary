@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -61,6 +62,7 @@ export function LetterPositionGame() {
 
   const [challenge, setChallenge] = useState<Challenge>(1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [completionMessage, setCompletionMessage] = useState("");
   const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -89,6 +91,7 @@ export function LetterPositionGame() {
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -172,6 +175,7 @@ export function LetterPositionGame() {
         if (newWordsCompleted >= wordsPerChallenge) {
           stopTimer();
           playSound("win");
+          setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
           // Challenge 2: new random constraint for each word
@@ -410,6 +414,7 @@ export function LetterPositionGame() {
                 <p className="text-muted-foreground">
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>
@@ -460,6 +465,7 @@ export function LetterPositionGame() {
                 <p className="text-muted-foreground">
                   You completed {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>

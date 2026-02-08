@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -120,6 +121,7 @@ export function WordLengthGame() {
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [completionMessage, setCompletionMessage] = useState("");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -135,6 +137,7 @@ export function WordLengthGame() {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current);
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -220,6 +223,7 @@ export function WordLengthGame() {
         if (newWordsCompleted >= wordsPerVariation) {
           if (timerRef.current) clearInterval(timerRef.current);
           playSound("win");
+          setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         } else {
           inputRef.current?.focus();
@@ -426,6 +430,7 @@ export function WordLengthGame() {
                     ? `You completed Variation ${variation}!`
                     : `You completed ${wordsCompleted} words`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 </div>

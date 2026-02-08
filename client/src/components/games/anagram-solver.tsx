@@ -11,6 +11,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { AnagramWordSet } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 export function AnagramSolverGame() {
   const { playSound } = useSound();
@@ -29,6 +30,7 @@ export function AnagramSolverGame() {
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "timeup">("playing");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "duplicate"; message: string } | null>(null);
   const [usedSets, setUsedSets] = useState<Set<number>>(new Set());
+  const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectNewWord = useCallback(() => {
@@ -36,6 +38,7 @@ export function AnagramSolverGame() {
     if (availableIndices.length === 0) {
       playSound("win");
       setGameStatus("won");
+      setCompletionMessage(getCompletionMessage(true));
       return;
     }
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
@@ -78,6 +81,7 @@ export function AnagramSolverGame() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setGameStatus("timeup");
+          setCompletionMessage(getCompletionMessage(false));
           return 0;
         }
         return prev - 1;
@@ -319,6 +323,7 @@ export function AnagramSolverGame() {
                     ? "You found all the anagrams!"
                     : `You found ${foundAnagrams.length} anagrams!`}
                 </p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 <ShareResults
                   gameName="Anagram Solver"

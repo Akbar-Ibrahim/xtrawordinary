@@ -13,6 +13,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -60,6 +61,7 @@ export function NoRepeatsGame() {
   const [timeLeft, setTimeLeft] = useState(120);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const [completionMessage, setCompletionMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -80,6 +82,7 @@ export function NoRepeatsGame() {
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
+          setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
           return 0;
         }
@@ -171,6 +174,7 @@ export function NoRepeatsGame() {
         if (wordsCompleted + 1 >= wordsPerChallenge) {
           stopTimer();
           playSound("win");
+          setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         }
       } else {
@@ -257,6 +261,7 @@ export function NoRepeatsGame() {
                 ? `You found ${wordsCompleted} unique-letter words!`
                 : `You found ${wordsCompleted} words before time ran out.`}
             </p>
+            <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
             <div className="flex items-center justify-center gap-2 mb-6">
               <Zap className="w-5 h-5 text-yellow-500" />
               <span className="text-3xl font-bold" data-testid="text-final-score"><AnimatedNumber value={score} /></span>
