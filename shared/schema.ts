@@ -141,3 +141,10 @@ export const progressiveRevealWordSchema = z.object({
 });
 export type ProgressiveRevealWord = z.infer<typeof progressiveRevealWordSchema>;
 export const progressiveRevealWordsSchema = z.array(progressiveRevealWordSchema);
+
+// Word Sweep grid cell
+export const wordSweepGridSchema = z.object({
+  grid: z.array(z.array(z.string())),
+  size: z.number(),
+});
+export type WordSweepGrid = z.infer<typeof wordSweepGridSchema>;

@@ -151,6 +151,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-sweep/grid", async (_req, res) => {
+    try {
+      const grid = await dataSource.generateWordSweepGrid();
+      res.json(grid);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate grid" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;

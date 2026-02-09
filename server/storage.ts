@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid } from "@shared/schema";
 
 // Constraint types for games
 export type LengthConstraint = {
@@ -43,6 +43,7 @@ export interface IStorage {
   getWordChainStartWord(variation: number, level: number): Promise<string | null>;
   getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null>;
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
+  generateWordSweepGrid(): Promise<WordSweepGrid>;
 }
 
 // Word Guessing words (5-letter words)
@@ -616,6 +617,28 @@ const gamesData: Game[] = [
     icon: "Eye",
     color: "hsl(270, 65%, 55%)",
     playCount: 0
+  },
+  {
+    id: "17",
+    slug: "word-sweep",
+    name: "Word Sweep",
+    description: "Select letters from a grid to form words and clear the board!",
+    longDescription: "A grid of letters awaits! Pick any letters from anywhere on the board to spell words. Valid words clear those letters from the grid, and remaining letters collapse downward. Use strategy to create chain reactions of new word possibilities. Can you clear the entire grid for a perfect score?",
+    rules: [
+      "A 6x6 grid is filled with random letters",
+      "Click any letters from anywhere on the grid to spell a word",
+      "Words must be at least 3 letters long",
+      "Valid words clear those letters from the grid",
+      "Remaining letters collapse downward to fill gaps",
+      "Use the shuffle button (3 uses) to rearrange letters when stuck",
+      "Longer words earn exponentially more points",
+      "Clear the entire grid for a massive bonus"
+    ],
+    difficulty: "medium",
+    estimatedTime: "5-10 min",
+    icon: "Grid3X3",
+    color: "hsl(200, 70%, 50%)",
+    playCount: 0
   }
 ];
 
@@ -867,6 +890,33 @@ export class MemStorage implements IStorage {
 
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> {
     return progressiveRevealWords;
+  }
+
+  async generateWordSweepGrid(): Promise<WordSweepGrid> {
+    const size = 6;
+    const letterWeights: Record<string, number> = {
+      E: 12, T: 9, A: 8, O: 8, I: 7, N: 7, S: 6, H: 6, R: 6,
+      D: 4, L: 4, C: 3, U: 3, M: 3, W: 2, F: 2, G: 2, Y: 2,
+      P: 2, B: 2, V: 1, K: 1, J: 1, X: 1, Q: 1, Z: 1,
+    };
+
+    const weightedLetters: string[] = [];
+    for (const [letter, weight] of Object.entries(letterWeights)) {
+      for (let i = 0; i < weight; i++) {
+        weightedLetters.push(letter);
+      }
+    }
+
+    const grid: string[][] = [];
+    for (let row = 0; row < size; row++) {
+      const rowLetters: string[] = [];
+      for (let col = 0; col < size; col++) {
+        rowLetters.push(weightedLetters[Math.floor(Math.random() * weightedLetters.length)]);
+      }
+      grid.push(rowLetters);
+    }
+
+    return { grid, size };
   }
 }
 
