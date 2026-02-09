@@ -31,6 +31,7 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { WordStackGame } from "@/components/games/word-stack";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSplitGame } from "@/components/games/word-split";
+import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -54,6 +55,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-stack": WordStackGame,
   "no-repeats": NoRepeatsGame,
   "word-split": WordSplitGame,
+  "progressive-reveal": ProgressiveRevealGame,
 };
 
 export default function GameDetail() {

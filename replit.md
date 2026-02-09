@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering fifteen interactive vocabulary games, designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles.
+WordPlay is a web-based platform offering sixteen interactive vocabulary games, designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles.
 
 ## User Preferences
 

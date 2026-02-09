@@ -91,6 +91,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/progressive-reveal/words", async (_req, res) => {
+    try {
+      const words = await dataSource.getProgressiveRevealWords();
+      res.json(words);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch progressive reveal words" });
+    }
+  });
+
   // Dictionary endpoint removed for security - words validated only via /api/games/validate-word
 
   app.post("/api/games/validate-word", async (req, res) => {

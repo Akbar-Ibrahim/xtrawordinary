@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 
 const gamesData: Game[] = [
   {
@@ -254,6 +254,27 @@ const gamesData: Game[] = [
     icon: "Scissors",
     color: "hsl(15, 80%, 50%)",
     playCount: 0
+  },
+  {
+    id: "16",
+    slug: "progressive-reveal",
+    name: "Progressive Reveal",
+    description: "Reveal letters one at a time and guess the word before you run out!",
+    longDescription: "All the letters are hidden behind tiles. You know the category and how many letters the word has - that's it. Tap any tile to reveal the letter underneath, but each reveal costs you points. Can you figure out the word with the fewest reveals for the highest score? Be careful though - wrong guesses cost a life!",
+    rules: [
+      "All letters start hidden behind tiles",
+      "You see the category and word length as your only clues",
+      "Tap any tile to reveal the letter underneath",
+      "Each reveal reduces your potential score for that word",
+      "Type your guess when you think you know the word",
+      "Wrong guesses cost a life - you have 3 lives",
+      "Fewer reveals = higher score"
+    ],
+    difficulty: "hard",
+    estimatedTime: "5-8 min",
+    icon: "Eye",
+    color: "hsl(270, 65%, 55%)",
+    playCount: 0
   }
 ];
 
@@ -493,6 +514,39 @@ const vowelConsonantConfig: VowelConsonantConfig = {
   timePerWord: 12
 };
 
+const progressiveRevealWords: ProgressiveRevealWord[] = [
+  { word: "ELEPHANT", subcategory: "Large land animal" },
+  { word: "MERCURY", subcategory: "Planet in our solar system" },
+  { word: "CINNAMON", subcategory: "Baking spice" },
+  { word: "TORNADO", subcategory: "Severe weather event" },
+  { word: "PYRAMID", subcategory: "Ancient structure" },
+  { word: "DOLPHIN", subcategory: "Ocean mammal" },
+  { word: "VOLCANO", subcategory: "Geological formation" },
+  { word: "HARVEST", subcategory: "Farming activity" },
+  { word: "COMPASS", subcategory: "Navigation tool" },
+  { word: "LANTERN", subcategory: "Light source" },
+  { word: "CRIMSON", subcategory: "Shade of red" },
+  { word: "WHISTLE", subcategory: "Sound-making object" },
+  { word: "GLACIER", subcategory: "Ice formation" },
+  { word: "CABINET", subcategory: "Household furniture" },
+  { word: "SPARROW", subcategory: "Common bird" },
+  { word: "DIAMOND", subcategory: "Precious gemstone" },
+  { word: "MUSTARD", subcategory: "Condiment" },
+  { word: "CHARCOAL", subcategory: "Grilling fuel" },
+  { word: "BLANKET", subcategory: "Bedroom item" },
+  { word: "PENGUIN", subcategory: "Flightless bird" },
+  { word: "SAPPHIRE", subcategory: "Blue gemstone" },
+  { word: "HAMMOCK", subcategory: "Outdoor relaxation" },
+  { word: "TRUMPET", subcategory: "Brass instrument" },
+  { word: "LEOPARD", subcategory: "Big cat" },
+  { word: "AVOCADO", subcategory: "Green fruit" },
+  { word: "BLIZZARD", subcategory: "Winter storm" },
+  { word: "CHANDELIER", subcategory: "Ceiling light fixture" },
+  { word: "JASMINE", subcategory: "Fragrant flower" },
+  { word: "SERPENT", subcategory: "Reptile" },
+  { word: "TITANIUM", subcategory: "Strong metal" },
+];
+
 export interface IExternalApi {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
@@ -510,6 +564,7 @@ export interface IExternalApi {
   getWordChainConfig(): Promise<WordChainConfig>;
   getVowelConsonantConfig(): Promise<VowelConsonantConfig>;
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
+  getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
 }
 
 export class ExternalApiClient implements IExternalApi {
@@ -554,6 +609,10 @@ export class ExternalApiClient implements IExternalApi {
 
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> {
     return wordSplitPuzzles;
+  }
+
+  async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> {
+    return progressiveRevealWords;
   }
 
   async getWordDictionary(): Promise<string[]> {

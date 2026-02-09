@@ -133,3 +133,11 @@ export const wordSplitPuzzleSchema = z.object({
 });
 export type WordSplitPuzzle = z.infer<typeof wordSplitPuzzleSchema>;
 export const wordSplitPuzzlesSchema = z.array(wordSplitPuzzleSchema);
+
+// Progressive Reveal words (word + subcategory for clue, no definition)
+export const progressiveRevealWordSchema = z.object({
+  word: z.string(),
+  subcategory: z.string(),
+});
+export type ProgressiveRevealWord = z.infer<typeof progressiveRevealWordSchema>;
+export const progressiveRevealWordsSchema = z.array(progressiveRevealWordSchema);
