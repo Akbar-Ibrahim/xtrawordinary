@@ -954,26 +954,105 @@ export class ExternalApiClient implements IExternalApi {
 
   async generateWordSweepGrid(): Promise<WordSweepGrid> {
     const size = 6;
-    const letterWeights: Record<string, number> = {
-      E: 12, T: 9, A: 8, O: 8, I: 7, N: 7, S: 6, H: 6, R: 6,
-      D: 4, L: 4, C: 3, U: 3, M: 3, W: 2, F: 2, G: 2, Y: 2,
-      P: 2, B: 2, V: 1, K: 1, J: 1, X: 1, Q: 1, Z: 1,
+    const totalCells = size * size;
+
+    const vowels = "AEIOU";
+    const uncommonLetters = "JKQVXZ";
+
+    const archetypes = [
+      { name: "normal", vowelRatio: 0.39, uncommonMin: 2, uncommonMax: 3 },
+      { name: "uncommon", vowelRatio: 0.39, uncommonMin: 4, uncommonMax: 6 },
+      { name: "vowel-rich", vowelRatio: 0.47, uncommonMin: 1, uncommonMax: 2 },
+    ];
+    const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
+
+    const vowelWeights: Record<string, number> = { A: 8, E: 12, I: 7, O: 8, U: 3 };
+    const consonantWeightsNormal: Record<string, number> = {
+      B: 2, C: 3, D: 4, F: 2, G: 2, H: 6, J: 1, K: 1, L: 4, M: 3,
+      N: 7, P: 2, Q: 1, R: 6, S: 6, T: 9, V: 1, W: 2, X: 1, Y: 2, Z: 1,
     };
 
-    const weightedLetters: string[] = [];
-    for (const [letter, weight] of Object.entries(letterWeights)) {
-      for (let i = 0; i < weight; i++) {
-        weightedLetters.push(letter);
+    function buildPool(weights: Record<string, number>): string[] {
+      const pool: string[] = [];
+      for (const [letter, weight] of Object.entries(weights)) {
+        for (let i = 0; i < weight; i++) pool.push(letter);
       }
+      return pool;
+    }
+
+    function pickRandom<T>(arr: T[]): T {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function shuffle<T>(arr: T[]): T[] {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    const seedWords = wordDictionary.filter(w => w.length >= 3 && w.length <= 5);
+    const seedCount = 2 + Math.floor(Math.random() * 2);
+    const chosenSeeds: string[] = [];
+    const usedLetterBudget: string[] = [];
+    const shuffledSeeds = shuffle(seedWords);
+    for (const word of shuffledSeeds) {
+      if (chosenSeeds.length >= seedCount) break;
+      if (usedLetterBudget.length + word.length > Math.floor(totalCells * 0.5)) break;
+      chosenSeeds.push(word);
+      usedLetterBudget.push(...word.split(""));
+    }
+
+    const cells: string[] = new Array(totalCells).fill("");
+    const positions = shuffle(Array.from({ length: totalCells }, (_, i) => i));
+    let posIdx = 0;
+
+    for (const letter of usedLetterBudget) {
+      cells[positions[posIdx++]] = letter;
+    }
+
+    const currentVowelCount = usedLetterBudget.filter(l => vowels.includes(l)).length;
+    const currentUncommonCount = usedLetterBudget.filter(l => uncommonLetters.includes(l)).length;
+
+    const targetVowels = Math.round(totalCells * archetype.vowelRatio);
+    const targetUncommon = archetype.uncommonMin + Math.floor(Math.random() * (archetype.uncommonMax - archetype.uncommonMin + 1));
+
+    let vowelsNeeded = Math.max(0, targetVowels - currentVowelCount);
+    let uncommonNeeded = Math.max(0, targetUncommon - currentUncommonCount);
+    let remainingSlots = totalCells - posIdx;
+
+    const vowelPool = buildPool(vowelWeights);
+    const consonantPool = buildPool(consonantWeightsNormal);
+    const uncommonPool = uncommonLetters.split("");
+
+    let placedVowels = currentVowelCount;
+    let placedUncommon = currentUncommonCount;
+
+    for (let i = posIdx; i < totalCells; i++) {
+      const idx = positions[i];
+      if (placedUncommon < targetUncommon && Math.random() < uncommonNeeded / Math.max(1, remainingSlots)) {
+        cells[idx] = pickRandom(uncommonPool);
+        placedUncommon++;
+        uncommonNeeded--;
+        if (vowels.includes(cells[idx])) {
+          placedVowels++;
+          vowelsNeeded = Math.max(0, vowelsNeeded - 1);
+        }
+      } else if (placedVowels < targetVowels && Math.random() < vowelsNeeded / Math.max(1, remainingSlots)) {
+        cells[idx] = pickRandom(vowelPool);
+        placedVowels++;
+        vowelsNeeded--;
+      } else {
+        cells[idx] = pickRandom(consonantPool);
+      }
+      remainingSlots--;
     }
 
     const grid: string[][] = [];
     for (let row = 0; row < size; row++) {
-      const rowLetters: string[] = [];
-      for (let col = 0; col < size; col++) {
-        rowLetters.push(weightedLetters[Math.floor(Math.random() * weightedLetters.length)]);
-      }
-      grid.push(rowLetters);
+      grid.push(cells.slice(row * size, (row + 1) * size));
     }
 
     return { grid, size };
