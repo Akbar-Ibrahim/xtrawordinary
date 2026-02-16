@@ -13,6 +13,7 @@ import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = "build-up" | "break-down" | null;
@@ -34,6 +35,7 @@ const challenges = [
 
 export function WordStackGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-stack" });
   const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordStackPuzzle[]>({
     queryKey: ["/api/games/word-stack/puzzles"],
     refetchOnMount: "always",
@@ -115,6 +117,7 @@ export function WordStackGame() {
 
   const initGame = useCallback(async (challenge: ChallengeType) => {
     if (!challenge) return;
+    resetRecorded();
     const result = await refetch();
     const freshPuzzles = result.data || [];
     if (freshPuzzles.length === 0) return;
@@ -140,7 +143,13 @@ export function WordStackGame() {
     setUserInput("");
     setUsedPuzzles(new Set([randomPuzzle.targetWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
+
+  useEffect(() => {
+    if (gameStatus === "complete") {
+      reportResult(score, true);
+    }
+  }, [gameStatus, score, reportResult]);
 
   const backToSelection = () => {
     setSelectedChallenge(null);
@@ -335,6 +344,11 @@ export function WordStackGame() {
             <div className="space-y-2">
               <p className="text-xl">Final Score: <span className="font-bold text-primary"><AnimatedNumber value={score} /></span></p>
               <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted}</p>
+              {personalBest > 0 && (
+                <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                  Personal Best: {personalBest} pts
+                </p>
+              )}
               <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
             </div>
             <ShareResults

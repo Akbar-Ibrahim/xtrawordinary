@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -45,6 +46,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 
 export function NoRepeatsGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "no-repeats" });
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -92,6 +94,7 @@ export function NoRepeatsGame() {
   }, [stopTimer]);
 
   const startGame = useCallback((c: Challenge) => {
+    resetRecorded();
     stopTimer();
     setChallenge(c);
     setScore(0);
@@ -104,7 +107,7 @@ export function NoRepeatsGame() {
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [stopTimer, startTimer]);
+  }, [stopTimer, startTimer, resetRecorded]);
 
   const returnToMenu = useCallback(() => {
     stopTimer();
@@ -117,6 +120,12 @@ export function NoRepeatsGame() {
     setUserInput("");
     setFeedback(null);
   }, [stopTimer]);
+
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won", wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -262,11 +271,16 @@ export function NoRepeatsGame() {
                 : `You found ${wordsCompleted} words before time ran out.`}
             </p>
             <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
-            <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-2">
               <Zap className="w-5 h-5 text-yellow-500" />
               <span className="text-3xl font-bold" data-testid="text-final-score"><AnimatedNumber value={score} /></span>
               <span className="text-muted-foreground">points</span>
             </div>
+            {personalBest > 0 && (
+              <p className="text-sm text-muted-foreground mb-6" data-testid="text-personal-best">
+                Personal Best: {personalBest} pts
+              </p>
+            )}
 
             <ShareResults
               gameName="No Repeats"

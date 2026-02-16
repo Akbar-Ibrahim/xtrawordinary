@@ -11,9 +11,11 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { LetterPoolWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 export function LetterPoolGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-pool" });
   const { data: words = [], isLoading, error, refetch } = useQuery<LetterPoolWord[]>({
     queryKey: ["/api/games/letter-pool/words"],
     refetchOnMount: "always",
@@ -56,6 +58,7 @@ export function LetterPoolGame() {
   }, [usedWords, activeWords, setupWord, playSound]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -71,13 +74,21 @@ export function LetterPoolGame() {
     setCurrentWord(randomWord);
     setupWord(randomWord);
     setUsedWords(new Set([randomWord.word]));
-  }, [refetch, setupWord]);
+  }, [refetch, setupWord, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
       initGame();
     }
   }, [words, currentWord, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult(score, true, wordsCompleted);
+    } else if (gameStatus === "lost") {
+      reportResult(score, false, wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
 
   const handlePoolClick = useCallback((poolId: number) => {
     if (!currentWord || feedback) return;
@@ -381,6 +392,11 @@ export function LetterPoolGame() {
                     {wordsCompleted} words completed
                   </div>
                 </div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
                 <ShareResults
                   gameName="Letter Pool"
                   gameSlug="letter-pool"

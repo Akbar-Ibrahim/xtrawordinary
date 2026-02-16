@@ -12,9 +12,11 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { ScrambleWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 export function WordScrambleGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-scramble" });
   const { data: words = [], isLoading, error, refetch } = useQuery<ScrambleWord[]>({
     queryKey: ["/api/games/word-scramble/words"],
     refetchOnMount: "always",
@@ -63,6 +65,7 @@ export function WordScrambleGame() {
   }, [usedWords, activeWords]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -80,13 +83,21 @@ export function WordScrambleGame() {
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
       initGame();
     }
   }, [words, currentWord, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult(score, true);
+    } else if (gameStatus === "lost") {
+      reportResult(score, false);
+    }
+  }, [gameStatus, score, reportResult]);
 
   const checkAnswer = () => {
     if (!currentWord) return;
@@ -352,6 +363,11 @@ export function WordScrambleGame() {
                     Level {level} • {wordsCompleted} words completed
                   </div>
                 </div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
                 <ShareResults
                   gameName="Word Scramble"
                   gameSlug="word-scramble"

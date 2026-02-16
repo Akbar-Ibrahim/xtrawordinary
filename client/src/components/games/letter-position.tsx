@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -52,6 +53,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
 
 export function LetterPositionGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-position" });
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
@@ -102,6 +104,7 @@ export function LetterPositionGame() {
 
   // Start game with selected challenge
   const startGame = useCallback((c: Challenge) => {
+    resetRecorded();
     stopTimer();
     setChallenge(c);
     setScore(0);
@@ -115,12 +118,18 @@ export function LetterPositionGame() {
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, timePerChallenge]);
+  }, [startTimer, stopTimer, timePerChallenge, resetRecorded]);
 
   const goToMenu = useCallback(() => {
     stopTimer();
     setGameStatus("menu");
   }, [stopTimer]);
+
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won", wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -417,6 +426,11 @@ export function LetterPositionGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Position Master"
@@ -468,6 +482,11 @@ export function LetterPositionGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Position Master"

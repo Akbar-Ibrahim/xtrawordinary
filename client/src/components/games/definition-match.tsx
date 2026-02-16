@@ -12,9 +12,11 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { DefinitionWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 export function DefinitionMatchGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "definition-match" });
   const { data: words = [], isLoading, error, refetch } = useQuery<DefinitionWord[]>({
     queryKey: ["/api/games/definition-match/words"],
     refetchOnMount: "always",
@@ -50,6 +52,7 @@ export function DefinitionMatchGame() {
   }, [usedWords, activeWords]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -65,13 +68,19 @@ export function DefinitionMatchGame() {
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
       initGame();
     }
   }, [words, currentWord, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult(score, true);
+    }
+  }, [gameStatus, score, reportResult]);
 
   const checkAnswer = () => {
     if (!currentWord) return;
@@ -288,6 +297,11 @@ export function DefinitionMatchGame() {
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
                 <ShareResults
                   gameName="Definition Match"
                   gameSlug="definition-match"

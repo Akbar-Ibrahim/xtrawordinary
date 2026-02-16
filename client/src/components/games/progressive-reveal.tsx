@@ -12,12 +12,14 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { ProgressiveRevealWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
 export function ProgressiveRevealGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "progressive-reveal" });
   const { data: words = [], isLoading, error, refetch } = useQuery<ProgressiveRevealWord[]>({
     queryKey: ["/api/games/progressive-reveal/words"],
     refetchOnMount: "always",
@@ -62,6 +64,7 @@ export function ProgressiveRevealGame() {
   }, [usedWords, activeWords, setupWord, playSound]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -77,7 +80,13 @@ export function ProgressiveRevealGame() {
     setCurrentWord(randomWord);
     setupWord(randomWord);
     setUsedWords(new Set([randomWord.word]));
-  }, [refetch, setupWord]);
+  }, [refetch, setupWord, resetRecorded]);
+
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won");
+    }
+  }, [gameStatus, score, reportResult]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
@@ -375,6 +384,11 @@ export function ProgressiveRevealGame() {
                   <div className="text-sm text-muted-foreground">
                     {wordsCompleted} words completed
                   </div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Progressive Reveal"

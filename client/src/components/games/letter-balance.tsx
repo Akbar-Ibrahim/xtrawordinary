@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -333,6 +334,7 @@ type GameState =
 
 export function LetterBalanceGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-balance" });
   const { data: config, isLoading: configLoading } = useQuery<VowelConsonantConfig>({
     queryKey: ["/api/games/letter-balance/config"],
   });
@@ -439,6 +441,7 @@ export function LetterBalanceGame() {
   const startGame = useCallback((level: LevelType) => {
     if (!selectedCategory) return;
     
+    resetRecorded();
     // Clear any existing timer first
     clearTimer();
     
@@ -458,7 +461,13 @@ export function LetterBalanceGame() {
     
     // Start timer (will set isPlayingRef.current = true)
     startTimer();
-  }, [selectedCategory, startTimer, clearTimer]);
+  }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (gameState === "level_complete" || gameState === "game_over") {
+      reportResult(score, gameState === "level_complete", wordsCompleted);
+    }
+  }, [gameState, score, reportResult, wordsCompleted]);
 
   // Generate next constraint (for advanced mode or next word)
   const generateNextConstraint = useCallback(() => {
@@ -768,6 +777,11 @@ export function LetterBalanceGame() {
               <Trophy className="h-4 w-4" />
               <AnimatedNumber value={score} /> points
             </Badge>
+            {personalBest > 0 && (
+              <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                Personal Best: {personalBest} pts
+              </p>
+            )}
 
             <ShareResults
               gameName="Letter Balance"
@@ -836,6 +850,11 @@ export function LetterBalanceGame() {
               <Trophy className="h-4 w-4" />
               <AnimatedNumber value={score} /> points
             </Badge>
+            {personalBest > 0 && (
+              <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                Personal Best: {personalBest} pts
+              </p>
+            )}
 
             <ShareResults
               gameName="Letter Balance"

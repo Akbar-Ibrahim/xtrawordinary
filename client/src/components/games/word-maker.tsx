@@ -13,9 +13,11 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { MakerWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 export function WordMakerGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-maker" });
   const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
     queryKey: ["/api/games/word-maker/words"],
     refetchOnMount: "always",
@@ -65,6 +67,7 @@ export function WordMakerGame() {
   }, [usedBaseWords, activeWords]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -80,13 +83,19 @@ export function WordMakerGame() {
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
       initGame();
     }
   }, [words, currentWord, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult(score, true, foundWords.size);
+    }
+  }, [gameStatus, score, reportResult, foundWords.size]);
 
   const checkWord = () => {
     if (!currentWord) return;
@@ -351,6 +360,11 @@ export function WordMakerGame() {
                     {roundsCompleted} rounds completed
                   </div>
                 </div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
                 <ShareResults
                   gameName="Word Maker"
                   gameSlug="word-maker"

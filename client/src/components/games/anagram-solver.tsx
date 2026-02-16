@@ -12,9 +12,11 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { AnagramWordSet } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 export function AnagramSolverGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "anagram-solver" });
   const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
     queryKey: ["/api/games/anagram-solver/words"],
     refetchOnMount: "always",
@@ -51,6 +53,7 @@ export function AnagramSolverGame() {
   }, [usedSets, activeWordSets]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWordSets = result.data || [];
     if (freshWordSets.length === 0) return;
@@ -67,13 +70,21 @@ export function AnagramSolverGame() {
     setUserInput("");
     setUsedSets(new Set([randomIndex]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
 
   useEffect(() => {
     if (wordSets.length > 0 && !currentSet) {
       initGame();
     }
   }, [wordSets, currentSet, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult(score, true, foundAnagrams.length);
+    } else if (gameStatus === "timeup") {
+      reportResult(score, false, foundAnagrams.length);
+    }
+  }, [gameStatus, score, reportResult, foundAnagrams.length]);
 
   useEffect(() => {
     if (gameStatus !== "playing") return;
@@ -325,6 +336,11 @@ export function AnagramSolverGame() {
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
                 <ShareResults
                   gameName="Anagram Solver"
                   gameSlug="anagram-solver"

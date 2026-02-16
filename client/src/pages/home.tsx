@@ -1,14 +1,22 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Gamepad2, Sparkles } from "lucide-react";
+import { Gamepad2, Sparkles, Flame, Trophy, Calendar, Target } from "lucide-react";
 import type { Game } from "@shared/schema";
+import { loadStats, loadStreak } from "@/lib/game-stats";
 
 export default function Home() {
   const { data: games, isLoading, error } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
+
+  const stats = useMemo(() => loadStats(), []);
+  const streak = useMemo(() => loadStreak(), []);
+  const hasPlayed = stats.totalGamesPlayed > 0;
 
   return (
     <div className="min-h-screen">
@@ -33,6 +41,53 @@ export default function Home() {
               vocabulary, improve your spelling, and have fun along the way.
             </p>
           </motion.div>
+
+          {hasPlayed && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="mb-8"
+            >
+              <Link href="/stats">
+                <Card className="hover-elevate cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="flex items-center gap-6 flex-wrap">
+                        {streak.currentStreak > 0 && (
+                          <div className="flex items-center gap-2" data-testid="home-streak">
+                            <Flame className="h-5 w-5 text-chart-3" />
+                            <span className="font-semibold">{streak.currentStreak} day streak</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2" data-testid="home-games-played">
+                          <Gamepad2 className="h-5 w-5 text-primary" />
+                          <span className="text-sm text-muted-foreground">
+                            {stats.totalGamesPlayed} games played
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2" data-testid="home-wins">
+                          <Trophy className="h-5 w-5 text-chart-2" />
+                          <span className="text-sm text-muted-foreground">
+                            {stats.totalGamesWon} wins
+                          </span>
+                        </div>
+                        {streak.longestStreak > 1 && (
+                          <div className="flex items-center gap-2" data-testid="home-longest-streak">
+                            <Calendar className="h-5 w-5 text-chart-4" />
+                            <span className="text-sm text-muted-foreground">
+                              Best: {streak.longestStreak} days
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">View Stats</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0 }}

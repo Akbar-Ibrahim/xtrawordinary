@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering sixteen interactive vocabulary games, designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles.
+WordPlay is a web-based platform offering seventeen interactive vocabulary games, designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles. Features include personal best tracking, a statistics dashboard, daily streak system, and an achievements/badges system - all stored locally in the browser via localStorage.
 
 ## User Preferences
 
@@ -19,9 +19,18 @@ The backend is built with Express.js and TypeScript, exposing RESTful API endpoi
 ### Data Layer
 Drizzle ORM is configured for PostgreSQL, with schema defined in `shared/schema.ts` using Zod for validation. Migrations are managed via Drizzle Kit. Game data is primarily in-memory but designed for seamless migration to a PostgreSQL database.
 
+### Player Engagement (localStorage)
+All player tracking features use localStorage, requiring no user accounts:
+- **Personal Bests**: `client/src/hooks/use-game-result.ts` hook integrated into all 17 games, saves scores and shows "New Best!" toasts
+- **Game Stats**: `client/src/lib/game-stats.ts` library tracks per-game data (best score, play count, win rate, words found) and global data (total games, wins)
+- **Streak System**: Date-based daily streak tracking, increments on consecutive days, resets if a day is missed
+- **Achievements**: 19 achievement definitions covering milestones (games played, wins, high scores, word counts, streaks, perfect clears)
+- **Stats Dashboard**: `/stats` page with overview metrics and per-game breakdowns
+- **Achievements Page**: `/achievements` page with badge collection, unlock tracking, and toast notifications
+
 ### API Endpoints
 The API provides endpoints for:
-- Retrieving lists and details of all 15 games.
+- Retrieving lists and details of all 17 games.
 - Fetching specific word sets for various games (e.g., Word Guessing, Anagram Solver, Word Scramble, Letter Pool).
 - Validating words against a secure, server-side dictionary (`POST /api/games/validate-word`).
 - Game-specific configurations and interactions (e.g., Letter Balance config, Word Chain start/computer word).

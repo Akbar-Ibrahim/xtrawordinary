@@ -9,6 +9,7 @@ import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse, WordSweepGrid } from "@shared/schema";
 
@@ -26,6 +27,7 @@ function calculateWordScore(wordLength: number): number {
 
 export function WordSweepGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-sweep" });
   const GRID_SIZE = 6;
   const MAX_SHUFFLES = 3;
 
@@ -84,6 +86,7 @@ export function WordSweepGame() {
   }, [gridData, gameStatus, buildGrid]);
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     setScore(0);
     setWordsFound([]);
     setShufflesLeft(MAX_SHUFFLES);
@@ -95,7 +98,13 @@ export function WordSweepGame() {
     if (result.data) {
       buildGrid(result.data);
     }
-  }, [refetch, buildGrid]);
+  }, [refetch, buildGrid, resetRecorded]);
+
+  useEffect(() => {
+    if (gameStatus === "ended") {
+      reportResult(score, remainingLetters === 0, wordsFound.length);
+    }
+  }, [gameStatus, score, reportResult, remainingLetters, wordsFound.length]);
 
   const handleCellClick = useCallback((cellId: number) => {
     if (gameStatus !== "playing" || isSubmitting) return;
@@ -510,6 +519,11 @@ export function WordSweepGame() {
                   <div className="text-sm text-muted-foreground">
                     {wordsFound.length} words found
                   </div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                   {isPerfectClear && (
                     <div className="text-sm text-accent font-medium">
                       Includes +500 perfect clear bonus!

@@ -24,6 +24,7 @@ import type { WordSplitPuzzle } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { apiRequest } from "@/lib/queryClient";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 type Difficulty = "short" | "medium" | "long";
 type GameState = "menu" | "playing" | "completed" | "failed";
@@ -86,6 +87,7 @@ function getTotalRemaining(pool: Map<string, number>): number {
 
 export function WordSplitGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-split" });
   const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordSplitPuzzle[]>({
     queryKey: ["/api/games/word-split/puzzles"],
     refetchOnMount: "always",
@@ -152,6 +154,7 @@ export function WordSplitGame() {
     setPuzzlesSkipped(0);
     setUsedPuzzles(new Set());
     setGameState("playing");
+    resetRecorded();
 
     const puzzleList = filtered.length > 0 ? filtered : freshPuzzles;
     const puzzle = puzzleList[Math.floor(Math.random() * puzzleList.length)];
@@ -159,7 +162,7 @@ export function WordSplitGame() {
       setUsedPuzzles(new Set<string>([puzzle.targetWord]));
       startPuzzle(puzzle);
     }
-  }, [refetch, startPuzzle]);
+  }, [refetch, startPuzzle, resetRecorded]);
 
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);
@@ -290,8 +293,9 @@ export function WordSplitGame() {
     if (gameState === "completed") {
       const allSolved = puzzlesSkipped === 0 && puzzlesCompleted > 0;
       setCompletionMessage(getCompletionMessage(allSolved));
+      reportResult(score, true, puzzlesCompleted);
     }
-  }, [gameState, puzzlesSkipped, puzzlesCompleted]);
+  }, [gameState, puzzlesSkipped, puzzlesCompleted, score, reportResult]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -402,6 +406,11 @@ export function WordSplitGame() {
                   <div className="text-sm text-muted-foreground" data-testid="text-puzzles-completed">
                     {puzzlesCompleted} of {totalPuzzles} puzzles solved
                   </div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
               </div>
               <ShareResults

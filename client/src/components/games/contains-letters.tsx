@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -82,6 +83,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 
 export function ContainsLettersGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "contains-letters" });
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -136,6 +138,7 @@ export function ContainsLettersGame() {
   }, []);
 
   const startGame = useCallback((c: Challenge) => {
+    resetRecorded();
     stopTimer();
     setChallenge(c);
     setScore(0);
@@ -149,12 +152,18 @@ export function ContainsLettersGame() {
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge]);
+  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge, resetRecorded]);
 
   const goToMenu = useCallback(() => {
     stopTimer();
     setGameStatus("menu");
   }, [stopTimer]);
+
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won", wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -448,6 +457,11 @@ export function ContainsLettersGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
@@ -499,6 +513,11 @@ export function ContainsLettersGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"

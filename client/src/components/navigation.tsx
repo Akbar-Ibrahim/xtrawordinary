@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
-import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX } from "lucide-react";
+import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
@@ -12,6 +12,8 @@ export function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/stats", label: "Stats", icon: BarChart3 },
+    { href: "/achievements", label: "Badges", icon: Award },
     { href: "/about", label: "About", icon: Info },
   ];
 

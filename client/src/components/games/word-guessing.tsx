@@ -8,6 +8,7 @@ import { RotateCcw, Lightbulb, Trophy, X, Loader2 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const MAX_ATTEMPTS = 6;
 
@@ -20,6 +21,7 @@ interface LetterCell {
 
 export function WordGuessingGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-guessing" });
   const { data: words = [], isLoading, error, refetch } = useQuery<string[]>({
     queryKey: ["/api/games/word-guessing/words"],
     refetchOnMount: "always",
@@ -35,6 +37,7 @@ export function WordGuessingGame() {
   const [completionMessage, setCompletionMessage] = useState("");
 
   const initGame = useCallback(async () => {
+    resetRecorded();
     const result = await refetch();
     const freshWords = result.data || [];
     if (freshWords.length === 0) return;
@@ -45,13 +48,21 @@ export function WordGuessingGame() {
     setCurrentGuess("");
     setGameStatus("playing");
     setUsedLetters(new Map());
-  }, [refetch]);
+  }, [refetch, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !targetWord) {
       initGame();
     }
   }, [words, targetWord, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "won") {
+      reportResult((MAX_ATTEMPTS - guesses.length + 1) * 100, true);
+    } else if (gameStatus === "lost") {
+      reportResult(0, false);
+    }
+  }, [gameStatus, guesses.length, reportResult]);
 
   const checkGuess = (guess: string): LetterCell[] => {
     const result: LetterCell[] = [];
@@ -284,6 +295,11 @@ export function WordGuessingGame() {
                     </p>
                     <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                   </div>
+                )}
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
                 )}
                 <ShareResults
                   gameName="Word Guessing"

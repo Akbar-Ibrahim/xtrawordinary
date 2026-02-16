@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -105,6 +106,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
 
 export function WordLengthGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-length" });
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
@@ -148,6 +150,7 @@ export function WordLengthGame() {
 
   // Start game - generate constraint locally
   const startGame = useCallback((varId: number) => {
+    resetRecorded();
     setVariation(varId);
     setScore(0);
     setStreak(0);
@@ -160,7 +163,13 @@ export function WordLengthGame() {
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [timePerVariation, startTimer]);
+  }, [timePerVariation, startTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won", wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
 
   useEffect(() => {
     return () => {
@@ -433,6 +442,11 @@ export function WordLengthGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Length Challenge"

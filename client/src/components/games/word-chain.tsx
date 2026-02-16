@@ -14,12 +14,14 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import { useGameResult } from "@/hooks/use-game-result";
 
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
 export function WordChainGame() {
   const { playSound } = useSound();
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-chain" });
 
   // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
@@ -118,6 +120,12 @@ export function WordChainGame() {
     return () => clearTimeout(timeoutId);
   }, [timerRunning, timeLeft, gameStatus]);
 
+  useEffect(() => {
+    if (gameStatus === "won" || gameStatus === "lost") {
+      reportResult(score, gameStatus === "won", wordsCompleted);
+    }
+  }, [gameStatus, score, reportResult, wordsCompleted]);
+
   // Start timer function - sets time first, then enables timer
   const startTimer = useCallback(() => {
     setTimerRunning(false); // Ensure clean state
@@ -140,6 +148,7 @@ export function WordChainGame() {
 
   // Start game - get first word from backend
   const startGame = useCallback(async (v: Variation, l: Level) => {
+    resetRecorded();
     // Stop any existing timer
     stopTimer();
     
@@ -173,7 +182,7 @@ export function WordChainGame() {
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
-  }, [startWordMutation, timePerWord, stopTimer, startTimer]);
+  }, [startWordMutation, timePerWord, stopTimer, startTimer, resetRecorded]);
 
   const startNextLevel = useCallback(() => {
     if (level === 1) {
@@ -545,6 +554,11 @@ export function WordChainGame() {
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  {personalBest > 0 && (
+                    <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                      Personal Best: {personalBest} pts
+                    </p>
+                  )}
                 </div>
                 <ShareResults
                   gameName="Word Chain"
