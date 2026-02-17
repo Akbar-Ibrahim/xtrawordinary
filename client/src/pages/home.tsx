@@ -4,14 +4,26 @@ import { Link } from "wouter";
 import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Gamepad2, Sparkles, Flame, Trophy, Calendar } from "lucide-react";
+import { Gamepad2, Sparkles, Flame, Trophy, Calendar, ArrowRight, CheckCircle } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
-import { loadStats, loadStreak, loadFavorites } from "@/lib/game-stats";
+import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
+
+interface DailyChallengeResponse {
+  date: string;
+  slug: string;
+  game: Game;
+}
 
 export default function Home() {
   const { data: games, isLoading, error } = useQuery<Game[]>({
     queryKey: ["/api/games"],
+  });
+
+  const { data: dailyChallenge } = useQuery<DailyChallengeResponse>({
+    queryKey: ["/api/daily-challenge"],
   });
 
   const stats = useMemo(() => loadStats(), []);
@@ -97,6 +109,51 @@ export default function Home() {
                         )}
                       </div>
                       <span className="text-sm text-muted-foreground">View Stats</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+          )}
+
+          {dailyChallenge && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              className="mb-8"
+            >
+              <Link href="/daily">
+                <Card className="hover-elevate cursor-pointer border-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: dailyChallenge.game.color }}
+                        >
+                          {(() => {
+                            const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
+                            return <Icon className="h-6 w-6 text-white" />;
+                          })()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            <span className="font-semibold">Daily Challenge</span>
+                            {getDailyChallengeRecord(dailyChallenge.date) && (
+                              <CheckCircle className="h-4 w-4 text-accent" />
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Today: {dailyChallenge.game.name}
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-daily-challenge">
+                        {getDailyChallengeRecord(dailyChallenge.date) ? "View Result" : "Play Now"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

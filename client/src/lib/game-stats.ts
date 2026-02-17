@@ -2,6 +2,7 @@ const STORAGE_KEY = "wordplay_stats";
 const STREAK_KEY = "wordplay_streak";
 const ACHIEVEMENTS_KEY = "wordplay_achievements";
 const FAVORITES_KEY = "wordplay_favorites";
+const DAILY_CHALLENGE_KEY = "wordplay_daily_challenge";
 
 export interface GameRecord {
   slug: string;
@@ -158,6 +159,14 @@ export function recordGameResult(record: GameRecord): {
   saveStreak(streak);
 
   const newAchievements = checkAchievements(stats, streak);
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent("wordplay-game-result", {
+        detail: { slug: record.slug, score: record.score, won: record.won },
+      })
+    );
+  } catch {}
 
   return { stats, streak, isNewBest, newAchievements };
 }
@@ -384,4 +393,34 @@ export function toggleFavorite(slug: string): string[] {
 
 export function isFavorite(slug: string): boolean {
   return loadFavorites().includes(slug);
+}
+
+export interface DailyChallengeRecord {
+  date: string;
+  slug: string;
+  score: number;
+  completedAt: number;
+}
+
+export function getDailyChallengeRecord(date: string): DailyChallengeRecord | null {
+  try {
+    const raw = localStorage.getItem(DAILY_CHALLENGE_KEY);
+    if (!raw) return null;
+    const records: DailyChallengeRecord[] = JSON.parse(raw);
+    return records.find((r) => r.date === date) || null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDailyChallengeRecord(record: DailyChallengeRecord): void {
+  try {
+    const raw = localStorage.getItem(DAILY_CHALLENGE_KEY);
+    const records: DailyChallengeRecord[] = raw ? JSON.parse(raw) : [];
+    const existing = records.findIndex((r) => r.date === record.date);
+    if (existing >= 0) return;
+    records.push(record);
+    if (records.length > 30) records.splice(0, records.length - 30);
+    localStorage.setItem(DAILY_CHALLENGE_KEY, JSON.stringify(records));
+  } catch {}
 }

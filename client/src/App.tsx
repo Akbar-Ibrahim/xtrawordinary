@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
 import Stats from "@/pages/stats";
 import Achievements from "@/pages/achievements";
+import DailyChallenge from "@/pages/daily-challenge";
 import About from "@/pages/about";
 import NotFound from "@/pages/not-found";
 
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/game/:slug" component={GameDetail} />
       <Route path="/stats" component={Stats} />
       <Route path="/achievements" component={Achievements} />
+      <Route path="/daily" component={DailyChallenge} />
       <Route path="/about" component={About} />
       <Route component={NotFound} />
     </Switch>

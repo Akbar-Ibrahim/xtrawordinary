@@ -160,6 +160,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/daily-challenge", async (_req, res) => {
+    try {
+      const challengeGameSlugs = [
+        "word-guessing",
+        "anagram-solver",
+        "word-scramble",
+        "definition-match",
+        "letter-pool",
+        "word-maker",
+        "word-length",
+        "letter-position",
+        "contains-letters",
+        "letter-balance",
+        "letter-frequency",
+        "no-repeats",
+        "word-sweep",
+      ];
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+      let hash = 0;
+      for (let i = 0; i < dateStr.length; i++) {
+        hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
+      }
+      hash = Math.abs(hash);
+      const index = hash % challengeGameSlugs.length;
+      const slug = challengeGameSlugs[index];
+      const game = await dataSource.getGameBySlug(slug);
+      res.json({ date: dateStr, slug, game, seed: hash });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch daily challenge" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     try {
       const { slug } = req.params;
