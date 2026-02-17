@@ -19,7 +19,7 @@ import { useGameResult } from "@/hooks/use-game-result";
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-export function WordChainGame() {
+export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level } }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-chain" });
 
@@ -183,6 +183,12 @@ export function WordChainGame() {
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
   }, [startWordMutation, timePerWord, stopTimer, startTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge.variation && initialChallenge.level) {
+      startGame(initialChallenge.variation, initialChallenge.level);
+    }
+  }, []);
 
   const startNextLevel = useCallback(() => {
     if (level === 1) {

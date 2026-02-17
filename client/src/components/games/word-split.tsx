@@ -85,7 +85,7 @@ function getTotalRemaining(pool: Map<string, number>): number {
   return total;
 }
 
-export function WordSplitGame() {
+export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-split" });
   const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordSplitPuzzle[]>({
@@ -163,6 +163,12 @@ export function WordSplitGame() {
       startPuzzle(puzzle);
     }
   }, [refetch, startPuzzle, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge) {
+      startGame(initialChallenge as Difficulty);
+    }
+  }, []);
 
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);

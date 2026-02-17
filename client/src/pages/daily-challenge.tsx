@@ -23,6 +23,10 @@ import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
+import { WordChainGame } from "@/components/games/word-chain";
+import { WordSplitGame } from "@/components/games/word-split";
+import { WordStackGame } from "@/components/games/word-stack";
+import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 
 interface DailyChallengeResponse {
   date: string;
@@ -92,6 +96,20 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <WordMakerGame />;
     case "word-sweep":
       return <WordSweepGame />;
+    case "word-chain": {
+      const variation = ((seed % 2) + 1) as 1 | 2;
+      const level = ((seed >> 2) % 2 + 1) as 1 | 2;
+      return <WordChainGame initialChallenge={{ variation, level }} />;
+    }
+    case "word-split": {
+      const difficulties = ["short", "medium", "long"] as const;
+      const diff = difficulties[seed % difficulties.length];
+      return <WordSplitGame initialChallenge={diff} />;
+    }
+    case "word-stack":
+      return <WordStackGame />;
+    case "progressive-reveal":
+      return <ProgressiveRevealGame />;
     default:
       return null;
   }
