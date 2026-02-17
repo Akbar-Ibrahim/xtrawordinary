@@ -44,7 +44,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function NoRepeatsGame() {
+export function NoRepeatsGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "no-repeats" });
   const validateMutation = useMutation({
@@ -54,7 +54,7 @@ export function NoRepeatsGame() {
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(3);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 3);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -108,6 +108,12 @@ export function NoRepeatsGame() {
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [stopTimer, startTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge !== undefined) {
+      startGame(initialChallenge);
+    }
+  }, []);
 
   const returnToMenu = useCallback(() => {
     stopTimer();

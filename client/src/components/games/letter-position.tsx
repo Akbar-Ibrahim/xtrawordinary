@@ -51,10 +51,9 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame() {
+export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-position" });
-  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -62,7 +61,7 @@ export function LetterPositionGame() {
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(1);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
@@ -119,6 +118,12 @@ export function LetterPositionGame() {
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [startTimer, stopTimer, timePerChallenge, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge !== undefined) {
+      startGame(initialChallenge);
+    }
+  }, []);
 
   const goToMenu = useCallback(() => {
     stopTimer();

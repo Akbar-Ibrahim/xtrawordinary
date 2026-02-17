@@ -28,23 +28,74 @@ interface DailyChallengeResponse {
   date: string;
   slug: string;
   game: Game;
+  seed: number;
 }
 
-const gameComponents: Record<string, React.ComponentType> = {
-  "word-guessing": WordGuessingGame,
-  "anagram-solver": AnagramSolverGame,
-  "word-scramble": WordScrambleGame,
-  "definition-match": DefinitionMatchGame,
-  "letter-pool": LetterPoolGame,
-  "word-maker": WordMakerGame,
-  "word-length": WordLengthGame,
-  "letter-position": LetterPositionGame,
-  "contains-letters": ContainsLettersGame,
-  "letter-balance": LetterBalanceGame,
-  "letter-frequency": LetterFrequencyGame,
-  "no-repeats": NoRepeatsGame,
-  "word-sweep": WordSweepGame,
+const LETTER_BALANCE_CATEGORIES = [
+  "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
+  "start_vowel_end_consonant", "start_consonant_end_vowel", "consonant_oblivion", "vowel_oblivion",
+] as const;
+
+const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
+  consonant_count: [2, 3, 4, 5, 6, 7],
+  vowel_count: [2, 3, 4, 5, 6, 7],
+  start_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+  start_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+  start_vowel_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+  start_consonant_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+  consonant_oblivion: [2, 3, 4, 5],
+  vowel_oblivion: [2, 3, 4, 5],
 };
+
+function renderDailyGame(slug: string, seed: number): React.ReactNode {
+  switch (slug) {
+    case "word-length": {
+      const variation = (seed % 5) + 1;
+      return <WordLengthGame initialChallenge={variation} />;
+    }
+    case "letter-position": {
+      const challenge = ((seed % 2) + 1) as 1 | 2;
+      return <LetterPositionGame initialChallenge={challenge} />;
+    }
+    case "contains-letters": {
+      const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
+      const challenge = options[seed % options.length];
+      return <ContainsLettersGame initialChallenge={challenge} />;
+    }
+    case "letter-balance": {
+      const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      const levels = LETTER_BALANCE_LEVELS[cat];
+      const level = levels[(seed >> 4) % levels.length];
+      return <LetterBalanceGame initialChallenge={{ category: cat, level }} />;
+    }
+    case "letter-frequency": {
+      const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
+      const challenge = options[seed % options.length];
+      return <LetterFrequencyGame initialChallenge={challenge} />;
+    }
+    case "no-repeats": {
+      const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
+      const challenge = options[seed % options.length];
+      return <NoRepeatsGame initialChallenge={challenge} />;
+    }
+    case "word-guessing":
+      return <WordGuessingGame />;
+    case "anagram-solver":
+      return <AnagramSolverGame />;
+    case "word-scramble":
+      return <WordScrambleGame />;
+    case "definition-match":
+      return <DefinitionMatchGame />;
+    case "letter-pool":
+      return <LetterPoolGame />;
+    case "word-maker":
+      return <WordMakerGame />;
+    case "word-sweep":
+      return <WordSweepGame />;
+    default:
+      return null;
+  }
+}
 
 export default function DailyChallenge() {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -103,9 +154,8 @@ export default function DailyChallenge() {
     );
   }
 
-  const { game, date } = data;
+  const { game, date, seed } = data;
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
-  const GameComponent = gameComponents[data.slug];
   const formattedDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -224,9 +274,7 @@ export default function DailyChallenge() {
               </Button>
             </div>
 
-            {GameComponent ? (
-              <GameComponent />
-            ) : (
+            {renderDailyGame(data.slug, seed) || (
               <Card>
                 <CardContent className="p-8 text-center">
                   <p className="text-muted-foreground">

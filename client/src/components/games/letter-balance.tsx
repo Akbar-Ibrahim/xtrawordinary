@@ -332,14 +332,13 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame() {
+export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { category: VariationCategory; level: LevelType } } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-balance" });
   const { data: config, isLoading: configLoading } = useQuery<VowelConsonantConfig>({
     queryKey: ["/api/games/letter-balance/config"],
   });
 
-  // Word validation is done via backend API - no pre-fetching of dictionary
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -347,10 +346,9 @@ export function LetterBalanceGame() {
     },
   });
 
-  // Game state
   const [gameState, setGameState] = useState<GameState>("category_menu");
-  const [selectedCategory, setSelectedCategory] = useState<VariationCategory | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<LevelType | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<VariationCategory | null>(initialChallenge?.category ?? null);
+  const [selectedLevel, setSelectedLevel] = useState<LevelType | null>(initialChallenge?.level ?? null);
   const [currentConstraint, setCurrentConstraint] = useState<GameConstraint | null>(null);
   
   // Gameplay state
@@ -462,6 +460,12 @@ export function LetterBalanceGame() {
     // Start timer (will set isPlayingRef.current = true)
     startTimer();
   }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge && selectedCategory) {
+      startGame(initialChallenge.level);
+    }
+  }, []);
 
   useEffect(() => {
     if (gameState === "level_complete" || gameState === "game_over") {

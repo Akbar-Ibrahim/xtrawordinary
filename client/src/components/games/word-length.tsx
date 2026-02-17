@@ -104,10 +104,9 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame() {
+export function WordLengthGame({ initialChallenge }: { initialChallenge?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-length" });
-  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -164,6 +163,12 @@ export function WordLengthGame() {
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [timePerVariation, startTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge !== undefined) {
+      startGame(initialChallenge);
+    }
+  }, []);
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {

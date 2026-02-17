@@ -100,7 +100,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame() {
+export function LetterFrequencyGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-frequency" });
   const validateMutation = useMutation({
@@ -110,7 +110,7 @@ export function LetterFrequencyGame() {
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(1);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const [constraint, setConstraint] = useState<FrequencyConstraint | null>(null);
@@ -173,6 +173,12 @@ export function LetterFrequencyGame() {
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [startTimer, stopTimer, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge !== undefined) {
+      startGame(initialChallenge);
+    }
+  }, []);
 
   const goToMenu = useCallback(() => {
     stopTimer();

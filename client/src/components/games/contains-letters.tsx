@@ -81,7 +81,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function ContainsLettersGame() {
+export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "contains-letters" });
   const validateMutation = useMutation({
@@ -91,7 +91,7 @@ export function ContainsLettersGame() {
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(1);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [currentLetters, setCurrentLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -153,6 +153,12 @@ export function ContainsLettersGame() {
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge, resetRecorded]);
+
+  useEffect(() => {
+    if (initialChallenge !== undefined) {
+      startGame(initialChallenge);
+    }
+  }, []);
 
   const goToMenu = useCallback(() => {
     stopTimer();
