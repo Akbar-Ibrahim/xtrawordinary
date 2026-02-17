@@ -1,6 +1,7 @@
 const STORAGE_KEY = "wordplay_stats";
 const STREAK_KEY = "wordplay_streak";
 const ACHIEVEMENTS_KEY = "wordplay_achievements";
+const FAVORITES_KEY = "wordplay_favorites";
 
 export interface GameRecord {
   slug: string;
@@ -358,4 +359,29 @@ function checkAchievements(stats: AllStats, streak: StreakData): Achievement[] {
   }
 
   return newlyUnlocked;
+}
+
+export function loadFavorites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function toggleFavorite(slug: string): string[] {
+  const favs = loadFavorites();
+  const idx = favs.indexOf(slug);
+  if (idx >= 0) {
+    favs.splice(idx, 1);
+  } else {
+    favs.push(slug);
+  }
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+  return favs;
+}
+
+export function isFavorite(slug: string): boolean {
+  return loadFavorites().includes(slug);
 }

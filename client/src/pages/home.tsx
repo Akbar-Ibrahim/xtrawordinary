@@ -1,13 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Gamepad2, Sparkles, Flame, Trophy, Calendar, Target } from "lucide-react";
+import { Gamepad2, Sparkles, Flame, Trophy, Calendar } from "lucide-react";
 import type { Game } from "@shared/schema";
-import { loadStats, loadStreak } from "@/lib/game-stats";
+import { loadStats, loadStreak, loadFavorites } from "@/lib/game-stats";
 
 export default function Home() {
   const { data: games, isLoading, error } = useQuery<Game[]>({
@@ -16,6 +16,21 @@ export default function Home() {
 
   const stats = useMemo(() => loadStats(), []);
   const streak = useMemo(() => loadStreak(), []);
+  const [favorites, setFavorites] = useState(() => loadFavorites());
+
+  const handleFavoriteChange = useCallback(() => {
+    setFavorites(loadFavorites());
+  }, []);
+
+  const sortedGames = useMemo(() => {
+    if (!games) return [];
+    const favSet = new Set(favorites);
+    return [...games].sort((a, b) => {
+      const aFav = favSet.has(a.slug) ? 0 : 1;
+      const bFav = favSet.has(b.slug) ? 0 : 1;
+      return aFav - bFav;
+    });
+  }, [games, favorites]);
   const hasPlayed = stats.totalGamesPlayed > 0;
 
   return (
@@ -122,10 +137,10 @@ export default function Home() {
                 Unable to load games. Please try again later.
               </p>
             </motion.div>
-          ) : games && games.length > 0 ? (
+          ) : sortedGames.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {games.map((game, index) => (
-                <GameCard key={game.id} game={game} index={index} />
+              {sortedGames.map((game, index) => (
+                <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} />
               ))}
             </div>
           ) : (
