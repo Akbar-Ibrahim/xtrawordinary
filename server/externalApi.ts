@@ -81,15 +81,15 @@ const gamesData: Game[] = [
     id: "5",
     slug: "letter-pool",
     name: "Letter Pool",
-    description: "Pick the right letters from the pool to complete the word!",
-    longDescription: "The first and last letters are locked in place - your job is to fill the blanks by choosing from a pool of letter tiles below. But watch out: the pool contains decoy letters mixed in with the correct ones! Pick wrong and you lose a life. Can you spot the right letters and complete all the words?",
+    description: "Spell out hidden words letter by letter — choose Pool mode or go Blind!",
+    longDescription: "All letters are hidden — spell each word from left to right, one letter at a time. Choose 'With Pool' mode to see scrambled letters as a reference (click or type), or go 'Without Pool' for the ultimate blind challenge. Correct letters fill in with a satisfying sound, wrong ones cost a life. Request a hint to reveal the category, but it costs points!",
     rules: [
-      "The first and last letters are locked and revealed",
-      "Tap a letter from the pool to guess it",
-      "Correct letters snap into their position automatically",
-      "Wrong letters cost you a life - you have 3 lives",
-      "The pool contains decoy letters mixed in with the real ones",
-      "Use the hint button for a clue (costs 50 points)"
+      "Two modes: With Pool (see scrambled letters) or Without Pool (blind)",
+      "Type or click letters one at a time, left to right",
+      "Correct letters fill in automatically with a success sound",
+      "Wrong letters cost a life — you have 3 lives",
+      "Request a hint to see the word's category (costs 20% of points)",
+      "Complete all words to win!"
     ],
     difficulty: "medium",
     estimatedTime: "4-6 min",

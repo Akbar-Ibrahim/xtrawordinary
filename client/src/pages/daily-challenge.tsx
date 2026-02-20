@@ -90,8 +90,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <WordScrambleGame />;
     case "definition-match":
       return <DefinitionMatchGame />;
-    case "letter-pool":
-      return <LetterPoolGame />;
+    case "letter-pool": {
+      const poolVariation = seed % 2 === 0 ? "with-pool" : "without-pool";
+      return <LetterPoolGame initialChallenge={poolVariation as "with-pool" | "without-pool"} />;
+    }
     case "word-maker":
       return <WordMakerGame />;
     case "word-sweep":
