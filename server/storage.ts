@@ -385,11 +385,11 @@ const gamesData: Game[] = [
     longDescription: "All letters are hidden — spell each word from left to right, one letter at a time. Choose 'With Pool' mode to see scrambled letters as a reference (click or type), or go 'Without Pool' for the ultimate blind challenge. Correct letters fill in with a satisfying sound, wrong ones cost a life. Request a hint to reveal the category, but it costs points!",
     rules: [
       "Two modes: With Pool (see scrambled letters) or Without Pool (blind)",
-      "Type or click letters one at a time, left to right",
-      "Correct letters fill in automatically with a success sound",
+      "Type or click any letter that belongs in the word",
+      "Correct letters snap into their correct position automatically",
+      "Spell letters in order (left to right) for bonus points!",
       "Wrong letters cost a life — you have 3 lives",
-      "Request a hint to see the word's category (costs 20% of points)",
-      "Complete all words to win!"
+      "Request a hint to see the word's category (costs 20% of points)"
     ],
     difficulty: "medium",
     estimatedTime: "4-6 min",

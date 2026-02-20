@@ -31,13 +31,13 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
   const [activeWords, setActiveWords] = useState<LetterPoolWord[]>([]);
   const [currentWord, setCurrentWord] = useState<LetterPoolWord | null>(null);
   const [filledLetters, setFilledLetters] = useState<(string | null)[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [poolLetters, setPoolLetters] = useState<{ letter: string; used: boolean; id: number }[]>([]);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [lives, setLives] = useState(3);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [wrongGuesses, setWrongGuesses] = useState(0);
+  const [fillOrder, setFillOrder] = useState<number[]>([]);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
@@ -71,12 +71,12 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
 
   const setupWord = useCallback((word: LetterPoolWord) => {
     setFilledLetters(new Array(word.word.length).fill(null));
-    setCurrentIndex(0);
     setPoolLetters(buildPool(word));
     setShowHint(false);
     setHintUsed(false);
     setFeedback(null);
     setWrongGuesses(0);
+    setFillOrder([]);
   }, [buildPool]);
 
   const selectNewWord = useCallback(() => {
@@ -130,18 +130,22 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
 
   const processLetter = useCallback((letter: string, poolId?: number) => {
     if (!currentWord || feedback || gameStatus !== "playing") return;
-    if (currentIndex >= currentWord.word.length) return;
 
-    const expectedLetter = currentWord.word[currentIndex].toUpperCase();
     const inputLetter = letter.toUpperCase();
+    const wordUpper = currentWord.word.toUpperCase();
 
-    if (inputLetter === expectedLetter) {
+    const matchIndex = wordUpper.split("").findIndex(
+      (ch, i) => ch === inputLetter && filledLetters[i] === null
+    );
+
+    if (matchIndex !== -1) {
       playSound("correct");
       const newFilled = [...filledLetters];
-      newFilled[currentIndex] = currentWord.word[currentIndex];
+      newFilled[matchIndex] = currentWord.word[matchIndex];
       setFilledLetters(newFilled);
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
+
+      const newFillOrder = [...fillOrder, matchIndex];
+      setFillOrder(newFillOrder);
 
       if (poolId !== undefined) {
         setPoolLetters(prev => prev.map(p => p.id === poolId ? { ...p, used: true } : p));
@@ -153,14 +157,24 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
         });
       }
 
-      if (nextIndex >= currentWord.word.length) {
+      const filledCount = newFilled.filter(l => l !== null).length;
+      if (filledCount >= currentWord.word.length) {
         setFeedback("correct");
         setStreak(prev => prev + 1);
         const basePoints = currentWord.word.length * 20;
         const wrongPenalty = wrongGuesses * 10;
         const hintPenalty = hintUsed ? Math.floor(basePoints * 0.2) : 0;
         const streakBonus = streak * 5;
-        const points = Math.max(10, basePoints - wrongPenalty - hintPenalty + streakBonus);
+        let sequentialRun = 0;
+        for (let i = 0; i < newFillOrder.length; i++) {
+          if (newFillOrder[i] === i) sequentialRun++;
+          else break;
+        }
+        const perfectOrder = sequentialRun >= currentWord.word.length;
+        const orderBonus = perfectOrder
+          ? Math.floor(basePoints * 0.5)
+          : Math.floor((sequentialRun / currentWord.word.length) * basePoints * 0.25);
+        const points = Math.max(10, basePoints - wrongPenalty - hintPenalty + streakBonus + orderBonus);
         setScore(prev => prev + points);
         setWordsCompleted(prev => prev + 1);
         setTimeout(() => {
@@ -189,7 +203,7 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
 
       setTimeout(() => setFeedback(null), 500);
     }
-  }, [currentWord, filledLetters, currentIndex, feedback, gameStatus, playSound, selectNewWord, streak, wrongGuesses, hintUsed, variation]);
+  }, [currentWord, filledLetters, feedback, gameStatus, playSound, selectNewWord, streak, wrongGuesses, hintUsed, variation, fillOrder]);
 
   const handlePoolClick = useCallback((poolId: number) => {
     if (!currentWord || feedback || gameStatus !== "playing") return;
@@ -366,8 +380,8 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
                     {variation === "with-pool"
-                      ? "Type or click the correct letter — fill each blank from left to right"
-                      : "Type the correct letter — fill each blank from left to right"}
+                      ? "Type or click letters to fill the blanks — spell in order for bonus points!"
+                      : "Type letters to fill the blanks — spell in order for bonus points!"}
                   </p>
                 </div>
 
@@ -381,9 +395,8 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
                   } : { opacity: 1, y: 0 }}
                   className="flex justify-center gap-1.5 sm:gap-2 flex-wrap"
                 >
-                  {currentWord.word.split("").map((char, index) => {
+                  {currentWord.word.split("").map((_char, index) => {
                     const isFilled = filledLetters[index] !== null;
-                    const isCurrent = index === currentIndex;
 
                     return (
                       <motion.div
@@ -397,11 +410,7 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
                         transition={{ delay: index * 0.04, duration: 0.3 }}
                         className={`w-10 h-12 sm:w-12 sm:h-14 flex items-center justify-center text-xl font-bold rounded-md transition-colors ${
                           isFilled
-                            ? feedback === "correct" && index >= currentIndex - 1
-                              ? "bg-accent text-accent-foreground"
-                              : "bg-secondary text-secondary-foreground"
-                            : isCurrent
-                            ? "bg-primary/10 border-2 border-primary"
+                            ? "bg-secondary text-secondary-foreground"
                             : "bg-muted border-2 border-dashed border-muted-foreground/30"
                         }`}
                         data-testid={`slot-${index}`}
@@ -473,7 +482,7 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
 
                 {variation === "without-pool" && (
                   <p className="text-xs text-center text-muted-foreground italic">
-                    Start typing — each letter is checked automatically
+                    Start typing — letters snap into place automatically
                   </p>
                 )}
               </CardContent>

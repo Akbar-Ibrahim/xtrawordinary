@@ -32,7 +32,7 @@ All player tracking features use localStorage, requiring no user accounts:
 Letter Pool has two variation modes, selected via a menu (or auto-selected in Daily Challenge):
 - **With Pool**: Scrambled letter pool visible; player can click pool letters or type. Includes decoy letters.
 - **Without Pool (Blind)**: No pool shown; player types letters purely from memory.
-Both modes: all letters start blank, filled sequentially left-to-right, auto-submit on keypress. Hint reveals category at -20% points. 3 lives system. Sound effects for correct/wrong letters. Scoring: base = word length × 20, minus wrong guess penalties (10 each), minus hint penalty (20% of base), plus streak bonus (5 per streak). Component accepts `initialChallenge` prop (`"with-pool"` | `"without-pool"`) for Daily Challenge integration.
+Both modes: all letters start blank, auto-submit on keypress. Letters can be entered in any order — correct letters snap into their correct position. Bonus points for spelling in left-to-right order (perfect order = +50% base, partial = proportional up to +25%). Hint reveals category at -20% points. 3 lives system. Sound effects for correct/wrong letters. Scoring: base = word length × 20, minus wrong guess penalties (10 each), minus hint penalty (20% of base), plus streak bonus (5 per streak), plus order bonus. Component accepts `initialChallenge` prop (`"with-pool"` | `"without-pool"`) for Daily Challenge integration.
 
 ### API Endpoints
 The API provides endpoints for:
