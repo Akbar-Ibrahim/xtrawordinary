@@ -19,10 +19,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-ladder/puzzles", async (req, res) => {
+  app.get("/api/games/word-ladder/puzzles", async (_req, res) => {
     try {
-      const difficulty = req.query.difficulty as string | undefined;
-      const puzzles = await dataSource.getWordLadderPuzzles(difficulty);
+      const puzzles = await dataSource.getWordLadderPuzzles();
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word ladder puzzles" });

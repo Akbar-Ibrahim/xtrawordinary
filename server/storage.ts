@@ -20,7 +20,7 @@ export type ContainsConstraint = {
 export interface IStorage {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
-  getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]>;
+  getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getAnagramWordSets(): Promise<AnagramWordSet[]>;
   getScrambleWords(): Promise<ScrambleWord[]>;
   getDefinitionWords(): Promise<DefinitionWord[]>;
@@ -48,47 +48,47 @@ export interface IStorage {
 
 const wordLadderPuzzlesData: WordLadderPuzzle[] = [
   {
-    start: "COAT", target: "BOOT", par: 2, difficulty: "easy",
+    start: "COAT", target: "BOOT", par: 2,
     optimalPaths: [["COAT", "BOAT", "BOOT"]]
   },
   {
-    start: "LOVE", target: "HATE", par: 3, difficulty: "easy",
+    start: "LOVE", target: "HATE", par: 3,
     optimalPaths: [["LOVE", "LAVE", "LATE", "HATE"]]
   },
   {
-    start: "LEAD", target: "GOLD", par: 3, difficulty: "easy",
+    start: "LEAD", target: "GOLD", par: 3,
     optimalPaths: [["LEAD", "LOAD", "GOAD", "GOLD"]]
   },
   {
-    start: "BEST", target: "LAST", par: 2, difficulty: "easy",
+    start: "BEST", target: "LAST", par: 2,
     optimalPaths: [["BEST", "BAST", "LAST"]]
   },
   {
-    start: "COLD", target: "WARM", par: 4, difficulty: "medium",
+    start: "COLD", target: "WARM", par: 4,
     optimalPaths: [["COLD", "CORD", "WORD", "WARD", "WARM"], ["COLD", "CORD", "CARD", "WARD", "WARM"]]
   },
   {
-    start: "FIRE", target: "COLD", par: 4, difficulty: "medium",
+    start: "FIRE", target: "COLD", par: 4,
     optimalPaths: [["FIRE", "FORE", "FORD", "CORD", "COLD"], ["FIRE", "FORE", "CORE", "CORD", "COLD"]]
   },
   {
-    start: "MINE", target: "GOLD", par: 4, difficulty: "medium",
+    start: "MINE", target: "GOLD", par: 4,
     optimalPaths: [["MINE", "MILE", "MOLE", "MOLD", "GOLD"]]
   },
   {
-    start: "RICE", target: "CAKE", par: 4, difficulty: "medium",
+    start: "RICE", target: "CAKE", par: 4,
     optimalPaths: [["RICE", "RACE", "LACE", "LAKE", "CAKE"]]
   },
   {
-    start: "HEAD", target: "TAIL", par: 5, difficulty: "hard",
+    start: "HEAD", target: "TAIL", par: 5,
     optimalPaths: [["HEAD", "HEAL", "TEAL", "TELL", "TALL", "TAIL"]]
   },
   {
-    start: "FISH", target: "BIRD", par: 5, difficulty: "hard",
+    start: "FISH", target: "BIRD", par: 5,
     optimalPaths: [["FISH", "FIST", "GIST", "GIRT", "GIRD", "BIRD"]]
   },
   {
-    start: "DAWN", target: "DUSK", par: 5, difficulty: "hard",
+    start: "DAWN", target: "DUSK", par: 5,
     optimalPaths: [["DAWN", "DOWN", "DONE", "DUNE", "DUNK", "DUSK"]]
   },
 ];
@@ -699,10 +699,7 @@ export class MemStorage implements IStorage {
     return this.games.find((game) => game.slug === slug);
   }
 
-  async getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]> {
-    if (difficulty) {
-      return wordLadderPuzzlesData.filter(p => p.difficulty === difficulty);
-    }
+  async getWordLadderPuzzles(): Promise<WordLadderPuzzle[]> {
     return wordLadderPuzzlesData;
   }
 

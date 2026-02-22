@@ -82,11 +82,9 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       const challenge = options[seed % options.length];
       return <NoRepeatsGame initialChallenge={challenge} />;
     }
-    case "word-ladder": {
-      const difficulties = ["easy", "medium", "hard"] as const;
-      const ladderDiff = difficulties[seed % difficulties.length];
-      return <WordLadderGame initialChallenge={ladderDiff} />;
-    }
+    case "word-ladder":
+      return <WordLadderGame initialChallenge />;
+
     case "anagram-solver":
       return <AnagramSolverGame />;
     case "word-scramble":

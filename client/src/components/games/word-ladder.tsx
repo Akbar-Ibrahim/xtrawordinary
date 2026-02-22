@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Lightbulb, Trophy, X, Loader2, ChevronDown, ArrowDown, Minus } from "lucide-react";
+import { RotateCcw, Lightbulb, Trophy, X, Loader2, ArrowDown, Minus } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
@@ -13,10 +13,8 @@ import { useGameResult } from "@/hooks/use-game-result";
 import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
-type Difficulty = "easy" | "medium" | "hard";
-
 interface WordLadderGameProps {
-  initialChallenge?: Difficulty;
+  initialChallenge?: boolean;
 }
 
 function isOneLetterDiff(a: string, b: string): boolean {
@@ -36,12 +34,6 @@ function getChangedIndex(a: string, b: string): number {
   return -1;
 }
 
-const DIFFICULTY_LABELS: Record<Difficulty, { label: string; description: string; color: string }> = {
-  easy: { label: "Easy", description: "Short words, fewer steps", color: "bg-accent text-accent-foreground" },
-  medium: { label: "Medium", description: "4-letter words, moderate chains", color: "bg-chart-3 text-white" },
-  hard: { label: "Hard", description: "Longer chains, tricky paths", color: "bg-destructive text-destructive-foreground" },
-};
-
 export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-ladder" });
@@ -50,8 +42,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
     refetchOnMount: "always",
   });
 
-  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won">(initialChallenge ? "playing" : "menu");
-  const [difficulty, setDifficulty] = useState<Difficulty>(initialChallenge || "medium");
+  const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");
   const [puzzle, setPuzzle] = useState<WordLadderPuzzle | null>(null);
   const [ladder, setLadder] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState("");
@@ -65,24 +56,19 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
   const [score, setScore] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selectPuzzle = useCallback((diff: Difficulty, puzzles: WordLadderPuzzle[]) => {
-    const filtered = puzzles.filter(p => p.difficulty === diff);
-    if (filtered.length === 0) {
-      const fallback = puzzles[Math.floor(Math.random() * puzzles.length)];
-      return fallback || null;
-    }
-    return filtered[Math.floor(Math.random() * filtered.length)];
+  const selectPuzzle = useCallback((puzzles: WordLadderPuzzle[]) => {
+    if (puzzles.length === 0) return null;
+    return puzzles[Math.floor(Math.random() * puzzles.length)];
   }, []);
 
-  const initGame = useCallback((diff: Difficulty) => {
+  const initGame = useCallback(() => {
     resetRecorded();
-    const selected = selectPuzzle(diff, allPuzzles);
+    const selected = selectPuzzle(allPuzzles);
     if (!selected) return;
     setPuzzle(selected);
     setLadder([selected.start]);
     setCurrentInput("");
     setGameStatus("playing");
-    setDifficulty(diff);
     setErrorMsg("");
     setHintsUsed(0);
     setShowPaths(false);
@@ -93,10 +79,10 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
   }, [allPuzzles, selectPuzzle, resetRecorded]);
 
   useEffect(() => {
-    if (allPuzzles.length > 0 && !puzzle && initialChallenge) {
-      initGame(initialChallenge);
+    if (allPuzzles.length > 0 && !puzzle) {
+      initGame();
     }
-  }, [allPuzzles, puzzle, initialChallenge, initGame]);
+  }, [allPuzzles, puzzle, initGame]);
 
   const lastWord = ladder[ladder.length - 1];
 
@@ -237,40 +223,6 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
     );
   }
 
-  if (gameStatus === "menu") {
-    return (
-      <div className="space-y-6">
-        <div className="text-center mb-2">
-          <h3 className="text-lg font-semibold mb-1">Choose Difficulty</h3>
-          <p className="text-sm text-muted-foreground">Select a difficulty to begin climbing</p>
-        </div>
-        <div className="grid gap-3">
-          {(["easy", "medium", "hard"] as Difficulty[]).map((diff) => (
-            <motion.div key={diff} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Card
-                className="cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => initGame(diff)}
-                data-testid={`card-${diff}`}
-              >
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge className={DIFFICULTY_LABELS[diff].color}>
-                        {DIFFICULTY_LABELS[diff].label}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{DIFFICULTY_LABELS[diff].description}</p>
-                  </div>
-                  <ChevronDown className="h-5 w-5 text-muted-foreground rotate-[-90deg]" />
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   if (!puzzle) return null;
 
   const totalRungs = puzzle.par + 2;
@@ -309,7 +261,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => initGame(difficulty)}
+            onClick={() => initGame()}
             className="gap-1.5"
             data-testid="button-restart"
           >
@@ -644,7 +596,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                   isWin={true}
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
                 />
-                <Button onClick={() => initGame(difficulty)} className="mt-2" data-testid="button-play-again">
+                <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
                   Play Again
                 </Button>
               </CardContent>

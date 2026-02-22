@@ -306,7 +306,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "COAT",
     target: "BOOT",
     par: 2,
-    difficulty: "easy",
     optimalPaths: [
       ["COAT", "BOAT", "BOOT"],
     ]
@@ -315,7 +314,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "LOVE",
     target: "HATE",
     par: 3,
-    difficulty: "easy",
     optimalPaths: [
       ["LOVE", "LAVE", "LATE", "HATE"],
     ]
@@ -324,7 +322,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "LEAD",
     target: "GOLD",
     par: 3,
-    difficulty: "easy",
     optimalPaths: [
       ["LEAD", "LOAD", "GOAD", "GOLD"],
     ]
@@ -333,7 +330,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "BEST",
     target: "LAST",
     par: 2,
-    difficulty: "easy",
     optimalPaths: [
       ["BEST", "BAST", "LAST"],
     ]
@@ -342,7 +338,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "COLD",
     target: "WARM",
     par: 4,
-    difficulty: "medium",
     optimalPaths: [
       ["COLD", "CORD", "WORD", "WARD", "WARM"],
       ["COLD", "CORD", "CARD", "WARD", "WARM"],
@@ -352,7 +347,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "FIRE",
     target: "COLD",
     par: 4,
-    difficulty: "medium",
     optimalPaths: [
       ["FIRE", "FORE", "FORD", "CORD", "COLD"],
       ["FIRE", "FORE", "CORE", "CORD", "COLD"],
@@ -362,7 +356,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "MINE",
     target: "GOLD",
     par: 4,
-    difficulty: "medium",
     optimalPaths: [
       ["MINE", "MILE", "MOLE", "MOLD", "GOLD"],
     ]
@@ -371,7 +364,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "RICE",
     target: "CAKE",
     par: 4,
-    difficulty: "medium",
     optimalPaths: [
       ["RICE", "RACE", "LACE", "LAKE", "CAKE"],
     ]
@@ -380,7 +372,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "HEAD",
     target: "TAIL",
     par: 5,
-    difficulty: "hard",
     optimalPaths: [
       ["HEAD", "HEAL", "TEAL", "TELL", "TALL", "TAIL"],
     ]
@@ -389,7 +380,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "FISH",
     target: "BIRD",
     par: 5,
-    difficulty: "hard",
     optimalPaths: [
       ["FISH", "FIST", "GIST", "GIRT", "GIRD", "BIRD"],
     ]
@@ -398,7 +388,6 @@ const wordLadderPuzzles: WordLadderPuzzle[] = [
     start: "DAWN",
     target: "DUSK",
     par: 5,
-    difficulty: "hard",
     optimalPaths: [
       ["DAWN", "DOWN", "DONE", "DUNE", "DUNK", "DUSK"],
     ]
@@ -789,7 +778,7 @@ const progressiveRevealWords: ProgressiveRevealWord[] = [
 export interface IExternalApi {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
-  getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]>;
+  getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getAnagramWordSets(): Promise<AnagramWordSet[]>;
   getScrambleWords(): Promise<ScrambleWord[]>;
   getDefinitionWords(): Promise<DefinitionWord[]>;
@@ -816,10 +805,7 @@ export class ExternalApiClient implements IExternalApi {
     return gamesData.find((game) => game.slug === slug);
   }
 
-  async getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]> {
-    if (difficulty) {
-      return wordLadderPuzzles.filter(p => p.difficulty === difficulty);
-    }
+  async getWordLadderPuzzles(): Promise<WordLadderPuzzle[]> {
     return wordLadderPuzzles;
   }
 
