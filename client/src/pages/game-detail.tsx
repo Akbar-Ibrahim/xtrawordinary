@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
-import { WordGuessingGame } from "@/components/games/word-guessing";
+import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
@@ -41,7 +41,7 @@ const difficultyColors = {
 };
 
 const gameComponents: Record<string, React.ComponentType> = {
-  "word-guessing": WordGuessingGame,
+  "word-ladder": WordLadderGame,
   "anagram-solver": AnagramSolverGame,
   "word-scramble": WordScrambleGame,
   "definition-match": DefinitionMatchGame,

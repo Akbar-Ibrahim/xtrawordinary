@@ -10,7 +10,7 @@ import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle } from "lucide-react"
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
 import { getDailyChallengeRecord, saveDailyChallengeRecord } from "@/lib/game-stats";
-import { WordGuessingGame } from "@/components/games/word-guessing";
+import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
@@ -82,8 +82,11 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       const challenge = options[seed % options.length];
       return <NoRepeatsGame initialChallenge={challenge} />;
     }
-    case "word-guessing":
-      return <WordGuessingGame />;
+    case "word-ladder": {
+      const difficulties = ["easy", "medium", "hard"] as const;
+      const ladderDiff = difficulties[seed % difficulties.length];
+      return <WordLadderGame initialChallenge={ladderDiff} />;
+    }
     case "anagram-solver":
       return <AnagramSolverGame />;
     case "word-scramble":

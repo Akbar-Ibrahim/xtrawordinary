@@ -148,3 +148,14 @@ export const wordSweepGridSchema = z.object({
   size: z.number(),
 });
 export type WordSweepGrid = z.infer<typeof wordSweepGridSchema>;
+
+// Word Ladder puzzle
+export const wordLadderPuzzleSchema = z.object({
+  start: z.string(),
+  target: z.string(),
+  par: z.number(),
+  difficulty: difficultySchema,
+  optimalPaths: z.array(z.array(z.string())),
+});
+export type WordLadderPuzzle = z.infer<typeof wordLadderPuzzleSchema>;
+export const wordLadderPuzzlesSchema = z.array(wordLadderPuzzleSchema);

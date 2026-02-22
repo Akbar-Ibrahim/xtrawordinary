@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
 
 // Constraint types for games
 export type LengthConstraint = {
@@ -20,7 +20,7 @@ export type ContainsConstraint = {
 export interface IStorage {
   getGames(): Promise<Game[]>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
-  getWordGuessingWords(): Promise<string[]>;
+  getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]>;
   getAnagramWordSets(): Promise<AnagramWordSet[]>;
   getScrambleWords(): Promise<ScrambleWord[]>;
   getDefinitionWords(): Promise<DefinitionWord[]>;
@@ -46,10 +46,51 @@ export interface IStorage {
   generateWordSweepGrid(): Promise<WordSweepGrid>;
 }
 
-// Word Guessing words (5-letter words)
-const wordGuessingWords: string[] = [
-  "REACT", "SOUND", "BRAIN", "FLAME", "CRISP", 
-  "GRADE", "PLANT", "SWIFT", "GLOBE", "QUEST"
+const wordLadderPuzzlesData: WordLadderPuzzle[] = [
+  {
+    start: "COAT", target: "BOOT", par: 2, difficulty: "easy",
+    optimalPaths: [["COAT", "BOAT", "BOOT"]]
+  },
+  {
+    start: "LOVE", target: "HATE", par: 3, difficulty: "easy",
+    optimalPaths: [["LOVE", "LAVE", "LATE", "HATE"]]
+  },
+  {
+    start: "LEAD", target: "GOLD", par: 3, difficulty: "easy",
+    optimalPaths: [["LEAD", "LOAD", "GOAD", "GOLD"]]
+  },
+  {
+    start: "BEST", target: "LAST", par: 2, difficulty: "easy",
+    optimalPaths: [["BEST", "BAST", "LAST"]]
+  },
+  {
+    start: "COLD", target: "WARM", par: 4, difficulty: "medium",
+    optimalPaths: [["COLD", "CORD", "WORD", "WARD", "WARM"], ["COLD", "CORD", "CARD", "WARD", "WARM"]]
+  },
+  {
+    start: "FIRE", target: "COLD", par: 4, difficulty: "medium",
+    optimalPaths: [["FIRE", "FORE", "FORD", "CORD", "COLD"], ["FIRE", "FORE", "CORE", "CORD", "COLD"]]
+  },
+  {
+    start: "MINE", target: "GOLD", par: 4, difficulty: "medium",
+    optimalPaths: [["MINE", "MILE", "MOLE", "MOLD", "GOLD"]]
+  },
+  {
+    start: "RICE", target: "CAKE", par: 4, difficulty: "medium",
+    optimalPaths: [["RICE", "RACE", "LACE", "LAKE", "CAKE"]]
+  },
+  {
+    start: "HEAD", target: "TAIL", par: 5, difficulty: "hard",
+    optimalPaths: [["HEAD", "HEAL", "TEAL", "TELL", "TALL", "TAIL"]]
+  },
+  {
+    start: "FISH", target: "BIRD", par: 5, difficulty: "hard",
+    optimalPaths: [["FISH", "FIST", "GIST", "GIRT", "GIRD", "BIRD"]]
+  },
+  {
+    start: "DAWN", target: "DUSK", par: 5, difficulty: "hard",
+    optimalPaths: [["DAWN", "DOWN", "DONE", "DUNE", "DUNK", "DUSK"]]
+  },
 ];
 
 // Anagram Solver word sets - new structure with multiple anagrams
@@ -303,20 +344,21 @@ const wordSplitPuzzles: WordSplitPuzzle[] = [
 const gamesData: Game[] = [
   {
     id: "1",
-    slug: "word-guessing",
-    name: "Word Guessing",
-    description: "Guess the hidden 5-letter word in 6 attempts or less.",
-    longDescription: "Put your vocabulary to the test in this classic word guessing game. You have 6 attempts to guess a hidden 5-letter word. After each guess, you'll get feedback showing which letters are correct and in the right position (green), correct but in the wrong position (yellow), or not in the word at all (gray).",
+    slug: "word-ladder",
+    name: "Word Ladder",
+    description: "Change one letter at a time to climb from the start word to the target word!",
+    longDescription: "Transform one word into another, one letter at a time! You're given a start word and a target word. Each step, change exactly one letter to form a new valid word. Can you find the shortest path? Beat par for bonus points, and discover all the possible routes!",
     rules: [
-      "Guess the hidden 5-letter word within 6 attempts",
-      "Each guess must be a valid 5-letter word",
-      "Green letters are correct and in the right position",
-      "Yellow letters are in the word but wrong position",
-      "Gray letters are not in the word at all"
+      "You're given a start word at the top and a target word at the bottom",
+      "Change exactly one letter at a time to form a new valid word",
+      "Each word in the ladder must be a real English word",
+      "Try to reach the target in as few steps as possible",
+      "Beat par (the optimal number of steps) for bonus points!",
+      "Use hints to reveal the next word in the optimal path (costs points)"
     ],
     difficulty: "medium",
     estimatedTime: "3-5 min",
-    icon: "Target",
+    icon: "GitBranch",
     color: "hsl(262, 83%, 58%)",
     playCount: 15420
   },
@@ -657,8 +699,11 @@ export class MemStorage implements IStorage {
     return this.games.find((game) => game.slug === slug);
   }
 
-  async getWordGuessingWords(): Promise<string[]> {
-    return wordGuessingWords;
+  async getWordLadderPuzzles(difficulty?: string): Promise<WordLadderPuzzle[]> {
+    if (difficulty) {
+      return wordLadderPuzzlesData.filter(p => p.difficulty === difficulty);
+    }
+    return wordLadderPuzzlesData;
   }
 
   async getAnagramWordSets(): Promise<AnagramWordSet[]> {

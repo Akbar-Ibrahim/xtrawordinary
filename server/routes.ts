@@ -19,12 +19,13 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-guessing/words", async (_req, res) => {
+  app.get("/api/games/word-ladder/puzzles", async (req, res) => {
     try {
-      const words = await dataSource.getWordGuessingWords();
-      res.json(words);
+      const difficulty = req.query.difficulty as string | undefined;
+      const puzzles = await dataSource.getWordLadderPuzzles(difficulty);
+      res.json(puzzles);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch words" });
+      res.status(500).json({ message: "Failed to fetch word ladder puzzles" });
     }
   });
 
@@ -163,7 +164,7 @@ export async function registerRoutes(
   app.get("/api/daily-challenge", async (_req, res) => {
     try {
       const challengeGameSlugs = [
-        "word-guessing",
+        "word-ladder",
         "anagram-solver",
         "word-scramble",
         "definition-match",

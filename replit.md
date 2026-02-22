@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering seventeen interactive vocabulary games, designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles. Features include personal best tracking, a statistics dashboard, daily streak system, and an achievements/badges system - all stored locally in the browser via localStorage.
+WordPlay is a web-based platform offering seventeen interactive vocabulary games (Word Ladder replaced the original Word Guessing game), designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles. Features include personal best tracking, a statistics dashboard, daily streak system, and an achievements/badges system - all stored locally in the browser via localStorage.
 
 ## User Preferences
 
@@ -27,6 +27,18 @@ All player tracking features use localStorage, requiring no user accounts:
 - **Achievements**: 19 achievement definitions covering milestones (games played, wins, high scores, word counts, streaks, perfect clears)
 - **Stats Dashboard**: `/stats` page with overview metrics and per-game breakdowns
 - **Achievements Page**: `/achievements` page with badge collection, unlock tracking, and toast notifications
+
+### Word Ladder Game Design
+Word Ladder replaced the original Word Guessing (Wordle clone) game. Players transform one word into another by changing exactly one letter at a time, with each step forming a valid word. Features:
+- **Difficulty tiers**: Easy (short words, 2-3 steps), Medium (4-letter words, 3-5 steps), Hard (longer chains, 5+ steps)
+- **Par system**: Each puzzle has an optimal step count (par). Beat par for bonus points, like golf.
+- **Visual ladder**: Vertical layout with progress rope, color gradient shifting from start to target, changed letters highlighted with pop animation.
+- **Hint system**: Reveals next word in optimal path, costs 30 points per hint.
+- **Post-game**: Shows all optimal paths, player's path, par comparison.
+- **Scoring**: Base 200 + par bonus (under par = 50 per step + 100; at par = 100; over par = reduced) - hint penalty (30 per hint). Minimum 10 pts.
+- **Validation flow**: Frontend checks one-letter-diff locally, then validates word via existing `POST /api/games/validate-word`.
+- **API**: `GET /api/games/word-ladder/puzzles` returns array of `{start, target, par, difficulty, optimalPaths}`.
+- Component accepts `initialChallenge` prop (`"easy"` | `"medium"` | `"hard"`) for Daily Challenge integration.
 
 ### Letter Pool Game Design
 Letter Pool has two variation modes, selected via a menu (or auto-selected in Daily Challenge):
