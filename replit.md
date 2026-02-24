@@ -16,6 +16,9 @@ The frontend utilizes React 18 with TypeScript, Wouter for routing, TanStack Rea
 ### Backend Architecture
 The backend is built with Express.js and TypeScript, exposing RESTful API endpoints under `/api/`. It integrates with Vite for hot module replacement in development and serves static files in production. The server structure includes main application setup, route definitions, a data access layer (`server/storage.ts` for in-memory data, ready for database integration), Vite development server integration, and static file serving.
 
+### Remote Server Migration (axios)
+Every route in `server/routes.ts` has a commented-out axios block marked with `--- REMOTE SERVER BLOCK ---`. To switch any route to use a remote API: (1) uncomment the `import axios` and `REMOTE_BASE_URL` lines at the top, (2) replace the dummy URL with the real remote server URL, (3) uncomment the axios block inside the route and comment out the local `dataSource` block. Each axios block matches the exact request/response data structure of its route, forwards remote status codes on error, and falls back to descriptive error messages. POST routes forward the request body with defaults applied. No further code changes needed.
+
 ### Data Layer
 Drizzle ORM is configured for PostgreSQL, with schema defined in `shared/schema.ts` using Zod for validation. Migrations are managed via Drizzle Kit. Game data is primarily in-memory but designed for seamless migration to a PostgreSQL database.
 
