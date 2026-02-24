@@ -57,6 +57,8 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
   const [showPaths, setShowPaths] = useState(false);
   const [score, setScore] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const ladderScrollRef = useRef<HTMLDivElement>(null);
+  const newestRungRef = useRef<HTMLDivElement>(null);
 
   const selectPuzzle = useCallback((puzzles: WordLadderPuzzle[]) => {
     if (puzzles.length === 0) return null;
@@ -140,6 +142,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
         playSound("wrong");
         setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
         setValidating(false);
+        inputRef.current?.focus();
         return;
       }
 
@@ -147,6 +150,10 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
       setLadder(newLadder);
       setCurrentInput("");
       playSound("correct");
+      setTimeout(() => {
+        inputRef.current?.focus();
+        newestRungRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
 
       if (word === puzzle.target) {
         const steps = newLadder.length - 2;
@@ -182,13 +189,6 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
       playSound("click");
     }
   }, [puzzle, ladder, gameStatus, playSound]);
-
-  const getProgressPercent = useCallback(() => {
-    if (!puzzle) return 0;
-    const totalSteps = puzzle.par + 1;
-    const currentSteps = ladder.length - 1;
-    return Math.min(100, (currentSteps / totalSteps) * 100);
-  }, [puzzle, ladder]);
 
   const getGradientColor = useCallback((index: number, total: number) => {
     const startHue = 262;
@@ -269,25 +269,14 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
 
       <Card>
         <CardContent className="p-4 sm:p-6">
-          <div className="flex">
-            <div className="relative w-3 mr-4 flex-shrink-0">
-              <div className="absolute inset-0 bg-muted rounded-full" />
-              <motion.div
-                className="absolute bottom-0 left-0 w-full rounded-full"
-                style={{ backgroundColor: "hsl(262, 83%, 58%)" }}
-                initial={{ height: "0%" }}
-                animate={{ height: `${getProgressPercent()}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-
-            <div className="flex-1 space-y-2">
+          <div className="relative">
+            <div ref={ladderScrollRef} className="h-[400px] overflow-y-auto space-y-2 flex flex-col items-center">
               {(() => {
                 const allRungs: React.ReactNode[] = [];
 
                 if (gameStatus === "playing") {
                   allRungs.push(
-                    <div key="target" className="flex items-center gap-2 opacity-60">
+                    <div key="target" className="relative opacity-60">
                       <div className="flex gap-1" data-testid="rung-target">
                         {puzzle.target.split("").map((letter, letterIdx) => (
                           <div
@@ -299,13 +288,13 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                           </div>
                         ))}
                       </div>
-                      <Badge variant="outline" className="text-xs ml-2 border-accent text-accent" data-testid="badge-target">TARGET</Badge>
+                      <Badge variant="outline" className="absolute -right-20 top-1/2 -translate-y-1/2 text-xs border-accent text-accent" data-testid="badge-target">TARGET</Badge>
                     </div>
                   );
 
                   allRungs.push(
-                    <div key="target-arrow" className="flex items-center pl-3 sm:pl-4">
-                      <ArrowUp className="h-4 w-4 text-muted-foreground/50" />
+                    <div key="target-arrow">
+                      <ArrowUp className="h-4 w-4 text-muted-foreground/50 mx-auto" />
                     </div>
                   );
 
@@ -313,24 +302,23 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                   if (remainingSteps > 0) {
                     for (let i = 0; i < Math.min(remainingSteps, 3); i++) {
                       allRungs.push(
-                        <div key={`empty-${i}`} className="flex items-center gap-2">
-                          <div className="flex items-center pl-3 sm:pl-4 mb-1">
-                            <Minus className="h-3 w-3 text-muted-foreground/30" />
-                          </div>
+                        <div key={`empty-${i}`}>
+                          <Minus className="h-3 w-3 text-muted-foreground/30 mx-auto" />
                         </div>
                       );
                     }
                   }
 
                   allRungs.push(
-                    <div key="arrow-to-input" className="flex items-center pl-3 sm:pl-4">
-                      <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                    <div key="arrow-to-input">
+                      <ArrowUp className="h-4 w-4 text-muted-foreground mx-auto" />
                     </div>
                   );
 
                   allRungs.push(
                     <motion.div
                       key="input-rung"
+                      ref={newestRungRef}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className={`flex items-center gap-2 ${shake ? "animate-shake" : ""}`}
@@ -355,8 +343,8 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                   );
 
                   allRungs.push(
-                    <div key="arrow-above-ladder" className="flex items-center pl-3 sm:pl-4">
-                      <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                    <div key="arrow-above-ladder">
+                      <ArrowUp className="h-4 w-4 text-muted-foreground mx-auto" />
                     </div>
                   );
                 }
@@ -372,7 +360,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="flex items-center gap-2"
+                      className="relative"
                     >
                       <div className="flex gap-1" data-testid={`rung-${rungIndex}`}>
                         {word.split("").map((letter, letterIdx) => (
@@ -397,18 +385,18 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                         ))}
                       </div>
                       {isStart && (
-                        <Badge variant="secondary" className="text-xs ml-2" data-testid="badge-start">START</Badge>
+                        <Badge variant="secondary" className="absolute -right-20 top-1/2 -translate-y-1/2 text-xs" data-testid="badge-start">START</Badge>
                       )}
                       {isTarget && (
-                        <Badge className="bg-accent text-accent-foreground text-xs ml-2" data-testid="badge-target-reached">TARGET</Badge>
+                        <Badge className="absolute -right-20 top-1/2 -translate-y-1/2 bg-accent text-accent-foreground text-xs" data-testid="badge-target-reached">TARGET</Badge>
                       )}
                     </motion.div>
                   );
 
                   if (rungIndex > 0) {
                     allRungs.push(
-                      <div key={`arrow-${rungIndex}`} className="flex items-center pl-3 sm:pl-4">
-                        <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                      <div key={`arrow-${rungIndex}`}>
+                        <ArrowUp className="h-4 w-4 text-muted-foreground mx-auto" />
                       </div>
                     );
                   }
@@ -417,33 +405,33 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
                 return allRungs;
               })()}
             </div>
+
+            {gameStatus === "playing" && (
+              <div className="flex gap-2 mt-4 justify-center">
+                <Input
+                  ref={inputRef}
+                  value={currentInput}
+                  onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, puzzle.start.length))}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Type a ${puzzle.start.length}-letter word...`}
+                  maxLength={puzzle.start.length}
+                  className="font-mono text-lg tracking-wider uppercase max-w-xs"
+                  disabled={validating}
+                  autoFocus
+                  data-testid="input-word"
+                />
+                <Button
+                  onClick={submitWord}
+                  disabled={validating || currentInput.length !== puzzle.start.length}
+                  data-testid="button-submit"
+                >
+                  {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      {gameStatus === "playing" && (
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={currentInput}
-            onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, puzzle.start.length))}
-            onKeyDown={handleKeyDown}
-            placeholder={`Type a ${puzzle.start.length}-letter word...`}
-            maxLength={puzzle.start.length}
-            className="font-mono text-lg tracking-wider uppercase"
-            disabled={validating}
-            autoFocus
-            data-testid="input-word"
-          />
-          <Button
-            onClick={submitWord}
-            disabled={validating || currentInput.length !== puzzle.start.length}
-            data-testid="button-submit"
-          >
-            {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
-          </Button>
-        </div>
-      )}
 
       <AnimatePresence>
         {errorMsg && (
