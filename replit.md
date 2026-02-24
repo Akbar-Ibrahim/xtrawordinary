@@ -32,13 +32,13 @@ All player tracking features use localStorage, requiring no user accounts:
 - **Achievements Page**: `/achievements` page with badge collection, unlock tracking, and toast notifications
 
 ### Word Ladder Game Design
-Word Ladder replaced the original Word Guessing (Wordle clone) game. Players transform one word into another by changing exactly one letter at a time, with each step forming a valid word. No difficulty selection — clicking Play immediately starts a random puzzle. Features:
+Word Ladder replaced the original Word Guessing (Wordle clone) game. Players transform one word into another by changing exactly one letter at a time (rearrangement of remaining letters allowed), with each step forming a valid word. No difficulty selection — clicking Play immediately starts a random puzzle. Features:
 - **Par system**: Each puzzle has an optimal step count (par). Beat par for bonus points, like golf.
-- **Visual ladder**: Vertical layout with progress rope, color gradient shifting from start to target, changed letters highlighted with pop animation.
+- **Visual ladder**: Vertical layout with START at bottom and TARGET at top (climbing up). Progress rope fills from bottom, color gradient shifting from start to target.
 - **Hint system**: Reveals next word in optimal path, costs 30 points per hint.
 - **Post-game**: Shows all optimal paths, player's path, par comparison.
 - **Scoring**: Base 200 + par bonus (under par = 50 per step + 100; at par = 100; over par = reduced) - hint penalty (30 per hint). Minimum 10 pts.
-- **Validation flow**: Frontend checks one-letter-diff locally, then validates word via existing `POST /api/games/validate-word`.
+- **Validation flow**: Frontend checks one-letter-diff (with rearrangement allowed — remove one letter from each word, remaining letters must be anagrams), then validates word via existing `POST /api/games/validate-word`.
 - **API**: `GET /api/games/word-ladder/puzzles` returns array of `{start, target, par, optimalPaths}`.
 - Component accepts `initialChallenge` boolean prop for Daily Challenge integration (auto-starts game).
 
