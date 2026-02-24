@@ -112,6 +112,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
       return;
     }
 
+    console.log("[Word Ladder Debug]", { lastWord, word, lastWordType: typeof lastWord, wordType: typeof word, lastWordLength: lastWord?.length, wordLength: word.length, result: isOneLetterDiff(lastWord, word), lastWordChars: lastWord?.split("").map(c => c.charCodeAt(0)), wordChars: word.split("").map(c => c.charCodeAt(0)) });
     if (!isOneLetterDiff(lastWord, word)) {
       setErrorMsg("Change exactly one letter");
       setShake(true);
