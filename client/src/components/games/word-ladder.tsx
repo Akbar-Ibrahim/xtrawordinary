@@ -147,6 +147,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
       }
 
       const newLadder = [...ladder, word];
+      setValidating(false);
       setLadder(newLadder);
       setCurrentInput("");
       playSound("correct");
@@ -167,8 +168,8 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
     } catch {
       setErrorMsg("Validation failed, try again");
       setTimeout(() => setErrorMsg(""), 2000);
+      setValidating(false);
     }
-    setValidating(false);
   }, [puzzle, currentInput, lastWord, ladder, validating, gameStatus, playSound, calculateScore, hintsUsed, reportResult]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
