@@ -277,6 +277,46 @@ const WIN_MESSAGES: string[] = [
   "Bro, if word games were a frat, dude, you'd be president. No, you'd be SUPREME president!",
   "Dude! DUDE! Bro, I can't even right now! That was the most epic thing I've ever witnessed, bro!",
 
+  // Sassy Gen Z
+  "Okay but you literally just devoured that game and I'm not even a little bit surprised. It's what you deserve.",
+  "The way you just casually destroyed that? Giving 'I woke up like this' energy. Insufferable. Love it.",
+  "You really walked in, ate everything on the table, and left without paying. The AUDACITY. The TALENT.",
+  "Not you being annoyingly good at this?? Like, leave some brain cells for the rest of us? Rude.",
+  "You said 'watch me' and then actually delivered?? The nerve. The GALL. Obsessed with you though.",
+  "Ugh, you're so good it's actually irritating? Like calm DOWN, we get it, you read books. Slay.",
+  "The way you just speedran that like it was beneath you?? Humble yourself. Just kidding, never do that.",
+  "You understood the assignment, turned it in early, AND got extra credit. Teacher's pet behavior but make it iconic.",
+
+  // Sassy Southern Lady
+  "Well LOOK at you, sugar! Struttin' through that game like you OWN the whole dang county! I'm shook, honey!",
+  "Mmhmm, I KNEW you had it in you, darlin'. Now don't go gettin' a big head — that's MY job. Wink.",
+  "Honey, you served that up hotter than a jalapeño cornbread at a Fourth of July cookout! FAN me!",
+  "Well I'll be! You waltzed in there like you were born with a dictionary in one hand and sweet tea in the other!",
+  "Chile, you didn't just win — you won with GARNISH. Extra. Over the top. Just how mama likes it!",
+  "I'm fixin' to put your score on the fridge, baby, because that was REFRIGERATOR-WORTHY!",
+  "Now sugar, I don't hand out compliments like they're free samples at Costco, but THAT was somethin' special!",
+  "You came, you saw, you conquered, and you looked GOOD doin' it! That's southern excellence right there, baby!",
+
+  // Gen Z (chill/hype)
+  "Yooo that was actually so clean though? Like genuinely impressive, not even being dramatic.",
+  "Okay real talk, you cooked. Like actually cooked. Respect, honestly.",
+  "That was lowkey therapeutic to watch? Like ASMR but for word games. Vibes were immaculate.",
+  "Not gonna lie, you just had the most chill victory I've ever seen. Main character but relaxed about it.",
+  "You just played that so casually and still won?? The unintentional flex is real.",
+  "That was giving 'studies for fun' energy and honestly? I respect it so hard right now.",
+  "Okay so you're just naturally good at this? That's so unfair but also like... good for you bestie.",
+  "The way that just happened so smoothly? No drama, no stress, just pure skill. We love to see it.",
+
+  // Sassy Toddler
+  "I could do that too, you know. I just don't WANNA right now. But good job I GUESS.",
+  "Wow you're SO smart! Can you also open this juice box? No? Then who's REALLY winning here.",
+  "That was pretty good but my imaginary friend says I'M still the best. So there.",
+  "Fine, you winned. But I'm not gonna clap 'cause my hands are sticky and that's YOUR fault.",
+  "Big deal! I can count to a HUNDRED. Can you do THAT while winning a word game? I didn't think so.",
+  "Okay that was kinda cool. But you STILL can't come to my birthday party. Maybe. I'll think about it.",
+  "You think you're so great 'cause you know big words? I know a word too. BOOGER. Beat THAT.",
+  "My mommy says I'm the smartest, so this doesn't even count. But... can you teach me how you did that?",
+
   // Gym bro
   "LIGHTWEIGHT BABY! You just repped out that word game like it was warm-up weight! Absolute unit!",
   "That's what peak performance looks like! You just PR'd on vocabulary, bro! Time to hit the protein shake!",
@@ -582,6 +622,46 @@ const LOSS_MESSAGES: string[] = [
   "Dude, that was like showing up to a party with no snacks, bro. Disappointing on every level.",
   "Bro, you fumbled harder than a quarterback in the rain, dude! Just a total catastrophe, bro!",
   "Dude, I'm not mad, bro. I'm just disappointed. Actually no, bro, I'm a little mad too, dude.",
+
+  // Sassy Gen Z (losses)
+  "Okay not to be mean but... that was literally the worst thing I've ever seen? And I've seen a LOT.",
+  "The way you just fumbled that so confidently?? Like you BELIEVED you were doing well. Delusional king behavior.",
+  "Bestie I am BEGGING you to develop a skill. Any skill. Because that? That was not it. At ALL.",
+  "You really entered that game with main character energy and left with background extra energy. Humbling.",
+  "I'm getting secondhand embarrassment so bad I might have to lie down. You did that to me. YOU.",
+  "Not the way you just served absolute NOTHING and expected applause?? The delusion is astronomical.",
+  "Girl/boy/bestie, that performance was giving 'peaked in middle school.' I say this with love. Kind of.",
+  "The fact that you did all that with your whole chest and STILL lost?? The bravery. The tragedy.",
+
+  // Sassy Southern Lady (losses)
+  "Oh HONEY. Bless your sweet little pea-pickin' heart. That was a MESS and you KNOW it, sugar.",
+  "Darlin', I've seen better performances from a screen door in a hurricane. I'm sayin' this WITH love.",
+  "Chile, that was rougher than a gravel road in heels! You need JESUS and a dictionary, baby!",
+  "Sugar, I don't wanna be ugly about it, but my POODLE could've done better. And she can't read!",
+  "Now listen here, sweetpea. I've been polite long enough. That was a CATASTROPHE wrapped in a bow.",
+  "Honey, that was so bad I almost dropped my pearls. ALMOST. I have standards, unlike your score.",
+  "Bless it, darlin'. You tried. You really did. And THAT is the nicest thing I can say about that whole situation.",
+  "Well aren't you just precious, thinkin' you could win with THAT performance? Sweet summer child!",
+
+  // Gen Z chill (losses)
+  "Okay so that didn't go great but like... it's not that deep? You'll get it next time, no stress.",
+  "Ngl that was kinda rough but honestly who cares, it's just a game. Reset and go again.",
+  "That was giving 'first try' energy and honestly? We all start somewhere. No judgment here.",
+  "Okay so that happened. We're not gonna dwell on it though. Forward motion only, bestie.",
+  "Real talk, that was mid. But like, everyone has mid moments. It's literally fine.",
+  "You didn't eat that one but that's okay? Like tomorrow is a new day and all that. Keep vibing.",
+  "That was a bit of a flop but honestly the fact that you tried is lowkey wholesome. Respect.",
+  "Oof. That one got away from you but it's giving 'learning experience.' Growth mindset, bestie.",
+
+  // Sassy Toddler (losses)
+  "Ha ha ha! You LOST! I mean... sorry. That's mean. But also ha ha ha!",
+  "Even I know more words than you and I just learned what 'Wednesday' means YESTERDAY.",
+  "That was SO bad. Like, worse than when I colored outside the lines. And I'm THREE.",
+  "My goldfish is smarter than you. And he died. SO WHAT DOES THAT TELL YOU.",
+  "You need a nap. A really LONG nap. 'Cause CLEARLY your brain is sleepy.",
+  "I'm telling my mom you're bad at this. She's gonna make that face. You know the face.",
+  "That was yucky. Like broccoli but WORSE. And I really REALLY hate broccoli.",
+  "You should go back to BABY school. Wait, is that a thing? It should be a thing. For YOU.",
 
   // Gym bro (losses)
   "Bro, you just got CRUSHED. That was worse than skipping leg day. And nobody skips leg day!",
