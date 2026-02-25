@@ -61,6 +61,7 @@ export function ProgressiveRevealGame() {
     setCurrentWord(randomWord);
     setupWord(randomWord);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, activeWords, setupWord, playSound]);
 
   const initGame = useCallback(async () => {
@@ -80,6 +81,7 @@ export function ProgressiveRevealGame() {
     setCurrentWord(randomWord);
     setupWord(randomWord);
     setUsedWords(new Set([randomWord.word]));
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, [refetch, setupWord, resetRecorded]);
 
   useEffect(() => {
@@ -104,6 +106,7 @@ export function ProgressiveRevealGame() {
     setRevealed(newRevealed);
     setRevealCount(prev => prev + 1);
     setLastRevealedIndex(index);
+    setTimeout(() => inputRef.current?.focus(), 50);
   }, [currentWord, feedback, revealed, playSound]);
 
   const potentialPoints = currentWord
@@ -145,7 +148,7 @@ export function ProgressiveRevealGame() {
       });
       setTimeout(() => {
         setFeedback(null);
-        inputRef.current?.focus();
+        setTimeout(() => inputRef.current?.focus(), 50);
       }, 1000);
     }
   }, [currentWord, feedback, guess, revealCount, playSound, selectNewWord]);

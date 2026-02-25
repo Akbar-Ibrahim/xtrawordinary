@@ -187,6 +187,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
       setTimeout(() => {
         setFeedback(null);
       }, 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -198,6 +199,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
       setTimeout(() => {
         setFeedback(null);
       }, 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -210,6 +212,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
         setTimeout(() => {
           setFeedback(null);
         }, 1500);
+        inputRef.current?.focus();
         return;
       }
 
@@ -224,6 +227,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
+      inputRef.current?.focus();
 
       setTimeout(() => {
         setFeedback(null);

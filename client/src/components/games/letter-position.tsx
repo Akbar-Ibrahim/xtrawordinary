@@ -150,6 +150,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
       setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -159,6 +160,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
       setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -169,6 +171,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
         setStreak(0);
           setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
+        inputRef.current?.focus();
         return;
       }
 
@@ -183,6 +186,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
+      inputRef.current?.focus();
 
       setTimeout(() => {
         setFeedback(null);

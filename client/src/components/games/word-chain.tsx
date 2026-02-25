@@ -178,6 +178,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       
       // Start timer after state updates
       startTimer();
+      setTimeout(() => inputRef.current?.focus(), 100);
     } catch {
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Error starting game" });
@@ -207,6 +208,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
       setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -217,6 +219,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       setStreak(0);
         setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
       return;
     }
 
@@ -228,6 +231,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
         setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => setFeedback(null), 1500);
+        inputRef.current?.focus();
         return;
       }
 
@@ -245,6 +249,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
+      inputRef.current?.focus();
 
       setTimeout(async () => {
         setFeedback(null);
