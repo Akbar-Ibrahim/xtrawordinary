@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -137,19 +138,23 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
       const data = await response.json();
 
       if (!data.valid) {
-        setErrorMsg("Not a valid word");
-        setShake(true);
+        flushSync(() => {
+          setErrorMsg("Not a valid word");
+          setShake(true);
+          setValidating(false);
+        });
         playSound("wrong");
         setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-        setValidating(false);
         inputRef.current?.focus();
         return;
       }
 
       const newLadder = [...ladder, word];
-      setValidating(false);
-      setLadder(newLadder);
-      setCurrentInput("");
+      flushSync(() => {
+        setValidating(false);
+        setLadder(newLadder);
+        setCurrentInput("");
+      });
       playSound("correct");
       setTimeout(() => {
         inputRef.current?.focus();
@@ -166,9 +171,11 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
         reportResult(finalScore, true);
       }
     } catch {
-      setErrorMsg("Validation failed, try again");
+      flushSync(() => {
+        setErrorMsg("Validation failed, try again");
+        setValidating(false);
+      });
       setTimeout(() => setErrorMsg(""), 2000);
-      setValidating(false);
     }
   }, [puzzle, currentInput, lastWord, ladder, validating, gameStatus, playSound, calculateScore, hintsUsed, reportResult]);
 
