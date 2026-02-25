@@ -89,6 +89,7 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
   }, [allPuzzles, puzzle, initGame]);
 
   const lastWord = ladder[ladder.length - 1];
+  const isOneStepAway = gameStatus === "playing" && ladder.length > 1 && lastWord && puzzle ? isOneLetterDiff(lastWord, puzzle.target) : false;
 
   const calculateScore = useCallback((stepsUsed: number, par: number, hints: number) => {
     const baseScore = 200;
@@ -284,20 +285,37 @@ export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
 
                 if (gameStatus === "playing") {
                   allRungs.push(
-                    <div key="target" className="relative opacity-60">
+                    <motion.div
+                      key="target"
+                      className={`relative ${isOneStepAway ? "" : "opacity-60"}`}
+                      animate={isOneStepAway ? {
+                        scale: [1, 1.03, 1],
+                      } : {}}
+                      transition={isOneStepAway ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      } : {}}
+                    >
                       <div className="flex gap-1" data-testid="rung-target">
                         {puzzle.target.split("").map((letter, letterIdx) => (
                           <div
                             key={letterIdx}
-                            className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-bold rounded-md border-2 border-accent bg-accent/10"
+                            className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-bold rounded-md border-2 ${
+                              isOneStepAway
+                                ? "border-accent bg-accent/20 shadow-[0_0_12px_rgba(var(--accent),0.4)]"
+                                : "border-accent bg-accent/10"
+                            }`}
                             data-testid={`target-letter-${letterIdx}`}
                           >
                             {letter}
                           </div>
                         ))}
                       </div>
-                      <Badge variant="outline" className="absolute -right-20 top-1/2 -translate-y-1/2 text-xs border-accent text-accent" data-testid="badge-target">TARGET</Badge>
-                    </div>
+                      <Badge variant="outline" className="absolute -right-20 top-1/2 -translate-y-1/2 text-xs border-accent text-accent whitespace-nowrap" data-testid="badge-target">
+                        {isOneStepAway ? "Almost there!" : "TARGET"}
+                      </Badge>
+                    </motion.div>
                   );
 
                   allRungs.push(
