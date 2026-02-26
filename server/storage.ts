@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement } from "@shared/schema";
 
 // Constraint types for games
 export type LengthConstraint = {
@@ -44,6 +44,34 @@ export interface IStorage {
   getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null>;
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
   generateWordSweepGrid(): Promise<WordSweepGrid>;
+
+  createUser(user: InsertUser): Promise<User>;
+  getUserById(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
+  updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
+
+  createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken>;
+  getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
+  deleteEmailVerificationToken(token: string): Promise<void>;
+
+  createPasswordResetToken(userId: number, token: string, expiresAt: string): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  deletePasswordResetToken(token: string): Promise<void>;
+
+  saveUserGameStats(stats: InsertUserGameStats): Promise<UserGameStats>;
+  getUserGameStats(userId: number, gameSlug: string): Promise<UserGameStats | undefined>;
+  getAllUserGameStats(userId: number): Promise<UserGameStats[]>;
+
+  saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry>;
+  getLeaderboard(gameSlug: string, limit?: number): Promise<LeaderboardEntry[]>;
+  getOverallLeaderboard(limit?: number): Promise<LeaderboardEntry[]>;
+
+  getUserStreak(userId: number): Promise<UserStreak | undefined>;
+  saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak>;
+
+  getUserAchievements(userId: number): Promise<UserAchievement[]>;
+  saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement>;
 }
 
 const wordLadderPuzzlesData: WordLadderPuzzle[] = [
@@ -1038,6 +1066,159 @@ export class MemStorage implements IStorage {
     }
 
     return { grid, size };
+  }
+
+  private users: Map<number, User> = new Map();
+  private userIdCounter = 1;
+  private emailVerificationTokens: Map<string, EmailVerificationToken> = new Map();
+  private evtIdCounter = 1;
+  private passwordResetTokens: Map<string, PasswordResetToken> = new Map();
+  private prtIdCounter = 1;
+  private userGameStatsMap: Map<string, UserGameStats> = new Map();
+  private ugsIdCounter = 1;
+  private leaderboardEntries: LeaderboardEntry[] = [];
+  private lbIdCounter = 1;
+  private userStreaks: Map<number, UserStreak> = new Map();
+  private usIdCounter = 1;
+  private userAchievements: UserAchievement[] = [];
+  private uaIdCounter = 1;
+
+  async createUser(user: InsertUser): Promise<User> {
+    const newUser: User = {
+      ...user,
+      id: this.userIdCounter++,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.set(newUser.id, newUser);
+    return newUser;
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.googleId === googleId);
+  }
+
+  async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (!user) return undefined;
+    const updated = { ...user, ...updates };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken> {
+    const evt: EmailVerificationToken = { id: this.evtIdCounter++, userId, token, expiresAt };
+    this.emailVerificationTokens.set(token, evt);
+    return evt;
+  }
+
+  async getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> {
+    return this.emailVerificationTokens.get(token);
+  }
+
+  async deleteEmailVerificationToken(token: string): Promise<void> {
+    this.emailVerificationTokens.delete(token);
+  }
+
+  async createPasswordResetToken(userId: number, token: string, expiresAt: string): Promise<PasswordResetToken> {
+    const prt: PasswordResetToken = { id: this.prtIdCounter++, userId, token, expiresAt };
+    this.passwordResetTokens.set(token, prt);
+    return prt;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    return this.passwordResetTokens.get(token);
+  }
+
+  async deletePasswordResetToken(token: string): Promise<void> {
+    this.passwordResetTokens.delete(token);
+  }
+
+  async saveUserGameStats(stats: InsertUserGameStats): Promise<UserGameStats> {
+    const key = `${stats.userId}-${stats.gameSlug}`;
+    const existing = this.userGameStatsMap.get(key);
+    if (existing) {
+      const updated: UserGameStats = { ...existing, ...stats };
+      this.userGameStatsMap.set(key, updated);
+      return updated;
+    }
+    const newStats: UserGameStats = { ...stats, id: this.ugsIdCounter++ };
+    this.userGameStatsMap.set(key, newStats);
+    return newStats;
+  }
+
+  async getUserGameStats(userId: number, gameSlug: string): Promise<UserGameStats | undefined> {
+    return this.userGameStatsMap.get(`${userId}-${gameSlug}`);
+  }
+
+  async getAllUserGameStats(userId: number): Promise<UserGameStats[]> {
+    return Array.from(this.userGameStatsMap.values()).filter(s => s.userId === userId);
+  }
+
+  async saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry> {
+    const newEntry: LeaderboardEntry = { ...entry, id: this.lbIdCounter++ };
+    this.leaderboardEntries.push(newEntry);
+    return newEntry;
+  }
+
+  async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
+    return this.leaderboardEntries
+      .filter(e => e.gameSlug === gameSlug)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
+  async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+    const playerTotals = new Map<number, { userId: number; playerName: string; score: number; playedAt: string }>();
+    for (const entry of this.leaderboardEntries) {
+      const existing = playerTotals.get(entry.userId);
+      if (existing) {
+        existing.score += entry.score;
+        if (entry.playedAt > existing.playedAt) existing.playedAt = entry.playedAt;
+      } else {
+        playerTotals.set(entry.userId, { userId: entry.userId, playerName: entry.playerName, score: entry.score, playedAt: entry.playedAt });
+      }
+    }
+    return Array.from(playerTotals.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((p, i) => ({ id: i + 1, ...p, gameSlug: "overall" }));
+  }
+
+  async getUserStreak(userId: number): Promise<UserStreak | undefined> {
+    return this.userStreaks.get(userId);
+  }
+
+  async saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak> {
+    const existing = this.userStreaks.get(userId);
+    if (existing) {
+      existing.currentStreak = currentStreak;
+      existing.longestStreak = longestStreak;
+      existing.lastPlayedDate = lastPlayedDate;
+      return existing;
+    }
+    const streak: UserStreak = { id: this.usIdCounter++, userId, currentStreak, longestStreak, lastPlayedDate };
+    this.userStreaks.set(userId, streak);
+    return streak;
+  }
+
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> {
+    return this.userAchievements.filter(a => a.userId === userId);
+  }
+
+  async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement> {
+    const existing = this.userAchievements.find(a => a.userId === userId && a.achievementId === achievementId);
+    if (existing) return existing;
+    const achievement: UserAchievement = { id: this.uaIdCounter++, userId, achievementId, unlockedAt };
+    this.userAchievements.push(achievement);
+    return achievement;
   }
 }
 

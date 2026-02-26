@@ -158,3 +158,82 @@ export const wordLadderPuzzleSchema = z.object({
 });
 export type WordLadderPuzzle = z.infer<typeof wordLadderPuzzleSchema>;
 export const wordLadderPuzzlesSchema = z.array(wordLadderPuzzleSchema);
+
+export const userSchema = z.object({
+  id: z.number(),
+  email: z.string().email(),
+  name: z.string(),
+  passwordHash: z.string().nullable(),
+  googleId: z.string().nullable(),
+  emailVerified: z.boolean(),
+  avatarUrl: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type User = z.infer<typeof userSchema>;
+
+export const insertUserSchema = userSchema.omit({ id: true, createdAt: true });
+export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export const publicUserSchema = userSchema.omit({ passwordHash: true });
+export type PublicUser = z.infer<typeof publicUserSchema>;
+
+export const emailVerificationTokenSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  token: z.string(),
+  expiresAt: z.string(),
+});
+export type EmailVerificationToken = z.infer<typeof emailVerificationTokenSchema>;
+
+export const passwordResetTokenSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  token: z.string(),
+  expiresAt: z.string(),
+});
+export type PasswordResetToken = z.infer<typeof passwordResetTokenSchema>;
+
+export const userGameStatsSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  gameSlug: z.string(),
+  bestScore: z.number(),
+  gamesPlayed: z.number(),
+  gamesWon: z.number(),
+  wordsFound: z.number(),
+  lastPlayedAt: z.string(),
+});
+export type UserGameStats = z.infer<typeof userGameStatsSchema>;
+
+export const insertUserGameStatsSchema = userGameStatsSchema.omit({ id: true });
+export type InsertUserGameStats = z.infer<typeof insertUserGameStatsSchema>;
+
+export const leaderboardEntrySchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  gameSlug: z.string(),
+  score: z.number(),
+  playerName: z.string(),
+  playedAt: z.string(),
+});
+export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
+
+export const insertLeaderboardEntrySchema = leaderboardEntrySchema.omit({ id: true });
+export type InsertLeaderboardEntry = z.infer<typeof insertLeaderboardEntrySchema>;
+
+export const userStreakSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  currentStreak: z.number(),
+  longestStreak: z.number(),
+  lastPlayedDate: z.string(),
+});
+export type UserStreak = z.infer<typeof userStreakSchema>;
+
+export const userAchievementSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  achievementId: z.string(),
+  unlockedAt: z.string(),
+});
+export type UserAchievement = z.infer<typeof userAchievementSchema>;

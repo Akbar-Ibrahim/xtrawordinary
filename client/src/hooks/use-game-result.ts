@@ -1,16 +1,56 @@
 import { useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { recordGameResult, getPersonalBest } from "@/lib/game-stats";
+import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
 import type { Achievement } from "@/lib/game-stats";
+import { useAuth } from "@/lib/auth-context";
 
 interface GameResultOptions {
   slug: string;
+}
+
+async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number) {
+  try {
+    const stats = loadStats();
+    const gameStats = stats.perGame[slug];
+    if (gameStats) {
+      await fetch("/api/user/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          gameSlug: slug,
+          bestScore: gameStats.bestScore,
+          gamesPlayed: gameStats.gamesPlayed,
+          gamesWon: gameStats.gamesWon,
+          wordsFound: gameStats.totalWordsFound,
+        }),
+      });
+    }
+
+    const streak = loadStreak();
+    await fetch("/api/user/streak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(streak),
+    });
+
+    if (score > 0) {
+      await fetch("/api/leaderboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ gameSlug: slug, score }),
+      });
+    }
+  } catch {}
 }
 
 export function useGameResult({ slug }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
   const personalBest = getPersonalBest(slug);
+  const { isAuthenticated } = useAuth();
 
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
@@ -41,11 +81,26 @@ export function useGameResult({ slug }: GameResultOptions) {
             });
           }, result.isNewBest ? 2000 : 0);
         }
+
+        if (isAuthenticated) {
+          for (const achievement of result.newAchievements) {
+            fetch("/api/user/achievements", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ achievementId: achievement.id, unlockedAt: new Date().toISOString() }),
+            }).catch(() => {});
+          }
+        }
+      }
+
+      if (isAuthenticated) {
+        syncToBackend(slug, score, won, wordsFound);
       }
 
       return result;
     },
-    [slug, toast, personalBest]
+    [slug, toast, personalBest, isAuthenticated]
   );
 
   const resetRecorded = useCallback(() => {

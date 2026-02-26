@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering seventeen interactive vocabulary games (Word Ladder replaced the original Word Guessing game), designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform aims to provide a diverse collection of engaging word challenges, ranging from classic guessing games to unique constraint-based puzzles. Features include personal best tracking, a statistics dashboard, daily streak system, and an achievements/badges system - all stored locally in the browser via localStorage.
+WordPlay is a web-based platform offering seventeen interactive vocabulary games (Word Ladder replaced the original Word Guessing game), designed for educational entertainment and vocabulary improvement. It's built as a full-stack TypeScript project with a React frontend and Express backend. The platform features optional user accounts (Google OAuth + email/password via Resend), a global leaderboard, and hybrid stats that work for both guests (localStorage) and signed-in users (synced to backend). Guest players can play without signing in; all engagement features work via localStorage. Signed-in users get their stats, streaks, and achievements synced to the server for cross-device persistence and leaderboard participation.
 
 ## User Preferences
 
@@ -16,20 +16,62 @@ The frontend utilizes React 18 with TypeScript, Wouter for routing, TanStack Rea
 ### Backend Architecture
 The backend is built with Express.js and TypeScript, exposing RESTful API endpoints under `/api/`. It integrates with Vite for hot module replacement in development and serves static files in production. The server structure includes main application setup, route definitions, a data access layer (`server/storage.ts` for in-memory data, ready for database integration), Vite development server integration, and static file serving.
 
+### Authentication System
+Optional user accounts via two providers:
+- **Google OAuth**: Passport.js with `passport-google-oauth20` strategy. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars. Callback URL: `/api/auth/google/callback`.
+- **Email/Password**: Passport.js local strategy with bcryptjs password hashing. Email verification via Resend (`RESEND_API_KEY` env var). Password reset flow with token-based emails.
+- **Session Management**: express-session with `SESSION_SECRET` env var, 30-day cookie expiry.
+- **Auth Middleware**: `requireAuth` function in `server/auth.ts` protects user-specific routes.
+- **Frontend**: `AuthProvider` context in `client/src/lib/auth-context.tsx`, `AuthModal` dialog for sign in/sign up, navbar integration with user dropdown.
+
+### Auth API Routes
+- `POST /api/auth/register` — create account, send verification email
+- `POST /api/auth/login` — email/password login
+- `POST /api/auth/logout` — destroy session
+- `GET /api/auth/me` — current user or null
+- `GET /api/auth/google` — initiate Google OAuth
+- `GET /api/auth/google/callback` — OAuth callback
+- `POST /api/auth/verify-email` — verify email token
+- `POST /api/auth/forgot-password` — send reset email
+- `POST /api/auth/reset-password` — reset with token
+
+### Environment Variables Required for Full Functionality
+- `SESSION_SECRET` — session encryption (already set)
+- `GOOGLE_CLIENT_ID` — Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` — Google OAuth client secret
+- `RESEND_API_KEY` — Resend email service API key
+- `FROM_EMAIL` — sender email address (default: `WordPlay <noreply@wordplay.app>`)
+- `APP_URL` — app base URL for email links (default: `http://localhost:5000`)
+- `MYSQL_DATABASE_URL` — MySQL connection string (for future DB migration)
+
 ### Remote Server Migration (axios)
 Every route in `server/routes.ts` has a commented-out axios block marked with `--- REMOTE SERVER BLOCK ---`. To switch any route to use a remote API: (1) uncomment the `import axios` and `REMOTE_BASE_URL` lines at the top, (2) replace the dummy URL with the real remote server URL, (3) uncomment the axios block inside the route and comment out the local `dataSource` block. Each axios block matches the exact request/response data structure of its route, forwards remote status codes on error, and falls back to descriptive error messages. POST routes forward the request body with defaults applied. No further code changes needed.
 
 ### Data Layer
-Drizzle ORM is configured for PostgreSQL, with schema defined in `shared/schema.ts` using Zod for validation. Migrations are managed via Drizzle Kit. Game data is primarily in-memory but designed for seamless migration to a PostgreSQL database.
+Schema defined in `shared/schema.ts` using Zod for validation. Includes game data schemas and user account schemas (users, tokens, game stats, leaderboard entries, streaks, achievements). All data operations use the `IStorage` interface in `server/storage.ts`, currently implemented with in-memory `MemStorage`. Designed for seamless migration to MySQL by implementing the same interface with Drizzle ORM.
 
-### Player Engagement (localStorage)
-All player tracking features use localStorage, requiring no user accounts:
+### Player Engagement (Hybrid: localStorage + Backend)
+Guest players use localStorage only. Signed-in players get stats synced to backend automatically:
 - **Personal Bests**: `client/src/hooks/use-game-result.ts` hook integrated into all 17 games, saves scores and shows "New Best!" toasts
 - **Game Stats**: `client/src/lib/game-stats.ts` library tracks per-game data (best score, play count, win rate, words found) and global data (total games, wins)
 - **Streak System**: Date-based daily streak tracking, increments on consecutive days, resets if a day is missed
 - **Achievements**: 19 achievement definitions covering milestones (games played, wins, high scores, word counts, streaks, perfect clears)
 - **Stats Dashboard**: `/stats` page with overview metrics and per-game breakdowns
 - **Achievements Page**: `/achievements` page with badge collection, unlock tracking, and toast notifications
+- **Backend Sync**: When signed in, `use-game-result.ts` POSTs to `/api/user/stats`, `/api/user/streak`, `/api/user/achievements`, and `/api/leaderboard` after each game
+
+### Leaderboard
+- **Page**: `/leaderboard` with game selector dropdown (all 17 games + "Overall")
+- **API**: `GET /api/leaderboard` (overall), `GET /api/leaderboard/:gameSlug` (per-game), `POST /api/leaderboard` (submit score, auth required)
+- **Display**: Ranked table with player name, score, date. Top 3 get crown/medal icons. Current user's entry highlighted.
+
+### User Stats API Routes
+- `GET /api/user/stats` — all game stats (auth required)
+- `POST /api/user/stats` — save game stats (auth required)
+- `GET /api/user/streak` — streak data (auth required)
+- `POST /api/user/streak` — save streak (auth required)
+- `GET /api/user/achievements` — achievements (auth required)
+- `POST /api/user/achievements` — save achievement (auth required)
 
 ### Word Ladder Game Design
 Word Ladder replaced the original Word Guessing (Wordle clone) game. Players transform one word into another by changing exactly one letter at a time (rearrangement of remaining letters allowed), with each step forming a valid word. No difficulty selection — clicking Play immediately starts a random puzzle. Features:
@@ -51,13 +93,16 @@ Both modes: all letters start blank, auto-submit on keypress. Letters can be ent
 ### API Endpoints
 The API provides endpoints for:
 - Retrieving lists and details of all 17 games.
-- Fetching specific word sets for various games (e.g., Word Guessing, Anagram Solver, Word Scramble, Letter Pool).
+- Fetching specific word sets for various games (e.g., Anagram Solver, Word Scramble, Letter Pool).
 - Validating words against a secure, server-side dictionary (`POST /api/games/validate-word`).
 - Game-specific configurations and interactions (e.g., Letter Balance config, Word Chain start/computer word).
+- Authentication (register, login, logout, Google OAuth, email verification, password reset).
+- User stats, streaks, and achievements (sync for signed-in users).
+- Leaderboard (public read, authenticated write).
 - No dictionary endpoint is exposed to the frontend, ensuring security.
 
 ### Shared Code
-A `shared/` directory contains TypeScript types and Zod schemas used by both frontend and backend, ensuring type consistency and validation across the full stack.
+A `shared/` directory contains TypeScript types and Zod schemas used by both frontend and backend, ensuring type consistency and validation across the full stack. Includes user, auth token, game stats, leaderboard, streak, and achievement schemas.
 
 ### Build System
 Development uses `tsx` with Vite HMR. Production builds involve a custom script (`script/build.ts`) using esbuild for the server and Vite for the client. Type checking is performed via the TypeScript compiler, and database schema syncing is handled by Drizzle Kit.
@@ -70,14 +115,20 @@ Development uses `tsx` with Vite HMR. Production builds involve a custom script 
 - Embla Carousel
 - Framer Motion for animations
 
+### Authentication & Security
+- Passport.js (Google OAuth + Local strategies)
+- bcryptjs for password hashing
+- express-session for session management
+- Resend for transactional emails
+
 ### Data & Validation
 - Zod for runtime schema validation
 - Drizzle ORM + Drizzle Zod for database operations
 - TanStack React Query for data fetching and caching
 
 ### Database
-- PostgreSQL (via `DATABASE_URL`)
-- `connect-pg-simple` (for session storage, if needed)
+- In-memory storage (MemStorage) — ready for MySQL migration
+- Schema designed for MySQL (Drizzle ORM)
 
 ### Development Tools
 - Vite with React plugin

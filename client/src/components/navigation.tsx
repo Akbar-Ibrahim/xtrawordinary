@@ -1,88 +1,127 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
-import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
+import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
+    { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },
     { href: "/about", label: "About", icon: Info },
   ];
 
   return (
-    <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md"
-    >
-      <nav className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
-        <Link href="/">
-          <div
-            className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md px-2 py-1"
-            data-testid="link-home-logo"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Gamepad2 className="h-5 w-5" />
+    <>
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md"
+      >
+        <nav className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
+          <Link href="/">
+            <div
+              className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md px-2 py-1"
+              data-testid="link-home-logo"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Gamepad2 className="h-5 w-5" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">WordPlay</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">WordPlay</span>
-          </div>
-        </Link>
+          </Link>
 
-        <div className="flex items-center gap-1">
-          {navLinks.map((link) => {
-            const isActive = location === link.href;
-            const Icon = link.icon;
-            return (
-              <Link key={link.href} href={link.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className="gap-2"
-                  data-testid={`link-nav-${link.label.toLowerCase()}`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{link.label}</span>
-                </Button>
-              </Link>
-            );
-          })}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}
-            data-testid="button-sound-toggle"
-          >
-            {soundEnabled ? (
-              <Volume2 className="h-5 w-5" />
+          <div className="flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = location === link.href;
+              const Icon = link.icon;
+              return (
+                <Link key={link.href} href={link.href}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    className="gap-2"
+                    data-testid={`link-nav-${link.label.toLowerCase()}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{link.label}</span>
+                  </Button>
+                </Link>
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? "Mute sound effects" : "Enable sound effects"}
+              data-testid="button-sound-toggle"
+            >
+              {soundEnabled ? (
+                <Volume2 className="h-5 w-5" />
+              ) : (
+                <VolumeX className="h-5 w-5" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              data-testid="button-theme-toggle"
+            >
+              {theme === "light" ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
+            </Button>
+
+            {isAuthenticated && user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2" data-testid="button-user-menu">
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.name} className="h-6 w-6 rounded-full" />
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem className="text-sm text-muted-foreground" disabled>
+                    {user.email}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout} data-testid="button-signout">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <VolumeX className="h-5 w-5" />
+              <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)} data-testid="button-signin">
+                <LogIn className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Button>
             )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
-            data-testid="button-theme-toggle"
-          >
-            {theme === "light" ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
-      </nav>
-    </motion.header>
+          </div>
+        </nav>
+      </motion.header>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+    </>
   );
 }
