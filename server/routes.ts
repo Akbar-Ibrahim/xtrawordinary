@@ -5,33 +5,9 @@ import { externalApi } from "./externalApi";
 import passport from "passport";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { z } from "zod";
-import { requireAuth } from "./auth";
+import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
-
-const registerSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  name: z.string().min(1, "Name is required").max(100),
-  password: z.string().min(6, "Password must be at least 6 characters").max(200),
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-
-const statsInputSchema = z.object({
-  gameSlug: z.string().min(1),
-  bestScore: z.number().int().min(0).max(100000).default(0),
-  gamesPlayed: z.number().int().min(0).max(100000).default(0),
-  gamesWon: z.number().int().min(0).max(100000).default(0),
-  wordsFound: z.number().int().min(0).max(100000).default(0),
-});
-
-const leaderboardInputSchema = z.object({
-  gameSlug: z.string().min(1),
-  score: z.number().int().min(0).max(100000),
-});
+import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
 
@@ -465,6 +441,8 @@ export async function registerRoutes(
         googleId: null,
         emailVerified: false,
         avatarUrl: null,
+        isAdmin: false,
+        isBanned: false,
       });
       const token = crypto.randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -810,6 +788,142 @@ export async function registerRoutes(
       res.json(entry);
     } catch (error) {
       res.status(500).json({ error: "Failed to submit score" });
+    }
+  });
+
+  // ==================== ADMIN ROUTES ====================
+
+  app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/stats`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch admin stats";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const stats = await storage.getAdminStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch admin stats" });
+    }
+  });
+
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/users`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch users";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const users = await storage.getAllUsers();
+      const sanitized = users.map(u => {
+        const { passwordHash, ...rest } = u;
+        return rest;
+      });
+      res.json(sanitized);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/ban", requireAdmin, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.patch(`${REMOTE_BASE_URL}/api/admin/users/${req.params.id}/ban`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to toggle ban";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
+      if (id === req.user!.id) return res.status(400).json({ error: "Cannot ban yourself" });
+      const user = await storage.getUserById(id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const updated = await storage.updateUser(id, { isBanned: !user.isBanned });
+      if (!updated) return res.status(500).json({ error: "Failed to update user" });
+      const { passwordHash, ...rest } = updated;
+      res.json(rest);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle ban" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/admin", requireAdmin, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.patch(`${REMOTE_BASE_URL}/api/admin/users/${req.params.id}/admin`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to toggle admin";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
+      if (id === req.user!.id) return res.status(400).json({ error: "Cannot change your own admin status" });
+      const user = await storage.getUserById(id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const updated = await storage.updateUser(id, { isAdmin: !user.isAdmin });
+      if (!updated) return res.status(500).json({ error: "Failed to update user" });
+      const { passwordHash, ...rest } = updated;
+      res.json(rest);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle admin" });
+    }
+  });
+
+  app.get("/api/admin/leaderboard", requireAdmin, async (_req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/leaderboard`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch leaderboard";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const entries = await storage.getAllLeaderboardEntries();
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch leaderboard entries" });
+    }
+  });
+
+  app.delete("/api/admin/leaderboard/:id", requireAdmin, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.delete(`${REMOTE_BASE_URL}/api/admin/leaderboard/${req.params.id}`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to delete entry";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid entry ID" });
+      await storage.deleteLeaderboardEntry(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete entry" });
     }
   });
 

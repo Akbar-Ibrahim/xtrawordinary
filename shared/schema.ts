@@ -167,6 +167,8 @@ export const userSchema = z.object({
   googleId: z.string().nullable(),
   emailVerified: z.boolean(),
   avatarUrl: z.string().nullable(),
+  isAdmin: z.boolean(),
+  isBanned: z.boolean(),
   createdAt: z.string(),
 });
 export type User = z.infer<typeof userSchema>;

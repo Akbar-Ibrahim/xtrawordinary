@@ -14,14 +14,15 @@ Preferred communication style: Simple, everyday language.
 The frontend utilizes React 18 with TypeScript, Wouter for routing, TanStack React Query for state management, and Tailwind CSS with CSS variables for styling. Shadcn/ui provides UI components, and Framer Motion handles animations. The build process is managed by Vite. It follows a component-based architecture, separating pages, reusable UI, game-specific components, custom hooks, and utilities. The system supports light/dark mode theming, smooth transitions, and animated score displays, streak indicators, and sound effects.
 
 ### Backend Architecture
-The backend is built with Express.js and TypeScript, exposing RESTful API endpoints under `/api/`. It integrates with Vite for hot module replacement in development and serves static files in production. The server structure includes main application setup, route definitions, a data access layer (`server/storage.ts` for in-memory data, ready for database integration), Vite development server integration, and static file serving.
+The backend is built with Express.js and TypeScript, exposing RESTful API endpoints under `/api/`. It integrates with Vite for hot module replacement in development and serves static files in production. The server structure includes main application setup, route definitions, a data access layer (`server/storage.ts` with conditional storage backend), Vite development server integration, and static file serving.
 
 ### Authentication System
 Optional user accounts via two providers:
 - **Google OAuth**: Passport.js with `passport-google-oauth20` strategy. Requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars. Callback URL: `/api/auth/google/callback`.
 - **Email/Password**: Passport.js local strategy with bcryptjs password hashing. Email verification via Resend (`RESEND_API_KEY` env var). Password reset flow with token-based emails.
 - **Session Management**: express-session with `SESSION_SECRET` env var, 30-day cookie expiry.
-- **Auth Middleware**: `requireAuth` function in `server/auth.ts` protects user-specific routes.
+- **Auth Middleware**: `requireAuth` and `requireAdmin` functions in `server/auth.ts` protect user-specific and admin routes.
+- **User Flags**: `isAdmin` (boolean) and `isBanned` (boolean) on user schema. Banned users cannot log in.
 - **Frontend**: `AuthProvider` context in `client/src/lib/auth-context.tsx`, `AuthModal` dialog for sign in/sign up, navbar integration with user dropdown.
 
 ### Auth API Routes
@@ -42,13 +43,19 @@ Optional user accounts via two providers:
 - `RESEND_API_KEY` — Resend email service API key
 - `FROM_EMAIL` — sender email address (default: `WordPlay <noreply@wordplay.app>`)
 - `APP_URL` — app base URL for email links (default: `http://localhost:5000`)
-- `MYSQL_DATABASE_URL` — MySQL connection string (for future DB migration)
+- `MYSQL_DATABASE_URL` — MySQL connection string (e.g. `mysql://user:pass@localhost:3306/wordplay`). When set, app uses MySQL storage; otherwise uses in-memory storage.
 
 ### Remote Server Migration (axios)
 Every route in `server/routes.ts` has a commented-out axios block marked with `--- REMOTE SERVER BLOCK ---`. To switch any route to use a remote API: (1) uncomment the `import axios` and `REMOTE_BASE_URL` lines at the top, (2) replace the dummy URL with the real remote server URL, (3) uncomment the axios block inside the route and comment out the local `dataSource` block. Each axios block matches the exact request/response data structure of its route, forwards remote status codes on error, and falls back to descriptive error messages. POST routes forward the request body with defaults applied. No further code changes needed.
 
 ### Data Layer
-Schema defined in `shared/schema.ts` using Zod for validation. Includes game data schemas and user account schemas (users, tokens, game stats, leaderboard entries, streaks, achievements). All data operations use the `IStorage` interface in `server/storage.ts`, currently implemented with in-memory `MemStorage`. Designed for seamless migration to MySQL by implementing the same interface with Drizzle ORM.
+- **Zod Schemas**: `shared/schema.ts` defines all types (games, users, tokens, stats, leaderboard, streaks, achievements).
+- **Drizzle MySQL Schema**: `server/db-schema.ts` defines MySQL table definitions using `mysqlTable` from `drizzle-orm/mysql-core`.
+- **Conditional Storage**: `server/storage.ts` exports either `MemStorage` (default, in-memory) or `MySQLStorage` (if `MYSQL_DATABASE_URL` env var is set).
+- **MySQLStorage**: `server/mysql-storage.ts` implements `IStorage` using Drizzle ORM queries for user/auth/stats/leaderboard data. Game content (word lists, puzzles) remains in-memory via delegation to MemStorage.
+- **Validation Schemas**: `server/validators.ts` contains Zod schemas for route input validation (register, login, stats, leaderboard).
+- **MySQL Connection**: `server/db.ts` creates a mysql2 connection pool using `MYSQL_DATABASE_URL`.
+- **Migration**: Update `drizzle.config.ts` to use `dialect: "mysql"`, `schema: "./server/db-schema.ts"`, and `MYSQL_DATABASE_URL` env var. Then run `npx drizzle-kit push` to create tables.
 
 ### Player Engagement (Hybrid: localStorage + Backend)
 Guest players use localStorage only. Signed-in players get stats synced to backend automatically:
@@ -72,6 +79,21 @@ Guest players use localStorage only. Signed-in players get stats synced to backe
 - `POST /api/user/streak` — save streak (auth required)
 - `GET /api/user/achievements` — achievements (auth required)
 - `POST /api/user/achievements` — save achievement (auth required)
+
+### Admin Dashboard
+- **Page**: `/admin` with three tabs: Overview, Users, Leaderboard
+- **Access**: Only visible to users with `isAdmin: true`. Admin link appears in user dropdown menu.
+- **Overview tab**: Total users, total games played, active game types, games-by-popularity bar chart
+- **Users tab**: Full user list with name, email, join date, status badges (Admin/Banned/User), Ban/Unban and Make Admin/Remove Admin buttons
+- **Leaderboard tab**: All leaderboard entries with game filter dropdown, delete button per entry
+
+### Admin API Routes
+- `GET /api/admin/stats` — analytics overview (admin required)
+- `GET /api/admin/users` — list all users (admin required)
+- `PATCH /api/admin/users/:id/ban` — toggle ban status (admin required)
+- `PATCH /api/admin/users/:id/admin` — toggle admin status (admin required)
+- `GET /api/admin/leaderboard` — all leaderboard entries (admin required)
+- `DELETE /api/admin/leaderboard/:id` — delete leaderboard entry (admin required)
 
 ### Word Ladder Game Design
 Word Ladder replaced the original Word Guessing (Wordle clone) game. Players transform one word into another by changing exactly one letter at a time (rearrangement of remaining letters allowed), with each step forming a valid word. No difficulty selection — clicking Play immediately starts a random puzzle. Features:
@@ -127,8 +149,10 @@ Development uses `tsx` with Vite HMR. Production builds involve a custom script 
 - TanStack React Query for data fetching and caching
 
 ### Database
-- In-memory storage (MemStorage) — ready for MySQL migration
-- Schema designed for MySQL (Drizzle ORM)
+- In-memory storage (MemStorage) — default, no setup needed
+- MySQL storage (MySQLStorage) — activated by setting `MYSQL_DATABASE_URL`
+- Drizzle ORM with mysql2 driver for MySQL operations
+- Drizzle MySQL table definitions in `server/db-schema.ts`
 
 ### Development Tools
 - Vite with React plugin

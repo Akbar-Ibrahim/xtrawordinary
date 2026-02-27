@@ -72,6 +72,11 @@ export interface IStorage {
 
   getUserAchievements(userId: number): Promise<UserAchievement[]>;
   saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement>;
+
+  getAllUsers(): Promise<User[]>;
+  deleteLeaderboardEntry(id: number): Promise<void>;
+  getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>;
+  getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
 }
 
 const wordLadderPuzzlesData: WordLadderPuzzle[] = [
@@ -1220,6 +1225,29 @@ export class MemStorage implements IStorage {
     this.userAchievements.push(achievement);
     return achievement;
   }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async deleteLeaderboardEntry(id: number): Promise<void> {
+    this.leaderboardEntries = this.leaderboardEntries.filter(e => e.id !== id);
+  }
+
+  async getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> {
+    const totalUsers = this.users.size;
+    let totalGamesPlayed = 0;
+    const gamesPerSlug: Record<string, number> = {};
+    for (const stats of this.userGameStatsMap.values()) {
+      totalGamesPlayed += stats.gamesPlayed;
+      gamesPerSlug[stats.gameSlug] = (gamesPerSlug[stats.gameSlug] || 0) + stats.gamesPlayed;
+    }
+    return { totalUsers, totalGamesPlayed, gamesPerSlug };
+  }
+
+  async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> {
+    return [...this.leaderboardEntries].sort((a, b) => b.playedAt.localeCompare(a.playedAt));
+  }
 }
 
 const progressiveRevealWords: ProgressiveRevealWord[] = [
@@ -1255,4 +1283,14 @@ const progressiveRevealWords: ProgressiveRevealWord[] = [
   { word: "TITANIUM", subcategory: "Strong metal" },
 ];
 
-export const storage = new MemStorage();
+function createStorage(): IStorage {
+  if (process.env.MYSQL_DATABASE_URL) {
+    console.log("[Storage] Using MySQL storage");
+    const { MySQLStorage } = require("./mysql-storage");
+    return new MySQLStorage();
+  }
+  console.log("[Storage] Using in-memory storage");
+  return new MemStorage();
+}
+
+export const storage = createStorage();

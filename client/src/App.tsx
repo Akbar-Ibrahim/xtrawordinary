@@ -16,6 +16,7 @@ import Leaderboard from "@/pages/leaderboard";
 import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import About from "@/pages/about";
+import Admin from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/about" component={About} />
+      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );

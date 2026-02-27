@@ -1,0 +1,268 @@
+import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Shield, Users, Trophy, BarChart3, Ban, ShieldCheck, Trash2, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+
+export default function Admin() {
+  const { user, isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [gameFilter, setGameFilter] = useState("all");
+
+  if (!isAuthenticated || !user?.isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center" data-testid="admin-access-denied">
+        <Shield className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+        <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+        <p className="text-muted-foreground">You need admin privileges to view this page.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-3xl font-bold mb-6 flex items-center gap-2" data-testid="text-admin-title">
+          <Shield className="h-8 w-8" /> Admin Dashboard
+        </h1>
+        <Tabs defaultValue="overview" data-testid="admin-tabs">
+          <TabsList className="mb-6">
+            <TabsTrigger value="overview" data-testid="tab-overview"><BarChart3 className="h-4 w-4 mr-1" />Overview</TabsTrigger>
+            <TabsTrigger value="users" data-testid="tab-users"><Users className="h-4 w-4 mr-1" />Users</TabsTrigger>
+            <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview"><OverviewTab /></TabsContent>
+          <TabsContent value="users"><UsersTab /></TabsContent>
+          <TabsContent value="leaderboard"><LeaderboardTab gameFilter={gameFilter} setGameFilter={setGameFilter} /></TabsContent>
+        </Tabs>
+      </motion.div>
+    </div>
+  );
+}
+
+function OverviewTab() {
+  const { data: stats, isLoading } = useQuery<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>({
+    queryKey: ["/api/admin/stats"],
+  });
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  const sortedGames = stats?.gamesPerSlug
+    ? Object.entries(stats.gamesPerSlug).sort(([, a], [, b]) => b - a)
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card data-testid="card-total-users">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Users</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{stats?.totalUsers ?? 0}</div></CardContent>
+        </Card>
+        <Card data-testid="card-total-games">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Games Played</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{stats?.totalGamesPlayed ?? 0}</div></CardContent>
+        </Card>
+        <Card data-testid="card-unique-games">
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Active Game Types</CardTitle></CardHeader>
+          <CardContent><div className="text-3xl font-bold">{sortedGames.length}</div></CardContent>
+        </Card>
+      </div>
+      {sortedGames.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Games by Popularity</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {sortedGames.map(([slug, count]) => {
+                const maxCount = sortedGames[0][1];
+                const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                return (
+                  <div key={slug} className="flex items-center gap-3" data-testid={`game-stat-${slug}`}>
+                    <span className="text-sm w-40 truncate font-medium">{slug}</span>
+                    <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
+                      <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-sm text-muted-foreground w-12 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function UsersTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: users, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/users"] });
+
+  const banMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/admin/users/${id}/ban`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "User updated" }); },
+    onError: () => toast({ title: "Failed to update user", variant: "destructive" }),
+  });
+
+  const adminMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/admin/users/${id}/admin`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "User updated" }); },
+    onError: () => toast({ title: "Failed to update user", variant: "destructive" }),
+  });
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>All Users ({users?.length ?? 0})</CardTitle></CardHeader>
+      <CardContent>
+        {!users?.length ? (
+          <p className="text-muted-foreground text-center py-8" data-testid="text-no-users">No users yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-2">Name</th>
+                  <th className="text-left py-3 px-2">Email</th>
+                  <th className="text-left py-3 px-2">Joined</th>
+                  <th className="text-left py-3 px-2">Status</th>
+                  <th className="text-right py-3 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u: any) => (
+                  <tr key={u.id} className="border-b hover:bg-muted/50" data-testid={`user-row-${u.id}`}>
+                    <td className="py-3 px-2 font-medium">{u.name}</td>
+                    <td className="py-3 px-2 text-muted-foreground">{u.email}</td>
+                    <td className="py-3 px-2 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-2">
+                      <div className="flex gap-1">
+                        {u.isAdmin && <Badge variant="default" data-testid={`badge-admin-${u.id}`}>Admin</Badge>}
+                        {u.isBanned && <Badge variant="destructive" data-testid={`badge-banned-${u.id}`}>Banned</Badge>}
+                        {!u.isAdmin && !u.isBanned && <Badge variant="secondary">User</Badge>}
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          size="sm"
+                          variant={u.isBanned ? "outline" : "destructive"}
+                          onClick={() => banMutation.mutate(u.id)}
+                          disabled={banMutation.isPending}
+                          data-testid={`button-ban-${u.id}`}
+                        >
+                          <Ban className="h-3 w-3 mr-1" />
+                          {u.isBanned ? "Unban" : "Ban"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={u.isAdmin ? "outline" : "secondary"}
+                          onClick={() => adminMutation.mutate(u.id)}
+                          disabled={adminMutation.isPending}
+                          data-testid={`button-admin-${u.id}`}
+                        >
+                          <ShieldCheck className="h-3 w-3 mr-1" />
+                          {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LeaderboardTab({ gameFilter, setGameFilter }: { gameFilter: string; setGameFilter: (v: string) => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: entries, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/leaderboard"] });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/leaderboard/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/leaderboard"] }); toast({ title: "Entry deleted" }); },
+    onError: () => toast({ title: "Failed to delete entry", variant: "destructive" }),
+  });
+
+  const filtered = entries?.filter(e => gameFilter === "all" || e.gameSlug === gameFilter) ?? [];
+  const gameSlugs = [...new Set(entries?.map(e => e.gameSlug) ?? [])].sort();
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle>Leaderboard Entries ({filtered.length})</CardTitle>
+          <Select value={gameFilter} onValueChange={setGameFilter}>
+            <SelectTrigger className="w-48" data-testid="select-admin-game-filter">
+              <SelectValue placeholder="Filter by game" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Games</SelectItem>
+              {gameSlugs.map(slug => (
+                <SelectItem key={slug} value={slug}>{slug}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!filtered.length ? (
+          <p className="text-muted-foreground text-center py-8" data-testid="text-no-entries">No leaderboard entries.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-2">Player</th>
+                  <th className="text-left py-3 px-2">Game</th>
+                  <th className="text-left py-3 px-2">Score</th>
+                  <th className="text-left py-3 px-2">Date</th>
+                  <th className="text-right py-3 px-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((entry: any) => (
+                  <tr key={entry.id} className="border-b hover:bg-muted/50" data-testid={`lb-row-${entry.id}`}>
+                    <td className="py-3 px-2 font-medium">{entry.playerName}</td>
+                    <td className="py-3 px-2 text-muted-foreground">{entry.gameSlug}</td>
+                    <td className="py-3 px-2 font-bold">{entry.score}</td>
+                    <td className="py-3 px-2 text-muted-foreground">{new Date(entry.playedAt).toLocaleDateString()}</td>
+                    <td className="py-3 px-2 text-right">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteMutation.mutate(entry.id)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-lb-${entry.id}`}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

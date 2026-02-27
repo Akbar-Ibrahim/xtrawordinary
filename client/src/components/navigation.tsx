@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User } from "lucide-react";
+import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
@@ -106,6 +106,14 @@ export function Navigation() {
                   <DropdownMenuItem className="text-sm text-muted-foreground" disabled>
                     {user.email}
                   </DropdownMenuItem>
+                  {user.isAdmin && (
+                    <Link href="/admin">
+                      <DropdownMenuItem data-testid="link-admin">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                    </Link>
+                  )}
                   <DropdownMenuItem onClick={logout} data-testid="button-signout">
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out

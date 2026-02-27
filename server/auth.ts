@@ -16,6 +16,8 @@ declare global {
       googleId: string | null;
       emailVerified: boolean;
       avatarUrl: string | null;
+      isAdmin: boolean;
+      isBanned: boolean;
       createdAt: string;
     }
   }
@@ -66,6 +68,9 @@ export function setupAuth(app: Express) {
           if (!user.emailVerified) {
             return done(null, false, { message: "Please verify your email first" });
           }
+          if (user.isBanned) {
+            return done(null, false, { message: "Your account has been suspended" });
+          }
           const isMatch = await bcrypt.compare(password, user.passwordHash);
           if (!isMatch) {
             return done(null, false, { message: "Invalid email or password" });
@@ -94,6 +99,9 @@ export function setupAuth(app: Express) {
           try {
             let user = await storage.getUserByGoogleId(profile.id);
             if (user) {
+              if (user.isBanned) {
+                return done(null, false, { message: "Your account has been suspended" } as any);
+              }
               return done(null, user);
             }
 
@@ -101,6 +109,9 @@ export function setupAuth(app: Express) {
             if (email) {
               user = await storage.getUserByEmail(email);
               if (user) {
+                if (user.isBanned) {
+                  return done(null, false, { message: "Your account has been suspended" } as any);
+                }
                 await storage.updateUser(user.id, { googleId: profile.id, emailVerified: true });
                 const updated = await storage.getUserById(user.id);
                 return done(null, updated || user);
@@ -114,6 +125,8 @@ export function setupAuth(app: Express) {
               googleId: profile.id,
               emailVerified: true,
               avatarUrl: profile.photos?.[0]?.value || null,
+              isAdmin: false,
+              isBanned: false,
             });
             return done(null, user);
           } catch (err) {
@@ -132,4 +145,11 @@ export function requireAuth(req: any, res: any, next: any) {
     return next();
   }
   res.status(401).json({ error: "Authentication required" });
+}
+
+export function requireAdmin(req: any, res: any, next: any) {
+  if (req.isAuthenticated() && req.user?.isAdmin) {
+    return next();
+  }
+  res.status(403).json({ error: "Admin access required" });
 }
