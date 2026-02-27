@@ -51,8 +51,9 @@ Every route in `server/routes.ts` has a commented-out axios block marked with `-
 ### Data Layer
 - **Zod Schemas**: `shared/schema.ts` defines all types (games, users, tokens, stats, leaderboard, streaks, achievements).
 - **Drizzle MySQL Schema**: `server/db-schema.ts` defines MySQL table definitions using `mysqlTable` from `drizzle-orm/mysql-core`.
-- **Conditional Storage**: `server/storage.ts` exports either `MemStorage` (default, in-memory) or `MySQLStorage` (if `MYSQL_DATABASE_URL` env var is set).
-- **MySQLStorage**: `server/mysql-storage.ts` implements `IStorage` using Drizzle ORM queries for user/auth/stats/leaderboard data. Game content (word lists, puzzles) remains in-memory via delegation to MemStorage.
+- **Storage Architecture**: `server/storage.ts` exports the `IStorage` interface, constraint types, and a Proxy-based `storage` singleton. Actual storage is initialized via `initStorage()` (called in `server/index.ts` before auth/routes setup). Uses `MemStorage` by default or `MySQLStorage` if `MYSQL_DATABASE_URL` is set.
+- **MemStorage**: `server/mem-storage.ts` — in-memory IStorage implementation. All game content data lives in `server/game-data.ts`.
+- **MySQLStorage**: `server/mysql-storage.ts` implements `IStorage` using Drizzle ORM queries for user/auth/stats/leaderboard data. Game content (word lists, puzzles) remains in-memory via delegation to MemStorage (imported from `mem-storage.ts` to avoid circular dependencies).
 - **Validation Schemas**: `server/validators.ts` contains Zod schemas for route input validation (register, login, stats, leaderboard).
 - **MySQL Connection**: `server/db.ts` creates a mysql2 connection pool using `MYSQL_DATABASE_URL`.
 - **Migration**: Update `drizzle.config.ts` to use `dialect: "mysql"`, `schema: "./server/db-schema.ts"`, and `MYSQL_DATABASE_URL` env var. Then run `npx drizzle-kit push` to create tables.
