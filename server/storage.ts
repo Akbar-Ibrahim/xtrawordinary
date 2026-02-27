@@ -1283,14 +1283,14 @@ const progressiveRevealWords: ProgressiveRevealWord[] = [
   { word: "TITANIUM", subcategory: "Strong metal" },
 ];
 
-function createStorage(): IStorage {
+async function createStorage(): Promise<IStorage> {
   if (process.env.MYSQL_DATABASE_URL) {
     console.log("[Storage] Using MySQL storage");
-    const { MySQLStorage } = require("./mysql-storage");
+    const { MySQLStorage } = await import("./mysql-storage");
     return new MySQLStorage();
   }
   console.log("[Storage] Using in-memory storage");
   return new MemStorage();
 }
 
-export const storage = createStorage();
+export const storage = await createStorage();
