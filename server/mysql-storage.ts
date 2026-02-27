@@ -20,8 +20,48 @@ export class MySQLStorage implements IStorage {
     return this.dbPromise;
   }
 
-  async getGames(): Promise<Game[]> { return this.gameData.getGames(); }
-  async getGameBySlug(slug: string): Promise<Game | undefined> { return this.gameData.getGameBySlug(slug); }
+  private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
+    let rules: string[];
+    if (typeof row.rules === "string") {
+      rules = JSON.parse(row.rules);
+    } else if (Array.isArray(row.rules)) {
+      rules = row.rules;
+    } else {
+      rules = [];
+    }
+
+    const validDifficulties = ["easy", "medium", "hard"] as const;
+    const difficulty = validDifficulties.includes(row.difficulty as any)
+      ? (row.difficulty as Game["difficulty"])
+      : "medium";
+
+    return {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      longDescription: row.longDescription,
+      rules,
+      difficulty,
+      estimatedTime: row.estimatedTime,
+      icon: row.icon,
+      color: row.color,
+      playCount: row.playCount,
+    };
+  }
+
+  async getGames(): Promise<Game[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.games);
+    return rows.map((row: typeof schema.games.$inferSelect) => this.mapDbRowToGame(row));
+  }
+
+  async getGameBySlug(slug: string): Promise<Game | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.games).where(eq(schema.games.slug, slug));
+    if (rows.length === 0) return undefined;
+    return this.mapDbRowToGame(rows[0]);
+  }
   async getWordLadderPuzzles(): Promise<WordLadderPuzzle[]> { return this.gameData.getWordLadderPuzzles(); }
   async getAnagramWordSets(): Promise<AnagramWordSet[]> { return this.gameData.getAnagramWordSets(); }
   async getScrambleWords(): Promise<ScrambleWord[]> { return this.gameData.getScrambleWords(); }
