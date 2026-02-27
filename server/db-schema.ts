@@ -61,3 +61,17 @@ export const userAchievements = mysqlTable("user_achievements", {
   achievementId: varchar("achievement_id", { length: 100 }).notNull(),
   unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
 });
+
+export const games = mysqlTable("games", {
+  id: varchar("id", { length: 10 }).primaryKey(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  longDescription: text("long_description").notNull(),
+  rules: json("rules").notNull(),
+  difficulty: varchar("difficulty", { length: 20 }).notNull(),
+  estimatedTime: varchar("estimated_time", { length: 50 }).notNull(),
+  icon: varchar("icon", { length: 100 }).notNull(),
+  color: varchar("color", { length: 100 }).notNull(),
+  playCount: int("play_count").notNull().default(0),
+});
