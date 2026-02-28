@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, or, like } from "drizzle-orm";
+import { eq, desc, sql, and, or, like, inArray } from "drizzle-orm";
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
@@ -371,12 +371,27 @@ export class MySQLStorage implements IStorage {
     }
 
     const leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> = [];
-    for (const [gameSlug, score] of slugBest) {
-      const higherCount = await db.select({ count: sql<number>`count(distinct ${schema.leaderboardEntries.userId})` })
-        .from(schema.leaderboardEntries)
-        .where(and(eq(schema.leaderboardEntries.gameSlug, gameSlug), sql`${schema.leaderboardEntries.score} > ${score}`));
-      const rank = Number(higherCount[0]?.count || 0) + 1;
-      leaderboardRankings.push({ gameSlug, rank, score });
+    const slugEntries = Array.from(slugBest.entries());
+    if (slugEntries.length > 0) {
+      const allEntries = await db.select({
+        gameSlug: schema.leaderboardEntries.gameSlug,
+        maxScore: sql<number>`max(${schema.leaderboardEntries.score})`,
+      }).from(schema.leaderboardEntries)
+        .where(inArray(schema.leaderboardEntries.gameSlug, slugEntries.map(([s]) => s)))
+        .groupBy(schema.leaderboardEntries.gameSlug, schema.leaderboardEntries.userId);
+
+      const perSlugScores = new Map<string, number[]>();
+      for (const row of allEntries) {
+        const scores = perSlugScores.get(row.gameSlug) || [];
+        scores.push(Number(row.maxScore));
+        perSlugScores.set(row.gameSlug, scores);
+      }
+
+      for (const [gameSlug, score] of slugEntries) {
+        const allScores = perSlugScores.get(gameSlug) || [];
+        const rank = allScores.filter(s => s > score).length + 1;
+        leaderboardRankings.push({ gameSlug, rank, score });
+      }
     }
 
     return { user, stats, achievements, leaderboardRankings };
@@ -430,16 +445,18 @@ export class MySQLStorage implements IStorage {
         or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))
       )
     );
-    const results: Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }> = [];
-    for (const row of rows) {
+    if (rows.length === 0) return [];
+    const friendIds = rows.map(r => r.requesterId === userId ? r.addresseeId : r.requesterId);
+    const friendUsers = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users).where(inArray(schema.users.id, friendIds));
+    const userMap = new Map(friendUsers.map(u => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return rows.map(row => {
       const friendId = row.requesterId === userId ? row.addresseeId : row.requesterId;
-      const friendUser = await this.getUserById(friendId);
-      results.push({
+      return {
         ...this.toFriendship(row),
-        friendUser: { id: friendId, name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null },
-      });
-    }
-    return results;
+        friendUser: userMap.get(friendId) || { id: friendId, name: "Unknown", avatarUrl: null },
+      };
+    });
   }
 
   async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> {
@@ -447,15 +464,15 @@ export class MySQLStorage implements IStorage {
     const rows = await db.select().from(schema.friendships).where(
       and(eq(schema.friendships.status, "pending"), eq(schema.friendships.addresseeId, userId))
     );
-    const results: Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }> = [];
-    for (const row of rows) {
-      const requester = await this.getUserById(row.requesterId);
-      results.push({
-        ...this.toFriendship(row),
-        requesterUser: { id: row.requesterId, name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null },
-      });
-    }
-    return results;
+    if (rows.length === 0) return [];
+    const requesterIds = rows.map(r => r.requesterId);
+    const requesterUsers = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users).where(inArray(schema.users.id, requesterIds));
+    const userMap = new Map(requesterUsers.map(u => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return rows.map(row => ({
+      ...this.toFriendship(row),
+      requesterUser: userMap.get(row.requesterId) || { id: row.requesterId, name: "Unknown", avatarUrl: null },
+    }));
   }
 
   async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> {
