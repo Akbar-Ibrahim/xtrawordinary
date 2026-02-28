@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 
 interface GameResultOptions {
   slug: string;
+  challengeId?: number;
 }
 
 async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number) {
@@ -46,11 +47,17 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
   } catch {}
 }
 
-export function useGameResult({ slug }: GameResultOptions) {
+export function useGameResult({ slug, challengeId: explicitChallengeId }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
   const personalBest = getPersonalBest(slug);
   const { isAuthenticated } = useAuth();
+  const challengeId = explicitChallengeId || (() => {
+    if (typeof window === "undefined") return undefined;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("challenge");
+    return id ? parseInt(id) : undefined;
+  })();
 
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
@@ -96,11 +103,19 @@ export function useGameResult({ slug }: GameResultOptions) {
 
       if (isAuthenticated) {
         syncToBackend(slug, score, won, wordsFound);
+        if (challengeId) {
+          fetch(`/api/challenges/${challengeId}/complete`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ score }),
+          }).catch(() => {});
+        }
       }
 
       return result;
     },
-    [slug, toast, personalBest, isAuthenticated]
+    [slug, toast, personalBest, isAuthenticated, challengeId]
   );
 
   const resetRecorded = useCallback(() => {

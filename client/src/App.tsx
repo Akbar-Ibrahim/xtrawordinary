@@ -17,6 +17,8 @@ import VerifyEmail from "@/pages/verify-email";
 import ResetPassword from "@/pages/reset-password";
 import About from "@/pages/about";
 import Admin from "@/pages/admin";
+import Profile from "@/pages/profile";
+import Friends from "@/pages/friends";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/about" component={About} />
       <Route path="/admin" component={Admin} />
+      <Route path="/profile/:id" component={Profile} />
+      <Route path="/friends" component={Friends} />
       <Route component={NotFound} />
     </Switch>
   );

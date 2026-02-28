@@ -104,9 +104,11 @@ export default function Leaderboard() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium truncate" data-testid={`text-player-${index}`}>
-                            {entry.playerName}
-                          </span>
+                          <Link href={`/profile/${entry.userId}`}>
+                            <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-player-${index}`}>
+                              {entry.playerName}
+                            </span>
+                          </Link>
                           {isCurrentUser && (
                             <Badge variant="secondary" className="text-xs" data-testid="badge-you">You</Badge>
                           )}

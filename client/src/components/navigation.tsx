@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield } from "lucide-react";
+import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
@@ -106,6 +106,18 @@ export function Navigation() {
                   <DropdownMenuItem className="text-sm text-muted-foreground" disabled>
                     {user.email}
                   </DropdownMenuItem>
+                  <Link href={`/profile/${user.id}`}>
+                    <DropdownMenuItem data-testid="link-profile">
+                      <User className="h-4 w-4 mr-2" />
+                      My Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/friends">
+                    <DropdownMenuItem data-testid="link-friends">
+                      <Users className="h-4 w-4 mr-2" />
+                      Friends
+                    </DropdownMenuItem>
+                  </Link>
                   {user.isAdmin && (
                     <Link href="/admin">
                       <DropdownMenuItem data-testid="link-admin">

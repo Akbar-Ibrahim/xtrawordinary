@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,11 @@ import {
   Play,
   X,
   CheckCircle,
+  Swords,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { Game } from "@shared/schema";
+import type { Game, FriendChallenge } from "@shared/schema";
+import { useAuth } from "@/lib/auth-context";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -63,6 +65,24 @@ const gameComponents: Record<string, React.ComponentType> = {
 export default function GameDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [isPlaying, setIsPlaying] = useState(false);
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const challengeId = searchParams.get("challenge");
+  const { isAuthenticated } = useAuth();
+
+  const { data: challenge } = useQuery<FriendChallenge>({
+    queryKey: ["/api/challenges", challengeId],
+    queryFn: async () => {
+      const res = await fetch(`/api/challenges`, { credentials: "include" });
+      const all = await res.json();
+      return all.find((c: FriendChallenge) => c.id === parseInt(challengeId!));
+    },
+    enabled: !!challengeId && isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (challengeId) setIsPlaying(true);
+  }, [challengeId]);
 
   const { data: game, isLoading, error } = useQuery<Game>({
     queryKey: ["/api/games", slug],
@@ -239,6 +259,18 @@ export default function GameDetail() {
                 Exit Game
               </Button>
             </div>
+
+            {challenge && challenge.status === "pending" && (
+              <Card className="mb-4 border-primary/30 bg-primary/5">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <Swords className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium text-sm">Friend Challenge</p>
+                    <p className="text-xs text-muted-foreground">Score to beat: <strong>{challenge.senderScore} pts</strong>{challenge.message && ` — "${challenge.message}"`}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {GameComponent ? (
               <GameComponent />

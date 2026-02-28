@@ -239,3 +239,37 @@ export const userAchievementSchema = z.object({
   unlockedAt: z.string(),
 });
 export type UserAchievement = z.infer<typeof userAchievementSchema>;
+
+export const friendshipStatusSchema = z.enum(["pending", "accepted", "declined"]);
+export type FriendshipStatus = z.infer<typeof friendshipStatusSchema>;
+
+export const friendshipSchema = z.object({
+  id: z.number(),
+  requesterId: z.number(),
+  addresseeId: z.number(),
+  status: friendshipStatusSchema,
+  createdAt: z.string(),
+});
+export type Friendship = z.infer<typeof friendshipSchema>;
+
+export const insertFriendshipSchema = friendshipSchema.omit({ id: true, createdAt: true });
+export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
+
+export const challengeStatusSchema = z.enum(["pending", "completed"]);
+export type ChallengeStatus = z.infer<typeof challengeStatusSchema>;
+
+export const friendChallengeSchema = z.object({
+  id: z.number(),
+  senderId: z.number(),
+  receiverId: z.number(),
+  gameSlug: z.string(),
+  senderScore: z.number(),
+  receiverScore: z.number().nullable(),
+  status: challengeStatusSchema,
+  message: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type FriendChallenge = z.infer<typeof friendChallengeSchema>;
+
+export const insertFriendChallengeSchema = friendChallengeSchema.omit({ id: true, createdAt: true });
+export type InsertFriendChallenge = z.infer<typeof insertFriendChallengeSchema>;

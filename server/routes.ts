@@ -791,6 +791,274 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== PROFILE ROUTES ====================
+
+  app.get("/api/users/search", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/users/search`, { params: { q: req.query.q }, headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to search users";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const q = (req.query.q as string) || "";
+      if (q.length < 2) return res.json([]);
+      const results = await storage.searchUsers(q);
+      const filtered = results.filter(u => u.id !== req.user!.id);
+      res.json(filtered);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to search users" });
+    }
+  });
+
+  app.get("/api/users/:id/profile", async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/users/${req.params.id}/profile`);
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch profile";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
+      const profile = await storage.getPublicProfile(id);
+      if (!profile) return res.status(404).json({ error: "User not found" });
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  // ==================== FRIEND ROUTES ====================
+
+  app.get("/api/friends", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/friends`, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch friends";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const friends = await storage.getFriends(req.user!.id);
+      res.json(friends);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch friends" });
+    }
+  });
+
+  app.get("/api/friends/requests", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/friends/requests`, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch friend requests";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const requests = await storage.getPendingFriendRequests(req.user!.id);
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch friend requests" });
+    }
+  });
+
+  app.post("/api/friends/request", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/request`, req.body, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to send friend request";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ error: "userId is required" });
+      if (userId === req.user!.id) return res.status(400).json({ error: "Cannot friend yourself" });
+      const existing = await storage.getFriendship(req.user!.id, userId);
+      if (existing) return res.status(400).json({ error: "Friend request already exists" });
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) return res.status(404).json({ error: "User not found" });
+      const friendship = await storage.sendFriendRequest(req.user!.id, userId);
+      res.json(friendship);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send friend request" });
+    }
+  });
+
+  app.post("/api/friends/:id/accept", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/${req.params.id}/accept`, {}, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to accept friend request";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getFriendshipById(id);
+      if (!existing) return res.status(404).json({ error: "Request not found" });
+      if (existing.addresseeId !== req.user!.id) return res.status(403).json({ error: "Not your request" });
+      const updated = await storage.acceptFriendRequest(id);
+      if (!updated) return res.status(404).json({ error: "Request not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to accept friend request" });
+    }
+  });
+
+  app.post("/api/friends/:id/decline", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/${req.params.id}/decline`, {}, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to decline friend request";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getFriendshipById(id);
+      if (!existing) return res.status(404).json({ error: "Request not found" });
+      if (existing.addresseeId !== req.user!.id) return res.status(403).json({ error: "Not your request" });
+      const updated = await storage.declineFriendRequest(id);
+      if (!updated) return res.status(404).json({ error: "Request not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to decline friend request" });
+    }
+  });
+
+  app.delete("/api/friends/:id", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.delete(`${REMOTE_BASE_URL}/api/friends/${req.params.id}`, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to remove friend";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getFriendshipById(id);
+      if (!existing) return res.status(404).json({ error: "Friendship not found" });
+      if (existing.requesterId !== req.user!.id && existing.addresseeId !== req.user!.id) return res.status(403).json({ error: "Not your friendship" });
+      await storage.removeFriend(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove friend" });
+    }
+  });
+
+  // ==================== CHALLENGE ROUTES ====================
+
+  app.post("/api/challenges", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/challenges`, req.body, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to create challenge";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const { friendId, gameSlug, score, message } = req.body;
+      if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
+      if (!gameSlug || typeof gameSlug !== "string") return res.status(400).json({ error: "Valid gameSlug is required" });
+      if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
+      if (message && typeof message === "string" && message.length > 200) return res.status(400).json({ error: "Message too long (max 200 chars)" });
+      const friendship = await storage.getFriendship(req.user!.id, friendId);
+      if (!friendship || friendship.status !== "accepted") return res.status(400).json({ error: "You can only challenge friends" });
+      const challenge = await storage.createFriendChallenge({
+        senderId: req.user!.id,
+        receiverId: friendId,
+        gameSlug,
+        senderScore: score,
+        receiverScore: null,
+        status: "pending",
+        message: message || null,
+      });
+      res.json(challenge);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create challenge" });
+    }
+  });
+
+  app.get("/api/challenges", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/challenges`, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to fetch challenges";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const challenges = await storage.getFriendChallenges(req.user!.id);
+      res.json(challenges);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenges" });
+    }
+  });
+
+  app.post("/api/challenges/:id/complete", requireAuth, async (req, res) => {
+    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
+    // try {
+    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/challenges/${req.params.id}/complete`, req.body, { headers: { cookie: req.headers.cookie } });
+    //   res.json(response.data);
+    // } catch (error: any) {
+    //   const status = error.response?.status || 500;
+    //   const message = error.response?.data?.error || "Failed to complete challenge";
+    //   res.status(status).json({ error: message });
+    // }
+    // --- END REMOTE SERVER BLOCK ---
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const { score } = req.body;
+      if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
+      const challenge = await storage.getFriendChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Not your challenge" });
+      if (challenge.status === "completed") return res.status(400).json({ error: "Challenge already completed" });
+      const updated = await storage.completeFriendChallenge(id, score);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete challenge" });
+    }
+  });
+
   // ==================== ADMIN ROUTES ====================
 
   app.get("/api/admin/stats", requireAdmin, async (_req, res) => {

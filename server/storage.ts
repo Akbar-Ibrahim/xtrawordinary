@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -74,6 +74,23 @@ export interface IStorage {
   deleteLeaderboardEntry(id: number): Promise<void>;
   getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>;
   getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
+
+  searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>>;
+  getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
+
+  getFriendshipById(id: number): Promise<Friendship | undefined>;
+  sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship>;
+  acceptFriendRequest(id: number): Promise<Friendship | undefined>;
+  declineFriendRequest(id: number): Promise<Friendship | undefined>;
+  removeFriend(id: number): Promise<void>;
+  getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>>;
+  getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>>;
+  getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined>;
+
+  createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge>;
+  getFriendChallenges(userId: number): Promise<FriendChallenge[]>;
+  getFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
+  completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined>;
 }
 
 export { MemStorage } from "./mem-storage";

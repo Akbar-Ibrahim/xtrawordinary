@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { gamesData, wordLadderPuzzlesData, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, containsConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
 
@@ -364,6 +364,10 @@ export class MemStorage implements IStorage {
   private usIdCounter = 1;
   private userAchievements: UserAchievement[] = [];
   private uaIdCounter = 1;
+  private friendshipsStore: Friendship[] = [];
+  private frIdCounter = 1;
+  private friendChallengesStore: FriendChallenge[] = [];
+  private fcIdCounter = 1;
 
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
@@ -524,5 +528,111 @@ export class MemStorage implements IStorage {
 
   async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> {
     return [...this.leaderboardEntries].sort((a, b) => b.playedAt.localeCompare(a.playedAt));
+  }
+
+  async searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> {
+    const q = query.toLowerCase();
+    return Array.from(this.users.values())
+      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      .slice(0, 20)
+      .map(u => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl }));
+  }
+
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
+    const user = this.users.get(userId);
+    if (!user) return null;
+    const stats = Array.from(this.userGameStatsMap.values()).filter(s => s.userId === userId);
+    const achievements = this.userAchievements.filter(a => a.userId === userId);
+    const slugScores = new Map<string, number>();
+    for (const e of this.leaderboardEntries) {
+      if (e.userId === userId) {
+        const existing = slugScores.get(e.gameSlug);
+        if (!existing || e.score > existing) slugScores.set(e.gameSlug, e.score);
+      }
+    }
+    const leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> = [];
+    for (const [slug, score] of slugScores) {
+      const allScores = this.leaderboardEntries
+        .filter(e => e.gameSlug === slug)
+        .reduce((acc, e) => { const ex = acc.get(e.userId); if (!ex || e.score > ex) acc.set(e.userId, e.score); return acc; }, new Map<number, number>());
+      const sorted = Array.from(allScores.entries()).sort((a, b) => b[1] - a[1]);
+      const rank = sorted.findIndex(([uid]) => uid === userId) + 1;
+      leaderboardRankings.push({ gameSlug: slug, rank, score });
+    }
+    return { user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt }, stats, achievements, leaderboardRankings };
+  }
+
+  async getFriendshipById(id: number): Promise<Friendship | undefined> {
+    return this.friendshipsStore.find(f => f.id === id);
+  }
+
+  async sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship> {
+    const f: Friendship = { id: this.frIdCounter++, requesterId, addresseeId, status: "pending", createdAt: new Date().toISOString() };
+    this.friendshipsStore.push(f);
+    return f;
+  }
+
+  async acceptFriendRequest(id: number): Promise<Friendship | undefined> {
+    const f = this.friendshipsStore.find(fr => fr.id === id);
+    if (f) f.status = "accepted";
+    return f;
+  }
+
+  async declineFriendRequest(id: number): Promise<Friendship | undefined> {
+    const f = this.friendshipsStore.find(fr => fr.id === id);
+    if (f) f.status = "declined";
+    return f;
+  }
+
+  async removeFriend(id: number): Promise<void> {
+    this.friendshipsStore = this.friendshipsStore.filter(f => f.id !== id);
+  }
+
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> {
+    return this.friendshipsStore
+      .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
+      .map(f => {
+        const friendId = f.requesterId === userId ? f.addresseeId : f.requesterId;
+        const friendUser = this.users.get(friendId);
+        return { ...f, friendUser: { id: friendId, name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null } };
+      });
+  }
+
+  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> {
+    return this.friendshipsStore
+      .filter(f => f.status === "pending" && f.addresseeId === userId)
+      .map(f => {
+        const requester = this.users.get(f.requesterId);
+        return { ...f, requesterUser: { id: f.requesterId, name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null } };
+      });
+  }
+
+  async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> {
+    return this.friendshipsStore.find(f =>
+      (f.requesterId === userId1 && f.addresseeId === userId2) ||
+      (f.requesterId === userId2 && f.addresseeId === userId1)
+    );
+  }
+
+  async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> {
+    const fc: FriendChallenge = { ...challenge, id: this.fcIdCounter++, createdAt: new Date().toISOString() };
+    this.friendChallengesStore.push(fc);
+    return fc;
+  }
+
+  async getFriendChallenges(userId: number): Promise<FriendChallenge[]> {
+    return this.friendChallengesStore
+      .filter(c => c.senderId === userId || c.receiverId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async getFriendChallenge(id: number): Promise<FriendChallenge | undefined> {
+    return this.friendChallengesStore.find(c => c.id === id);
+  }
+
+  async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
+    const c = this.friendChallengesStore.find(ch => ch.id === id);
+    if (c) { c.receiverScore = score; c.status = "completed"; }
+    return c;
   }
 }

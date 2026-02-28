@@ -62,6 +62,26 @@ export const userAchievements = mysqlTable("user_achievements", {
   unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
 });
 
+export const friendships = mysqlTable("friendships", {
+  id: int("id").primaryKey().autoincrement(),
+  requesterId: int("requester_id").notNull(),
+  addresseeId: int("addressee_id").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const friendChallenges = mysqlTable("friend_challenges", {
+  id: int("id").primaryKey().autoincrement(),
+  senderId: int("sender_id").notNull(),
+  receiverId: int("receiver_id").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  senderScore: int("sender_score").notNull(),
+  receiverScore: int("receiver_score"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  message: text("message"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const games = mysqlTable("games", {
   id: varchar("id", { length: 10 }).primaryKey(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
