@@ -10,6 +10,9 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
+// import { db } from "./db";
+// import { words } from "./db-schema";
+// import { eq } from "drizzle-orm";
 
 const isLocalMode = process.env.DEV_MODE === "LOCAL";
 const dataSource = isLocalMode ? storage : externalApi;
@@ -232,9 +235,6 @@ export async function registerRoutes(
       }
       const valid = await dataSource.validateWord(word);
       // --- DB VALIDATION (uncomment to validate against words table instead) ---
-      // const db = (await import("./db")).db;
-      // const { words } = await import("./db-schema");
-      // const { eq } = await import("drizzle-orm");
       // const rows = await db.select({ id: words.id }).from(words).where(eq(words.word, word.toUpperCase())).limit(1);
       // const valid = rows.length > 0;
       // --- END DB VALIDATION ---
