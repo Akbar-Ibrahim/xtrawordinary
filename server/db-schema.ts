@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
@@ -18,14 +18,18 @@ export const emailVerificationTokens = mysqlTable("email_verification_tokens", {
   userId: int("user_id").notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
-});
+}, (table) => [
+  index("evt_user_id_idx").on(table.userId),
+]);
 
 export const passwordResetTokens = mysqlTable("password_reset_tokens", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
-});
+}, (table) => [
+  index("prt_user_id_idx").on(table.userId),
+]);
 
 export const userGameStats = mysqlTable("user_game_stats", {
   id: int("id").primaryKey().autoincrement(),
@@ -36,7 +40,9 @@ export const userGameStats = mysqlTable("user_game_stats", {
   gamesWon: int("games_won").notNull().default(0),
   wordsFound: int("words_found").notNull().default(0),
   lastPlayedAt: timestamp("last_played_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("ugs_user_game_idx").on(table.userId, table.gameSlug),
+]);
 
 export const leaderboardEntries = mysqlTable("leaderboard_entries", {
   id: int("id").primaryKey().autoincrement(),
@@ -45,7 +51,11 @@ export const leaderboardEntries = mysqlTable("leaderboard_entries", {
   score: int("score").notNull(),
   playerName: varchar("player_name", { length: 255 }).notNull(),
   playedAt: timestamp("played_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("lb_user_id_idx").on(table.userId),
+  index("lb_game_score_idx").on(table.gameSlug, table.score),
+  index("lb_played_at_idx").on(table.playedAt),
+]);
 
 export const userStreaks = mysqlTable("user_streaks", {
   id: int("id").primaryKey().autoincrement(),
@@ -60,7 +70,10 @@ export const userAchievements = mysqlTable("user_achievements", {
   userId: int("user_id").notNull(),
   achievementId: varchar("achievement_id", { length: 100 }).notNull(),
   unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("ua_user_id_idx").on(table.userId),
+  uniqueIndex("ua_user_achievement_idx").on(table.userId, table.achievementId),
+]);
 
 export const friendships = mysqlTable("friendships", {
   id: int("id").primaryKey().autoincrement(),
@@ -68,7 +81,11 @@ export const friendships = mysqlTable("friendships", {
   addresseeId: int("addressee_id").notNull(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("fr_requester_idx").on(table.requesterId),
+  index("fr_addressee_idx").on(table.addresseeId),
+  index("fr_status_addressee_idx").on(table.status, table.addresseeId),
+]);
 
 export const friendChallenges = mysqlTable("friend_challenges", {
   id: int("id").primaryKey().autoincrement(),
@@ -80,7 +97,11 @@ export const friendChallenges = mysqlTable("friend_challenges", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   message: text("message"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("fc_sender_idx").on(table.senderId),
+  index("fc_receiver_idx").on(table.receiverId),
+  index("fc_created_at_idx").on(table.createdAt),
+]);
 
 export const games = mysqlTable("games", {
   id: varchar("id", { length: 10 }).primaryKey(),

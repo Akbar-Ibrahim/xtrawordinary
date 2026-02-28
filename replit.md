@@ -60,8 +60,9 @@ A `shared/` directory ensures type consistency and validation across the full st
 
 ### Database
 - In-memory storage (MemStorage)
-- MySQL storage (MySQLStorage)
+- MySQL storage (MySQLStorage) — fully implements all IStorage methods with optimized queries (batch user lookups, SQL aggregations for leaderboards/admin stats)
 - Drizzle ORM with mysql2 driver
+- Database indexes defined in `server/db-schema.ts` for all frequently queried columns (foreign keys, composite lookups, sort columns)
 
 ### Development Tools
 - Vite (React plugin)

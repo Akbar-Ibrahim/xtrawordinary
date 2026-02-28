@@ -254,22 +254,27 @@ export class MySQLStorage implements IStorage {
 
   async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
     const db = await this.getDb();
-    const rows = await db.select().from(schema.leaderboardEntries);
-    const playerTotals = new Map<number, { userId: number; playerName: string; score: number; playedAt: string }>();
-    for (const entry of rows) {
-      const playedAt = entry.playedAt instanceof Date ? entry.playedAt.toISOString() : String(entry.playedAt);
-      const existing = playerTotals.get(entry.userId);
-      if (existing) {
-        existing.score += entry.score;
-        if (playedAt > existing.playedAt) existing.playedAt = playedAt;
-      } else {
-        playerTotals.set(entry.userId, { userId: entry.userId, playerName: entry.playerName, score: entry.score, playedAt });
-      }
-    }
-    return Array.from(playerTotals.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map((p, i) => ({ id: i + 1, ...p, gameSlug: "overall" }));
+    const totals = await db.select({
+      userId: schema.leaderboardEntries.userId,
+      totalScore: sql<number>`SUM(${schema.leaderboardEntries.score})`,
+      latestPlayedAt: sql<string>`MAX(${schema.leaderboardEntries.playedAt})`,
+    }).from(schema.leaderboardEntries)
+      .groupBy(schema.leaderboardEntries.userId)
+      .orderBy(sql`SUM(${schema.leaderboardEntries.score}) DESC`)
+      .limit(limit);
+    if (totals.length === 0) return [];
+    const userIds = totals.map(t => t.userId);
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name })
+      .from(schema.users).where(inArray(schema.users.id, userIds));
+    const nameMap = new Map(userRows.map(u => [u.id, u.name]));
+    return totals.map((r: any, i: number) => ({
+      id: i + 1,
+      userId: r.userId,
+      playerName: nameMap.get(r.userId) || "Unknown",
+      score: Number(r.totalScore),
+      playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
+      gameSlug: "overall",
+    }));
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {
@@ -324,12 +329,17 @@ export class MySQLStorage implements IStorage {
   async getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> {
     const db = await this.getDb();
     const usersCount = await db.select({ count: sql<number>`count(*)` }).from(schema.users);
-    const statsRows = await db.select().from(schema.userGameStats);
+    const slugStats = await db.select({
+      gameSlug: schema.userGameStats.gameSlug,
+      totalPlayed: sql<number>`SUM(${schema.userGameStats.gamesPlayed})`,
+    }).from(schema.userGameStats)
+      .groupBy(schema.userGameStats.gameSlug);
     let totalGamesPlayed = 0;
     const gamesPerSlug: Record<string, number> = {};
-    for (const row of statsRows) {
-      totalGamesPlayed += row.gamesPlayed;
-      gamesPerSlug[row.gameSlug] = (gamesPerSlug[row.gameSlug] || 0) + row.gamesPlayed;
+    for (const row of slugStats) {
+      const count = Number(row.totalPlayed);
+      totalGamesPlayed += count;
+      gamesPerSlug[row.gameSlug] = count;
     }
     return { totalUsers: Number(usersCount[0]?.count || 0), totalGamesPlayed, gamesPerSlug };
   }
