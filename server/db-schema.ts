@@ -103,6 +103,11 @@ export const friendChallenges = mysqlTable("friend_challenges", {
   index("fc_created_at_idx").on(table.createdAt),
 ]);
 
+export const words = mysqlTable("words", {
+  id: int("id").primaryKey().autoincrement(),
+  word: varchar("word", { length: 100 }).notNull().unique(),
+});
+
 export const games = mysqlTable("games", {
   id: varchar("id", { length: 10 }).primaryKey(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),

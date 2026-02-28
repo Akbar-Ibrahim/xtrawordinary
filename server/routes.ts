@@ -231,6 +231,13 @@ export async function registerRoutes(
         return res.status(400).json({ valid: false, message: "Word is required" });
       }
       const valid = await dataSource.validateWord(word);
+      // --- DB VALIDATION (uncomment to validate against words table instead) ---
+      // const db = (await import("./db")).db;
+      // const { words } = await import("./db-schema");
+      // const { eq } = await import("drizzle-orm");
+      // const rows = await db.select({ id: words.id }).from(words).where(eq(words.word, word.toUpperCase())).limit(1);
+      // const valid = rows.length > 0;
+      // --- END DB VALIDATION ---
       res.json({ valid, message: valid ? "Valid word!" : "Not in dictionary" });
     } catch (error) {
       res.status(500).json({ valid: false, message: "Validation failed" });
