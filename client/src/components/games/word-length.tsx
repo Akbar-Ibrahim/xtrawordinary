@@ -18,6 +18,8 @@ import { useGameResult } from "@/hooks/use-game-result";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
+const COMMON_START_ALPHABET = ALPHABET.filter(l => !["Q", "X", "Z"].includes(l));
+const COMMON_INTERIOR_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "Z"].includes(l));
 
 type LevelConstraint = {
   length: number;
@@ -26,25 +28,46 @@ type LevelConstraint = {
   contains?: string;
 };
 
-// Generate random constraint based on variation
+function pickRandom(pool: string[]): string {
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickRandomExcluding(pool: string[], exclude: string): string {
+  const filtered = pool.filter(l => l !== exclude);
+  return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
 function generateConstraint(variation: number): LevelConstraint {
-  const length = Math.floor(Math.random() * 6) + 3; // 3-8 letters
-  const randomLetter = () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  const randomEndLetter = () => ENDS_WITH_ALPHABET[Math.floor(Math.random() * ENDS_WITH_ALPHABET.length)];
-  
   switch (variation) {
-    case 1:
+    case 1: {
+      const length = Math.floor(Math.random() * 6) + 3;
       return { length };
-    case 2:
-      return { length, startsWith: randomLetter() };
-    case 3:
-      return { length, endsWith: randomEndLetter() };
-    case 4:
-      return { length, startsWith: randomLetter(), contains: randomLetter() };
-    case 5:
-      return { length, endsWith: randomEndLetter(), contains: randomLetter() };
-    default:
+    }
+    case 2: {
+      const length = Math.floor(Math.random() * 6) + 3;
+      const startPool = length <= 4 ? COMMON_START_ALPHABET : ALPHABET;
+      return { length, startsWith: pickRandom(startPool) };
+    }
+    case 3: {
+      const length = Math.floor(Math.random() * 6) + 3;
+      return { length, endsWith: pickRandom(ENDS_WITH_ALPHABET) };
+    }
+    case 4: {
+      const length = Math.floor(Math.random() * 5) + 4;
+      const startsWith = pickRandom(COMMON_START_ALPHABET);
+      const contains = pickRandomExcluding(COMMON_INTERIOR_ALPHABET, startsWith);
+      return { length, startsWith, contains };
+    }
+    case 5: {
+      const length = Math.floor(Math.random() * 5) + 4;
+      const endsWith = pickRandom(ENDS_WITH_ALPHABET);
+      const contains = pickRandomExcluding(COMMON_INTERIOR_ALPHABET, endsWith);
+      return { length, endsWith, contains };
+    }
+    default: {
+      const length = Math.floor(Math.random() * 6) + 3;
       return { length };
+    }
   }
 }
 
