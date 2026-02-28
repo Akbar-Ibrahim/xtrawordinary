@@ -233,7 +233,7 @@ export class MemStorage implements IStorage {
     );
     
     if (level === 2) {
-      candidates = candidates.filter(w => w.length === upperPlayerWord.length);
+      candidates = candidates.filter(w => w.length >= 3 && w.length <= 8);
     }
     
     if (candidates.length === 0) return null;
