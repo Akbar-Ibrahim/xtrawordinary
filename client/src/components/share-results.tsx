@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { SiX, SiFacebook } from "react-icons/si";
+import { SiX, SiFacebook, SiLinkedin } from "react-icons/si";
 import { Copy, Check, Share2 } from "lucide-react";
 
 interface ShareResultsProps {
@@ -66,6 +66,11 @@ export function ShareResults({
     window.open(facebookUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handleShareLinkedIn = () => {
+    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(gameUrl)}`;
+    window.open(linkedInUrl, "_blank", "noopener,noreferrer");
+  };
+
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
@@ -111,6 +116,16 @@ export function ShareResults({
         >
           <SiFacebook className="w-4 h-4" />
           <span className="hidden sm:inline">Facebook</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShareLinkedIn}
+          className="gap-2"
+          data-testid="button-share-linkedin"
+        >
+          <SiLinkedin className="w-4 h-4" />
+          <span className="hidden sm:inline">LinkedIn</span>
         </Button>
         <Button
           variant="outline"
