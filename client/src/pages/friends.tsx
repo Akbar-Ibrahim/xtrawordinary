@@ -63,9 +63,14 @@ export default function Friends() {
   const searchMutation = useMutation({
     mutationFn: async (q: string) => {
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Search failed" }));
+        throw new Error(err.error || "Search failed");
+      }
       return res.json();
     },
     onSuccess: (data) => setSearchResults(data),
+    onError: (err: Error) => toast({ title: "Search failed", description: err.message, variant: "destructive" }),
   });
 
   const sendRequestMutation = useMutation({

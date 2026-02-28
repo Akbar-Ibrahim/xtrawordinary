@@ -358,7 +358,7 @@ export class MySQLStorage implements IStorage {
       name: schema.users.name,
       avatarUrl: schema.users.avatarUrl,
     }).from(schema.users)
-      .where(sql`${schema.users.name} LIKE ${`%${sanitized}%`} ESCAPE '\\'`)
+      .where(like(schema.users.name, `%${sanitized}%`))
       .limit(20);
     return rows.map((r: any) => ({ id: r.id, name: r.name, avatarUrl: r.avatarUrl || null }));
   }

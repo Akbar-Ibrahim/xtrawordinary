@@ -818,6 +818,7 @@ export async function registerRoutes(
       const filtered = results.filter(u => u.id !== req.user!.id);
       res.json(filtered);
     } catch (error) {
+      console.error("Search users error:", error);
       res.status(500).json({ error: "Failed to search users" });
     }
   });
