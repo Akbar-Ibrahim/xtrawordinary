@@ -7,6 +7,7 @@ WordPlay is a web-based platform offering seventeen interactive vocabulary games
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+MySQL storage is the priority for all new features — always implement MySQLStorage first alongside MemStorage. This app will be published and connected to a real MySQL database.
 
 ## System Architecture
 

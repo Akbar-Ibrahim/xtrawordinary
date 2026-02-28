@@ -1,5 +1,5 @@
-import { eq, desc, sql, and } from "drizzle-orm";
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement } from "@shared/schema";
+import { eq, desc, sql, and, or, like } from "drizzle-orm";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -338,5 +338,183 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     const rows = await db.select().from(schema.leaderboardEntries).orderBy(desc(schema.leaderboardEntries.playedAt));
     return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: r.playerName, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt) }));
+  }
+
+  async searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> {
+    const db = await this.getDb();
+    const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "\\$&");
+    const rows = await db.select({
+      id: schema.users.id,
+      name: schema.users.name,
+      avatarUrl: schema.users.avatarUrl,
+    }).from(schema.users)
+      .where(sql`${schema.users.name} LIKE ${`%${sanitized}%`} ESCAPE '\\'`)
+      .limit(20);
+    return rows.map((r: any) => ({ id: r.id, name: r.name, avatarUrl: r.avatarUrl || null }));
+  }
+
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
+    const db = await this.getDb();
+    const userRows = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (!userRows[0]) return null;
+    const u = userRows[0];
+    const user = { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt) };
+
+    const stats = await this.getAllUserGameStats(userId);
+    const achievements = await this.getUserAchievements(userId);
+
+    const userEntries = await db.select().from(schema.leaderboardEntries).where(eq(schema.leaderboardEntries.userId, userId));
+    const slugBest = new Map<string, number>();
+    for (const e of userEntries) {
+      const existing = slugBest.get(e.gameSlug);
+      if (!existing || e.score > existing) slugBest.set(e.gameSlug, e.score);
+    }
+
+    const leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> = [];
+    for (const [gameSlug, score] of slugBest) {
+      const higherCount = await db.select({ count: sql<number>`count(distinct ${schema.leaderboardEntries.userId})` })
+        .from(schema.leaderboardEntries)
+        .where(and(eq(schema.leaderboardEntries.gameSlug, gameSlug), sql`${schema.leaderboardEntries.score} > ${score}`));
+      const rank = Number(higherCount[0]?.count || 0) + 1;
+      leaderboardRankings.push({ gameSlug, rank, score });
+    }
+
+    return { user, stats, achievements, leaderboardRankings };
+  }
+
+  private toFriendship(r: any): Friendship {
+    return {
+      id: r.id,
+      requesterId: r.requesterId,
+      addresseeId: r.addresseeId,
+      status: r.status as Friendship["status"],
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  }
+
+  async getFriendshipById(id: number): Promise<Friendship | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendships).where(eq(schema.friendships.id, id)).limit(1);
+    return rows[0] ? this.toFriendship(rows[0]) : undefined;
+  }
+
+  async sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.friendships).values({ requesterId, addresseeId, status: "pending" });
+    const created = await this.getFriendshipById(result[0].insertId);
+    return created!;
+  }
+
+  async acceptFriendRequest(id: number): Promise<Friendship | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.friendships).set({ status: "accepted" }).where(eq(schema.friendships.id, id));
+    return this.getFriendshipById(id);
+  }
+
+  async declineFriendRequest(id: number): Promise<Friendship | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.friendships).set({ status: "declined" }).where(eq(schema.friendships.id, id));
+    return this.getFriendshipById(id);
+  }
+
+  async removeFriend(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.friendships).where(eq(schema.friendships.id, id));
+  }
+
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendships).where(
+      and(
+        eq(schema.friendships.status, "accepted"),
+        or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))
+      )
+    );
+    const results: Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }> = [];
+    for (const row of rows) {
+      const friendId = row.requesterId === userId ? row.addresseeId : row.requesterId;
+      const friendUser = await this.getUserById(friendId);
+      results.push({
+        ...this.toFriendship(row),
+        friendUser: { id: friendId, name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null },
+      });
+    }
+    return results;
+  }
+
+  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendships).where(
+      and(eq(schema.friendships.status, "pending"), eq(schema.friendships.addresseeId, userId))
+    );
+    const results: Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }> = [];
+    for (const row of rows) {
+      const requester = await this.getUserById(row.requesterId);
+      results.push({
+        ...this.toFriendship(row),
+        requesterUser: { id: row.requesterId, name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null },
+      });
+    }
+    return results;
+  }
+
+  async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendships).where(
+      or(
+        and(eq(schema.friendships.requesterId, userId1), eq(schema.friendships.addresseeId, userId2)),
+        and(eq(schema.friendships.requesterId, userId2), eq(schema.friendships.addresseeId, userId1))
+      )
+    ).limit(1);
+    return rows[0] ? this.toFriendship(rows[0]) : undefined;
+  }
+
+  private toChallenge(r: any): FriendChallenge {
+    return {
+      id: r.id,
+      senderId: r.senderId,
+      receiverId: r.receiverId,
+      gameSlug: r.gameSlug,
+      senderScore: r.senderScore,
+      receiverScore: r.receiverScore ?? null,
+      status: r.status as FriendChallenge["status"],
+      message: r.message || null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  }
+
+  async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.friendChallenges).values({
+      senderId: challenge.senderId,
+      receiverId: challenge.receiverId,
+      gameSlug: challenge.gameSlug,
+      senderScore: challenge.senderScore,
+      receiverScore: challenge.receiverScore,
+      status: challenge.status,
+      message: challenge.message,
+    });
+    const created = await this.getFriendChallenge(result[0].insertId);
+    return created!;
+  }
+
+  async getFriendChallenges(userId: number): Promise<FriendChallenge[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendChallenges)
+      .where(or(eq(schema.friendChallenges.senderId, userId), eq(schema.friendChallenges.receiverId, userId)))
+      .orderBy(desc(schema.friendChallenges.createdAt));
+    return rows.map((r: any) => this.toChallenge(r));
+  }
+
+  async getFriendChallenge(id: number): Promise<FriendChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendChallenges).where(eq(schema.friendChallenges.id, id)).limit(1);
+    return rows[0] ? this.toChallenge(rows[0]) : undefined;
+  }
+
+  async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed" }).where(eq(schema.friendChallenges.id, id));
+    return this.getFriendChallenge(id);
   }
 }
