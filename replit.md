@@ -50,7 +50,7 @@ A `shared/` directory ensures type consistency and validation across the full st
 ### Authentication & Security
 - Passport.js (Google OAuth + Local strategies)
 - bcryptjs
-- express-session
+- express-session + express-mysql-session (persistent sessions in MySQL when `MYSQL_DATABASE_URL` is set)
 - Resend
 
 ### Data & Validation

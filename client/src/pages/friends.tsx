@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Trophy, Gamepad2, LogIn, Clock, User } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Trophy, Gamepad2, Clock, User } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
 
@@ -132,16 +132,7 @@ export default function Friends() {
   };
 
   if (!isAuthenticated) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-3xl text-center">
-        <Users className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Friends</h1>
-        <p className="text-muted-foreground mb-4">Sign in to add friends and send challenges.</p>
-        <Button variant="outline" data-testid="button-signin-prompt">
-          <LogIn className="h-4 w-4 mr-2" /> Sign In
-        </Button>
-      </div>
-    );
+    return <Redirect to="/" />;
   }
 
   const gameMap = new Map(games.map(g => [g.slug, g]));

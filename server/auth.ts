@@ -2,6 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
+import MySQLStoreFactory from "express-mysql-session";
 import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
@@ -24,18 +25,54 @@ declare global {
 }
 
 export function setupAuth(app: Express) {
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "wordplay-dev-secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      },
-    })
-  );
+  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+    console.error("[Session] WARNING: SESSION_SECRET is not set in production! Using insecure fallback.");
+  }
+
+  const sessionOptions: session.SessionOptions = {
+    secret: process.env.SESSION_SECRET || "wordplay-dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    },
+  };
+
+  const mysqlUrl = process.env.MYSQL_DATABASE_URL;
+  if (mysqlUrl) {
+    try {
+      const MySQLStore = MySQLStoreFactory(session as any);
+      const url = new URL(mysqlUrl);
+      const store = new MySQLStore({
+        host: url.hostname,
+        port: parseInt(url.port) || 3306,
+        user: url.username,
+        password: url.password,
+        database: url.pathname.replace("/", ""),
+        createDatabaseTable: true,
+        checkExpirationInterval: 15 * 60 * 1000,
+        expiration: 30 * 24 * 60 * 60 * 1000,
+        schema: {
+          tableName: "sessions",
+          columnNames: {
+            session_id: "session_id",
+            expires: "expires",
+            data: "data",
+          },
+        },
+      });
+      sessionOptions.store = store;
+      console.log("[Session] Using MySQL session store for persistent sessions");
+    } catch (err) {
+      console.error("[Session] Failed to create MySQL session store, falling back to memory:", err);
+    }
+  } else {
+    console.log("[Session] Using in-memory session store (sessions won't persist across restarts)");
+  }
+
+  app.use(session(sessionOptions));
 
   app.use(passport.initialize());
   app.use(passport.session());
