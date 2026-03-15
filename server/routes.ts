@@ -362,7 +362,7 @@ export async function registerRoutes(
         "word-maker",
         "word-length",
         "letter-position",
-        "contains-letters",
+        "letter-hunt",
         "letter-balance",
         "letter-frequency",
         "no-repeats",

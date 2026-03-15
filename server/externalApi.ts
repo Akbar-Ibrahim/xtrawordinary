@@ -159,7 +159,7 @@ const gamesData: Game[] = [
   },
   {
     id: "9",
-    slug: "contains-letters",
+    slug: "letter-hunt",
     name: "Letter Hunt",
     description: "Form words that contain a specific group of letters.",
     longDescription: "Can you think of words containing specific letters? You'll be given a group of letters, and your challenge is to form words that include all of them - in any order! Level 1 uses the same letter group, while Level 2 gives you new letters for each word.",
@@ -966,6 +966,7 @@ export class ExternalApiClient implements IExternalApi {
   // Generate constraint for Letter Hunt game
   async generateContainsConstraint(): Promise<{ letters: string[] }> {
     const minWords = 10;
+    const EXCLUDED_LETTERS = new Set(["Z", "X", "Q", "J", "V"]);
     const letterCounts: Record<string, number> = {};
     
     for (const word of wordDictionary) {
@@ -976,7 +977,7 @@ export class ExternalApiClient implements IExternalApi {
     }
     
     const sortedLetters = Object.entries(letterCounts)
-      .filter(([_, count]) => count >= minWords)
+      .filter(([letter, count]) => count >= minWords && !EXCLUDED_LETTERS.has(letter))
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
       .map(([letter]) => letter);

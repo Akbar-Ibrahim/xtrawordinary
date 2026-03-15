@@ -4,8 +4,10 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Trophy, Medal, Award, Crown, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { motion } from "framer-motion";
 import type { LeaderboardEntry, Game } from "@shared/schema";
 
@@ -14,6 +16,7 @@ const RANK_COLORS = ["text-yellow-500", "text-gray-400", "text-amber-600"];
 
 export default function Leaderboard() {
   const [selectedGame, setSelectedGame] = useState("overall");
+  const [authOpen, setAuthOpen] = useState(false);
   const { user } = useAuth();
 
   const { data: games = [] } = useQuery<Game[]>({
@@ -74,9 +77,17 @@ export default function Leaderboard() {
                 ))}
               </div>
             ) : entries.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground" data-testid="text-no-entries">
+              <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-no-entries">
                 <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <p>No scores yet. Be the first to play!</p>
+                {!user && (
+                  <div className="space-y-2">
+                    <p className="text-sm">Sign in to track your scores and appear here.</p>
+                    <Button onClick={() => setAuthOpen(true)} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard">
+                      <LogIn className="h-4 w-4" /> Sign In
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -127,9 +138,18 @@ export default function Leaderboard() {
                 })}
               </div>
             )}
+            {!user && entries.length > 0 && (
+              <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center space-y-2" data-testid="banner-signin-leaderboard">
+                <p className="text-sm text-muted-foreground">Sign in to track your scores and appear on the leaderboard!</p>
+                <Button onClick={() => setAuthOpen(true)} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard-banner">
+                  <LogIn className="h-4 w-4" /> Sign In
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

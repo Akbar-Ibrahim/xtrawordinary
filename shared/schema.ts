@@ -4,7 +4,7 @@ export const difficultySchema = z.enum(["easy", "medium", "hard"]);
 export type Difficulty = z.infer<typeof difficultySchema>;
 
 export const gameSchema = z.object({
-  id: z.string(),
+  id: z.number(),
   slug: z.string(),
   name: z.string(),
   description: z.string(),

@@ -109,7 +109,7 @@ export const words = mysqlTable("words", {
 });
 
 export const games = mysqlTable("games", {
-  id: varchar("id", { length: 10 }).primaryKey(),
+  id: int("id").primaryKey().autoincrement(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description").notNull(),

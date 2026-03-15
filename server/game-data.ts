@@ -310,7 +310,7 @@ export const progressiveRevealWords: ProgressiveRevealWord[] = [
 
 export const gamesData: Game[] = [
   {
-    id: "1",
+    id: 1,
     slug: "word-ladder",
     name: "Word Ladder",
     description: "Change one letter at a time to climb from the start word to the target word!",
@@ -330,7 +330,7 @@ export const gamesData: Game[] = [
     playCount: 15420
   },
   {
-    id: "2",
+    id: 2,
     slug: "anagram-solver",
     name: "Anagram Solver",
     description: "Use the given word to find all possible anagrams.",
@@ -349,7 +349,7 @@ export const gamesData: Game[] = [
     playCount: 12850
   },
   {
-    id: "3",
+    id: 3,
     slug: "word-scramble",
     name: "Word Scramble",
     description: "Unscramble letters to reveal hidden words before running out of lives.",
@@ -368,7 +368,7 @@ export const gamesData: Game[] = [
     playCount: 8930
   },
   {
-    id: "4",
+    id: 4,
     slug: "definition-match",
     name: "Definition Match",
     description: "Read the definition and guess the word it describes.",
@@ -387,7 +387,7 @@ export const gamesData: Game[] = [
     playCount: 7650
   },
   {
-    id: "5",
+    id: 5,
     slug: "letter-pool",
     name: "Letter Pool",
     description: "Spell out hidden words letter by letter — choose Pool mode or go Blind!",
@@ -407,7 +407,7 @@ export const gamesData: Game[] = [
     playCount: 6420
   },
   {
-    id: "6",
+    id: 6,
     slug: "word-maker",
     name: "Word Maker",
     description: "Create as many words as you can from a given set of letters.",
@@ -426,7 +426,7 @@ export const gamesData: Game[] = [
     playCount: 5890
   },
   {
-    id: "7",
+    id: 7,
     slug: "word-length",
     name: "Length Challenge",
     description: "Form words of specific lengths with different constraint variations.",
@@ -447,7 +447,7 @@ export const gamesData: Game[] = [
     playCount: 4250
   },
   {
-    id: "8",
+    id: 8,
     slug: "letter-position",
     name: "Position Master",
     description: "Find words with the right letter at the right position!",
@@ -466,8 +466,8 @@ export const gamesData: Game[] = [
     playCount: 3890
   },
   {
-    id: "9",
-    slug: "contains-letters",
+    id: 9,
+    slug: "letter-hunt",
     name: "Letter Hunt",
     description: "Find words with exact letter counts - match the pattern!",
     longDescription: "Think you know your words? You'll be given a set of required letters, and your challenge is to find words that contain exactly those letters - no more, no less! Choose from 6 challenge variations with 2-6 required letters, or try Advanced mode where the letters change after each correct word.",
@@ -486,7 +486,7 @@ export const gamesData: Game[] = [
     playCount: 4120
   },
   {
-    id: "10",
+    id: 10,
     slug: "word-chain",
     name: "Word Chain",
     description: "Create words using the ending letters of the previous word in a back-and-forth chain.",
@@ -506,7 +506,7 @@ export const gamesData: Game[] = [
     playCount: 3560
   },
   {
-    id: "11",
+    id: 11,
     slug: "letter-balance",
     name: "Letter Balance",
     description: "Form words based on vowel and consonant requirements across many variations.",
@@ -527,7 +527,7 @@ export const gamesData: Game[] = [
     playCount: 3240
   },
   {
-    id: "12",
+    id: 12,
     slug: "letter-frequency",
     name: "Letter Frequency",
     description: "Find words where a specific letter appears exactly N times!",
@@ -548,7 +548,7 @@ export const gamesData: Game[] = [
     playCount: 0
   },
   {
-    id: "13",
+    id: 13,
     slug: "word-stack",
     name: "Word Stack",
     description: "Build words one letter at a time from a 2-letter base to the target word!",
@@ -567,7 +567,7 @@ export const gamesData: Game[] = [
     playCount: 0
   },
   {
-    id: "14",
+    id: 14,
     slug: "no-repeats",
     name: "No Repeats",
     description: "Find words where every letter is unique - no repeating letters allowed!",
@@ -587,7 +587,7 @@ export const gamesData: Game[] = [
     playCount: 0
   },
   {
-    id: "15",
+    id: 15,
     slug: "word-split",
     name: "Word Split",
     description: "Split a word into smaller valid words that use all its letters!",
@@ -607,7 +607,7 @@ export const gamesData: Game[] = [
     playCount: 0
   },
   {
-    id: "16",
+    id: 16,
     slug: "progressive-reveal",
     name: "Progressive Reveal",
     description: "Reveal letters one at a time and guess the word before you run out!",
@@ -628,7 +628,7 @@ export const gamesData: Game[] = [
     playCount: 0
   },
   {
-    id: "17",
+    id: 17,
     slug: "word-sweep",
     name: "Word Sweep",
     description: "Select letters from a grid to form words and clear the board!",

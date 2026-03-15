@@ -26,7 +26,7 @@ import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordMakerGame } from "@/components/games/word-maker";
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
-import { ContainsLettersGame } from "@/components/games/contains-letters";
+import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { WordChainGame } from "@/components/games/word-chain";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
@@ -51,7 +51,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-maker": WordMakerGame,
   "word-length": WordLengthGame,
   "letter-position": LetterPositionGame,
-  "contains-letters": ContainsLettersGame,
+  "letter-hunt": LetterHuntGame,
   "word-chain": WordChainGame,
   "letter-balance": LetterBalanceGame,
   "letter-frequency": LetterFrequencyGame,

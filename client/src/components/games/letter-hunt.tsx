@@ -42,7 +42,7 @@ function getRandomLetterCount(): number {
   return Math.floor(Math.random() * 5) + 2;
 }
 
-function validateContainsLetters(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
+function validateLetterHunt(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
   // Count occurrences of each required letter
@@ -81,9 +81,9 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
+export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "contains-letters" });
+  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-hunt" });
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -191,7 +191,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
       return;
     }
 
-    const constraintCheck = validateContainsLetters(upperWord, currentLetters);
+    const constraintCheck = validateLetterHunt(upperWord, currentLetters);
     if (!constraintCheck.valid) {
       playSound("wrong");
       setStreak(0);
@@ -475,7 +475,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
-                  gameSlug="contains-letters"
+                  gameSlug="letter-hunt"
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -531,7 +531,7 @@ export function ContainsLettersGame({ initialChallenge }: { initialChallenge?: C
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
-                  gameSlug="contains-letters"
+                  gameSlug="letter-hunt"
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}

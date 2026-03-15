@@ -170,6 +170,7 @@ export class MemStorage implements IStorage {
 
   async generateContainsConstraint(): Promise<ContainsConstraint> {
     const minWords = 10;
+    const EXCLUDED_LETTERS = new Set(["Z", "X", "Q", "J", "V"]);
     const letterCounts: Record<string, number> = {};
     
     for (const word of wordDictionary) {
@@ -180,7 +181,7 @@ export class MemStorage implements IStorage {
     }
     
     const sortedLetters = Object.entries(letterCounts)
-      .filter(([_, count]) => count >= minWords)
+      .filter(([letter, count]) => count >= minWords && !EXCLUDED_LETTERS.has(letter))
       .sort(() => Math.random() - 0.5)
       .slice(0, 3)
       .map(([letter]) => letter);

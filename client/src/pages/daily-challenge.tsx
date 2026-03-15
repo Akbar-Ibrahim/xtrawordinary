@@ -18,7 +18,7 @@ import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordMakerGame } from "@/components/games/word-maker";
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
-import { ContainsLettersGame } from "@/components/games/contains-letters";
+import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
@@ -61,10 +61,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       const challenge = ((seed % 2) + 1) as 1 | 2;
       return <LetterPositionGame initialChallenge={challenge} />;
     }
-    case "contains-letters": {
+    case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const challenge = options[seed % options.length];
-      return <ContainsLettersGame initialChallenge={challenge} />;
+      return <LetterHuntGame initialChallenge={challenge} />;
     }
     case "letter-balance": {
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
