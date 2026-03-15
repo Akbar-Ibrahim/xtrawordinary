@@ -95,7 +95,7 @@ export const letterPositionConfigSchema = z.object({
 });
 export type LetterPositionConfig = z.infer<typeof letterPositionConfigSchema>;
 
-// Contains game configuration
+// Letter Hunt game configuration
 export const letterHuntConfigSchema = z.object({
   wordsPerLevel: z.number(),
   timePerLevel: z.number(), // seconds
