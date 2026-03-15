@@ -96,12 +96,12 @@ export const letterPositionConfigSchema = z.object({
 export type LetterPositionConfig = z.infer<typeof letterPositionConfigSchema>;
 
 // Contains game configuration
-export const containsConfigSchema = z.object({
+export const letterHuntConfigSchema = z.object({
   wordsPerLevel: z.number(),
   timePerLevel: z.number(), // seconds
   letterSets: z.array(z.array(z.string())), // groups of letters for the game
 });
-export type ContainsConfig = z.infer<typeof containsConfigSchema>;
+export type LetterHuntConfig = z.infer<typeof letterHuntConfigSchema>;
 
 // Beginning and End game configuration
 export const wordChainConfigSchema = z.object({

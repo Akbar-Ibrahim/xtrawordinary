@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
 
 const gamesData: Game[] = [
   {
@@ -598,7 +598,7 @@ const letterPositionConfig: LetterPositionConfig = {
   timePerLevel: 120
 };
 
-const containsConfig: ContainsConfig = {
+const letterHuntConfig: LetterHuntConfig = {
   wordsPerLevel: 20,
   timePerLevel: 120,
   letterSets: [
@@ -788,7 +788,7 @@ export interface IExternalApi {
   validateWord(word: string): Promise<boolean>;
   getWordLengthConfig(): Promise<WordLengthConfig>;
   getLetterPositionConfig(): Promise<LetterPositionConfig>;
-  getContainsConfig(): Promise<ContainsConfig>;
+  getLetterHuntConfig(): Promise<LetterHuntConfig>;
   getWordChainConfig(): Promise<WordChainConfig>;
   getVowelConsonantConfig(): Promise<VowelConsonantConfig>;
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
@@ -861,8 +861,8 @@ export class ExternalApiClient implements IExternalApi {
     return letterPositionConfig;
   }
 
-  async getContainsConfig(): Promise<ContainsConfig> {
-    return containsConfig;
+  async getLetterHuntConfig(): Promise<LetterHuntConfig> {
+    return letterHuntConfig;
   }
 
   async getWordChainConfig(): Promise<WordChainConfig> {

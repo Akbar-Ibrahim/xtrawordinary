@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, MakerWord, WordLengthConfig, LetterPositionConfig, ContainsConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordLadderPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordLadderPuzzle } from "@shared/schema";
 
 export const wordLadderPuzzlesData: WordLadderPuzzle[] = [
   {
@@ -212,7 +212,7 @@ export const letterPositionConfig: LetterPositionConfig = {
   timePerLevel: 120
 };
 
-export const containsConfig: ContainsConfig = {
+export const letterHuntConfig: LetterHuntConfig = {
   wordsPerLevel: 20,
   timePerLevel: 120,
   letterSets: [
