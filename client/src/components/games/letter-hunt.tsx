@@ -383,15 +383,17 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
             </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={goToMenu}
-            className="w-full text-muted-foreground"
-            data-testid="button-back-challenge-select"
-          >
-            ← Back to challenges
-          </Button>
+          {initialChallenge === undefined && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goToMenu}
+              className="w-full text-muted-foreground"
+              data-testid="button-back-challenge-select"
+            >
+              ← Back to challenges
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
