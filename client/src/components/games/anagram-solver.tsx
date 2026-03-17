@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, Timer, CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -30,7 +29,7 @@ export function AnagramSolverGame() {
   const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(90);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "timeup">("playing");
-  const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "duplicate"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "correct" | "wrong"; message: string } | null>(null);
   const [usedSets, setUsedSets] = useState<Set<number>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,28 +105,17 @@ export function AnagramSolverGame() {
     
     const upperInput = userInput.toUpperCase().trim();
     
-    if (foundAnagrams.includes(upperInput)) {
-      playSound("wrong");
-      setFeedback({ type: "duplicate", message: "Already found!" });
-      setTimeout(() => setFeedback(null), 1000);
-      return;
-    }
-    
     if (currentSet.anagrams.includes(upperInput)) {
       playSound("correct");
       setFeedback({ type: "correct", message: "Correct!" });
-      const newFoundAnagrams = [...foundAnagrams, upperInput];
-      setFoundAnagrams(newFoundAnagrams);
+      setFoundAnagrams(prev => [...prev, upperInput]);
       setScore(prev => prev + 100 + (streak * 10));
       setStreak(prev => prev + 1);
       setUserInput("");
       
       setTimeout(() => {
         setFeedback(null);
-        if (newFoundAnagrams.length === currentSet.anagrams.length) {
-          setScore(prev => prev + 200);
-          selectNewWord();
-        }
+        selectNewWord();
       }, 500);
     } else {
       playSound("wrong");
@@ -222,10 +210,10 @@ export function AnagramSolverGame() {
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Find all anagrams of this word
+                    Enter any anagram of this word to advance
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {foundAnagrams.length} / {currentSet.anagrams.length} found
+                    Words solved: {foundAnagrams.length}
                   </p>
                 </div>
 
@@ -261,7 +249,7 @@ export function AnagramSolverGame() {
                       className={`text-center text-lg font-semibold tracking-wider uppercase ${
                         feedback?.type === "correct"
                           ? "border-accent bg-accent/10"
-                          : feedback?.type === "wrong" || feedback?.type === "duplicate"
+                          : feedback?.type === "wrong"
                           ? "border-destructive bg-destructive/10"
                           : ""
                       }`}
@@ -304,16 +292,6 @@ export function AnagramSolverGame() {
                   </Button>
                 </div>
 
-                {foundAnagrams.length > 0 && (
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <p className="w-full text-center text-sm text-muted-foreground mb-2">Found:</p>
-                    {foundAnagrams.map((word) => (
-                      <Badge key={word} variant="secondary" className="text-sm">
-                        {word}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -331,8 +309,8 @@ export function AnagramSolverGame() {
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
-                    ? "You found all the anagrams!"
-                    : `You found ${foundAnagrams.length} anagrams!`}
+                    ? `You solved all ${foundAnagrams.length} words!`
+                    : `You solved ${foundAnagrams.length} word${foundAnagrams.length !== 1 ? "s" : ""}!`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>

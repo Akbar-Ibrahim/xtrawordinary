@@ -117,38 +117,19 @@ export const letterPoolBaseWords = [
   { word: "KNOWLEDGE", hint: "Facts and information acquired", category: "Learning" },
 ];
 
-export const makerWords: MakerWord[] = [
-  { 
-    baseWord: "CREATIVE", 
-    derivatives: ["CREATE", "CRATE", "RATE", "TEAR", "CARE", "RACE", "ACRE", "CART", "RICE", "VICE", "TRACE", "REACT", "CATER"],
-    maxWords: 10
-  },
-  { 
-    baseWord: "ADVENTURE", 
-    derivatives: ["ADVENT", "TRADE", "VENT", "RENT", "DENT", "TEND", "RUDE", "TRUE", "NUDE", "TURN", "UNDER", "NERVE", "TUNED"],
-    maxWords: 10
-  },
-  { 
-    baseWord: "WONDERFUL", 
-    derivatives: ["WONDER", "WORD", "FORD", "FLOW", "FLEW", "FOND", "FOLD", "LONE", "ROLE", "DUNE", "NUDE", "FOUNDER", "LOWER"],
-    maxWords: 10
-  },
-  { 
-    baseWord: "CELEBRATE", 
-    derivatives: ["CELEB", "CREATE", "ELECT", "BERATE", "BEER", "TREE", "FREE", "ABLE", "CABLE", "TABLE", "REBEL", "ALERT", "LATER"],
-    maxWords: 10
-  },
-  { 
-    baseWord: "FANTASTIC", 
-    derivatives: ["FAST", "CAST", "FACT", "FIST", "SAINT", "STAIN", "SATIN", "FAINT", "ANTIC", "STATIC", "NASTY", "FANCY", "TITAN"],
-    maxWords: 10
-  },
-  { 
-    baseWord: "BEAUTIFUL", 
-    derivatives: ["BEAT", "FEAT", "ABLE", "TABLE", "FABLE", "FAIL", "TAIL", "BAIT", "FATAL", "FAULT", "FLUTE", "FUTILE", "LIFE"],
-    maxWords: 10
-  },
+const _makerDerivatives: Array<{ baseWord: string; derivatives: string[] }> = [
+  { baseWord: "CREATIVE",  derivatives: ["CREATE", "CRATE", "RATE", "TEAR", "CARE", "RACE", "ACRE", "CART", "RICE", "VICE", "TRACE", "REACT", "CATER"] },
+  { baseWord: "ADVENTURE", derivatives: ["ADVENT", "TRADE", "VENT", "RENT", "DENT", "TEND", "RUDE", "TRUE", "NUDE", "TURN", "UNDER", "NERVE", "TUNED"] },
+  { baseWord: "WONDERFUL", derivatives: ["WONDER", "WORD", "FORD", "FLOW", "FLEW", "FOND", "FOLD", "LONE", "ROLE", "DUNE", "NUDE", "FOUNDER", "LOWER"] },
+  { baseWord: "CELEBRATE", derivatives: ["CELEB", "CREATE", "ELECT", "BERATE", "BEER", "TREE", "FREE", "ABLE", "CABLE", "TABLE", "REBEL", "ALERT", "LATER"] },
+  { baseWord: "FANTASTIC", derivatives: ["FAST", "CAST", "FACT", "FIST", "SAINT", "STAIN", "SATIN", "FAINT", "ANTIC", "STATIC", "NASTY", "FANCY", "TITAN"] },
+  { baseWord: "BEAUTIFUL", derivatives: ["BEAT", "FEAT", "ABLE", "TABLE", "FABLE", "FAIL", "TAIL", "BAIT", "FATAL", "FAULT", "FLUTE", "FUTILE", "LIFE"] },
 ];
+export const makerWords: MakerWord[] = _makerDerivatives.map(({ baseWord, derivatives }) => ({
+  baseWord,
+  derivatives,
+  maxWords: Math.min(derivatives.length, 10),
+}));
 
 export const wordDictionary: string[] = [
   "AM",
