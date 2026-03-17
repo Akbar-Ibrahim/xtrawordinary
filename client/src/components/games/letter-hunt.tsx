@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search, ArrowUpDown, AlignLeft } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -40,6 +40,19 @@ function generateRandomLetters(count: number): string[] {
 
 function getRandomLetterCount(): number {
   return Math.floor(Math.random() * 5) + 2;
+}
+
+function validateOrderedSubsequence(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
+  const upperWord = word.toUpperCase();
+  let searchFrom = 0;
+  for (const letter of requiredLetters) {
+    const idx = upperWord.indexOf(letter, searchFrom);
+    if (idx === -1) {
+      return { valid: false, message: `Letters must appear in order: "${requiredLetters.join(" → ")}" — "${letter}" not found in sequence` };
+    }
+    searchFrom = idx + 1;
+  }
+  return { valid: true, message: "" };
 }
 
 function validateLetterHunt(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
@@ -92,13 +105,15 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
   });
 
   const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
+  const [ordered, setOrdered] = useState(false);
+  const [pendingChallenge, setPendingChallenge] = useState<Challenge | null>(null);
   const [currentLetters, setCurrentLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
-  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [gameStatus, setGameStatus] = useState<"menu" | "mode-select" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
@@ -137,10 +152,16 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
     return generateRandomLetters(count);
   }, []);
 
-  const startGame = useCallback((c: Challenge) => {
+  const selectChallenge = useCallback((c: Challenge) => {
+    setPendingChallenge(c);
+    setGameStatus("mode-select");
+  }, []);
+
+  const startGame = useCallback((c: Challenge, isOrdered: boolean) => {
     resetRecorded();
     stopTimer();
     setChallenge(c);
+    setOrdered(isOrdered);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
@@ -156,7 +177,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge);
+      selectChallenge(initialChallenge);
     }
   }, []);
 
@@ -195,12 +216,26 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
     if (!constraintCheck.valid) {
       playSound("wrong");
       setStreak(0);
-        setFeedback({ type: "wrong", message: constraintCheck.message });
+      setFeedback({ type: "wrong", message: constraintCheck.message });
       setTimeout(() => {
         setFeedback(null);
       }, 1500);
       inputRef.current?.focus();
       return;
+    }
+
+    if (ordered) {
+      const orderCheck = validateOrderedSubsequence(upperWord, currentLetters);
+      if (!orderCheck.valid) {
+        playSound("wrong");
+        setStreak(0);
+        setFeedback({ type: "wrong", message: orderCheck.message });
+        setTimeout(() => {
+          setFeedback(null);
+        }, 1500);
+        inputRef.current?.focus();
+        return;
+      }
     }
 
     try {
@@ -238,6 +273,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
           setGameStatus("won");
         } else if (challenge === "advanced") {
           setCurrentLetters(generateLettersForChallenge("advanced"));
+          setUsedWords(new Set());
         }
       }, 500);
     } catch {
@@ -273,7 +309,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
               return (
                 <Button
                   key={c}
-                  onClick={() => startGame(c)}
+                  onClick={() => selectChallenge(c)}
                   variant={c === "advanced" ? "default" : "outline"}
                   className="w-full justify-start gap-3 h-auto py-3"
                   data-testid={`button-challenge-${c}`}
@@ -296,6 +332,71 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
     );
   }
 
+  if (gameStatus === "mode-select" && pendingChallenge !== null) {
+    const config = CHALLENGE_CONFIG[pendingChallenge];
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-6">
+          <div className="text-center space-y-2">
+            <Badge variant="outline" className="text-sm px-3 py-1">
+              {config.name}
+            </Badge>
+            <h3 className="text-xl font-bold">Choose Your Mode</h3>
+            <p className="text-muted-foreground text-sm">
+              How strict should the letter order be?
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            <Button
+              onClick={() => startGame(pendingChallenge, false)}
+              variant="outline"
+              className="w-full justify-start gap-3 h-auto py-4"
+              data-testid="button-mode-unordered"
+            >
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                <ArrowUpDown className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Unordered</div>
+                <div className="text-xs text-muted-foreground font-normal">
+                  Letters can appear anywhere in the word — order doesn't matter
+                </div>
+              </div>
+            </Button>
+
+            <Button
+              onClick={() => startGame(pendingChallenge, true)}
+              variant="outline"
+              className="w-full justify-start gap-3 h-auto py-4 border-primary/50 hover:border-primary"
+              data-testid="button-mode-ordered"
+            >
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <AlignLeft className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold text-primary">Ordered</div>
+                <div className="text-xs text-muted-foreground font-normal">
+                  Letters must appear in the given order as a sequence
+                </div>
+              </div>
+            </Button>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={goToMenu}
+            className="w-full text-muted-foreground"
+            data-testid="button-back-challenge-select"
+          >
+            ← Back to challenges
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -308,6 +409,10 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
             <Zap className="h-3.5 w-3.5" />
             {CHALLENGE_CONFIG[challenge].name}
+          </Badge>
+          <Badge variant={ordered ? "default" : "secondary"} className="gap-1.5" data-testid="badge-mode">
+            {ordered ? <AlignLeft className="h-3.5 w-3.5" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
+            {ordered ? "Ordered" : "Unordered"}
           </Badge>
           <Badge variant="secondary" className="gap-1.5" data-testid="badge-progress">
             {wordsCompleted}/{wordsToComplete}
@@ -344,7 +449,11 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
                 <div className="text-center space-y-4">
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Search className="h-4 w-4" />
-                    <span>Form words containing these letters:</span>
+                    <span>
+                      {ordered
+                        ? "Form words where these letters appear in order:"
+                        : "Form words containing these letters:"}
+                    </span>
                   </div>
                   <motion.div
                     key={currentLetters.join("")}
@@ -482,12 +591,12 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
                   isWin={true}
                 />
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
+                  <Button onClick={() => startGame(challenge, ordered)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Play Again
                   </Button>
                   {challenge !== "advanced" && getNextChallenge(challenge) && (
-                    <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                    <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
                       Next Challenge
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
@@ -538,7 +647,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
                   isWin={false}
                 />
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
+                  <Button onClick={() => startGame(challenge, ordered)} data-testid="button-play-again">
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Play Again
                   </Button>
