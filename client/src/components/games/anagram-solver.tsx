@@ -213,7 +213,7 @@ export function AnagramSolverGame() {
                     Enter any anagram of this word to advance
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Words solved: {wordsSolved}
+                    Words solved: {wordsSolved} / {activeWordSets.length}
                   </p>
                 </div>
 
