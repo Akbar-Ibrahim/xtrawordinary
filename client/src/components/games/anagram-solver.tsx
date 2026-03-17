@@ -24,7 +24,7 @@ export function AnagramSolverGame() {
   const [activeWordSets, setActiveWordSets] = useState<AnagramWordSet[]>([]);
   const [currentSet, setCurrentSet] = useState<AnagramWordSet | null>(null);
   const [userInput, setUserInput] = useState("");
-  const [foundAnagrams, setFoundAnagrams] = useState<string[]>([]);
+  const [wordsSolved, setWordsSolved] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(90);
@@ -45,7 +45,6 @@ export function AnagramSolverGame() {
     const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
     const newSet = activeWordSets[randomIndex];
     setCurrentSet(newSet);
-    setFoundAnagrams([]);
     setUserInput("");
     setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -62,7 +61,7 @@ export function AnagramSolverGame() {
     setTimeLeft(90);
     setGameStatus("playing");
     setUsedSets(new Set());
-    setFoundAnagrams([]);
+    setWordsSolved(0);
     const randomIndex = Math.floor(Math.random() * freshWordSets.length);
     const newSet = freshWordSets[randomIndex];
     setCurrentSet(newSet);
@@ -79,11 +78,11 @@ export function AnagramSolverGame() {
 
   useEffect(() => {
     if (gameStatus === "won") {
-      reportResult(score, true, foundAnagrams.length);
+      reportResult(score, true, wordsSolved);
     } else if (gameStatus === "timeup") {
-      reportResult(score, false, foundAnagrams.length);
+      reportResult(score, false, wordsSolved);
     }
-  }, [gameStatus, score, reportResult, foundAnagrams.length]);
+  }, [gameStatus, score, reportResult, wordsSolved]);
 
   useEffect(() => {
     if (gameStatus !== "playing") return;
@@ -108,7 +107,7 @@ export function AnagramSolverGame() {
     if (currentSet.anagrams.includes(upperInput)) {
       playSound("correct");
       setFeedback({ type: "correct", message: "Correct!" });
-      setFoundAnagrams(prev => [...prev, upperInput]);
+      setWordsSolved(prev => prev + 1);
       setScore(prev => prev + 100 + (streak * 10));
       setStreak(prev => prev + 1);
       setUserInput("");
@@ -213,7 +212,7 @@ export function AnagramSolverGame() {
                     Enter any anagram of this word to advance
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Words solved: {foundAnagrams.length}
+                    Words solved: {wordsSolved}
                   </p>
                 </div>
 
@@ -309,8 +308,8 @@ export function AnagramSolverGame() {
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
-                    ? `You solved all ${foundAnagrams.length} words!`
-                    : `You solved ${foundAnagrams.length} word${foundAnagrams.length !== 1 ? "s" : ""}!`}
+                    ? `You solved all ${wordsSolved} words!`
+                    : `You solved ${wordsSolved} word${wordsSolved !== 1 ? "s" : ""}!`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
