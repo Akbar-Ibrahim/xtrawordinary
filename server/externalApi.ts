@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle } from "@shared/schema";
 
 const gamesData: Game[] = [
   {
@@ -794,6 +794,7 @@ export interface IExternalApi {
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
   generateWordSweepGrid(): Promise<WordSweepGrid>;
+  getWordRootsPuzzles(): Promise<WordRootsPuzzle[]>;
 }
 
 export class ExternalApiClient implements IExternalApi {
@@ -834,6 +835,10 @@ export class ExternalApiClient implements IExternalApi {
 
   async getWordStackPuzzles(): Promise<WordStackPuzzle[]> {
     return wordStackPuzzles;
+  }
+
+  async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> {
+    return makerWords.map(w => ({ canonicalWord: w.baseWord, derivatives: w.derivatives }));
   }
 
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> {

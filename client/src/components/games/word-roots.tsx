@@ -98,7 +98,7 @@ export function WordRootsGame() {
     const upperWord = userInput.toUpperCase();
     setIsValidating(true);
     try {
-      const res = await apiRequest("POST", "/api/validate-word", { word: upperWord });
+      const res = await apiRequest("POST", "/api/games/validate-word", { word: upperWord });
       const data = await res.json();
       if (!data.valid) {
         setFeedback({ type: "invalid", message: "Not a valid dictionary word" });
