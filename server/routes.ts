@@ -135,6 +135,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-roots/puzzles", async (_req, res) => {
+    try {
+      const allPuzzles = await dataSource.getWordRootsPuzzles();
+      const shuffled = [...allPuzzles].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, 5).map(p => {
+        const shuffledDerivatives = [...p.derivatives].sort(() => Math.random() - 0.5);
+        return {
+          canonicalWord: p.canonicalWord,
+          derivatives: shuffledDerivatives.slice(0, 5),
+        };
+      });
+      res.json(selected);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word roots puzzles" });
+    }
+  });
+
   app.get("/api/games/word-maker/words", async (_req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {

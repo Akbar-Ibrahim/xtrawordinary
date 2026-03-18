@@ -124,6 +124,26 @@ const _makerDerivatives: Array<{ baseWord: string; derivatives: string[] }> = [
   { baseWord: "CELEBRATE", derivatives: ["CELEB", "CREATE", "ELECT", "BERATE", "BEER", "TREE", "FREE", "ABLE", "CABLE", "TABLE", "REBEL", "ALERT", "LATER"] },
   { baseWord: "FANTASTIC", derivatives: ["FAST", "CAST", "FACT", "FIST", "SAINT", "STAIN", "SATIN", "FAINT", "ANTIC", "STATIC", "NASTY", "FANCY", "TITAN"] },
   { baseWord: "BEAUTIFUL", derivatives: ["BEAT", "FEAT", "ABLE", "TABLE", "FABLE", "FAIL", "TAIL", "BAIT", "FATAL", "FAULT", "FLUTE", "FUTILE", "LIFE"] },
+  { baseWord: "IMPORTANT", derivatives: ["IMPORT", "PORT", "RATIO", "PATRON", "MANOR", "PAINT", "TRAIN", "POINT", "ATOM", "TRAM", "MINOR", "PIANO", "PATIO"] },
+  { baseWord: "CHALLENGE", derivatives: ["CHANGE", "ANGEL", "ANGLE", "CLEAN", "HEAL", "LEAN", "LANE", "HANG", "EACH", "HALL", "CLAN", "EAGLE", "LEGAL"] },
+  { baseWord: "CONFIDENT", derivatives: ["FIND", "FOND", "TEND", "EDIT", "ICON", "DENT", "COIN", "DIET", "CODE", "DONE", "NOTE", "NICE", "TONIC"] },
+  { baseWord: "KEYBOARD",  derivatives: ["BOARD", "BORED", "BRAKE", "BREAD", "DEAR", "DARK", "BARK", "BAKE", "DARE", "RAKE", "BODY", "ROAD", "BRAY"] },
+  { baseWord: "TRANSPORT", derivatives: ["SPORT", "STRAP", "TRAP", "STAR", "PORT", "PART", "PANT", "RANT", "TORN", "ATOP", "SNAP", "SPAN", "PATRON"] },
+  { baseWord: "EDUCATION", derivatives: ["ACTION", "AUDIT", "OUNCE", "DUNCE", "OCEAN", "UNITE", "CANOE", "TONIC", "ACUTE", "UNDO", "NOTED", "COATED", "CATION"] },
+  { baseWord: "SOMETHING", derivatives: ["THOSE", "STONE", "SHINE", "MOIST", "GHOST", "MONTH", "ETHOS", "THING", "SMITH", "TONGS", "HOIST", "MOTHS", "HOMES"] },
+  { baseWord: "PASSENGER", derivatives: ["SPARE", "SNARE", "PAGES", "ANGER", "RANGE", "RAGES", "PARSE", "GRAPES", "GRASS", "SANER", "SNAG", "REAP", "PEAR"] },
+  { baseWord: "MOUNTAIN",  derivatives: ["MOUNT", "MOAT", "TUNA", "UNIT", "AMINO", "UNION", "OMIT", "UNTO", "AUNT", "MAIN", "MOAN", "MINT", "NOUN"] },
+  { baseWord: "ABSOLUTE",  derivatives: ["TABLE", "STOLE", "BLOAT", "BOAST", "BEAST", "LEAST", "STEAL", "BLOUSE", "ABUSE", "LOUSE", "ALOE", "OAST", "BOLTS"] },
+  { baseWord: "GENEROUS",  derivatives: ["ROGUE", "SNORE", "ROUGE", "ERGO", "GORE", "GROUSE", "NURSE", "RUSE", "GENRE", "EONS", "SENOR", "NOES", "ENURE"] },
+  { baseWord: "INTERVIEW", derivatives: ["WINTER", "WRITE", "VEIN", "NERVE", "INERT", "WRIT", "INVERT", "TWINE", "INTER", "WINE", "VINE", "TRINE", "RIVE"] },
+  { baseWord: "UMBRELLA",  derivatives: ["RUMBLE", "BLAME", "REALM", "ALBUM", "BEAM", "BALE", "BLUR", "MARBLE", "BLARE", "LABEL", "RUBLE", "LUMBER", "MURAL"] },
+  { baseWord: "COMPUTER",  derivatives: ["COMET", "TEMPO", "COURT", "OUTER", "TRUCE", "TUMOR", "POEM", "ROUTE", "MOPE", "CORE", "ROPE", "COPE", "RECTO"] },
+  { baseWord: "DAUGHTER",  derivatives: ["GRADE", "THREAD", "GATHER", "THUD", "RAGED", "HUGE", "RUDE", "GRATE", "EARTH", "TREAD", "DRAG", "URGED", "GAUD"] },
+  { baseWord: "ORDINARY",  derivatives: ["DIARY", "RAINY", "DRAIN", "IRONY", "NADIR", "RANDY", "RADIO", "YARN", "RIND", "ORDAIN", "DINAR", "DRAY", "DORY"] },
+  { baseWord: "PAINTING",  derivatives: ["PAINT", "PINT", "PANG", "PING", "GIANT", "PANTING", "TAPING", "APING", "ANTI", "INAPT", "PAINING", "GNAT", "TANG"] },
+  { baseWord: "HOSPITAL",  derivatives: ["PILOT", "PATIO", "PLAIT", "TOIL", "LASH", "OATH", "HALT", "SHIP", "TAIL", "LIPS", "SLOP", "ATOP", "SILO"] },
+  { baseWord: "CHAMPION",  derivatives: ["CHAIN", "CHINA", "PIANO", "ICON", "INCH", "PAIN", "MAIN", "MANIC", "AMINO", "CAMP", "CHAMP", "CHIMP", "PANIC"] },
+  { baseWord: "BIRTHDAY",  derivatives: ["DIRTY", "DIARY", "BIRTH", "THIRD", "HABIT", "BRAID", "HARDY", "TARDY", "BRAD", "BRAT", "DART", "TIDY", "DRAY"] },
 ];
 export const makerWords: MakerWord[] = _makerDerivatives.map(({ baseWord, derivatives }) => ({
   baseWord,
@@ -628,6 +648,26 @@ export const gamesData: Game[] = [
     estimatedTime: "5-10 min",
     icon: "Grid3X3",
     color: "hsl(200, 70%, 50%)",
+    playCount: 0
+  },
+  {
+    id: 18,
+    slug: "word-roots",
+    name: "Word Roots",
+    description: "Find the parent word that all the given derivatives come from!",
+    longDescription: "Can you reverse-engineer a word? You'll be shown 5 derivative words and your challenge is to find a parent word that contains all of them. Any valid word works — as long as all 5 derivatives can be formed from its letters. But can you find our exact word for a bonus?",
+    rules: [
+      "You're shown 5 derivative words as clues",
+      "Find a parent word whose letters can spell all 5 derivatives",
+      "Each letter in your word can be used as many times as it appears",
+      "Any valid dictionary word that satisfies all clues is accepted",
+      "Match our intended word exactly for a bonus 50 points!",
+      "Complete 5 rounds in 3 minutes"
+    ],
+    difficulty: "medium",
+    estimatedTime: "3-5 min",
+    icon: "TreePine",
+    color: "hsl(142, 60%, 40%)",
     playCount: 0
   }
 ];

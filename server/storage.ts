@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -25,6 +25,7 @@ export interface IStorage {
   getDefinitionWords(): Promise<DefinitionWord[]>;
   getLetterPoolWords(): Promise<LetterPoolWord[]>;
   getMakerWords(): Promise<MakerWord[]>;
+  getWordRootsPuzzles(): Promise<WordRootsPuzzle[]>;
   getWordStackPuzzles(): Promise<WordStackPuzzle[]>;
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
   getWordDictionary(): Promise<string[]>;

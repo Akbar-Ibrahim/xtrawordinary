@@ -27,6 +27,7 @@ import { WordChainGame } from "@/components/games/word-chain";
 import { WordSplitGame } from "@/components/games/word-split";
 import { WordStackGame } from "@/components/games/word-stack";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
+import { WordRootsGame } from "@/components/games/word-roots";
 
 interface DailyChallengeResponse {
   date: string;
@@ -113,6 +114,8 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <WordStackGame />;
     case "progressive-reveal":
       return <ProgressiveRevealGame />;
+    case "word-roots":
+      return <WordRootsGame />;
     default:
       return null;
   }

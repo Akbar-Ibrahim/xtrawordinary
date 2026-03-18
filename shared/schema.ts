@@ -70,6 +70,12 @@ export const makerWordSchema = z.object({
 export type MakerWord = z.infer<typeof makerWordSchema>;
 export const makerWordsSchema = z.array(makerWordSchema);
 
+export const wordRootsPuzzleSchema = z.object({
+  canonicalWord: z.string(),
+  derivatives: z.array(z.string()),
+});
+export type WordRootsPuzzle = z.infer<typeof wordRootsPuzzleSchema>;
+
 // Shared word dictionary for validation-based games
 export const wordDictionarySchema = z.array(z.string());
 export type WordDictionary = z.infer<typeof wordDictionarySchema>;
