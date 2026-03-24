@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight } from "lucide-react";
+import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Info } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 interface GroupsResponse {
@@ -37,7 +37,6 @@ export default function Groups() {
 
   const { data, isLoading } = useQuery<GroupsResponse>({
     queryKey: ["/api/groups"],
-    enabled: isAuthenticated,
   });
 
   const createMutation = useMutation({
@@ -72,44 +71,46 @@ export default function Groups() {
     },
   });
 
-  if (!isAuthenticated) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center max-w-md">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-6">
-          <Users className="h-8 w-8 text-primary" />
-        </div>
-        <h1 className="text-3xl font-bold mb-3">Groups</h1>
-        <p className="text-muted-foreground mb-8">
-          Create or join a group, challenge friends with shared rounds, and compete on your group's leaderboard.
-        </p>
-        <Button size="lg" onClick={() => setAuthOpen(true)} data-testid="button-signin-groups">
-          <LogIn className="h-4 w-4 mr-2" />
-          Sign In to Get Started
-        </Button>
-        <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
-      </div>
-    );
+  function requireAuthThen(action: () => void) {
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+    } else {
+      action();
+    }
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-bold">Groups</h1>
             <p className="text-muted-foreground mt-1">Compete with your crew in shared game rounds</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setJoinOpen(true)} data-testid="button-join-group">
+            <Button variant="outline" onClick={() => requireAuthThen(() => setJoinOpen(true))} data-testid="button-join-group">
               <LogIn className="h-4 w-4 mr-2" />
               Join
             </Button>
-            <Button onClick={() => setCreateOpen(true)} data-testid="button-create-group">
+            <Button onClick={() => requireAuthThen(() => setCreateOpen(true))} data-testid="button-create-group">
               <Plus className="h-4 w-4 mr-2" />
               Create
             </Button>
           </div>
         </div>
+
+        {!isAuthenticated && (
+          <Card className="mb-6 border-primary/30 bg-primary/5">
+            <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+              <Info className="h-5 w-5 text-primary shrink-0" />
+              <p className="text-sm flex-1">Sign in to create groups, join with a code, and track your scores.</p>
+              <Button size="sm" onClick={() => setAuthOpen(true)} data-testid="button-signin-groups">
+                <LogIn className="h-4 w-4 mr-1.5" />
+                Sign In to Get Started
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="space-y-3">
@@ -117,40 +118,61 @@ export default function Groups() {
           </div>
         ) : (
           <>
-            <section className="mb-8">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Groups</h2>
-              {data?.myGroups.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <p className="text-muted-foreground">You're not in any groups yet.</p>
-                    <div className="flex justify-center gap-2 mt-4">
-                      <Button variant="outline" size="sm" onClick={() => setJoinOpen(true)}>Join with code</Button>
-                      <Button size="sm" onClick={() => setCreateOpen(true)}>Create group</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {data?.myGroups.map(group => (
-                    <GroupCard key={group.id} group={group} />
-                  ))}
-                </div>
-              )}
-            </section>
+            {isAuthenticated && (
+              <section className="mb-8">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Groups</h2>
+                {data?.myGroups.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <p className="text-muted-foreground">You're not in any groups yet.</p>
+                      <div className="flex justify-center gap-2 mt-4">
+                        <Button variant="outline" size="sm" onClick={() => setJoinOpen(true)}>Join with code</Button>
+                        <Button size="sm" onClick={() => setCreateOpen(true)}>Create group</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {data?.myGroups.map(group => (
+                      <GroupCard key={group.id} group={group} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             {(data?.discover.length ?? 0) > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Discover Public Groups</h2>
                 <div className="space-y-3">
                   {data?.discover.map(group => (
-                    <GroupCard key={group.id} group={group} isDiscover />
+                    <GroupCard
+                      key={group.id}
+                      group={group}
+                      isDiscover
+                      onJoin={() => requireAuthThen(() => {
+                        setJoinCode(group.inviteCode);
+                        setJoinOpen(true);
+                      })}
+                    />
                   ))}
                 </div>
               </section>
             )}
+
+            {(data?.discover.length ?? 0) === 0 && !isAuthenticated && (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No public groups yet. Sign in to create the first one!</p>
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
       </motion.div>
+
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
@@ -237,7 +259,7 @@ export default function Groups() {
   );
 }
 
-function GroupCard({ group, isDiscover }: { group: Group; isDiscover?: boolean }) {
+function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: boolean; onJoin?: () => void }) {
   const { toast } = useToast();
 
   function copyInviteCode() {
@@ -246,34 +268,40 @@ function GroupCard({ group, isDiscover }: { group: Group; isDiscover?: boolean }
   }
 
   return (
-    <Link href={`/groups/${group.id}`}>
-      <Card className="cursor-pointer hover:bg-muted/50 transition-colors" data-testid={`card-group-${group.id}`}>
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-            <Users className="h-6 w-6 text-primary" />
+    <Card className="hover:bg-muted/30 transition-colors" data-testid={`card-group-${group.id}`}>
+      <CardContent className="p-4 flex items-center gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <Users className="h-6 w-6 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold truncate">{group.name}</span>
+            <Badge variant="outline" className="text-xs shrink-0">
+              {group.isPublic ? <><Globe className="h-3 w-3 mr-1" />Public</> : <><Lock className="h-3 w-3 mr-1" />Private</>}
+            </Badge>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold truncate">{group.name}</span>
-              <Badge variant="outline" className="text-xs shrink-0">
-                {group.isPublic ? <><Globe className="h-3 w-3 mr-1" />Public</> : <><Lock className="h-3 w-3 mr-1" />Private</>}
-              </Badge>
-            </div>
-            {group.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{group.description}</p>}
-            {!isDiscover && (
-              <button
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
-                onClick={e => { e.preventDefault(); copyInviteCode(); }}
-                data-testid={`button-copy-invite-${group.id}`}
-              >
-                <Copy className="h-3 w-3" />
-                {group.inviteCode}
-              </button>
-            )}
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-        </CardContent>
-      </Card>
-    </Link>
+          {group.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{group.description}</p>}
+          {!isDiscover && (
+            <button
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
+              onClick={e => { e.preventDefault(); copyInviteCode(); }}
+              data-testid={`button-copy-invite-${group.id}`}
+            >
+              <Copy className="h-3 w-3" />
+              {group.inviteCode}
+            </button>
+          )}
+        </div>
+        {isDiscover && onJoin ? (
+          <Button size="sm" variant="outline" onClick={onJoin} data-testid={`button-join-discover-${group.id}`}>
+            Join
+          </Button>
+        ) : (
+          <Link href={`/groups/${group.id}`}>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
+        )}
+      </CardContent>
+    </Card>
   );
 }

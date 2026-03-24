@@ -1240,15 +1240,16 @@ export async function registerRoutes(
     "word-sweep", "word-roots",
   ];
 
-  app.get("/api/groups", requireAuth, async (req, res) => {
+  app.get("/api/groups", async (req, res) => {
     try {
-      const userId = req.user!.id;
-      const [myGroups, publicGroups] = await Promise.all([
-        storage.getUserGroups(userId),
-        storage.getPublicGroups(),
-      ]);
-      const myGroupIds = new Set(myGroups.map(g => g.id));
-      const discover = publicGroups.filter(g => !myGroupIds.has(g.id));
+      const publicGroups = await storage.getPublicGroups();
+      if (!req.isAuthenticated()) {
+        return res.json({ myGroups: [], discover: publicGroups });
+      }
+      const userId = (req.user as any).id;
+      const myGroups = await storage.getUserGroups(userId);
+      const myGroupIds = new Set(myGroups.map((g: any) => g.id));
+      const discover = publicGroups.filter((g: any) => !myGroupIds.has(g.id));
       res.json({ myGroups, discover });
     } catch {
       res.status(500).json({ error: "Failed to fetch groups" });
@@ -1500,6 +1501,8 @@ export async function registerRoutes(
       if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       const scores = await storage.getGroupRoundScores(roundId);
       res.json(scores);
     } catch {
@@ -1517,8 +1520,10 @@ export async function registerRoutes(
       if (!membership || !["owner", "admin"].includes(membership.role)) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const round = await storage.closeGroupRound(roundId);
-      res.json(round);
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
+      const closed = await storage.closeGroupRound(roundId);
+      res.json(closed);
     } catch {
       res.status(500).json({ error: "Failed to close round" });
     }
