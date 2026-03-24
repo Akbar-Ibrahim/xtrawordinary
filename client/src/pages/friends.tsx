@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ export default function Friends() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const latestQueryRef = useRef("");
   const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
@@ -69,7 +70,11 @@ export default function Friends() {
       }
       return res.json();
     },
-    onSuccess: (data) => setSearchResults(data),
+    onSuccess: (data, variables) => {
+      if (variables === latestQueryRef.current) {
+        setSearchResults(data);
+      }
+    },
     onError: (err: Error) => toast({ title: "Search failed", description: err.message, variant: "destructive" }),
   });
 
@@ -128,6 +133,7 @@ export default function Friends() {
   });
 
   useEffect(() => {
+    latestQueryRef.current = searchQuery;
     if (searchQuery.length < 2) {
       setSearchResults([]);
       return;
