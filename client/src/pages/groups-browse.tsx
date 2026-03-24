@@ -14,35 +14,24 @@ import type { Group } from "@shared/schema";
 
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
-interface GroupsResponse {
-  myGroups: Group[];
-  discover: Group[];
-  featured: Group[];
-}
-
 export default function GroupsBrowse() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<GroupsResponse>({
-    queryKey: ["/api/groups", activeTag ? `?tag=${activeTag}` : ""],
+  const { data: allPublic, isLoading } = useQuery<Group[]>({
+    queryKey: ["/api/groups/browse", activeTag],
     queryFn: async () => {
-      const url = activeTag ? `/api/groups?tag=${encodeURIComponent(activeTag)}` : "/api/groups";
+      const url = activeTag ? `/api/groups/browse?tag=${encodeURIComponent(activeTag)}` : "/api/groups/browse";
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
   });
 
-  const allPublic = [...(data?.featured || []), ...(data?.discover || [])].reduce((acc: Group[], g) => {
-    if (!acc.find(x => x.id === g.id)) acc.push(g);
-    return acc;
-  }, []);
-
-  const featuredGroups = data?.featured || [];
-  const otherGroups = allPublic.filter(g => !g.isFeatured);
+  const featuredGroups = (allPublic || []).filter(g => g.isFeatured);
+  const otherGroups = (allPublic || []).filter(g => !g.isFeatured);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">

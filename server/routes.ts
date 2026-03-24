@@ -1275,6 +1275,20 @@ export async function registerRoutes(
     }
   });
 
+  // Must be registered BEFORE /api/groups/:id to avoid "browse" being treated as an ID
+  app.get("/api/groups/browse", async (req, res) => {
+    try {
+      let allPublic = await storage.getPublicGroups();
+      const tagFilter = req.query.tag as string | undefined;
+      if (tagFilter) {
+        allPublic = allPublic.filter(g => Array.isArray(g.tags) && g.tags.includes(tagFilter));
+      }
+      res.json(allPublic);
+    } catch {
+      res.status(500).json({ error: "Failed to browse groups" });
+    }
+  });
+
   app.get("/api/groups/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -1304,7 +1318,8 @@ export async function registerRoutes(
       if (name !== undefined) updates.name = name.trim();
       if (description !== undefined) updates.description = description?.trim() || null;
       if (isPublic !== undefined) updates.isPublic = Boolean(isPublic);
-      if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags.map(String).slice(0, 5) : null;
+      const ALLOWED_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
+      if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags.filter((t: any) => ALLOWED_TAGS.includes(t)).slice(0, 3) : [];
       if (pinnedAnnouncement !== undefined) updates.pinnedAnnouncement = pinnedAnnouncement?.trim() || null;
       const updated = await storage.updateGroup(groupId, updates);
       res.json(updated);
