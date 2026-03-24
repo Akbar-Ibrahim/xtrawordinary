@@ -293,9 +293,10 @@ export const groupSchema = z.object({
   tags: z.array(z.string()).nullable(),
   pinnedAnnouncement: z.string().nullable(),
   createdAt: z.string(),
+  memberCount: z.number().optional(),
 });
 export type Group = z.infer<typeof groupSchema>;
-export const insertGroupSchema = groupSchema.omit({ id: true, createdAt: true });
+export const insertGroupSchema = groupSchema.omit({ id: true, createdAt: true, memberCount: true });
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 
 export const groupMemberSchema = z.object({

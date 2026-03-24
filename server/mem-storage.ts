@@ -694,11 +694,15 @@ export class MemStorage implements IStorage {
 
   async getUserGroups(userId: number): Promise<Group[]> {
     const memberGroupIds = this.groupMembersStore.filter(m => m.userId === userId).map(m => m.groupId);
-    return this.groupsStore.filter(g => memberGroupIds.includes(g.id));
+    return this.groupsStore
+      .filter(g => memberGroupIds.includes(g.id))
+      .map(g => ({ ...g, memberCount: this.groupMembersStore.filter(m => m.groupId === g.id).length }));
   }
 
   async getPublicGroups(): Promise<Group[]> {
-    return this.groupsStore.filter(g => g.isPublic);
+    return this.groupsStore
+      .filter(g => g.isPublic)
+      .map(g => ({ ...g, memberCount: this.groupMembersStore.filter(m => m.groupId === g.id).length }));
   }
 
   async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
@@ -809,8 +813,8 @@ export class MemStorage implements IStorage {
   }
 
   async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> {
-    const existing = this.groupReactionsStore.find(r => r.scoreId === scoreId && r.userId === userId && r.emoji === emoji);
-    if (existing) return existing;
+    // Enforce single emoji per user per score — remove any prior reaction first
+    this.groupReactionsStore = this.groupReactionsStore.filter(r => !(r.scoreId === scoreId && r.userId === userId));
     const reaction: GroupScoreReaction = { id: this.gsrIdCounter++, roundId, scoreId, userId, emoji, createdAt: new Date().toISOString() };
     this.groupReactionsStore.push(reaction);
     return reaction;

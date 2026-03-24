@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Users, Globe, Copy, ChevronRight, Star, LogIn, X } from "lucide-react";
 import type { Group } from "@shared/schema";
 
-const ALL_TAGS = ["competitive", "casual", "educational", "friends", "speed", "daily", "beginners", "advanced"];
+const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
 interface GroupsResponse {
   myGroups: Group[];
@@ -156,13 +156,16 @@ function BrowseGroupCard({ group, onJoin }: { group: Group; onJoin?: () => void 
             </Badge>
           </div>
           {group.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{group.description}</p>}
-          {(group.tags || []).length > 0 && (
-            <div className="flex items-center gap-1 mt-1 flex-wrap">
-              {(group.tags || []).map(tag => (
-                <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">{tag}</span>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {group.memberCount != null && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Users className="h-3 w-3" />{group.memberCount} member{group.memberCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {(group.tags || []).map(tag => (
+              <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">{tag}</span>
+            ))}
+          </div>
         </div>
         {onJoin ? (
           <Button size="sm" variant="outline" onClick={onJoin} data-testid={`button-auth-join-${group.id}`}>

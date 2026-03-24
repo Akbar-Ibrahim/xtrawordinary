@@ -21,7 +21,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock, Megaphone, Star, Edit2, Activity as ActivityIcon } from "lucide-react";
 import type { Group, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
 
-const ALLOWED_EMOJIS = ["🔥", "👏", "💪", "🎉", "😲", "🏆"];
+const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
 
 const GAME_SLUGS = [
   "word-ladder", "anagram-solver", "word-scramble", "definition-match",
@@ -164,6 +164,7 @@ const ACTIVITY_LABELS: Record<string, (m: Record<string, any>) => string> = {
   left: (m) => `${m.name || "Someone"} left the group`,
   round_started: (m) => `${m.name || "An admin"} started a ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""} round`,
   score_submitted: (m) => `${m.name || "Someone"} scored ${m.score?.toLocaleString() || "?"} in ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""}`,
+  reaction: (m) => `${m.name || "Someone"} reacted ${m.emoji || ""} to a score`,
 };
 
 function activityLabel(type: string, metadata: Record<string, any>): string {
@@ -181,7 +182,7 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-const ALL_TAGS = ["competitive", "casual", "educational", "friends", "speed", "daily", "beginners", "advanced"];
+const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
@@ -335,7 +336,7 @@ export default function GroupDetail() {
   }
 
   function toggleEditTag(tag: string) {
-    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 5));
+    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 3));
   }
 
   if (isLoading) {
@@ -720,7 +721,7 @@ export default function GroupDetail() {
               </Label>
             </div>
             <div className="space-y-2">
-              <Label>Tags <span className="text-muted-foreground font-normal text-xs">(up to 5)</span></Label>
+              <Label>Tags <span className="text-muted-foreground font-normal text-xs">(up to 3)</span></Label>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_TAGS.map(tag => (
                   <button

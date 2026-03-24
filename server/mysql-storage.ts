@@ -652,13 +652,19 @@ export class MySQLStorage implements IStorage {
     if (memberships.length === 0) return [];
     const groupIds = memberships.map((m: any) => m.groupId);
     const rows = await db.select().from(schema.groups).where(inArray(schema.groups.id, groupIds));
-    return rows.map((r: any) => this.toGroup(r));
+    const countRows = await db.select({ groupId: schema.groupMembers.groupId, count: sql<number>`count(*)` }).from(schema.groupMembers).where(inArray(schema.groupMembers.groupId, groupIds)).groupBy(schema.groupMembers.groupId);
+    const countMap = new Map(countRows.map((r: any) => [r.groupId, Number(r.count)]));
+    return rows.map((r: any) => ({ ...this.toGroup(r), memberCount: countMap.get(r.id) ?? 0 }));
   }
 
   async getPublicGroups(): Promise<Group[]> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.groups).where(eq(schema.groups.isPublic, true)).orderBy(desc(schema.groups.createdAt));
-    return rows.map((r: any) => this.toGroup(r));
+    if (rows.length === 0) return [];
+    const groupIds = rows.map((r: any) => r.id);
+    const countRows = await db.select({ groupId: schema.groupMembers.groupId, count: sql<number>`count(*)` }).from(schema.groupMembers).where(inArray(schema.groupMembers.groupId, groupIds)).groupBy(schema.groupMembers.groupId);
+    const countMap = new Map(countRows.map((r: any) => [r.groupId, Number(r.count)]));
+    return rows.map((r: any) => ({ ...this.toGroup(r), memberCount: countMap.get(r.id) ?? 0 }));
   }
 
   async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
@@ -789,14 +795,10 @@ export class MySQLStorage implements IStorage {
 
   async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> {
     const db = await this.getDb();
-    try {
-      await db.insert(schema.groupScoreReactions).values({ roundId, scoreId, userId, emoji });
-    } catch {
-      // duplicate — already exists
-    }
-    const rows = await db.select().from(schema.groupScoreReactions)
-      .where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId), eq(schema.groupScoreReactions.emoji, emoji)))
-      .limit(1);
+    // Enforce single emoji per user per score — remove any prior reaction first
+    await db.delete(schema.groupScoreReactions).where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId)));
+    const result = await db.insert(schema.groupScoreReactions).values({ roundId, scoreId, userId, emoji });
+    const rows = await db.select().from(schema.groupScoreReactions).where(eq(schema.groupScoreReactions.id, result[0].insertId)).limit(1);
     const r = rows[0];
     return { id: r.id, roundId: r.roundId, scoreId: r.scoreId, userId: r.userId, emoji: r.emoji, createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) };
   }

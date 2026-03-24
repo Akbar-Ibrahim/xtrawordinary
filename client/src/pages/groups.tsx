@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Info, Star, Search } from "lucide-react";
 import type { Group } from "@shared/schema";
 
-const ALL_TAGS = ["competitive", "casual", "educational", "friends", "speed", "daily", "beginners", "advanced"];
+const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
 interface GroupsResponse {
   myGroups: Group[];
@@ -85,7 +85,7 @@ export default function Groups() {
   }
 
   function toggleCreateTag(tag: string) {
-    setCreateTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 5));
+    setCreateTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 3));
   }
 
   return (
@@ -251,7 +251,7 @@ export default function Groups() {
             </div>
             {createPublic && (
               <div className="space-y-2">
-                <Label>Tags <span className="text-muted-foreground font-normal text-xs">(optional, up to 5)</span></Label>
+                <Label>Tags <span className="text-muted-foreground font-normal text-xs">(optional, up to 3)</span></Label>
                 <div className="flex flex-wrap gap-1.5">
                   {ALL_TAGS.map(tag => (
                     <button

@@ -1559,9 +1559,11 @@ export async function registerRoutes(
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const { emoji } = req.body;
-      const ALLOWED_EMOJIS = ["🔥", "👏", "💪", "🎉", "😲", "🏆"];
+      const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
       if (!emoji || !ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: "Invalid emoji" });
       const reaction = await storage.addGroupReaction(roundId, scoreId, userId, emoji);
+      const round = await storage.getGroupRound(roundId);
+      if (round) await storage.logGroupActivity(groupId, userId, "reaction", { emoji, scoreId, name: (req.user as any).name });
       res.json(reaction);
     } catch {
       res.status(500).json({ error: "Failed to add reaction" });
