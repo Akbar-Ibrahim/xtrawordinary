@@ -165,6 +165,7 @@ const ACTIVITY_LABELS: Record<string, (m: Record<string, any>) => string> = {
   round_started: (m) => `${m.name || "An admin"} started a ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""} round`,
   score_submitted: (m) => `${m.name || "Someone"} scored ${m.score?.toLocaleString() || "?"} in ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""}`,
   reaction: (m) => `${m.name || "Someone"} reacted ${m.emoji || ""} to a score`,
+  round_closed: (m) => `${m.name || "An admin"} closed a ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""} round`,
 };
 
 function activityLabel(type: string, metadata: Record<string, any>): string {

@@ -705,6 +705,11 @@ export class MemStorage implements IStorage {
       .map(g => ({ ...g, memberCount: this.groupMembersStore.filter(m => m.groupId === g.id).length }));
   }
 
+  async getAllGroups(): Promise<Group[]> {
+    return this.groupsStore
+      .map(g => ({ ...g, memberCount: this.groupMembersStore.filter(m => m.groupId === g.id).length }));
+  }
+
   async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
     const m: GroupMember = { id: this.gmIdCounter++, groupId, userId, role, joinedAt: new Date().toISOString() };
     this.groupMembersStore.push(m);

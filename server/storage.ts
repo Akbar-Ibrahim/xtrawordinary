@@ -101,6 +101,7 @@ export interface IStorage {
   deleteGroup(id: number): Promise<void>;
   getUserGroups(userId: number): Promise<Group[]>;
   getPublicGroups(): Promise<Group[]>;
+  getAllGroups(): Promise<Group[]>;
   setGroupFeatured(groupId: number, isFeatured: boolean): Promise<Group | undefined>;
 
   addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember>;

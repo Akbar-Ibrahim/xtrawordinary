@@ -1154,6 +1154,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/groups", requireAdmin, async (_req, res) => {
+    try {
+      const groups = await storage.getAllGroups();
+      res.json(groups);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
   app.delete("/api/admin/leaderboard/:id", requireAdmin, async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
@@ -1218,10 +1227,14 @@ export async function registerRoutes(
   app.post("/api/groups", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { name, description, isPublic } = req.body;
+      const { name, description, isPublic, tags, pinnedAnnouncement } = req.body;
       if (!name || typeof name !== "string" || name.trim().length < 2) {
         return res.status(400).json({ error: "Group name must be at least 2 characters" });
       }
+      const ALLOWED_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
+      const sanitizedTags: string[] = Array.isArray(tags)
+        ? tags.filter((t: any) => ALLOWED_TAGS.includes(t)).slice(0, 3)
+        : [];
       let inviteCode = generateInviteCode();
       let attempts = 0;
       while (await storage.getGroupByInviteCode(inviteCode) && attempts < 10) {
@@ -1234,6 +1247,9 @@ export async function registerRoutes(
         creatorId: userId,
         inviteCode,
         isPublic: Boolean(isPublic),
+        tags: sanitizedTags,
+        pinnedAnnouncement: typeof pinnedAnnouncement === "string" && pinnedAnnouncement.trim() ? pinnedAnnouncement.trim() : null,
+        isFeatured: false,
       });
       await storage.addGroupMember(group.id, userId, "owner");
       res.status(201).json(group);
@@ -1514,6 +1530,7 @@ export async function registerRoutes(
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       const closed = await storage.closeGroupRound(roundId);
+      await storage.logGroupActivity(groupId, userId, "round_closed", { gameSlug: round.gameSlug, roundId, name: (req.user as any).name });
       res.json(closed);
     } catch {
       res.status(500).json({ error: "Failed to close round" });

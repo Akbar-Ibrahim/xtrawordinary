@@ -273,25 +273,20 @@ function GroupsTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<{ myGroups: any[]; discover: any[]; featured: any[] }>({
-    queryKey: ["/api/groups"],
+  const { data: allGroups, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/groups"],
   });
 
   const featureMutation = useMutation({
     mutationFn: ({ id, isFeatured }: { id: number; isFeatured: boolean }) =>
       apiRequest("PATCH", `/api/groups/${id}/feature`, { isFeatured }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/groups"] }); toast({ title: "Group updated" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/groups"] }); toast({ title: "Group updated" }); },
     onError: () => toast({ title: "Failed to update group", variant: "destructive" }),
   });
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
-  const allGroups = [...(data?.myGroups || []), ...(data?.discover || []), ...(data?.featured || [])].reduce((acc: any[], g) => {
-    if (!acc.find((x: any) => x.id === g.id)) acc.push(g);
-    return acc;
-  }, []);
-
-  if (allGroups.length === 0) {
+  if (!allGroups?.length) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -303,13 +298,14 @@ function GroupsTab() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>Public Groups ({allGroups.length})</CardTitle></CardHeader>
+      <CardHeader><CardTitle>All Groups ({allGroups?.length ?? 0})</CardTitle></CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="text-left py-3 px-2">Name</th>
+                <th className="text-left py-3 px-2">Visibility</th>
                 <th className="text-left py-3 px-2">Members</th>
                 <th className="text-left py-3 px-2">Tags</th>
                 <th className="text-left py-3 px-2">Featured</th>
@@ -317,9 +313,12 @@ function GroupsTab() {
               </tr>
             </thead>
             <tbody>
-              {allGroups.map((g: any) => (
+              {(allGroups || []).map((g: any) => (
                 <tr key={g.id} className="border-b hover:bg-muted/50" data-testid={`group-row-${g.id}`}>
                   <td className="py-3 px-2 font-medium">{g.name}</td>
+                  <td className="py-3 px-2">
+                    <Badge variant="outline" className="text-xs">{g.isPublic ? "Public" : "Private"}</Badge>
+                  </td>
                   <td className="py-3 px-2 text-muted-foreground">{g.memberCount ?? "—"}</td>
                   <td className="py-3 px-2">
                     <div className="flex flex-wrap gap-1">

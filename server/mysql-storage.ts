@@ -667,6 +667,16 @@ export class MySQLStorage implements IStorage {
     return rows.map((r: any) => ({ ...this.toGroup(r), memberCount: countMap.get(r.id) ?? 0 }));
   }
 
+  async getAllGroups(): Promise<Group[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groups).orderBy(desc(schema.groups.createdAt));
+    if (rows.length === 0) return [];
+    const groupIds = rows.map((r: any) => r.id);
+    const countRows = await db.select({ groupId: schema.groupMembers.groupId, count: sql<number>`count(*)` }).from(schema.groupMembers).where(inArray(schema.groupMembers.groupId, groupIds)).groupBy(schema.groupMembers.groupId);
+    const countMap = new Map(countRows.map((r: any) => [r.groupId, Number(r.count)]));
+    return rows.map((r: any) => ({ ...this.toGroup(r), memberCount: countMap.get(r.id) ?? 0 }));
+  }
+
   async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
     const db = await this.getDb();
     const result = await db.insert(schema.groupMembers).values({ groupId, userId, role });
