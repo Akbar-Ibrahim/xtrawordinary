@@ -1349,8 +1349,8 @@ export async function registerRoutes(
       const targetMembership = await storage.getGroupMember(groupId, targetUserId);
       if (!targetMembership) return res.status(404).json({ error: "Member not found" });
       if (targetMembership.role === "owner") return res.status(403).json({ error: "Cannot change the owner's role" });
-      if (requesterMembership.role === "admin" && role === "admin" && targetMembership.role !== "admin") {
-        // Admins can promote members to admin (owner-level action): allow
+      if (requesterMembership.role === "admin" && targetMembership.role === "admin" && role === "member") {
+        return res.status(403).json({ error: "Admins cannot demote other admins; only the owner can" });
       }
       const updated = await storage.updateGroupMemberRole(groupId, targetUserId, role);
       res.json(updated);
@@ -1368,6 +1368,13 @@ export async function registerRoutes(
       const requesterMembership = await storage.getGroupMember(groupId, requestingUserId);
       if (!requesterMembership || !["owner", "admin"].includes(requesterMembership.role)) {
         return res.status(403).json({ error: "Not authorized" });
+      }
+      const targetMembershipForDelete = await storage.getGroupMember(groupId, targetUserId);
+      if (targetMembershipForDelete?.role === "owner") {
+        return res.status(403).json({ error: "Cannot remove the group owner" });
+      }
+      if (requesterMembership.role === "admin" && targetMembershipForDelete?.role === "admin") {
+        return res.status(403).json({ error: "Admins cannot remove other admins; only the owner can" });
       }
       await storage.removeGroupMember(groupId, targetUserId);
       res.json({ success: true });
