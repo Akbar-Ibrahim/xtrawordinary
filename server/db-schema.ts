@@ -115,9 +115,13 @@ export const groups = mysqlTable("groups", {
   creatorId: int("creator_id").notNull(),
   inviteCode: varchar("invite_code", { length: 20 }).notNull().unique(),
   isPublic: boolean("is_public").notNull().default(false),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  tags: json("tags"),
+  pinnedAnnouncement: text("pinned_announcement"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("grp_creator_idx").on(table.creatorId),
+  index("grp_featured_idx").on(table.isFeatured),
 ]);
 
 export const groupMembers = mysqlTable("group_members", {
@@ -157,6 +161,31 @@ export const groupRoundScores = mysqlTable("group_round_scores", {
   index("grs_round_idx").on(table.roundId),
   index("grs_user_idx").on(table.userId),
   uniqueIndex("grs_round_user_idx").on(table.roundId, table.userId),
+]);
+
+export const groupScoreReactions = mysqlTable("group_score_reactions", {
+  id: int("id").primaryKey().autoincrement(),
+  roundId: int("round_id").notNull(),
+  scoreId: int("score_id").notNull(),
+  userId: int("user_id").notNull(),
+  emoji: varchar("emoji", { length: 10 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gsr_round_idx").on(table.roundId),
+  index("gsr_score_idx").on(table.scoreId),
+  uniqueIndex("gsr_score_user_emoji_idx").on(table.scoreId, table.userId, table.emoji),
+]);
+
+export const groupActivity = mysqlTable("group_activity", {
+  id: int("id").primaryKey().autoincrement(),
+  groupId: int("group_id").notNull(),
+  userId: int("user_id"),
+  type: varchar("type", { length: 50 }).notNull(),
+  metadata: json("metadata").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("ga_group_idx").on(table.groupId),
+  index("ga_created_at_idx").on(table.createdAt),
 ]);
 
 export const games = mysqlTable("games", {

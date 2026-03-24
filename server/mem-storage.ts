@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
@@ -384,6 +384,10 @@ export class MemStorage implements IStorage {
   private grIdCounter = 1;
   private groupRoundScoresStore: GroupRoundScore[] = [];
   private grsIdCounter = 1;
+  private groupReactionsStore: GroupScoreReaction[] = [];
+  private gsrIdCounter = 1;
+  private groupActivityStore: GroupActivityEntry[] = [];
+  private gaIdCounter = 1;
 
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
@@ -653,7 +657,14 @@ export class MemStorage implements IStorage {
   }
 
   async createGroup(group: InsertGroup): Promise<Group> {
-    const g: Group = { ...group, id: this.grpIdCounter++, createdAt: new Date().toISOString() };
+    const g: Group = {
+      ...group,
+      id: this.grpIdCounter++,
+      isFeatured: group.isFeatured ?? false,
+      tags: group.tags ?? null,
+      pinnedAnnouncement: group.pinnedAnnouncement ?? null,
+      createdAt: new Date().toISOString(),
+    };
     this.groupsStore.push(g);
     return g;
   }
@@ -788,6 +799,53 @@ export class MemStorage implements IStorage {
       .map(([userId, data]) => {
         const u = this.users.get(userId);
         return { userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
+      });
+  }
+
+  async setGroupFeatured(groupId: number, isFeatured: boolean): Promise<Group | undefined> {
+    const g = this.groupsStore.find(gr => gr.id === groupId);
+    if (g) g.isFeatured = isFeatured;
+    return g;
+  }
+
+  async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> {
+    const existing = this.groupReactionsStore.find(r => r.scoreId === scoreId && r.userId === userId && r.emoji === emoji);
+    if (existing) return existing;
+    const reaction: GroupScoreReaction = { id: this.gsrIdCounter++, roundId, scoreId, userId, emoji, createdAt: new Date().toISOString() };
+    this.groupReactionsStore.push(reaction);
+    return reaction;
+  }
+
+  async removeGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<void> {
+    this.groupReactionsStore = this.groupReactionsStore.filter(r => !(r.scoreId === scoreId && r.userId === userId && r.emoji === emoji));
+  }
+
+  async getGroupRoundReactions(roundId: number): Promise<GroupScoreReaction[]> {
+    return this.groupReactionsStore.filter(r => r.roundId === roundId);
+  }
+
+  async logGroupActivity(groupId: number, userId: number | null, type: string, metadata: Record<string, any> = {}): Promise<void> {
+    const u = userId ? this.users.get(userId) : null;
+    const entry: GroupActivityEntry = {
+      id: this.gaIdCounter++,
+      groupId,
+      userId,
+      type,
+      metadata,
+      createdAt: new Date().toISOString(),
+      user: u ? { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null } : null,
+    };
+    this.groupActivityStore.push(entry);
+  }
+
+  async getGroupActivity(groupId: number, limit = 30): Promise<GroupActivityEntry[]> {
+    return this.groupActivityStore
+      .filter(a => a.groupId === groupId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit)
+      .map(a => {
+        const u = a.userId ? this.users.get(a.userId) : null;
+        return { ...a, user: u ? { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null } : null };
       });
   }
 }

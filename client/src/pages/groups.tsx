@@ -15,12 +15,15 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Info } from "lucide-react";
+import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Info, Star, Search } from "lucide-react";
 import type { Group } from "@shared/schema";
+
+const ALL_TAGS = ["competitive", "casual", "educational", "friends", "speed", "daily", "beginners", "advanced"];
 
 interface GroupsResponse {
   myGroups: Group[];
   discover: Group[];
+  featured: Group[];
 }
 
 export default function Groups() {
@@ -33,6 +36,7 @@ export default function Groups() {
   const [createName, setCreateName] = useState("");
   const [createDesc, setCreateDesc] = useState("");
   const [createPublic, setCreatePublic] = useState(false);
+  const [createTags, setCreateTags] = useState<string[]>([]);
   const [joinCode, setJoinCode] = useState("");
 
   const { data, isLoading } = useQuery<GroupsResponse>({
@@ -41,7 +45,7 @@ export default function Groups() {
 
   const createMutation = useMutation({
     mutationFn: async () =>
-      apiRequest("POST", "/api/groups", { name: createName, description: createDesc, isPublic: createPublic }),
+      apiRequest("POST", "/api/groups", { name: createName, description: createDesc, isPublic: createPublic, tags: createTags }),
     onSuccess: async (res) => {
       const group = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
@@ -49,6 +53,7 @@ export default function Groups() {
       setCreateName("");
       setCreateDesc("");
       setCreatePublic(false);
+      setCreateTags([]);
       navigate(`/groups/${group.id}`);
     },
     onError: () => {
@@ -79,6 +84,10 @@ export default function Groups() {
     }
   }
 
+  function toggleCreateTag(tag: string) {
+    setCreateTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 5));
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
@@ -87,7 +96,13 @@ export default function Groups() {
             <h1 className="text-3xl font-bold">Groups</h1>
             <p className="text-muted-foreground mt-1">Compete with your crew in shared game rounds</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Link href="/groups/browse">
+              <Button variant="outline" data-testid="button-browse-groups">
+                <Search className="h-4 w-4 mr-2" />
+                Browse
+              </Button>
+            </Link>
             <Button variant="outline" onClick={() => requireAuthThen(() => setJoinOpen(true))} data-testid="button-join-group">
               <LogIn className="h-4 w-4 mr-2" />
               Join
@@ -138,6 +153,28 @@ export default function Groups() {
                     ))}
                   </div>
                 )}
+              </section>
+            )}
+
+            {(data?.featured?.length ?? 0) > 0 && (
+              <section className="mb-8">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+                  Featured Groups
+                </h2>
+                <div className="space-y-3">
+                  {data?.featured.map(group => (
+                    <GroupCard
+                      key={group.id}
+                      group={group}
+                      isDiscover
+                      onJoin={() => requireAuthThen(() => {
+                        setJoinCode(group.inviteCode);
+                        setJoinOpen(true);
+                      })}
+                    />
+                  ))}
+                </div>
               </section>
             )}
 
@@ -212,6 +249,24 @@ export default function Groups() {
                 {createPublic ? <span className="flex items-center gap-1"><Globe className="h-4 w-4" /> Public</span> : <span className="flex items-center gap-1"><Lock className="h-4 w-4" /> Private</span>}
               </Label>
             </div>
+            {createPublic && (
+              <div className="space-y-2">
+                <Label>Tags <span className="text-muted-foreground font-normal text-xs">(optional, up to 5)</span></Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_TAGS.map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleCreateTag(tag)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${createTags.includes(tag) ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border hover:bg-muted/70"}`}
+                      data-testid={`create-tag-${tag}`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -270,8 +325,11 @@ function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: b
   return (
     <Card className="hover:bg-muted/30 transition-colors" data-testid={`card-group-${group.id}`}>
       <CardContent className="p-4 flex items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 relative">
           <Users className="h-6 w-6 text-primary" />
+          {group.isFeatured && (
+            <Star className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -281,6 +339,13 @@ function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: b
             </Badge>
           </div>
           {group.description && <p className="text-sm text-muted-foreground truncate mt-0.5">{group.description}</p>}
+          {(group.tags || []).length > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {(group.tags || []).map(tag => (
+                <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">{tag}</span>
+              ))}
+            </div>
+          )}
           {!isDiscover && (
             <button
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"

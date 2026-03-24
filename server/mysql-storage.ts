@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -547,6 +547,11 @@ export class MySQLStorage implements IStorage {
   }
 
   private toGroup(r: any): Group {
+    let tags: string[] | null = null;
+    if (r.tags) {
+      if (typeof r.tags === "string") { try { tags = JSON.parse(r.tags); } catch { tags = null; } }
+      else if (Array.isArray(r.tags)) { tags = r.tags; }
+    }
     return {
       id: r.id,
       name: r.name,
@@ -554,6 +559,9 @@ export class MySQLStorage implements IStorage {
       creatorId: r.creatorId,
       inviteCode: r.inviteCode,
       isPublic: Boolean(r.isPublic),
+      isFeatured: Boolean(r.isFeatured),
+      tags,
+      pinnedAnnouncement: r.pinnedAnnouncement || null,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
   }
@@ -600,6 +608,9 @@ export class MySQLStorage implements IStorage {
       creatorId: group.creatorId,
       inviteCode: group.inviteCode,
       isPublic: group.isPublic,
+      isFeatured: group.isFeatured ?? false,
+      tags: group.tags ? JSON.stringify(group.tags) : null,
+      pinnedAnnouncement: group.pinnedAnnouncement ?? null,
     });
     const rows = await db.select().from(schema.groups).where(eq(schema.groups.id, result[0].insertId)).limit(1);
     return this.toGroup(rows[0]);
@@ -768,5 +779,63 @@ export class MySQLStorage implements IStorage {
       totalScore: Number(r.totalScore),
       roundsPlayed: Number(r.roundsPlayed),
     }));
+  }
+
+  async setGroupFeatured(groupId: number, isFeatured: boolean): Promise<Group | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.groups).set({ isFeatured }).where(eq(schema.groups.id, groupId));
+    return this.getGroup(groupId);
+  }
+
+  async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> {
+    const db = await this.getDb();
+    try {
+      await db.insert(schema.groupScoreReactions).values({ roundId, scoreId, userId, emoji });
+    } catch {
+      // duplicate — already exists
+    }
+    const rows = await db.select().from(schema.groupScoreReactions)
+      .where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId), eq(schema.groupScoreReactions.emoji, emoji)))
+      .limit(1);
+    const r = rows[0];
+    return { id: r.id, roundId: r.roundId, scoreId: r.scoreId, userId: r.userId, emoji: r.emoji, createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) };
+  }
+
+  async removeGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.groupScoreReactions).where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId), eq(schema.groupScoreReactions.emoji, emoji)));
+  }
+
+  async getGroupRoundReactions(roundId: number): Promise<GroupScoreReaction[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupScoreReactions).where(eq(schema.groupScoreReactions.roundId, roundId));
+    return rows.map((r: any) => ({ id: r.id, roundId: r.roundId, scoreId: r.scoreId, userId: r.userId, emoji: r.emoji, createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) }));
+  }
+
+  async logGroupActivity(groupId: number, userId: number | null, type: string, metadata: Record<string, any> = {}): Promise<void> {
+    const db = await this.getDb();
+    await db.insert(schema.groupActivity).values({ groupId, userId: userId ?? undefined, type, metadata: JSON.stringify(metadata) });
+  }
+
+  async getGroupActivity(groupId: number, limit = 30): Promise<GroupActivityEntry[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupActivity).where(eq(schema.groupActivity.groupId, groupId)).orderBy(desc(schema.groupActivity.createdAt)).limit(limit);
+    if (rows.length === 0) return [];
+    const userIds = [...new Set(rows.filter((r: any) => r.userId).map((r: any) => r.userId))];
+    const users = userIds.length > 0 ? await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds)) : [];
+    const userMap = new Map(users.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return rows.map((r: any) => {
+      let meta: Record<string, any> = {};
+      if (r.metadata) { if (typeof r.metadata === "string") { try { meta = JSON.parse(r.metadata); } catch {} } else { meta = r.metadata as Record<string, any>; } }
+      return {
+        id: r.id,
+        groupId: r.groupId,
+        userId: r.userId ?? null,
+        type: r.type,
+        metadata: meta,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        user: r.userId ? (userMap.get(r.userId) ?? null) : null,
+      };
+    });
   }
 }

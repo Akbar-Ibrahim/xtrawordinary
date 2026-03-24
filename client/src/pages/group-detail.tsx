@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -14,8 +18,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock } from "lucide-react";
-import type { Group, GroupMember, GroupRound, GroupRoundScore } from "@shared/schema";
+import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock, Megaphone, Star, Edit2, Activity as ActivityIcon } from "lucide-react";
+import type { Group, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
+
+const ALLOWED_EMOJIS = ["🔥", "👏", "💪", "🎉", "😲", "🏆"];
 
 const GAME_SLUGS = [
   "word-ladder", "anagram-solver", "word-scramble", "definition-match",
@@ -53,7 +59,62 @@ interface MemberWithUser extends GroupMember {
 
 type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } };
 
-function RoundScoresPanel({ groupId, roundId }: { groupId: number; roundId: number }) {
+function ReactionStrip({ groupId, roundId, scoreId, currentUserId }: { groupId: number; roundId: number; scoreId: number; currentUserId: number | undefined }) {
+  const { data: allReactions } = useQuery<GroupScoreReaction[]>({
+    queryKey: ["/api/groups", groupId, "rounds", roundId, "reactions"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/rounds/${roundId}/reactions`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 30000,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async (emoji: string) =>
+      apiRequest("POST", `/api/groups/${groupId}/rounds/${roundId}/scores/${scoreId}/reactions`, { emoji }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundId, "reactions"] }),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async (emoji: string) =>
+      apiRequest("DELETE", `/api/groups/${groupId}/rounds/${roundId}/scores/${scoreId}/reactions/${encodeURIComponent(emoji)}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundId, "reactions"] }),
+  });
+
+  const scoreReactions = (allReactions || []).filter(r => r.scoreId === scoreId);
+
+  function handleEmoji(emoji: string) {
+    if (!currentUserId) return;
+    const hasIt = scoreReactions.some(r => r.userId === currentUserId && r.emoji === emoji);
+    if (hasIt) removeMutation.mutate(emoji);
+    else addMutation.mutate(emoji);
+  }
+
+  return (
+    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+      {ALLOWED_EMOJIS.map(emoji => {
+        const count = scoreReactions.filter(r => r.emoji === emoji).length;
+        const isMine = scoreReactions.some(r => r.userId === currentUserId && r.emoji === emoji);
+        return (
+          <button
+            key={emoji}
+            onClick={() => handleEmoji(emoji)}
+            disabled={!currentUserId}
+            className={`inline-flex items-center gap-0.5 text-sm px-1.5 py-0.5 rounded-full border transition-colors ${isMine ? "bg-primary/15 border-primary/40 text-primary" : "bg-muted/40 border-transparent text-muted-foreground hover:bg-muted/70"} disabled:cursor-default`}
+            title={emoji}
+            data-testid={`reaction-${scoreId}-${emoji}`}
+          >
+            <span>{emoji}</span>
+            {count > 0 && <span className="text-xs font-medium">{count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RoundScoresPanel({ groupId, roundId, currentUserId }: { groupId: number; roundId: number; currentUserId: number | undefined }) {
   const { data, isLoading } = useQuery<RoundScoreEntry[]>({
     queryKey: ["/api/groups", groupId, "rounds", roundId, "scores"],
     queryFn: async () => {
@@ -69,29 +130,58 @@ function RoundScoresPanel({ groupId, roundId }: { groupId: number; roundId: numb
   }
 
   return (
-    <div className="space-y-1 pt-1">
+    <div className="space-y-2 pt-1">
       {data.map((entry, i) => (
-        <div key={entry.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${roundId}-${entry.userId}`}>
-          <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
-            {i + 1}
-          </span>
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={entry.user.avatarUrl || undefined} />
-            <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {entry.durationMs != null
-              ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
-              : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-          <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+        <div key={entry.id} className="px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${roundId}-${entry.userId}`}>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+              {i + 1}
+            </span>
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={entry.user.avatarUrl || undefined} />
+              <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {entry.durationMs != null
+                ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
+                : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+          </div>
+          <div className="pl-8">
+            <ReactionStrip groupId={groupId} roundId={roundId} scoreId={entry.id} currentUserId={currentUserId} />
+          </div>
         </div>
       ))}
     </div>
   );
 }
+
+const ACTIVITY_LABELS: Record<string, (m: Record<string, any>) => string> = {
+  joined: (m) => `${m.name || "Someone"} joined the group`,
+  left: (m) => `${m.name || "Someone"} left the group`,
+  round_started: (m) => `${m.name || "An admin"} started a ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""} round`,
+  score_submitted: (m) => `${m.name || "Someone"} scored ${m.score?.toLocaleString() || "?"} in ${GAME_NAMES[m.gameSlug] || m.gameSlug || ""}`,
+};
+
+function activityLabel(type: string, metadata: Record<string, any>): string {
+  const fn = ACTIVITY_LABELS[type];
+  return fn ? fn(metadata) : type;
+}
+
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+const ALL_TAGS = ["competitive", "casual", "educational", "friends", "speed", "daily", "beginners", "advanced"];
 
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
@@ -105,6 +195,12 @@ export default function GroupDetail() {
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expandedRoundId, setExpandedRoundId] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editPublic, setEditPublic] = useState(false);
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editAnnouncement, setEditAnnouncement] = useState("");
 
   const { data, isLoading, error } = useQuery<GroupDetailResponse>({
     queryKey: ["/api/groups", groupId],
@@ -146,6 +242,16 @@ export default function GroupDetail() {
     enabled: !isNaN(groupId),
   });
 
+  const { data: activity, isLoading: activityLoading } = useQuery<GroupActivityEntry[]>({
+    queryKey: ["/api/groups", groupId, "activity"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/activity`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !isNaN(groupId),
+  });
+
   const createRoundMutation = useMutation({
     mutationFn: async () =>
       apiRequest("POST", `/api/groups/${groupId}/rounds`, {
@@ -155,6 +261,7 @@ export default function GroupDetail() {
     onSuccess: async (res) => {
       const round: GroupRound = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "activity"] });
       setCreateRoundOpen(false);
       setClosesAt("");
       navigate(`/groups/${groupId}/rounds/${round.id}/play`);
@@ -193,10 +300,42 @@ export default function GroupDetail() {
     onError: () => toast({ title: "Failed to update role", variant: "destructive" }),
   });
 
+  const editMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("PATCH", `/api/groups/${groupId}`, {
+        name: editName,
+        description: editDesc,
+        isPublic: editPublic,
+        tags: editTags,
+        pinnedAnnouncement: editAnnouncement,
+      }),
+    onSuccess: async (res) => {
+      const updated = await res.json();
+      queryClient.setQueryData(["/api/groups", groupId], (old: any) => old ? { ...old, group: updated } : old);
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      setEditOpen(false);
+      toast({ title: "Group updated!" });
+    },
+    onError: () => toast({ title: "Failed to update group", variant: "destructive" }),
+  });
+
+  function openEditDialog(group: Group) {
+    setEditName(group.name);
+    setEditDesc(group.description || "");
+    setEditPublic(group.isPublic);
+    setEditTags(group.tags || []);
+    setEditAnnouncement(group.pinnedAnnouncement || "");
+    setEditOpen(true);
+  }
+
   function copyInviteCode() {
     if (!data?.group.inviteCode) return;
     navigator.clipboard.writeText(data.group.inviteCode);
     toast({ title: "Invite code copied!" });
+  }
+
+  function toggleEditTag(tag: string) {
+    setEditTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag].slice(0, 5));
   }
 
   if (isLoading) {
@@ -235,7 +374,7 @@ export default function GroupDetail() {
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <Card className="mb-6">
+        <Card className="mb-4">
           <CardContent className="p-5">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-4">
@@ -243,7 +382,10 @@ export default function GroupDetail() {
                   <Users className="h-7 w-7 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">{group.name}</h1>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-2xl font-bold">{group.name}</h1>
+                    {group.isFeatured && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" title="Featured group" />}
+                  </div>
                   {group.description && <p className="text-muted-foreground text-sm mt-0.5">{group.description}</p>}
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <Badge variant="outline" className="text-xs">
@@ -252,10 +394,18 @@ export default function GroupDetail() {
                     {membership && (
                       <Badge variant="secondary" className="text-xs capitalize">{membership.role}</Badge>
                     )}
+                    {(group.tags || []).map(tag => (
+                      <Badge key={tag} variant="outline" className="text-xs bg-muted/40">{tag}</Badge>
+                    ))}
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => openEditDialog(group)} data-testid="button-edit-group">
+                    <Edit2 className="h-4 w-4 mr-1.5" />Edit
+                  </Button>
+                )}
                 {membership && !isOwner && (
                   <Button variant="outline" size="sm" onClick={() => setLeaveConfirmOpen(true)} data-testid="button-leave-group">
                     <X className="h-4 w-4 mr-1.5" />Leave
@@ -275,11 +425,21 @@ export default function GroupDetail() {
           </CardContent>
         </Card>
 
+        {group.pinnedAnnouncement && (
+          <Card className="mb-4 border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Megaphone className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">{group.pinnedAnnouncement}</p>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs defaultValue="rounds">
           <TabsList className="w-full mb-6">
             <TabsTrigger value="rounds" className="flex-1" data-testid="tab-rounds">Rounds</TabsTrigger>
             <TabsTrigger value="leaderboard" className="flex-1" data-testid="tab-leaderboard">Leaderboard</TabsTrigger>
             <TabsTrigger value="members" className="flex-1" data-testid="tab-members">Members</TabsTrigger>
+            <TabsTrigger value="activity" className="flex-1" data-testid="tab-activity">Activity</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rounds">
@@ -370,7 +530,7 @@ export default function GroupDetail() {
                             <CollapsibleContent>
                               <div className="px-4 pb-4 border-t pt-3">
                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Round Results</p>
-                                <RoundScoresPanel groupId={groupId} roundId={round.id} />
+                                <RoundScoresPanel groupId={groupId} roundId={round.id} currentUserId={user?.id} />
                               </div>
                             </CollapsibleContent>
                           </Card>
@@ -469,6 +629,32 @@ export default function GroupDetail() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="activity">
+            {activityLoading ? (
+              <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}</div>
+            ) : !activity || activity.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <ActivityIcon className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No activity yet. Join a round to get started!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {activity.map(entry => (
+                  <div key={entry.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/30 border border-border/40" data-testid={`activity-${entry.id}`}>
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {entry.user?.avatarUrl && <AvatarImage src={entry.user.avatarUrl} />}
+                      <AvatarFallback className="text-xs">{entry.user?.name?.charAt(0)?.toUpperCase() || "?"}</AvatarFallback>
+                    </Avatar>
+                    <p className="text-sm flex-1">{activityLabel(entry.type, entry.metadata)}</p>
+                    <span className="text-xs text-muted-foreground shrink-0">{timeAgo(entry.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </motion.div>
 
@@ -508,6 +694,67 @@ export default function GroupDetail() {
             <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); }}>Cancel</Button>
             <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending} data-testid="button-create-round-submit">
               {createRoundMutation.isPending ? "Creating..." : "Start Round"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="edit-name">Group Name</Label>
+              <Input id="edit-name" value={editName} onChange={e => setEditName(e.target.value)} data-testid="input-edit-name" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-desc">Description</Label>
+              <Textarea id="edit-desc" value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} data-testid="input-edit-desc" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch id="edit-public" checked={editPublic} onCheckedChange={setEditPublic} data-testid="switch-edit-public" />
+              <Label htmlFor="edit-public" className="cursor-pointer">
+                {editPublic ? <span className="flex items-center gap-1"><Globe className="h-4 w-4" />Public</span> : <span className="flex items-center gap-1"><Lock className="h-4 w-4" />Private</span>}
+              </Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Tags <span className="text-muted-foreground font-normal text-xs">(up to 5)</span></Label>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleEditTag(tag)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${editTags.includes(tag) ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border hover:bg-muted/70"}`}
+                    data-testid={`tag-${tag}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-announcement">Pinned Announcement <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+              <Textarea
+                id="edit-announcement"
+                value={editAnnouncement}
+                onChange={e => setEditAnnouncement(e.target.value)}
+                placeholder="Share news, reminders, or rules with your group..."
+                rows={3}
+                data-testid="input-edit-announcement"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => editMutation.mutate()}
+              disabled={editMutation.isPending || editName.trim().length < 2}
+              data-testid="button-edit-group-submit"
+            >
+              {editMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

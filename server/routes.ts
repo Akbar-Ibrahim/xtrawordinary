@@ -1196,15 +1196,20 @@ export async function registerRoutes(
 
   app.get("/api/groups", async (req, res) => {
     try {
-      const publicGroups = await storage.getPublicGroups();
+      let publicGroups = await storage.getPublicGroups();
+      const tagFilter = req.query.tag as string | undefined;
+      if (tagFilter) {
+        publicGroups = publicGroups.filter(g => Array.isArray(g.tags) && g.tags.includes(tagFilter));
+      }
       if (!req.isAuthenticated()) {
-        return res.json({ myGroups: [], discover: publicGroups });
+        return res.json({ myGroups: [], discover: publicGroups, featured: publicGroups.filter(g => g.isFeatured) });
       }
       const userId = (req.user as any).id;
       const myGroups = await storage.getUserGroups(userId);
       const myGroupIds = new Set(myGroups.map((g: any) => g.id));
       const discover = publicGroups.filter((g: any) => !myGroupIds.has(g.id));
-      res.json({ myGroups, discover });
+      const featured = publicGroups.filter(g => g.isFeatured && !myGroupIds.has(g.id));
+      res.json({ myGroups, discover, featured });
     } catch {
       res.status(500).json({ error: "Failed to fetch groups" });
     }
@@ -1247,6 +1252,7 @@ export async function registerRoutes(
       const existing = await storage.getGroupMember(group.id, userId);
       if (existing) return res.status(409).json({ error: "Already a member" });
       await storage.addGroupMember(group.id, userId, "member");
+      await storage.logGroupActivity(group.id, userId, "joined", { name: (req.user as any).name });
       res.json(group);
     } catch {
       res.status(500).json({ error: "Failed to join group" });
@@ -1277,15 +1283,30 @@ export async function registerRoutes(
       if (!membership || !["owner", "admin"].includes(membership.role)) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const { name, description, isPublic } = req.body;
-      const updates: Partial<Pick<any, "name" | "description" | "isPublic">> = {};
+      const { name, description, isPublic, tags, pinnedAnnouncement } = req.body;
+      const updates: Record<string, any> = {};
       if (name !== undefined) updates.name = name.trim();
       if (description !== undefined) updates.description = description?.trim() || null;
       if (isPublic !== undefined) updates.isPublic = Boolean(isPublic);
+      if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags.map(String).slice(0, 5) : null;
+      if (pinnedAnnouncement !== undefined) updates.pinnedAnnouncement = pinnedAnnouncement?.trim() || null;
       const updated = await storage.updateGroup(groupId, updates);
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to update group" });
+    }
+  });
+
+  app.patch("/api/groups/:id/feature", requireAuth, async (req, res) => {
+    try {
+      if (!(req.user as any).isAdmin) return res.status(403).json({ error: "Site admin only" });
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const { isFeatured } = req.body;
+      const updated = await storage.setGroupFeatured(groupId, Boolean(isFeatured));
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update featured status" });
     }
   });
 
@@ -1314,6 +1335,7 @@ export async function registerRoutes(
       if (!membership) return res.status(400).json({ error: "Not a member" });
       if (membership.role === "owner") return res.status(400).json({ error: "Owner cannot leave. Delete the group instead." });
       await storage.removeGroupMember(groupId, userId);
+      await storage.logGroupActivity(groupId, userId, "left", { name: (req.user as any).name });
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Failed to leave group" });
@@ -1417,6 +1439,7 @@ export async function registerRoutes(
         createdById: userId,
         closesAt: closesAt || null,
       });
+      await storage.logGroupActivity(groupId, userId, "round_started", { gameSlug: slug, roundId: round.id, name: (req.user as any).name });
       res.status(201).json(round);
     } catch {
       res.status(500).json({ error: "Failed to create round" });
@@ -1454,6 +1477,7 @@ export async function registerRoutes(
       const { score, durationMs } = req.body;
       if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
       const result = await storage.submitGroupRoundScore(roundId, userId, score, typeof durationMs === "number" ? durationMs : undefined);
+      await storage.logGroupActivity(groupId, userId, "score_submitted", { score, gameSlug: round.gameSlug, roundId, name: (req.user as any).name });
       res.json(result);
     } catch {
       res.status(500).json({ error: "Failed to submit score" });
@@ -1507,6 +1531,71 @@ export async function registerRoutes(
       res.json(leaderboard);
     } catch {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/groups/:id/rounds/:roundId/reactions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const reactions = await storage.getGroupRoundReactions(roundId);
+      res.json(reactions);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch reactions" });
+    }
+  });
+
+  app.post("/api/groups/:id/rounds/:roundId/scores/:scoreId/reactions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      const scoreId = parseInt(req.params.scoreId);
+      if (isNaN(groupId) || isNaN(roundId) || isNaN(scoreId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const { emoji } = req.body;
+      const ALLOWED_EMOJIS = ["🔥", "👏", "💪", "🎉", "😲", "🏆"];
+      if (!emoji || !ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: "Invalid emoji" });
+      const reaction = await storage.addGroupReaction(roundId, scoreId, userId, emoji);
+      res.json(reaction);
+    } catch {
+      res.status(500).json({ error: "Failed to add reaction" });
+    }
+  });
+
+  app.delete("/api/groups/:id/rounds/:roundId/scores/:scoreId/reactions/:emoji", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      const scoreId = parseInt(req.params.scoreId);
+      if (isNaN(groupId) || isNaN(roundId) || isNaN(scoreId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const emoji = decodeURIComponent(req.params.emoji);
+      await storage.removeGroupReaction(roundId, scoreId, userId, emoji);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to remove reaction" });
+    }
+  });
+
+  app.get("/api/groups/:id/activity", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const activity = await storage.getGroupActivity(groupId, 30);
+      res.json(activity);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch activity" });
     }
   });
 

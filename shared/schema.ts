@@ -289,6 +289,9 @@ export const groupSchema = z.object({
   creatorId: z.number(),
   inviteCode: z.string(),
   isPublic: z.boolean(),
+  isFeatured: z.boolean(),
+  tags: z.array(z.string()).nullable(),
+  pinnedAnnouncement: z.string().nullable(),
   createdAt: z.string(),
 });
 export type Group = z.infer<typeof groupSchema>;
@@ -327,3 +330,24 @@ export const groupRoundScoreSchema = z.object({
   completedAt: z.string(),
 });
 export type GroupRoundScore = z.infer<typeof groupRoundScoreSchema>;
+
+export const groupScoreReactionSchema = z.object({
+  id: z.number(),
+  roundId: z.number(),
+  scoreId: z.number(),
+  userId: z.number(),
+  emoji: z.string(),
+  createdAt: z.string(),
+});
+export type GroupScoreReaction = z.infer<typeof groupScoreReactionSchema>;
+
+export const groupActivityEntrySchema = z.object({
+  id: z.number(),
+  groupId: z.number(),
+  userId: z.number().nullable(),
+  type: z.string(),
+  metadata: z.record(z.any()),
+  createdAt: z.string(),
+  user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).nullable().optional(),
+});
+export type GroupActivityEntry = z.infer<typeof groupActivityEntrySchema>;
