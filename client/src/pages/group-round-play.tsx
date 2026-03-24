@@ -73,17 +73,17 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
       return <NoRepeatsGame initialChallenge={options[seed % options.length]} />;
     }
-    case "word-ladder": return <WordLadderGame initialChallenge />;
-    case "anagram-solver": return <AnagramSolverGame />;
-    case "word-scramble": return <WordScrambleGame />;
-    case "definition-match": return <DefinitionMatchGame />;
+    case "word-ladder": return <WordLadderGame initialChallenge groupSeed={seed} />;
+    case "anagram-solver": return <AnagramSolverGame groupSeed={seed} />;
+    case "word-scramble": return <WordScrambleGame groupSeed={seed} />;
+    case "definition-match": return <DefinitionMatchGame groupSeed={seed} />;
     case "letter-pool": {
       const v = seed % 2 === 0 ? "with-pool" : "without-pool";
       return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} />;
     }
-    case "word-maker": return <WordMakerGame />;
-    case "word-sweep": return <WordSweepGame />;
-    case "word-roots": return <WordRootsGame />;
+    case "word-maker": return <WordMakerGame groupSeed={seed} />;
+    case "word-sweep": return <WordSweepGame groupSeed={seed} />;
+    case "word-roots": return <WordRootsGame groupSeed={seed} />;
     default: return null;
   }
 }

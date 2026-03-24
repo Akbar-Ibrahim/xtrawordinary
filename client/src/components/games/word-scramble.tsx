@@ -14,12 +14,14 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
-export function WordScrambleGame() {
+export function WordScrambleGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-scramble" });
+  const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error, refetch } = useQuery<ScrambleWord[]>({
-    queryKey: ["/api/games/word-scramble/words"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/word-scramble/words", groupSeed] : ["/api/games/word-scramble/words"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-scramble/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [activeWords, setActiveWords] = useState<ScrambleWord[]>([]);

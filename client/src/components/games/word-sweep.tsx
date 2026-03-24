@@ -25,15 +25,16 @@ function calculateWordScore(wordLength: number): number {
   return Math.round(10 * Math.pow(2, wordLength - 3));
 }
 
-export function WordSweepGame() {
+export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-sweep" });
   const GRID_SIZE = 6;
   const MAX_SHUFFLES = 3;
+  const seeded = groupSeed !== undefined;
 
   const { data: gridData, isLoading, error, refetch } = useQuery<WordSweepGrid>({
-    queryKey: ["/api/games/word-sweep/grid"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/word-sweep/grid", groupSeed] : ["/api/games/word-sweep/grid"],
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [grid, setGrid] = useState<GridCell[]>([]);

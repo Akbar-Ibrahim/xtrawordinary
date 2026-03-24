@@ -14,12 +14,14 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
-export function AnagramSolverGame() {
+export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "anagram-solver" });
+  const seeded = groupSeed !== undefined;
   const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
-    queryKey: ["/api/games/anagram-solver/words"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/anagram-solver/words", groupSeed] : ["/api/games/anagram-solver/words"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/anagram-solver/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [activeWordSets, setActiveWordSets] = useState<AnagramWordSet[]>([]);

@@ -43,9 +43,10 @@ function letterMultisetCheck(word: string, derivative: string): boolean {
 type GameStatus = "playing" | "won" | "lost";
 type RoundResult = { word: string; canonical: boolean; points: number };
 
-export function WordRootsGame() {
+export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { user } = useAuth();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots" });
+  const seeded = groupSeed !== undefined;
   const [authOpen, setAuthOpen] = useState(false);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
@@ -60,8 +61,9 @@ export function WordRootsGame() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: puzzles, isLoading } = useQuery<WordRootsPuzzle[]>({
-    queryKey: ["/api/games/word-roots/puzzles"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/word-roots/puzzles", groupSeed] : ["/api/games/word-roots/puzzles"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-roots/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   useEffect(() => {

@@ -15,12 +15,14 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
-export function WordMakerGame() {
+export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-maker" });
+  const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
-    queryKey: ["/api/games/word-maker/words"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/word-maker/words", groupSeed] : ["/api/games/word-maker/words"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-maker/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [activeWords, setActiveWords] = useState<MakerWord[]>([]);

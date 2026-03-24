@@ -14,12 +14,14 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
-export function DefinitionMatchGame() {
+export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "definition-match" });
+  const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error, refetch } = useQuery<DefinitionWord[]>({
-    queryKey: ["/api/games/definition-match/words"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/definition-match/words", groupSeed] : ["/api/games/definition-match/words"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [activeWords, setActiveWords] = useState<DefinitionWord[]>([]);

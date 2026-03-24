@@ -16,6 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface WordLadderGameProps {
   initialChallenge?: boolean;
+  groupSeed?: number;
 }
 
 function getSortedLetters(word: string): string {
@@ -38,12 +39,14 @@ function isOneLetterDiff(a: string, b: string): boolean {
   return false;
 }
 
-export function WordLadderGame({ initialChallenge }: WordLadderGameProps) {
+export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-ladder" });
+  const seeded = groupSeed !== undefined;
   const { data: allPuzzles = [], isLoading, error, refetch } = useQuery<WordLadderPuzzle[]>({
-    queryKey: ["/api/games/word-ladder/puzzles"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/word-ladder/puzzles", groupSeed] : ["/api/games/word-ladder/puzzles"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-ladder/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");

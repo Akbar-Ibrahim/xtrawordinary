@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
+import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
 // import { db } from "./db";
@@ -40,77 +41,41 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-ladder/puzzles", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-ladder/puzzles`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch word ladder puzzles";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/word-ladder/puzzles", async (req, res) => {
     try {
       const puzzles = await dataSource.getWordLadderPuzzles();
-      res.json(puzzles);
+      const seed = parseInt(req.query.seed as string);
+      res.json(isNaN(seed) ? puzzles : seededShuffle(puzzles, seed));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word ladder puzzles" });
     }
   });
 
-  app.get("/api/games/anagram-solver/words", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/anagram-solver/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch word sets";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/anagram-solver/words", async (req, res) => {
     try {
       const wordSets = await dataSource.getAnagramWordSets();
-      res.json(wordSets);
+      const seed = parseInt(req.query.seed as string);
+      res.json(isNaN(seed) ? wordSets : seededShuffle(wordSets, seed));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word sets" });
     }
   });
 
-  app.get("/api/games/word-scramble/words", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-scramble/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch words";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/word-scramble/words", async (req, res) => {
     try {
       const words = await dataSource.getScrambleWords();
-      res.json(words);
+      const seed = parseInt(req.query.seed as string);
+      res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch words" });
     }
   });
 
-  app.get("/api/games/definition-match/words", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/definition-match/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch definition words";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/definition-match/words", async (req, res) => {
     try {
       const words = await dataSource.getDefinitionWords();
-      res.json(words);
+      const seed = parseInt(req.query.seed as string);
+      res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch definition words" });
     }
@@ -135,12 +100,17 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-roots/puzzles", async (_req, res) => {
+  app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
       const allPuzzles = await dataSource.getWordRootsPuzzles();
-      const shuffled = [...allPuzzles].sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, 5).map(p => {
-        const shuffledDerivatives = [...p.derivatives].sort(() => Math.random() - 0.5);
+      const seed = parseInt(req.query.seed as string);
+      const shuffled = isNaN(seed)
+        ? [...allPuzzles].sort(() => Math.random() - 0.5)
+        : seededShuffle(allPuzzles, seed);
+      const selected = shuffled.slice(0, 5).map((p, idx) => {
+        const shuffledDerivatives = isNaN(seed)
+          ? [...p.derivatives].sort(() => Math.random() - 0.5)
+          : seededShuffle(p.derivatives, seed + idx + 1);
         return {
           canonicalWord: p.canonicalWord,
           derivatives: shuffledDerivatives.slice(0, 5),
@@ -152,20 +122,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-maker/words", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-maker/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch maker words";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/word-maker/words", async (req, res) => {
     try {
       const words = await dataSource.getMakerWords();
-      res.json(words);
+      const seed = parseInt(req.query.seed as string);
+      res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch maker words" });
     }
@@ -339,17 +300,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/word-sweep/grid", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-sweep/grid`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to generate grid";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/word-sweep/grid", async (req, res) => {
     try {
       const grid = await dataSource.generateWordSweepGrid();
       res.json(grid);
