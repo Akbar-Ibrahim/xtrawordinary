@@ -101,6 +101,7 @@ export default function GroupDetail() {
   const { user } = useAuth();
   const [createRoundOpen, setCreateRoundOpen] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState("random");
+  const [closesAt, setClosesAt] = useState("");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expandedRoundId, setExpandedRoundId] = useState<number | null>(null);
@@ -149,11 +150,13 @@ export default function GroupDetail() {
     mutationFn: async () =>
       apiRequest("POST", `/api/groups/${groupId}/rounds`, {
         gameSlug: selectedSlug === "random" ? undefined : selectedSlug,
+        closesAt: closesAt ? new Date(closesAt).toISOString() : undefined,
       }),
     onSuccess: async (res) => {
       const round: GroupRound = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds"] });
       setCreateRoundOpen(false);
+      setClosesAt("");
       navigate(`/groups/${groupId}/rounds/${round.id}/play`);
     },
     onError: () => toast({ title: "Failed to create round", variant: "destructive" }),
@@ -434,9 +437,9 @@ export default function GroupDetail() {
                           <span className="text-xs text-muted-foreground capitalize">{member.role}</span>
                         </div>
                       </div>
-                      {isOwner && member.userId !== user?.id && (
+                      {isAdmin && member.userId !== user?.id && member.role !== "owner" && (
                         <div className="flex items-center gap-2">
-                          {member.role !== "owner" && (
+                          {isOwner && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -447,15 +450,17 @@ export default function GroupDetail() {
                               {member.role === "admin" ? "Demote" : "Make Admin"}
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => removeMemberMutation.mutate(member.userId)}
-                            data-testid={`button-remove-${member.userId}`}
-                          >
-                            <UserX className="h-4 w-4" />
-                          </Button>
+                          {(isOwner || member.role === "member") && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => removeMemberMutation.mutate(member.userId)}
+                              data-testid={`button-remove-${member.userId}`}
+                            >
+                              <UserX className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -467,7 +472,7 @@ export default function GroupDetail() {
         </Tabs>
       </motion.div>
 
-      <Dialog open={createRoundOpen} onOpenChange={setCreateRoundOpen}>
+      <Dialog open={createRoundOpen} onOpenChange={(v) => { setCreateRoundOpen(v); if (!v) setClosesAt(""); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Start New Round</DialogTitle>
@@ -487,9 +492,20 @@ export default function GroupDetail() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Closing Time <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input
+                type="datetime-local"
+                value={closesAt}
+                onChange={e => setClosesAt(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                data-testid="input-closes-at"
+              />
+              <p className="text-xs text-muted-foreground">Leave blank to keep the round open indefinitely.</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateRoundOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); }}>Cancel</Button>
             <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending} data-testid="button-create-round-submit">
               {createRoundMutation.isPending ? "Creating..." : "Start Round"}
             </Button>
