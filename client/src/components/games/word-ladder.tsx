@@ -13,6 +13,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 interface WordLadderGameProps {
   initialChallenge?: boolean;
@@ -43,6 +44,9 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-ladder" });
   const seeded = groupSeed !== undefined;
+  const seedRngRef = useRef<(() => number) | undefined>(
+    seeded ? makeSeededRng(groupSeed!) : undefined
+  );
   const { data: allPuzzles = [], isLoading, error, refetch } = useQuery<WordLadderPuzzle[]>({
     queryKey: seeded ? ["/api/games/word-ladder/puzzles", groupSeed] : ["/api/games/word-ladder/puzzles"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-ladder/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
@@ -66,7 +70,8 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
 
   const selectPuzzle = useCallback((puzzles: WordLadderPuzzle[]) => {
     if (puzzles.length === 0) return null;
-    return puzzles[Math.floor(Math.random() * puzzles.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    return puzzles[Math.floor(rng() * puzzles.length)];
   }, []);
 
   const initGame = useCallback(() => {
