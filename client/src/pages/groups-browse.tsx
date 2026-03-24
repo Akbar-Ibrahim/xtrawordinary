@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
+import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, Globe, Copy, ChevronRight, Star, LogIn, X } from "lucide-react";
+import { ArrowLeft, Users, Globe, ChevronRight, Star, LogIn, X, UserPlus } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
@@ -19,6 +20,8 @@ export default function GroupsBrowse() {
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: allPublic, isLoading } = useQuery<Group[]>({
     queryKey: ["/api/groups/browse", activeTag],
@@ -27,6 +30,21 @@ export default function GroupsBrowse() {
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
+    },
+  });
+
+  const joinMutation = useMutation({
+    mutationFn: (groupId: number) => apiRequest("POST", `/api/groups/join-public/${groupId}`, {}),
+    onSuccess: (_, groupId) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups/browse"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
+      toast({ title: "Joined group!" });
+      navigate(`/groups/${groupId}`);
+    },
+    onError: (err: any) => {
+      const msg = err?.message || "Failed to join group";
+      if (msg.includes("Already")) toast({ title: "Already a member", description: "You're already in this group." });
+      else toast({ title: "Failed to join", description: msg, variant: "destructive" });
     },
   });
 
@@ -82,7 +100,11 @@ export default function GroupsBrowse() {
                 </h2>
                 <div className="space-y-3">
                   {featuredGroups.map(group => (
-                    <BrowseGroupCard key={group.id} group={group} onJoin={isAuthenticated ? undefined : () => setAuthOpen(true)} />
+                    <BrowseGroupCard key={group.id} group={group}
+                      onJoin={isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
+                      joining={joinMutation.isPending && joinMutation.variables === group.id}
+                      authenticated={isAuthenticated}
+                    />
                   ))}
                 </div>
               </section>
@@ -95,7 +117,11 @@ export default function GroupsBrowse() {
                 </h2>
                 <div className="space-y-3">
                   {otherGroups.map(group => (
-                    <BrowseGroupCard key={group.id} group={group} onJoin={isAuthenticated ? undefined : () => setAuthOpen(true)} />
+                    <BrowseGroupCard key={group.id} group={group}
+                      onJoin={isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
+                      joining={joinMutation.isPending && joinMutation.variables === group.id}
+                      authenticated={isAuthenticated}
+                    />
                   ))}
                 </div>
               </section>
@@ -125,9 +151,12 @@ export default function GroupsBrowse() {
   );
 }
 
-function BrowseGroupCard({ group, onJoin }: { group: Group; onJoin?: () => void }) {
-  const { toast } = useToast();
-
+function BrowseGroupCard({ group, onJoin, joining, authenticated }: {
+  group: Group;
+  onJoin: () => void;
+  joining?: boolean;
+  authenticated?: boolean;
+}) {
   return (
     <Card className="hover:bg-muted/30 transition-colors" data-testid={`browse-group-${group.id}`}>
       <CardContent className="p-4 flex items-center gap-4">
@@ -156,15 +185,18 @@ function BrowseGroupCard({ group, onJoin }: { group: Group; onJoin?: () => void 
             ))}
           </div>
         </div>
-        {onJoin ? (
-          <Button size="sm" variant="outline" onClick={onJoin} data-testid={`button-auth-join-${group.id}`}>
-            <LogIn className="h-3.5 w-3.5 mr-1.5" />Join
+        <div className="flex items-center gap-2 shrink-0">
+          <Button size="sm" variant="outline" onClick={onJoin} disabled={joining} data-testid={`button-join-${group.id}`}>
+            {authenticated ? (
+              <><UserPlus className="h-3.5 w-3.5 mr-1.5" />{joining ? "Joining…" : "Join"}</>
+            ) : (
+              <><LogIn className="h-3.5 w-3.5 mr-1.5" />Sign in</>
+            )}
           </Button>
-        ) : (
           <Link href={`/groups/${group.id}`}>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </Link>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

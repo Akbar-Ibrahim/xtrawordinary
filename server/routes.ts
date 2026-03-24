@@ -1275,6 +1275,25 @@ export async function registerRoutes(
     }
   });
 
+  // Direct join for public groups by ID (no invite code required)
+  app.post("/api/groups/join-public/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const group = await storage.getGroup(groupId);
+      if (!group) return res.status(404).json({ error: "Group not found" });
+      if (!group.isPublic) return res.status(403).json({ error: "Group is not public" });
+      const existing = await storage.getGroupMember(groupId, userId);
+      if (existing) return res.status(409).json({ error: "Already a member" });
+      await storage.addGroupMember(groupId, userId, "member");
+      await storage.logGroupActivity(groupId, userId, "joined", { name: (req.user as any).name });
+      res.json(group);
+    } catch {
+      res.status(500).json({ error: "Failed to join group" });
+    }
+  });
+
   // Must be registered BEFORE /api/groups/:id to avoid "browse" being treated as an ID
   app.get("/api/groups/browse", async (req, res) => {
     try {
@@ -1574,6 +1593,9 @@ export async function registerRoutes(
       if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
+      // Verify round belongs to this group
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found in this group" });
       const reactions = await storage.getGroupRoundReactions(roundId);
       res.json(reactions);
     } catch {
@@ -1590,12 +1612,18 @@ export async function registerRoutes(
       if (isNaN(groupId) || isNaN(roundId) || isNaN(scoreId)) return res.status(400).json({ error: "Invalid ID" });
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
+      // Verify round belongs to this group
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found in this group" });
+      // Verify score belongs to this round
+      const scores = await storage.getGroupRoundScores(roundId);
+      const score = scores.find(s => s.id === scoreId);
+      if (!score) return res.status(404).json({ error: "Score not found in this round" });
       const { emoji } = req.body;
       const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
       if (!emoji || !ALLOWED_EMOJIS.includes(emoji)) return res.status(400).json({ error: "Invalid emoji" });
       const reaction = await storage.addGroupReaction(roundId, scoreId, userId, emoji);
-      const round = await storage.getGroupRound(roundId);
-      if (round) await storage.logGroupActivity(groupId, userId, "reaction", { emoji, scoreId, name: (req.user as any).name });
+      await storage.logGroupActivity(groupId, userId, "reaction", { emoji, scoreId, name: (req.user as any).name });
       res.json(reaction);
     } catch {
       res.status(500).json({ error: "Failed to add reaction" });
@@ -1611,6 +1639,13 @@ export async function registerRoutes(
       if (isNaN(groupId) || isNaN(roundId) || isNaN(scoreId)) return res.status(400).json({ error: "Invalid ID" });
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
+      // Verify round belongs to this group
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found in this group" });
+      // Verify score belongs to this round
+      const scores = await storage.getGroupRoundScores(roundId);
+      const score = scores.find(s => s.id === scoreId);
+      if (!score) return res.status(404).json({ error: "Score not found in this round" });
       const emoji = decodeURIComponent(req.params.emoji);
       await storage.removeGroupReaction(roundId, scoreId, userId, emoji);
       res.json({ success: true });
