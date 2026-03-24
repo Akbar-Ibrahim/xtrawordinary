@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Trophy, Gamepad2, Clock, User } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Trophy, Gamepad2, Clock, User, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
 
@@ -127,9 +127,16 @@ export default function Friends() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const handleSearch = () => {
-    if (searchQuery.length >= 2) searchMutation.mutate(searchQuery);
-  };
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchMutation.mutate(searchQuery);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   if (!isAuthenticated) {
     return <Redirect to="/" />;
@@ -155,17 +162,28 @@ export default function Friends() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-9 pr-9"
                 data-testid="input-search-friends"
               />
-              <Button onClick={handleSearch} disabled={searchQuery.length < 2} data-testid="button-search-friends">
-                <Search className="h-4 w-4" />
-              </Button>
+              <div className="absolute right-3">
+                {searchMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" data-testid="icon-search-loading" />
+                ) : searchQuery.length > 0 ? (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="button-clear-search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
             </div>
             {searchResults.length > 0 && (
               <div className="mt-3 space-y-2">
@@ -183,6 +201,11 @@ export default function Friends() {
                   </div>
                 ))}
               </div>
+            )}
+            {searchMutation.isSuccess && searchQuery.length >= 2 && !searchMutation.isPending && searchResults.length === 0 && (
+              <p className="mt-3 text-sm text-muted-foreground text-center" data-testid="text-no-search-results">
+                No users found for "{searchQuery}"
+              </p>
             )}
           </CardContent>
         </Card>
