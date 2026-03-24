@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -92,6 +92,31 @@ export interface IStorage {
   getFriendChallenges(userId: number): Promise<FriendChallenge[]>;
   getFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
   completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined>;
+
+  // Groups
+  createGroup(group: InsertGroup): Promise<Group>;
+  getGroup(id: number): Promise<Group | undefined>;
+  getGroupByInviteCode(code: string): Promise<Group | undefined>;
+  updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic">>): Promise<Group | undefined>;
+  deleteGroup(id: number): Promise<void>;
+  getUserGroups(userId: number): Promise<Group[]>;
+  getPublicGroups(): Promise<Group[]>;
+
+  addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember>;
+  removeGroupMember(groupId: number, userId: number): Promise<void>;
+  getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>>;
+  getGroupMember(groupId: number, userId: number): Promise<GroupMember | undefined>;
+  updateGroupMemberRole(groupId: number, userId: number, role: string): Promise<GroupMember | undefined>;
+
+  createGroupRound(round: InsertGroupRound): Promise<GroupRound>;
+  getGroupRound(id: number): Promise<GroupRound | undefined>;
+  getGroupRounds(groupId: number): Promise<GroupRound[]>;
+  closeGroupRound(id: number): Promise<GroupRound | undefined>;
+
+  submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore>;
+  getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>>;
+  getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined>;
+  getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>>;
 }
 
 export { MemStorage } from "./mem-storage";

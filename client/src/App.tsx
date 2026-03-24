@@ -19,6 +19,9 @@ import About from "@/pages/about";
 import Admin from "@/pages/admin";
 import Profile from "@/pages/profile";
 import Friends from "@/pages/friends";
+import Groups from "@/pages/groups";
+import GroupDetail from "@/pages/group-detail";
+import GroupRoundPlay from "@/pages/group-round-play";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +39,9 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/profile/:id" component={Profile} />
       <Route path="/friends" component={Friends} />
+      <Route path="/groups" component={Groups} />
+      <Route path="/groups/:id" component={GroupDetail} />
+      <Route path="/groups/:id/rounds/:roundId/play" component={GroupRoundPlay} />
       <Route component={NotFound} />
     </Switch>
   );

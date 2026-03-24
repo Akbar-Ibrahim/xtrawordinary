@@ -118,6 +118,12 @@ export function Navigation() {
                       Friends
                     </DropdownMenuItem>
                   </Link>
+                  <Link href="/groups">
+                    <DropdownMenuItem data-testid="link-groups">
+                      <Users className="h-4 w-4 mr-2" />
+                      Groups
+                    </DropdownMenuItem>
+                  </Link>
                   {user.isAdmin && (
                     <Link href="/admin">
                       <DropdownMenuItem data-testid="link-admin">

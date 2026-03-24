@@ -1,5 +1,5 @@
 import { eq, desc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -544,5 +544,228 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed" }).where(eq(schema.friendChallenges.id, id));
     return this.getFriendChallenge(id);
+  }
+
+  private toGroup(r: any): Group {
+    return {
+      id: r.id,
+      name: r.name,
+      description: r.description || null,
+      creatorId: r.creatorId,
+      inviteCode: r.inviteCode,
+      isPublic: Boolean(r.isPublic),
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  }
+
+  private toGroupMember(r: any): GroupMember {
+    return {
+      id: r.id,
+      groupId: r.groupId,
+      userId: r.userId,
+      role: r.role,
+      joinedAt: r.joinedAt instanceof Date ? r.joinedAt.toISOString() : String(r.joinedAt),
+    };
+  }
+
+  private toGroupRound(r: any): GroupRound {
+    return {
+      id: r.id,
+      groupId: r.groupId,
+      gameSlug: r.gameSlug,
+      seed: r.seed,
+      status: r.status,
+      createdById: r.createdById,
+      closesAt: r.closesAt ? (r.closesAt instanceof Date ? r.closesAt.toISOString() : String(r.closesAt)) : null,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
+  }
+
+  private toGroupRoundScore(r: any): GroupRoundScore {
+    return {
+      id: r.id,
+      roundId: r.roundId,
+      userId: r.userId,
+      score: r.score,
+      completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
+    };
+  }
+
+  async createGroup(group: InsertGroup): Promise<Group> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.groups).values({
+      name: group.name,
+      description: group.description,
+      creatorId: group.creatorId,
+      inviteCode: group.inviteCode,
+      isPublic: group.isPublic,
+    });
+    const rows = await db.select().from(schema.groups).where(eq(schema.groups.id, result[0].insertId)).limit(1);
+    return this.toGroup(rows[0]);
+  }
+
+  async getGroup(id: number): Promise<Group | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groups).where(eq(schema.groups.id, id)).limit(1);
+    return rows[0] ? this.toGroup(rows[0]) : undefined;
+  }
+
+  async getGroupByInviteCode(code: string): Promise<Group | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groups).where(eq(schema.groups.inviteCode, code)).limit(1);
+    return rows[0] ? this.toGroup(rows[0]) : undefined;
+  }
+
+  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic">>): Promise<Group | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.groups).set(updates).where(eq(schema.groups.id, id));
+    return this.getGroup(id);
+  }
+
+  async deleteGroup(id: number): Promise<void> {
+    const db = await this.getDb();
+    const rounds = await db.select({ id: schema.groupRounds.id }).from(schema.groupRounds).where(eq(schema.groupRounds.groupId, id));
+    if (rounds.length > 0) {
+      const roundIds = rounds.map((r: any) => r.id);
+      await db.delete(schema.groupRoundScores).where(inArray(schema.groupRoundScores.roundId, roundIds));
+      await db.delete(schema.groupRounds).where(eq(schema.groupRounds.groupId, id));
+    }
+    await db.delete(schema.groupMembers).where(eq(schema.groupMembers.groupId, id));
+    await db.delete(schema.groups).where(eq(schema.groups.id, id));
+  }
+
+  async getUserGroups(userId: number): Promise<Group[]> {
+    const db = await this.getDb();
+    const memberships = await db.select({ groupId: schema.groupMembers.groupId }).from(schema.groupMembers).where(eq(schema.groupMembers.userId, userId));
+    if (memberships.length === 0) return [];
+    const groupIds = memberships.map((m: any) => m.groupId);
+    const rows = await db.select().from(schema.groups).where(inArray(schema.groups.id, groupIds));
+    return rows.map((r: any) => this.toGroup(r));
+  }
+
+  async getPublicGroups(): Promise<Group[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groups).where(eq(schema.groups.isPublic, true)).orderBy(desc(schema.groups.createdAt));
+    return rows.map((r: any) => this.toGroup(r));
+  }
+
+  async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.groupMembers).values({ groupId, userId, role });
+    const rows = await db.select().from(schema.groupMembers).where(eq(schema.groupMembers.id, result[0].insertId)).limit(1);
+    return this.toGroupMember(rows[0]);
+  }
+
+  async removeGroupMember(groupId: number, userId: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.groupMembers).where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)));
+  }
+
+  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+    const db = await this.getDb();
+    const members = await db.select().from(schema.groupMembers).where(eq(schema.groupMembers.groupId, groupId));
+    if (members.length === 0) return [];
+    const userIds = members.map((m: any) => m.userId);
+    const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(users.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return members.map((m: any) => ({ ...this.toGroupMember(m), user: userMap.get(m.userId) || { id: m.userId, name: "Unknown", avatarUrl: null } }));
+  }
+
+  async getGroupMember(groupId: number, userId: number): Promise<GroupMember | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupMembers).where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId))).limit(1);
+    return rows[0] ? this.toGroupMember(rows[0]) : undefined;
+  }
+
+  async updateGroupMemberRole(groupId: number, userId: number, role: string): Promise<GroupMember | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.groupMembers).set({ role }).where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)));
+    return this.getGroupMember(groupId, userId);
+  }
+
+  async createGroupRound(round: InsertGroupRound): Promise<GroupRound> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.groupRounds).values({
+      groupId: round.groupId,
+      gameSlug: round.gameSlug,
+      seed: round.seed,
+      status: round.status,
+      createdById: round.createdById,
+      closesAt: round.closesAt ? new Date(round.closesAt) : null,
+    });
+    const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.id, result[0].insertId)).limit(1);
+    return this.toGroupRound(rows[0]);
+  }
+
+  async getGroupRound(id: number): Promise<GroupRound | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.id, id)).limit(1);
+    return rows[0] ? this.toGroupRound(rows[0]) : undefined;
+  }
+
+  async getGroupRounds(groupId: number): Promise<GroupRound[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.groupId, groupId)).orderBy(desc(schema.groupRounds.createdAt));
+    return rows.map((r: any) => this.toGroupRound(r));
+  }
+
+  async closeGroupRound(id: number): Promise<GroupRound | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.groupRounds).set({ status: "closed" }).where(eq(schema.groupRounds.id, id));
+    return this.getGroupRound(id);
+  }
+
+  async submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore> {
+    const db = await this.getDb();
+    const existing = await this.getUserGroupRoundScore(roundId, userId);
+    if (existing) {
+      await db.update(schema.groupRoundScores).set({ score, completedAt: new Date() }).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId)));
+      const rows = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
+      return this.toGroupRoundScore(rows[0]);
+    }
+    const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score });
+    const rows = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.id, result[0].insertId)).limit(1);
+    return this.toGroupRoundScore(rows[0]);
+  }
+
+  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+    const db = await this.getDb();
+    const scores = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, roundId)).orderBy(desc(schema.groupRoundScores.score));
+    if (scores.length === 0) return [];
+    const userIds = scores.map((s: any) => s.userId);
+    const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(users.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return scores.map((s: any) => ({ ...this.toGroupRoundScore(s), user: userMap.get(s.userId) || { id: s.userId, name: "Unknown", avatarUrl: null } }));
+  }
+
+  async getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
+    return rows[0] ? this.toGroupRoundScore(rows[0]) : undefined;
+  }
+
+  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+    const db = await this.getDb();
+    const rows = await db.select({
+      userId: schema.groupRoundScores.userId,
+      totalScore: sql<number>`SUM(${schema.groupRoundScores.score})`,
+      roundsPlayed: sql<number>`COUNT(*)`,
+    })
+      .from(schema.groupRoundScores)
+      .innerJoin(schema.groupRounds, eq(schema.groupRoundScores.roundId, schema.groupRounds.id))
+      .where(eq(schema.groupRounds.groupId, groupId))
+      .groupBy(schema.groupRoundScores.userId)
+      .orderBy(desc(sql`SUM(${schema.groupRoundScores.score})`));
+    if (rows.length === 0) return [];
+    const userIds = rows.map((r: any) => r.userId);
+    const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(users.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    return rows.map((r: any) => ({
+      userId: r.userId,
+      name: userMap.get(r.userId)?.name || "Unknown",
+      avatarUrl: userMap.get(r.userId)?.avatarUrl || null,
+      totalScore: Number(r.totalScore),
+      roundsPlayed: Number(r.roundsPlayed),
+    }));
   }
 }

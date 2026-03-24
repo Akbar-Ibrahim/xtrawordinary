@@ -29,6 +29,9 @@ The system supports hybrid player engagement where guest players use localStorag
 ### Leaderboard, User Profiles, Friends, and Challenges
 A global leaderboard allows players to compare scores across different games. User profiles display public information, stats, and achievements. A friends system enables users to connect, send requests, and manage their friend lists. Friend challenges allow users to challenge friends in specific games, with features for creating, playing, and tracking challenge results.
 
+### Groups & Community System
+A groups feature lets signed-in users create or join groups with an invite code. Each group has owner/admin/member roles. Admins can start "rounds" — a specific game with a deterministic seed — so all group members play the same variant. Members submit scores after playing, and a per-group leaderboard aggregates all-time scores. The system uses 4 new DB tables: `groups`, `group_members`, `group_rounds`, `group_round_scores`. Frontend pages: `/groups` (list + create/join), `/groups/:id` (detail with tabs: Rounds, Leaderboard, Members), `/groups/:id/rounds/:roundId/play` (game play with auto-score submission). "Groups" link appears in the authenticated user dropdown.
+
 ### Admin Dashboard
 An admin dashboard provides analytics, user management (ban/unban, admin status toggle), and leaderboard entry management. Access is restricted to users with `isAdmin: true`.
 

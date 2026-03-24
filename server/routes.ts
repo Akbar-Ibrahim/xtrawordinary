@@ -1221,5 +1221,322 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== GROUPS ROUTES ====================
+
+  function generateInviteCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) {
+      if (i === 4) code += "-";
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+
+  const CHALLENGE_GAME_SLUGS = [
+    "word-ladder", "anagram-solver", "word-scramble", "definition-match",
+    "letter-pool", "word-maker", "word-length", "letter-position",
+    "letter-hunt", "letter-balance", "letter-frequency", "no-repeats",
+    "word-sweep", "word-roots",
+  ];
+
+  app.get("/api/groups", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const [myGroups, publicGroups] = await Promise.all([
+        storage.getUserGroups(userId),
+        storage.getPublicGroups(),
+      ]);
+      const myGroupIds = new Set(myGroups.map(g => g.id));
+      const discover = publicGroups.filter(g => !myGroupIds.has(g.id));
+      res.json({ myGroups, discover });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch groups" });
+    }
+  });
+
+  app.post("/api/groups", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { name, description, isPublic } = req.body;
+      if (!name || typeof name !== "string" || name.trim().length < 2) {
+        return res.status(400).json({ error: "Group name must be at least 2 characters" });
+      }
+      let inviteCode = generateInviteCode();
+      let attempts = 0;
+      while (await storage.getGroupByInviteCode(inviteCode) && attempts < 10) {
+        inviteCode = generateInviteCode();
+        attempts++;
+      }
+      const group = await storage.createGroup({
+        name: name.trim(),
+        description: description?.trim() || null,
+        creatorId: userId,
+        inviteCode,
+        isPublic: Boolean(isPublic),
+      });
+      await storage.addGroupMember(group.id, userId, "owner");
+      res.status(201).json(group);
+    } catch {
+      res.status(500).json({ error: "Failed to create group" });
+    }
+  });
+
+  app.post("/api/groups/join", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { inviteCode } = req.body;
+      if (!inviteCode) return res.status(400).json({ error: "Invite code required" });
+      const group = await storage.getGroupByInviteCode(inviteCode.trim().toUpperCase());
+      if (!group) return res.status(404).json({ error: "Invalid invite code" });
+      const existing = await storage.getGroupMember(group.id, userId);
+      if (existing) return res.status(409).json({ error: "Already a member" });
+      await storage.addGroupMember(group.id, userId, "member");
+      res.json(group);
+    } catch {
+      res.status(500).json({ error: "Failed to join group" });
+    }
+  });
+
+  app.get("/api/groups/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const group = await storage.getGroup(groupId);
+      if (!group) return res.status(404).json({ error: "Group not found" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership && !group.isPublic) return res.status(403).json({ error: "Not a member" });
+      res.json({ group, membership: membership || null });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch group" });
+    }
+  });
+
+  app.patch("/api/groups/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || !["owner", "admin"].includes(membership.role)) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const { name, description, isPublic } = req.body;
+      const updates: Partial<Pick<any, "name" | "description" | "isPublic">> = {};
+      if (name !== undefined) updates.name = name.trim();
+      if (description !== undefined) updates.description = description?.trim() || null;
+      if (isPublic !== undefined) updates.isPublic = Boolean(isPublic);
+      const updated = await storage.updateGroup(groupId, updates);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update group" });
+    }
+  });
+
+  app.delete("/api/groups/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || membership.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can delete the group" });
+      }
+      await storage.deleteGroup(groupId);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete group" });
+    }
+  });
+
+  app.post("/api/groups/:id/leave", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(400).json({ error: "Not a member" });
+      if (membership.role === "owner") return res.status(400).json({ error: "Owner cannot leave. Delete the group instead." });
+      await storage.removeGroupMember(groupId, userId);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to leave group" });
+    }
+  });
+
+  app.get("/api/groups/:id/members", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const members = await storage.getGroupMembers(groupId);
+      res.json(members);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch members" });
+    }
+  });
+
+  app.patch("/api/groups/:id/members/:userId/role", requireAuth, async (req, res) => {
+    try {
+      const requestingUserId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const targetUserId = parseInt(req.params.userId);
+      if (isNaN(groupId) || isNaN(targetUserId)) return res.status(400).json({ error: "Invalid ID" });
+      const requesterMembership = await storage.getGroupMember(groupId, requestingUserId);
+      if (!requesterMembership || requesterMembership.role !== "owner") {
+        return res.status(403).json({ error: "Only the owner can change roles" });
+      }
+      const { role } = req.body;
+      if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "Invalid role" });
+      const updated = await storage.updateGroupMemberRole(groupId, targetUserId, role);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/groups/:id/members/:userId", requireAuth, async (req, res) => {
+    try {
+      const requestingUserId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const targetUserId = parseInt(req.params.userId);
+      if (isNaN(groupId) || isNaN(targetUserId)) return res.status(400).json({ error: "Invalid ID" });
+      const requesterMembership = await storage.getGroupMember(groupId, requestingUserId);
+      if (!requesterMembership || !["owner", "admin"].includes(requesterMembership.role)) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      await storage.removeGroupMember(groupId, targetUserId);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to remove member" });
+    }
+  });
+
+  app.get("/api/groups/:id/rounds", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const rounds = await storage.getGroupRounds(groupId);
+      res.json(rounds);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch rounds" });
+    }
+  });
+
+  app.post("/api/groups/:id/rounds", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || !["owner", "admin"].includes(membership.role)) {
+        return res.status(403).json({ error: "Only admins can create rounds" });
+      }
+      const { gameSlug, closesAt } = req.body;
+      const slug = gameSlug && CHALLENGE_GAME_SLUGS.includes(gameSlug) ? gameSlug : CHALLENGE_GAME_SLUGS[Math.floor(Math.random() * CHALLENGE_GAME_SLUGS.length)];
+      const seed = Math.floor(Math.random() * 2147483647);
+      const round = await storage.createGroupRound({
+        groupId,
+        gameSlug: slug,
+        seed,
+        status: "active",
+        createdById: userId,
+        closesAt: closesAt || null,
+      });
+      res.status(201).json(round);
+    } catch {
+      res.status(500).json({ error: "Failed to create round" });
+    }
+  });
+
+  app.get("/api/groups/:id/rounds/:roundId", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
+      const myScore = await storage.getUserGroupRoundScore(roundId, userId);
+      res.json({ round, myScore: myScore || null });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch round" });
+    }
+  });
+
+  app.post("/api/groups/:id/rounds/:roundId/score", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
+      if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
+      const { score } = req.body;
+      if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
+      const result = await storage.submitGroupRoundScore(roundId, userId, score);
+      res.json(result);
+    } catch {
+      res.status(500).json({ error: "Failed to submit score" });
+    }
+  });
+
+  app.get("/api/groups/:id/rounds/:roundId/scores", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const scores = await storage.getGroupRoundScores(roundId);
+      res.json(scores);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch scores" });
+    }
+  });
+
+  app.patch("/api/groups/:id/rounds/:roundId/close", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || !["owner", "admin"].includes(membership.role)) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const round = await storage.closeGroupRound(roundId);
+      res.json(round);
+    } catch {
+      res.status(500).json({ error: "Failed to close round" });
+    }
+  });
+
+  app.get("/api/groups/:id/leaderboard", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const leaderboard = await storage.getGroupLeaderboard(groupId);
+      res.json(leaderboard);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
   return httpServer;
 }

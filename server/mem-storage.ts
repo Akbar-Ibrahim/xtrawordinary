@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { gamesData, wordLadderPuzzlesData, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
 
@@ -373,6 +373,14 @@ export class MemStorage implements IStorage {
   private frIdCounter = 1;
   private friendChallengesStore: FriendChallenge[] = [];
   private fcIdCounter = 1;
+  private groupsStore: Group[] = [];
+  private grpIdCounter = 1;
+  private groupMembersStore: GroupMember[] = [];
+  private gmIdCounter = 1;
+  private groupRoundsStore: GroupRound[] = [];
+  private grIdCounter = 1;
+  private groupRoundScoresStore: GroupRoundScore[] = [];
+  private grsIdCounter = 1;
 
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
@@ -639,5 +647,138 @@ export class MemStorage implements IStorage {
     const c = this.friendChallengesStore.find(ch => ch.id === id);
     if (c) { c.receiverScore = score; c.status = "completed"; }
     return c;
+  }
+
+  async createGroup(group: InsertGroup): Promise<Group> {
+    const g: Group = { ...group, id: this.grpIdCounter++, createdAt: new Date().toISOString() };
+    this.groupsStore.push(g);
+    return g;
+  }
+
+  async getGroup(id: number): Promise<Group | undefined> {
+    return this.groupsStore.find(g => g.id === id);
+  }
+
+  async getGroupByInviteCode(code: string): Promise<Group | undefined> {
+    return this.groupsStore.find(g => g.inviteCode === code);
+  }
+
+  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic">>): Promise<Group | undefined> {
+    const g = this.groupsStore.find(gr => gr.id === id);
+    if (!g) return undefined;
+    Object.assign(g, updates);
+    return g;
+  }
+
+  async deleteGroup(id: number): Promise<void> {
+    this.groupsStore = this.groupsStore.filter(g => g.id !== id);
+    this.groupMembersStore = this.groupMembersStore.filter(m => m.groupId !== id);
+    const roundIds = this.groupRoundsStore.filter(r => r.groupId === id).map(r => r.id);
+    this.groupRoundsStore = this.groupRoundsStore.filter(r => r.groupId !== id);
+    this.groupRoundScoresStore = this.groupRoundScoresStore.filter(s => !roundIds.includes(s.roundId));
+  }
+
+  async getUserGroups(userId: number): Promise<Group[]> {
+    const memberGroupIds = this.groupMembersStore.filter(m => m.userId === userId).map(m => m.groupId);
+    return this.groupsStore.filter(g => memberGroupIds.includes(g.id));
+  }
+
+  async getPublicGroups(): Promise<Group[]> {
+    return this.groupsStore.filter(g => g.isPublic);
+  }
+
+  async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> {
+    const m: GroupMember = { id: this.gmIdCounter++, groupId, userId, role, joinedAt: new Date().toISOString() };
+    this.groupMembersStore.push(m);
+    return m;
+  }
+
+  async removeGroupMember(groupId: number, userId: number): Promise<void> {
+    this.groupMembersStore = this.groupMembersStore.filter(m => !(m.groupId === groupId && m.userId === userId));
+  }
+
+  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+    const members = this.groupMembersStore.filter(m => m.groupId === groupId);
+    return members.map(m => {
+      const u = this.users.get(m.userId);
+      return { ...m, user: { id: m.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
+    });
+  }
+
+  async getGroupMember(groupId: number, userId: number): Promise<GroupMember | undefined> {
+    return this.groupMembersStore.find(m => m.groupId === groupId && m.userId === userId);
+  }
+
+  async updateGroupMemberRole(groupId: number, userId: number, role: string): Promise<GroupMember | undefined> {
+    const m = this.groupMembersStore.find(mb => mb.groupId === groupId && mb.userId === userId);
+    if (m) m.role = role;
+    return m;
+  }
+
+  async createGroupRound(round: InsertGroupRound): Promise<GroupRound> {
+    const r: GroupRound = { ...round, id: this.grIdCounter++, createdAt: new Date().toISOString() };
+    this.groupRoundsStore.push(r);
+    return r;
+  }
+
+  async getGroupRound(id: number): Promise<GroupRound | undefined> {
+    return this.groupRoundsStore.find(r => r.id === id);
+  }
+
+  async getGroupRounds(groupId: number): Promise<GroupRound[]> {
+    return this.groupRoundsStore.filter(r => r.groupId === groupId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async closeGroupRound(id: number): Promise<GroupRound | undefined> {
+    const r = this.groupRoundsStore.find(rd => rd.id === id);
+    if (r) r.status = "closed";
+    return r;
+  }
+
+  async submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore> {
+    const existing = this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
+    if (existing) {
+      existing.score = score;
+      existing.completedAt = new Date().toISOString();
+      return existing;
+    }
+    const s: GroupRoundScore = { id: this.grsIdCounter++, roundId, userId, score, completedAt: new Date().toISOString() };
+    this.groupRoundScoresStore.push(s);
+    return s;
+  }
+
+  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+    const scores = this.groupRoundScoresStore.filter(s => s.roundId === roundId);
+    return scores
+      .sort((a, b) => b.score - a.score)
+      .map(s => {
+        const u = this.users.get(s.userId);
+        return { ...s, user: { id: s.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
+      });
+  }
+
+  async getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined> {
+    return this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
+  }
+
+  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+    const roundIds = this.groupRoundsStore.filter(r => r.groupId === groupId).map(r => r.id);
+    const relevantScores = this.groupRoundScoresStore.filter(s => roundIds.includes(s.roundId));
+    const tally = new Map<number, { totalScore: number; roundsPlayed: number }>();
+    for (const s of relevantScores) {
+      const existing = tally.get(s.userId);
+      if (existing) {
+        existing.totalScore += s.score;
+        existing.roundsPlayed++;
+      } else {
+        tally.set(s.userId, { totalScore: s.score, roundsPlayed: 1 });
+      }
+    }
+    return Array.from(tally.entries())
+      .sort((a, b) => b[1].totalScore - a[1].totalScore)
+      .map(([userId, data]) => {
+        const u = this.users.get(userId);
+        return { userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
+      });
   }
 }

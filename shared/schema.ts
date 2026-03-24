@@ -279,3 +279,50 @@ export type FriendChallenge = z.infer<typeof friendChallengeSchema>;
 
 export const insertFriendChallengeSchema = friendChallengeSchema.omit({ id: true, createdAt: true });
 export type InsertFriendChallenge = z.infer<typeof insertFriendChallengeSchema>;
+
+// ==================== GROUPS ====================
+
+export const groupSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  creatorId: z.number(),
+  inviteCode: z.string(),
+  isPublic: z.boolean(),
+  createdAt: z.string(),
+});
+export type Group = z.infer<typeof groupSchema>;
+export const insertGroupSchema = groupSchema.omit({ id: true, createdAt: true });
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+
+export const groupMemberSchema = z.object({
+  id: z.number(),
+  groupId: z.number(),
+  userId: z.number(),
+  role: z.string(),
+  joinedAt: z.string(),
+});
+export type GroupMember = z.infer<typeof groupMemberSchema>;
+
+export const groupRoundSchema = z.object({
+  id: z.number(),
+  groupId: z.number(),
+  gameSlug: z.string(),
+  seed: z.number(),
+  status: z.string(),
+  createdById: z.number(),
+  closesAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type GroupRound = z.infer<typeof groupRoundSchema>;
+export const insertGroupRoundSchema = groupRoundSchema.omit({ id: true, createdAt: true });
+export type InsertGroupRound = z.infer<typeof insertGroupRoundSchema>;
+
+export const groupRoundScoreSchema = z.object({
+  id: z.number(),
+  roundId: z.number(),
+  userId: z.number(),
+  score: z.number(),
+  completedAt: z.string(),
+});
+export type GroupRoundScore = z.infer<typeof groupRoundScoreSchema>;

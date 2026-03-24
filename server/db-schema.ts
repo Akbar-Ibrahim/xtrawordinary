@@ -108,6 +108,56 @@ export const words = mysqlTable("words", {
   word: varchar("word", { length: 100 }).notNull().unique(),
 });
 
+export const groups = mysqlTable("groups", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  creatorId: int("creator_id").notNull(),
+  inviteCode: varchar("invite_code", { length: 20 }).notNull().unique(),
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("grp_creator_idx").on(table.creatorId),
+]);
+
+export const groupMembers = mysqlTable("group_members", {
+  id: int("id").primaryKey().autoincrement(),
+  groupId: int("group_id").notNull(),
+  userId: int("user_id").notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("member"),
+  joinedAt: timestamp("joined_at").notNull().defaultNow(),
+}, (table) => [
+  index("gm_group_idx").on(table.groupId),
+  index("gm_user_idx").on(table.userId),
+  uniqueIndex("gm_group_user_idx").on(table.groupId, table.userId),
+]);
+
+export const groupRounds = mysqlTable("group_rounds", {
+  id: int("id").primaryKey().autoincrement(),
+  groupId: int("group_id").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  seed: int("seed").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  createdById: int("created_by_id").notNull(),
+  closesAt: timestamp("closes_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gr_group_idx").on(table.groupId),
+  index("gr_status_idx").on(table.status),
+]);
+
+export const groupRoundScores = mysqlTable("group_round_scores", {
+  id: int("id").primaryKey().autoincrement(),
+  roundId: int("round_id").notNull(),
+  userId: int("user_id").notNull(),
+  score: int("score").notNull(),
+  completedAt: timestamp("completed_at").notNull().defaultNow(),
+}, (table) => [
+  index("grs_round_idx").on(table.roundId),
+  index("grs_user_idx").on(table.userId),
+  uniqueIndex("grs_round_user_idx").on(table.roundId, table.userId),
+]);
+
 export const games = mysqlTable("games", {
   id: int("id").primaryKey().autoincrement(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
