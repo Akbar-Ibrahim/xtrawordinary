@@ -628,9 +628,17 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.toGroup(rows[0]) : undefined;
   }
 
-  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic">>): Promise<Group | undefined> {
+  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic" | "tags" | "pinnedAnnouncement" | "isFeatured">>): Promise<Group | undefined> {
     const db = await this.getDb();
-    await db.update(schema.groups).set(updates).where(eq(schema.groups.id, id));
+    const dbUpdates: Record<string, any> = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.isPublic !== undefined) dbUpdates.isPublic = updates.isPublic;
+    if (updates.isFeatured !== undefined) dbUpdates.isFeatured = updates.isFeatured;
+    if (updates.pinnedAnnouncement !== undefined) dbUpdates.pinnedAnnouncement = updates.pinnedAnnouncement;
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags ? JSON.stringify(updates.tags) : null;
+    if (Object.keys(dbUpdates).length === 0) return this.getGroup(id);
+    await db.update(schema.groups).set(dbUpdates).where(eq(schema.groups.id, id));
     return this.getGroup(id);
   }
 

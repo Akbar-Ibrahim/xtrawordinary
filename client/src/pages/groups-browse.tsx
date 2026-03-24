@@ -127,7 +127,7 @@ export default function GroupsBrowse() {
               </section>
             )}
 
-            {allPublic.length === 0 && (
+            {!allPublic?.length && (
               <Card>
                 <CardContent className="p-10 text-center">
                   <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />

@@ -677,7 +677,7 @@ export class MemStorage implements IStorage {
     return this.groupsStore.find(g => g.inviteCode === code);
   }
 
-  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic">>): Promise<Group | undefined> {
+  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic" | "tags" | "pinnedAnnouncement" | "isFeatured">>): Promise<Group | undefined> {
     const g = this.groupsStore.find(gr => gr.id === id);
     if (!g) return undefined;
     Object.assign(g, updates);
