@@ -750,7 +750,7 @@ export class MemStorage implements IStorage {
   async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
     const scores = this.groupRoundScoresStore.filter(s => s.roundId === roundId);
     return scores
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || a.completedAt.localeCompare(b.completedAt))
       .map(s => {
         const u = this.users.get(s.userId);
         return { ...s, user: { id: s.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };

@@ -9,13 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import * as LucideIcons from "lucide-react";
-import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X } from "lucide-react";
-import type { Group, GroupMember, GroupRound } from "@shared/schema";
+import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import type { Group, GroupMember, GroupRound, GroupRoundScore } from "@shared/schema";
 
 const GAME_SLUGS = [
   "word-ladder", "anagram-solver", "word-scramble", "definition-match",
@@ -51,6 +51,46 @@ interface MemberWithUser extends GroupMember {
   user: { id: number; name: string; avatarUrl: string | null };
 }
 
+type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } };
+
+function RoundScoresPanel({ groupId, roundId }: { groupId: number; roundId: number }) {
+  const { data, isLoading } = useQuery<RoundScoreEntry[]>({
+    queryKey: ["/api/groups", groupId, "rounds", roundId, "scores"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/rounds/${roundId}/scores`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load scores");
+      return res.json();
+    },
+  });
+
+  if (isLoading) return <div className="py-2 px-3"><Skeleton className="h-10 w-full" /></div>;
+  if (!data || data.length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-3">No scores submitted for this round.</p>;
+  }
+
+  return (
+    <div className="space-y-1 pt-1">
+      {data.map((entry, i) => (
+        <div key={entry.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${roundId}-${entry.userId}`}>
+          <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+            {i + 1}
+          </span>
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={entry.user.avatarUrl || undefined} />
+            <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+          <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const groupId = parseInt(id);
@@ -61,6 +101,7 @@ export default function GroupDetail() {
   const [selectedSlug, setSelectedSlug] = useState("random");
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [expandedRoundId, setExpandedRoundId] = useState<number | null>(null);
 
   const { data, isLoading, error } = useQuery<GroupDetailResponse>({
     queryKey: ["/api/groups", groupId],
@@ -300,19 +341,37 @@ export default function GroupDetail() {
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Past Rounds</h3>
                   <div className="space-y-2">
-                    {pastRounds.map(round => (
-                      <Link key={round.id} href={`/groups/${groupId}/rounds/${round.id}/play`}>
-                        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" data-testid={`card-round-${round.id}`}>
-                          <CardContent className="p-4 flex items-center justify-between">
-                            <div>
-                              <p className="font-medium">{GAME_NAMES[round.gameSlug] || round.gameSlug}</p>
-                              <p className="text-xs text-muted-foreground">{new Date(round.createdAt).toLocaleDateString()}</p>
-                            </div>
-                            <Badge variant="outline">Closed</Badge>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
+                    {pastRounds.map(round => {
+                      const isExpanded = expandedRoundId === round.id;
+                      return (
+                        <Collapsible
+                          key={round.id}
+                          open={isExpanded}
+                          onOpenChange={() => setExpandedRoundId(isExpanded ? null : round.id)}
+                        >
+                          <Card data-testid={`card-round-${round.id}`}>
+                            <CollapsibleTrigger asChild>
+                              <CardContent className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
+                                <div>
+                                  <p className="font-medium">{GAME_NAMES[round.gameSlug] || round.gameSlug}</p>
+                                  <p className="text-xs text-muted-foreground">{new Date(round.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">Closed</Badge>
+                                  {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                                </div>
+                              </CardContent>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <div className="px-4 pb-4 border-t pt-3">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Round Results</p>
+                                <RoundScoresPanel groupId={groupId} roundId={round.id} />
+                              </div>
+                            </CollapsibleContent>
+                          </Card>
+                        </Collapsible>
+                      );
+                    })}
                   </div>
                 </div>
               )}

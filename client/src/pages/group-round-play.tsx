@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Play, Trophy, CheckCircle, Users, X } from "lucide-react";
-import type { GroupRound } from "@shared/schema";
+import { ArrowLeft, Play, Trophy, CheckCircle, Users, X, Clock } from "lucide-react";
+import type { GroupRound, GroupRoundScore } from "@shared/schema";
 
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
@@ -49,7 +50,10 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
 
 function renderGroupGame(slug: string, seed: number): React.ReactNode {
   switch (slug) {
-    case "word-length": return <WordLengthGame initialChallenge={(seed % 5) + 1 as any} />;
+    case "word-length": {
+      const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
+      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} />;
+    }
     case "letter-position": return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} />;
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
@@ -84,6 +88,8 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
   }
 }
 
+type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } };
+
 interface RoundResponse {
   round: GroupRound;
   myScore: { id: number; score: number; completedAt: string } | null;
@@ -109,11 +115,23 @@ export default function GroupRoundPlay() {
     enabled: !isNaN(groupId) && !isNaN(roundIdNum),
   });
 
+  const { data: roundScores, isLoading: scoresLoading } = useQuery<RoundScoreEntry[]>({
+    queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "scores"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/rounds/${roundIdNum}/scores`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !isNaN(groupId) && !isNaN(roundIdNum) && (submitted || !!data?.myScore),
+    refetchInterval: submitted ? 10000 : false,
+  });
+
   const submitMutation = useMutation({
     mutationFn: async (score: number) =>
       apiRequest("POST", `/api/groups/${groupId}/rounds/${roundIdNum}/score`, { score }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "scores"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "leaderboard"] });
     },
     onError: () => toast({ title: "Failed to save score", variant: "destructive" }),
@@ -194,19 +212,55 @@ export default function GroupRoundPlay() {
                 </div>
 
                 {(alreadyPlayed) ? (
-                  <div className="text-center py-4 space-y-4">
-                    <div className="inline-flex items-center gap-2 text-green-600">
-                      <CheckCircle className="h-6 w-6" />
-                      <span className="font-semibold text-lg">Score Submitted!</span>
+                  <div className="space-y-5">
+                    <div className="text-center py-2">
+                      <div className="inline-flex items-center gap-2 text-green-600 mb-2">
+                        <CheckCircle className="h-6 w-6" />
+                        <span className="font-semibold text-lg">Score Submitted!</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2">
+                        <Trophy className="h-5 w-5 text-yellow-500" />
+                        <span className="text-xl font-bold">
+                          {submitted ? finalScore : myScore?.score ?? 0} pts
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <span className="text-lg font-medium">
-                        {submitted ? finalScore : myScore?.score ?? 0} pts
-                      </span>
+
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Round Leaderboard
+                      </p>
+                      {scoresLoading ? (
+                        <div className="space-y-1">
+                          {[1, 2].map(i => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+                        </div>
+                      ) : roundScores && roundScores.length > 0 ? (
+                        <div className="space-y-1" data-testid="round-leaderboard">
+                          {roundScores.map((entry, i) => (
+                            <div key={entry.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${entry.userId}`}>
+                              <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                                {i + 1}
+                              </span>
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src={entry.user.avatarUrl || undefined} />
+                                <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">No scores yet.</p>
+                      )}
                     </div>
+
                     <Link href={`/groups/${groupId}`}>
-                      <Button variant="outline" className="gap-2">
+                      <Button variant="outline" className="w-full gap-2">
                         <ArrowLeft className="h-4 w-4" />
                         Back to Group
                       </Button>
