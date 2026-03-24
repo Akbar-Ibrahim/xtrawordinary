@@ -13,11 +13,15 @@ import type { ScrambleWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 export function WordScrambleGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-scramble" });
   const seeded = groupSeed !== undefined;
+  const seedRngRef = useRef<(() => number) | undefined>(
+    seeded ? makeSeededRng(groupSeed!) : undefined
+  );
   const { data: words = [], isLoading, error, refetch } = useQuery<ScrambleWord[]>({
     queryKey: seeded ? ["/api/games/word-scramble/words", groupSeed] : ["/api/games/word-scramble/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-scramble/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
@@ -39,14 +43,14 @@ export function WordScrambleGame({ groupSeed }: { groupSeed?: number } = {}) {
   const [completionMessage, setCompletionMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const scrambleWord = (word: string): string => {
+  const scrambleWord = (word: string, rng: () => number = Math.random): string => {
     const letters = word.split("");
     for (let i = letters.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [letters[i], letters[j]] = [letters[j], letters[i]];
     }
     const scrambled = letters.join("");
-    if (scrambled === word) return scrambleWord(word);
+    if (scrambled === word) return scrambleWord(word, rng);
     return scrambled;
   };
 
@@ -58,9 +62,10 @@ export function WordScrambleGame({ groupSeed }: { groupSeed?: number } = {}) {
       setCompletionMessage(getCompletionMessage(true));
       return;
     }
-    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    const randomWord = availableWords[Math.floor(rng() * availableWords.length)];
     setCurrentWord(randomWord);
-    setScrambledWord(scrambleWord(randomWord.word));
+    setScrambledWord(scrambleWord(randomWord.word, rng));
     setUserInput("");
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -79,9 +84,10 @@ export function WordScrambleGame({ groupSeed }: { groupSeed?: number } = {}) {
     setGameStatus("playing");
     setWordsCompleted(0);
     setUsedWords(new Set());
-    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    const randomWord = freshWords[Math.floor(rng() * freshWords.length)];
     setCurrentWord(randomWord);
-    setScrambledWord(scrambleWord(randomWord.word));
+    setScrambledWord(scrambleWord(randomWord.word, rng));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);

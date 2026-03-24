@@ -14,11 +14,15 @@ import type { MakerWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-maker" });
   const seeded = groupSeed !== undefined;
+  const seedRngRef = useRef<(() => number) | undefined>(
+    seeded ? makeSeededRng(groupSeed!) : undefined
+  );
   const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
     queryKey: seeded ? ["/api/games/word-maker/words", groupSeed] : ["/api/games/word-maker/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-maker/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
@@ -60,7 +64,8 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
       setGameStatus("won");
       return;
     }
-    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    const randomWord = availableWords[Math.floor(rng() * availableWords.length)];
     setCurrentWord(randomWord);
     setFoundWords(new Set());
     setUserInput("");
@@ -80,7 +85,8 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
     setGameStatus("playing");
     setUsedBaseWords(new Set());
     setFoundWords(new Set());
-    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    const randomWord = freshWords[Math.floor(rng() * freshWords.length)];
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));

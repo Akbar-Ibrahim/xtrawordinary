@@ -13,11 +13,15 @@ import type { AnagramWordSet } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "anagram-solver" });
   const seeded = groupSeed !== undefined;
+  const seedRngRef = useRef<(() => number) | undefined>(
+    seeded ? makeSeededRng(groupSeed!) : undefined
+  );
   const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
     queryKey: seeded ? ["/api/games/anagram-solver/words", groupSeed] : ["/api/games/anagram-solver/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/anagram-solver/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
@@ -45,7 +49,8 @@ export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
       setCompletionMessage(getCompletionMessage(true));
       return;
     }
-    const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    const rng = seedRngRef.current ?? Math.random;
+    const randomIndex = availableIndices[Math.floor(rng() * availableIndices.length)];
     const newSet = activeWordSets[randomIndex];
     setCurrentSet(newSet);
     setUserInput("");
@@ -65,7 +70,8 @@ export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
     setGameStatus("playing");
     setUsedSets(new Set());
     setWordsSolved(0);
-    const randomIndex = Math.floor(Math.random() * freshWordSets.length);
+    const rng = seedRngRef.current ?? Math.random;
+    const randomIndex = Math.floor(rng() * freshWordSets.length);
     const newSet = freshWordSets[randomIndex];
     setCurrentSet(newSet);
     setUserInput("");

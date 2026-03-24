@@ -1341,11 +1341,17 @@ export async function registerRoutes(
       const targetUserId = parseInt(req.params.userId);
       if (isNaN(groupId) || isNaN(targetUserId)) return res.status(400).json({ error: "Invalid ID" });
       const requesterMembership = await storage.getGroupMember(groupId, requestingUserId);
-      if (!requesterMembership || requesterMembership.role !== "owner") {
-        return res.status(403).json({ error: "Only the owner can change roles" });
+      if (!requesterMembership || !["owner", "admin"].includes(requesterMembership.role)) {
+        return res.status(403).json({ error: "Only owners and admins can change roles" });
       }
       const { role } = req.body;
       if (!["admin", "member"].includes(role)) return res.status(400).json({ error: "Invalid role" });
+      const targetMembership = await storage.getGroupMember(groupId, targetUserId);
+      if (!targetMembership) return res.status(404).json({ error: "Member not found" });
+      if (targetMembership.role === "owner") return res.status(403).json({ error: "Cannot change the owner's role" });
+      if (requesterMembership.role === "admin" && role === "admin" && targetMembership.role !== "admin") {
+        // Admins can promote members to admin (owner-level action): allow
+      }
       const updated = await storage.updateGroupMemberRole(groupId, targetUserId, role);
       res.json(updated);
     } catch {

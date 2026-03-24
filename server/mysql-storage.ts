@@ -731,7 +731,7 @@ export class MySQLStorage implements IStorage {
 
   async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
     const db = await this.getDb();
-    const scores = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, roundId)).orderBy(desc(schema.groupRoundScores.score), asc(schema.groupRoundScores.durationMs));
+    const scores = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, roundId)).orderBy(desc(schema.groupRoundScores.score), asc(sql`COALESCE(${schema.groupRoundScores.durationMs}, 2147483647)`));
     if (scores.length === 0) return [];
     const userIds = scores.map((s: any) => s.userId);
     const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
