@@ -15,6 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   A: 5, B: 3, C: 4, D: 4, E: 5, F: 3, G: 4, H: 4, I: 5, J: 2, K: 3, L: 4, M: 4,
@@ -50,20 +51,20 @@ function getLettersForCount(count: number): string[] {
     .map(([letter]) => letter);
 }
 
-function generateConstraint(challenge: Challenge): FrequencyConstraint {
+function generateConstraint(challenge: Challenge, rng: () => number = Math.random): FrequencyConstraint {
   const config = CHALLENGE_CONFIG[challenge];
   const countRange = config.maxCount - config.minCount + 1;
-  const count = Math.floor(Math.random() * countRange) + config.minCount;
+  const count = Math.floor(rng() * countRange) + config.minCount;
   
   const validLetters = getLettersForCount(count);
-  const letter = validLetters[Math.floor(Math.random() * validLetters.length)];
+  const letter = validLetters[Math.floor(rng() * validLetters.length)];
   
   return { letter, count };
 }
 
-function generateMultiLetterConstraint(): MultiLetterConstraint {
-  const letterCount = Math.random() < 0.5 ? 2 : 3;
-  const shuffled = [...MULTI_LETTER_POOL].sort(() => Math.random() - 0.5);
+function generateMultiLetterConstraint(rng: () => number = Math.random): MultiLetterConstraint {
+  const letterCount = rng() < 0.5 ? 2 : 3;
+  const shuffled = [...MULTI_LETTER_POOL].sort(() => rng() - 0.5);
   const letters = shuffled.slice(0, letterCount);
   return { letters, minCount: 2 };
 }
@@ -100,9 +101,12 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
+export function LetterFrequencyGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-frequency" });
+  const seedRngRef = useRef<(() => number) | undefined>(
+    groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
+  );
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -164,10 +168,10 @@ export function LetterFrequencyGame({ initialChallenge }: { initialChallenge?: C
     setFeedback(null);
     if (c === "multi") {
       setConstraint(null);
-      setMultiConstraint(generateMultiLetterConstraint());
+      setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
     } else {
       setMultiConstraint(null);
-      setConstraint(generateConstraint(c));
+      setConstraint(generateConstraint(c, seedRngRef.current));
     }
     setGameStatus("playing");
     startTimer();
@@ -253,9 +257,9 @@ export function LetterFrequencyGame({ initialChallenge }: { initialChallenge?: C
         setGameStatus("won");
       } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
         if (challenge === "multi") {
-          setMultiConstraint(generateMultiLetterConstraint());
+          setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
         } else {
-          setConstraint(generateConstraint(challenge));
+          setConstraint(generateConstraint(challenge, seedRngRef.current));
         }
       }
 

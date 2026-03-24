@@ -15,6 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -28,44 +29,44 @@ type LevelConstraint = {
   contains?: string;
 };
 
-function pickRandom(pool: string[]): string {
-  return pool[Math.floor(Math.random() * pool.length)];
+function pickFrom(pool: string[], rng: () => number): string {
+  return pool[Math.floor(rng() * pool.length)];
 }
 
-function pickRandomExcluding(pool: string[], exclude: string): string {
+function pickFromExcluding(pool: string[], exclude: string, rng: () => number): string {
   const filtered = pool.filter(l => l !== exclude);
-  return filtered[Math.floor(Math.random() * filtered.length)];
+  return filtered[Math.floor(rng() * filtered.length)];
 }
 
-function generateConstraint(variation: number): LevelConstraint {
+function generateConstraint(variation: number, rng: () => number = Math.random): LevelConstraint {
   switch (variation) {
     case 1: {
-      const length = Math.floor(Math.random() * 6) + 3;
+      const length = Math.floor(rng() * 6) + 3;
       return { length };
     }
     case 2: {
-      const length = Math.floor(Math.random() * 6) + 3;
+      const length = Math.floor(rng() * 6) + 3;
       const startPool = length <= 4 ? COMMON_START_ALPHABET : ALPHABET;
-      return { length, startsWith: pickRandom(startPool) };
+      return { length, startsWith: pickFrom(startPool, rng) };
     }
     case 3: {
-      const length = Math.floor(Math.random() * 6) + 3;
-      return { length, endsWith: pickRandom(ENDS_WITH_ALPHABET) };
+      const length = Math.floor(rng() * 6) + 3;
+      return { length, endsWith: pickFrom(ENDS_WITH_ALPHABET, rng) };
     }
     case 4: {
-      const length = Math.floor(Math.random() * 5) + 4;
-      const startsWith = pickRandom(COMMON_START_ALPHABET);
-      const contains = pickRandomExcluding(COMMON_INTERIOR_ALPHABET, startsWith);
+      const length = Math.floor(rng() * 5) + 4;
+      const startsWith = pickFrom(COMMON_START_ALPHABET, rng);
+      const contains = pickFromExcluding(COMMON_INTERIOR_ALPHABET, startsWith, rng);
       return { length, startsWith, contains };
     }
     case 5: {
-      const length = Math.floor(Math.random() * 5) + 4;
-      const endsWith = pickRandom(ENDS_WITH_ALPHABET);
-      const contains = pickRandomExcluding(COMMON_INTERIOR_ALPHABET, endsWith);
+      const length = Math.floor(rng() * 5) + 4;
+      const endsWith = pickFrom(ENDS_WITH_ALPHABET, rng);
+      const contains = pickFromExcluding(COMMON_INTERIOR_ALPHABET, endsWith, rng);
       return { length, endsWith, contains };
     }
     default: {
-      const length = Math.floor(Math.random() * 6) + 3;
+      const length = Math.floor(rng() * 6) + 3;
       return { length };
     }
   }
@@ -127,9 +128,12 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge }: { initialChallenge?: number } = {}) {
+export function WordLengthGame({ initialChallenge, groupSeed }: { initialChallenge?: number; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-length" });
+  const seedRngRef = useRef<(() => number) | undefined>(
+    groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
+  );
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -181,7 +185,7 @@ export function WordLengthGame({ initialChallenge }: { initialChallenge?: number
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(generateConstraint(varId));
+    setConstraint(generateConstraint(varId, seedRngRef.current));
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);

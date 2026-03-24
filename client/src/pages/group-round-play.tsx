@@ -52,22 +52,22 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} />;
+      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} groupSeed={seed} />;
     }
-    case "letter-position": return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} />;
+    case "letter-position": return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} groupSeed={seed} />;
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <LetterHuntGame initialChallenge={options[seed % options.length]} />;
+      return <LetterHuntGame initialChallenge={options[seed % options.length]} groupSeed={seed} />;
     }
     case "letter-balance": {
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat];
       const level = levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} />;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
-      return <LetterFrequencyGame initialChallenge={options[seed % options.length]} />;
+      return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} />;
     }
     case "no-repeats": {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];

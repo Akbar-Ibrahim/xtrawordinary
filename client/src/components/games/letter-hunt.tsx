@@ -15,6 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
@@ -29,17 +30,17 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; l
   advanced: { name: "Challenge Advanced", description: "Random letter count for each word!", letterCount: "random" },
 };
 
-function generateRandomLetters(count: number): string[] {
+function generateRandomLetters(count: number, rng: () => number = Math.random): string[] {
   const letters: string[] = [];
   for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(Math.random() * ALPHABET.length);
+    const randomIndex = Math.floor(rng() * ALPHABET.length);
     letters.push(ALPHABET[randomIndex]);
   }
   return letters;
 }
 
-function getRandomLetterCount(): number {
-  return Math.floor(Math.random() * 5) + 2;
+function getRandomLetterCount(rng: () => number = Math.random): number {
+  return Math.floor(rng() * 5) + 2;
 }
 
 function validateOrderedSubsequence(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
@@ -94,9 +95,12 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
+export function LetterHuntGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-hunt" });
+  const seedRngRef = useRef<(() => number) | undefined>(
+    groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
+  );
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -146,10 +150,10 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
     }, 1000);
   }, [stopTimer]);
 
-  const generateLettersForChallenge = useCallback((c: Challenge): string[] => {
+  const generateLettersForChallenge = useCallback((c: Challenge, rng?: () => number): string[] => {
     const config = CHALLENGE_CONFIG[c];
-    const count = config.letterCount === "random" ? getRandomLetterCount() : config.letterCount;
-    return generateRandomLetters(count);
+    const count = config.letterCount === "random" ? getRandomLetterCount(rng) : config.letterCount;
+    return generateRandomLetters(count, rng);
   }, []);
 
   const selectChallenge = useCallback((c: Challenge) => {
@@ -169,7 +173,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setCurrentLetters(generateLettersForChallenge(c));
+    setCurrentLetters(generateLettersForChallenge(c, seedRngRef.current));
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -272,7 +276,7 @@ export function LetterHuntGame({ initialChallenge }: { initialChallenge?: Challe
           setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         } else if (challenge === "advanced") {
-          setCurrentLetters(generateLettersForChallenge("advanced"));
+          setCurrentLetters(generateLettersForChallenge("advanced", seedRngRef.current));
           setUsedWords(new Set());
         }
       }, 500);

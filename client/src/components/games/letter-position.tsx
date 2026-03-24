@@ -15,6 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -32,9 +33,9 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; c
 };
 
 // Generate random position (1-8) and random letter (excluding rare letters J, Q, X, V, Z)
-function generateRandomConstraint(): PositionConstraint {
-  const position = Math.floor(Math.random() * 8) + 1; // 1-8
-  const letter = POSITION_ALPHABET[Math.floor(Math.random() * POSITION_ALPHABET.length)];
+function generateRandomConstraint(rng: () => number = Math.random): PositionConstraint {
+  const position = Math.floor(rng() * 8) + 1; // 1-8
+  const letter = POSITION_ALPHABET[Math.floor(rng() * POSITION_ALPHABET.length)];
   return { position, letter };
 }
 
@@ -51,9 +52,12 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-position" });
+  const seedRngRef = useRef<(() => number) | undefined>(
+    groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
+  );
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -113,7 +117,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(generateRandomConstraint());
+    setConstraint(generateRandomConstraint(seedRngRef.current));
     setGameStatus("playing");
     startTimer();
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -197,7 +201,7 @@ export function LetterPositionGame({ initialChallenge }: { initialChallenge?: Ch
           setGameStatus("won");
         } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
           // Challenge 2: new random constraint for each word
-          setConstraint(generateRandomConstraint());
+          setConstraint(generateRandomConstraint(seedRngRef.current));
         }
       }, 500);
     } catch {

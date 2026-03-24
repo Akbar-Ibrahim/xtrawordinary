@@ -15,6 +15,7 @@ import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schem
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { makeSeededRng } from "@/lib/seeded-rng";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -153,13 +154,14 @@ const CATEGORIES: CategoryDefinition[] = [
 function generateConstraint(
   category: VariationCategory,
   level: LevelType,
-  wordIndex: number = 0
+  wordIndex: number = 0,
+  rng: () => number = Math.random
 ): GameConstraint {
   const categoryDef = CATEGORIES.find(c => c.id === category)!;
   
   // For advanced mode, randomize the constraint value
   const getRandomValue = (min: number, max: number) => 
-    Math.floor(Math.random() * (max - min + 1)) + min;
+    Math.floor(rng() * (max - min + 1)) + min;
   
   const isAdvanced = level === "advanced";
   
@@ -332,9 +334,12 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { category: VariationCategory; level: LevelType } } = {}) {
+export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-balance" });
+  const seedRngRef = useRef<(() => number) | undefined>(
+    groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
+  );
   const { data: config, isLoading: configLoading } = useQuery<VowelConsonantConfig>({
     queryKey: ["/api/games/letter-balance/config"],
   });
@@ -453,7 +458,7 @@ export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { c
     setFeedback(null);
     
     // Generate initial constraint
-    const constraint = generateConstraint(selectedCategory, level, 0);
+    const constraint = generateConstraint(selectedCategory, level, 0, seedRngRef.current);
     setCurrentConstraint(constraint);
     setGameState("playing");
     
@@ -478,7 +483,7 @@ export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { c
     if (!selectedCategory || selectedLevel === null) return;
     
     const newWordIndex = wordsCompleted + 1;
-    const constraint = generateConstraint(selectedCategory, selectedLevel, newWordIndex);
+    const constraint = generateConstraint(selectedCategory, selectedLevel, newWordIndex, seedRngRef.current);
     setCurrentConstraint(constraint);
     
     if (selectedLevel === "advanced") {
@@ -504,7 +509,7 @@ export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { c
       setUserInput("");
       setFeedback(null);
       
-      const constraint = generateConstraint(selectedCategory, nextLevel, 0);
+      const constraint = generateConstraint(selectedCategory, nextLevel, 0, seedRngRef.current);
       setCurrentConstraint(constraint);
       setGameState("playing");
       
@@ -589,7 +594,7 @@ export function LetterBalanceGame({ initialChallenge }: { initialChallenge?: { c
         } else {
           // Generate new constraint for advanced mode
           if (selectedLevel === "advanced" && selectedCategory) {
-            const newConstraint = generateConstraint(selectedCategory, selectedLevel, newWordsCompleted);
+            const newConstraint = generateConstraint(selectedCategory, selectedLevel, newWordsCompleted, seedRngRef.current);
             setCurrentConstraint(newConstraint);
           }
           startTimer();
