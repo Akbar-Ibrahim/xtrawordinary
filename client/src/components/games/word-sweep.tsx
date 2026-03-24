@@ -34,6 +34,7 @@ export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
 
   const { data: gridData, isLoading, error, refetch } = useQuery<WordSweepGrid>({
     queryKey: seeded ? ["/api/games/word-sweep/grid", groupSeed] : ["/api/games/word-sweep/grid"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-sweep/grid?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
     refetchOnMount: seeded ? false : "always",
   });
 

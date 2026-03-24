@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
     case "definition-match": return <DefinitionMatchGame groupSeed={seed} />;
     case "letter-pool": {
       const v = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} />;
+      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} />;
     }
     case "word-maker": return <WordMakerGame groupSeed={seed} />;
     case "word-sweep": return <WordSweepGame groupSeed={seed} />;
@@ -92,7 +92,7 @@ type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; ava
 
 interface RoundResponse {
   round: GroupRound;
-  myScore: { id: number; score: number; completedAt: string } | null;
+  myScore: { id: number; score: number; durationMs: number | null; completedAt: string } | null;
 }
 
 export default function GroupRoundPlay() {
@@ -104,6 +104,7 @@ export default function GroupRoundPlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
 
   const { data, isLoading, error } = useQuery<RoundResponse>({
     queryKey: ["/api/groups", groupId, "rounds", roundIdNum],
@@ -127,8 +128,8 @@ export default function GroupRoundPlay() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: async (score: number) =>
-      apiRequest("POST", `/api/groups/${groupId}/rounds/${roundIdNum}/score`, { score }),
+    mutationFn: async ({ score, durationMs }: { score: number; durationMs?: number }) =>
+      apiRequest("POST", `/api/groups/${groupId}/rounds/${roundIdNum}/score`, { score, durationMs }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "scores"] });
@@ -139,14 +140,16 @@ export default function GroupRoundPlay() {
 
   useEffect(() => {
     if (!isPlaying || !data) return;
+    startTimeRef.current = Date.now();
     const handleResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail.slug !== data.round.gameSlug) return;
       const score = detail.score ?? 0;
+      const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : undefined;
       setFinalScore(score);
       setSubmitted(true);
       setIsPlaying(false);
-      submitMutation.mutate(score);
+      submitMutation.mutate({ score, durationMs });
     };
     window.addEventListener("wordplay-game-result", handleResult);
     return () => window.removeEventListener("wordplay-game-result", handleResult);
@@ -248,7 +251,9 @@ export default function GroupRoundPlay() {
                               <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
-                                {new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                {entry.durationMs != null
+                                  ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
+                                  : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </span>
                               <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
                             </div>

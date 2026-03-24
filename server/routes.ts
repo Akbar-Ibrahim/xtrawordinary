@@ -81,7 +81,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/letter-pool/words", async (_req, res) => {
+  app.get("/api/games/letter-pool/words", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
     //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/letter-pool/words`);
@@ -94,7 +94,9 @@ export async function registerRoutes(
     // --- END REMOTE SERVER BLOCK ---
     try {
       const words = await dataSource.getLetterPoolWords();
-      res.json(words);
+      const seed = parseInt(req.query.seed as string);
+      const result = isNaN(seed) ? [...words].sort(() => Math.random() - 0.5) : seededShuffle(words, seed);
+      res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch letter pool words" });
     }
@@ -302,7 +304,8 @@ export async function registerRoutes(
 
   app.get("/api/games/word-sweep/grid", async (req, res) => {
     try {
-      const grid = await dataSource.generateWordSweepGrid();
+      const seed = parseInt(req.query.seed as string);
+      const grid = await dataSource.generateWordSweepGrid(isNaN(seed) ? undefined : seed);
       res.json(grid);
     } catch (error) {
       res.status(500).json({ message: "Failed to generate grid" });
@@ -1435,9 +1438,9 @@ export async function registerRoutes(
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
-      const { score } = req.body;
+      const { score, durationMs } = req.body;
       if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
-      const result = await storage.submitGroupRoundScore(roundId, userId, score);
+      const result = await storage.submitGroupRoundScore(roundId, userId, score, typeof durationMs === "number" ? durationMs : undefined);
       res.json(result);
     } catch {
       res.status(500).json({ error: "Failed to submit score" });

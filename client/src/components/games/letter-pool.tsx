@@ -17,14 +17,17 @@ type Variation = "with-pool" | "without-pool";
 
 interface LetterPoolGameProps {
   initialChallenge?: Variation;
+  groupSeed?: number;
 }
 
-export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
+export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-pool" });
+  const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error, refetch } = useQuery<LetterPoolWord[]>({
-    queryKey: ["/api/games/letter-pool/words"],
-    refetchOnMount: "always",
+    queryKey: seeded ? ["/api/games/letter-pool/words", groupSeed] : ["/api/games/letter-pool/words"],
+    queryFn: seeded ? async () => { const r = await fetch(`/api/games/letter-pool/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    refetchOnMount: seeded ? false : "always",
   });
 
   const [variation, setVariation] = useState<Variation | null>(initialChallenge || null);
@@ -87,16 +90,15 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
       setCompletionMessage(getCompletionMessage(true));
       return;
     }
-    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-    setCurrentWord(randomWord);
-    setupWord(randomWord);
-    setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
-  }, [usedWords, activeWords, setupWord, playSound]);
+    const nextWord = seeded ? availableWords[0] : availableWords[Math.floor(Math.random() * availableWords.length)];
+    setCurrentWord(nextWord);
+    setupWord(nextWord);
+    setUsedWords((prev) => new Set(Array.from(prev).concat(nextWord.word)));
+  }, [usedWords, activeWords, setupWord, playSound, seeded]);
 
   const initGame = useCallback(async (v: Variation) => {
     resetRecorded();
-    const result = await refetch();
-    const freshWords = result.data || [];
+    const freshWords = seeded ? words : ((await refetch()).data || []);
     if (freshWords.length === 0) return;
     setActiveWords(freshWords);
     setVariation(v);
@@ -107,12 +109,12 @@ export function LetterPoolGame({ initialChallenge }: LetterPoolGameProps) {
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
-    setCurrentWord(randomWord);
-    setupWord(randomWord);
-    setUsedWords(new Set([randomWord.word]));
+    const firstWord = seeded ? freshWords[0] : freshWords[Math.floor(Math.random() * freshWords.length)];
+    setCurrentWord(firstWord);
+    setupWord(firstWord);
+    setUsedWords(new Set([firstWord.word]));
     setTimeout(() => gameAreaRef.current?.focus(), 100);
-  }, [refetch, setupWord, resetRecorded]);
+  }, [refetch, setupWord, resetRecorded, seeded, words]);
 
   useEffect(() => {
     if (initialChallenge && words.length > 0 && !currentWord) {

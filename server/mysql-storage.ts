@@ -84,7 +84,7 @@ export class MySQLStorage implements IStorage {
   async getWordChainStartWord(variation: number, level: number): Promise<string | null> { return this.gameData.getWordChainStartWord(variation, level); }
   async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return this.gameData.getWordChainComputerWord(playerWord, variation, level, usedWords); }
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
-  async generateWordSweepGrid(): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(); }
+  async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
 
   private toUser(row: any): User {
     return {
@@ -587,6 +587,7 @@ export class MySQLStorage implements IStorage {
       roundId: r.roundId,
       userId: r.userId,
       score: r.score,
+      durationMs: r.durationMs ?? null,
       completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
     };
   }
@@ -715,22 +716,22 @@ export class MySQLStorage implements IStorage {
     return this.getGroupRound(id);
   }
 
-  async submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore> {
+  async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
     const db = await this.getDb();
     const existing = await this.getUserGroupRoundScore(roundId, userId);
     if (existing) {
-      await db.update(schema.groupRoundScores).set({ score, completedAt: new Date() }).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId)));
+      await db.update(schema.groupRoundScores).set({ score, durationMs: durationMs ?? null, completedAt: new Date() }).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId)));
       const rows = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
       return this.toGroupRoundScore(rows[0]);
     }
-    const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score });
+    const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score, durationMs: durationMs ?? null });
     const rows = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.id, result[0].insertId)).limit(1);
     return this.toGroupRoundScore(rows[0]);
   }
 
   async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
     const db = await this.getDb();
-    const scores = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, roundId)).orderBy(desc(schema.groupRoundScores.score), asc(schema.groupRoundScores.completedAt));
+    const scores = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, roundId)).orderBy(desc(schema.groupRoundScores.score), asc(schema.groupRoundScores.durationMs));
     if (scores.length === 0) return [];
     const userIds = scores.map((s: any) => s.userId);
     const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));

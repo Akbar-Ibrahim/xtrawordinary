@@ -1,5 +1,6 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
+import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
 
 export class MemStorage implements IStorage {
@@ -249,19 +250,21 @@ export class MemStorage implements IStorage {
     return progressiveRevealWords;
   }
 
-  async generateWordSweepGrid(): Promise<WordSweepGrid> {
+  async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {
     const size = 6;
     const totalCells = size * size;
 
     const vowels = "AEIOU";
     const uncommonLetters = "JKQVXZ";
 
+    const rng = seed !== undefined ? mulberry32(seed) : Math.random;
+
     const archetypes = [
       { name: "normal", vowelRatio: 0.39, uncommonMin: 2, uncommonMax: 3 },
       { name: "uncommon", vowelRatio: 0.39, uncommonMin: 4, uncommonMax: 6 },
       { name: "vowel-rich", vowelRatio: 0.47, uncommonMin: 1, uncommonMax: 2 },
     ];
-    const archetype = archetypes[Math.floor(Math.random() * archetypes.length)];
+    const archetype = archetypes[Math.floor(rng() * archetypes.length)];
 
     const vowelWeights: Record<string, number> = { A: 8, E: 12, I: 7, O: 8, U: 3 };
     const consonantWeightsNormal: Record<string, number> = {
@@ -277,21 +280,21 @@ export class MemStorage implements IStorage {
       return pool;
     }
 
-    function pickRandom<T>(arr: T[]): T {
-      return arr[Math.floor(Math.random() * arr.length)];
+    function pickFrom<T>(arr: T[]): T {
+      return arr[Math.floor(rng() * arr.length)];
     }
 
     function shuffle<T>(arr: T[]): T[] {
       const a = [...arr];
       for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(rng() * (i + 1));
         [a[i], a[j]] = [a[j], a[i]];
       }
       return a;
     }
 
     const seedWords = wordDictionary.filter(w => w.length >= 3 && w.length <= 5);
-    const seedCount = 2 + Math.floor(Math.random() * 2);
+    const seedCount = 2 + Math.floor(rng() * 2);
     const chosenSeeds: string[] = [];
     const usedLetterBudget: string[] = [];
     const shuffledSeeds = shuffle(seedWords);
@@ -314,7 +317,7 @@ export class MemStorage implements IStorage {
     const currentUncommonCount = usedLetterBudget.filter(l => uncommonLetters.includes(l)).length;
 
     const targetVowels = Math.round(totalCells * archetype.vowelRatio);
-    const targetUncommon = archetype.uncommonMin + Math.floor(Math.random() * (archetype.uncommonMax - archetype.uncommonMin + 1));
+    const targetUncommon = archetype.uncommonMin + Math.floor(rng() * (archetype.uncommonMax - archetype.uncommonMin + 1));
 
     let vowelsNeeded = Math.max(0, targetVowels - currentVowelCount);
     let uncommonNeeded = Math.max(0, targetUncommon - currentUncommonCount);
@@ -329,20 +332,20 @@ export class MemStorage implements IStorage {
 
     for (let i = posIdx; i < totalCells; i++) {
       const idx = positions[i];
-      if (placedUncommon < targetUncommon && Math.random() < uncommonNeeded / Math.max(1, remainingSlots)) {
-        cells[idx] = pickRandom(uncommonPool);
+      if (placedUncommon < targetUncommon && rng() < uncommonNeeded / Math.max(1, remainingSlots)) {
+        cells[idx] = pickFrom(uncommonPool);
         placedUncommon++;
         uncommonNeeded--;
         if (vowels.includes(cells[idx])) {
           placedVowels++;
           vowelsNeeded = Math.max(0, vowelsNeeded - 1);
         }
-      } else if (placedVowels < targetVowels && Math.random() < vowelsNeeded / Math.max(1, remainingSlots)) {
-        cells[idx] = pickRandom(vowelPool);
+      } else if (placedVowels < targetVowels && rng() < vowelsNeeded / Math.max(1, remainingSlots)) {
+        cells[idx] = pickFrom(vowelPool);
         placedVowels++;
         vowelsNeeded--;
       } else {
-        cells[idx] = pickRandom(consonantPool);
+        cells[idx] = pickFrom(consonantPool);
       }
       remainingSlots--;
     }
@@ -735,14 +738,15 @@ export class MemStorage implements IStorage {
     return r;
   }
 
-  async submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore> {
+  async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
     const existing = this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
     if (existing) {
       existing.score = score;
+      existing.durationMs = durationMs ?? null;
       existing.completedAt = new Date().toISOString();
       return existing;
     }
-    const s: GroupRoundScore = { id: this.grsIdCounter++, roundId, userId, score, completedAt: new Date().toISOString() };
+    const s: GroupRoundScore = { id: this.grsIdCounter++, roundId, userId, score, durationMs: durationMs ?? null, completedAt: new Date().toISOString() };
     this.groupRoundScoresStore.push(s);
     return s;
   }
@@ -750,7 +754,12 @@ export class MemStorage implements IStorage {
   async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
     const scores = this.groupRoundScoresStore.filter(s => s.roundId === roundId);
     return scores
-      .sort((a, b) => b.score - a.score || a.completedAt.localeCompare(b.completedAt))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const aDur = a.durationMs ?? Number.MAX_SAFE_INTEGER;
+        const bDur = b.durationMs ?? Number.MAX_SAFE_INTEGER;
+        return aDur - bDur;
+      })
       .map(s => {
         const u = this.users.get(s.userId);
         return { ...s, user: { id: s.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };

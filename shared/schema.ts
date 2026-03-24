@@ -323,6 +323,7 @@ export const groupRoundScoreSchema = z.object({
   roundId: z.number(),
   userId: z.number(),
   score: z.number(),
+  durationMs: z.number().nullable(),
   completedAt: z.string(),
 });
 export type GroupRoundScore = z.infer<typeof groupRoundScoreSchema>;

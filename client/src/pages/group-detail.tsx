@@ -82,7 +82,9 @@ function RoundScoresPanel({ groupId, roundId }: { groupId: number; roundId: numb
           <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
-            {new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {entry.durationMs != null
+              ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
+              : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
           <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
         </div>

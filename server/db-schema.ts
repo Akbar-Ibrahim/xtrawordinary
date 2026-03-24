@@ -151,6 +151,7 @@ export const groupRoundScores = mysqlTable("group_round_scores", {
   roundId: int("round_id").notNull(),
   userId: int("user_id").notNull(),
   score: int("score").notNull(),
+  durationMs: int("duration_ms"),
   completedAt: timestamp("completed_at").notNull().defaultNow(),
 }, (table) => [
   index("grs_round_idx").on(table.roundId),

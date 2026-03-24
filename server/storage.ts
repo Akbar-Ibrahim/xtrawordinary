@@ -41,7 +41,7 @@ export interface IStorage {
   getWordChainStartWord(variation: number, level: number): Promise<string | null>;
   getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null>;
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
-  generateWordSweepGrid(): Promise<WordSweepGrid>;
+  generateWordSweepGrid(seed?: number): Promise<WordSweepGrid>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;
@@ -113,7 +113,7 @@ export interface IStorage {
   getGroupRounds(groupId: number): Promise<GroupRound[]>;
   closeGroupRound(id: number): Promise<GroupRound | undefined>;
 
-  submitGroupRoundScore(roundId: number, userId: number, score: number): Promise<GroupRoundScore>;
+  submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore>;
   getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>>;
   getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined>;
   getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>>;
