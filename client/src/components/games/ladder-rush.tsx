@@ -30,8 +30,8 @@ function isOneLetterDiff(a: string, b: string): boolean {
   return diffs === 1;
 }
 
-function calcScore(wordsChained: number, wordLength: number): number {
-  return wordsChained * wordLength * 5;
+function calcScore(wordsChained: number): number {
+  return wordsChained;
 }
 
 interface LadderRushPlayProps {
@@ -43,7 +43,7 @@ interface LadderRushPlayProps {
 
 function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRushPlayProps) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: `ladder-rush-${wordLength}` });
+  const { reportResult } = useGameResult({ slug: "ladder-rush" });
 
   const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
   const [chain, setChain] = useState<string[]>([]);
@@ -70,7 +70,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
   const endGame = useCallback((finalChain: string[]) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const wordsChained = finalChain.length - 1;
-    const score = calcScore(wordsChained, wordLength);
+    const score = calcScore(wordsChained);
     setFinalScore(score);
     setGameStatus("ended");
     setCompletionMessage(getCompletionMessage(wordsChained > 3));
@@ -84,7 +84,6 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
   useEffect(() => {
     const startWord = pickStartWord();
     if (!startWord) return;
-    resetRecorded();
     recordedRef.current = false;
     const initialChain = [startWord];
     chainRef.current = initialChain;
@@ -187,7 +186,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
   }, [submitWord]);
 
   const wordsChained = chain.length - 1;
-  const liveScore = calcScore(wordsChained, wordLength);
+  const liveScore = calcScore(wordsChained);
   const timerPercent = (timeLeft / GAME_DURATION) * 100;
   const timerColor = timeLeft > 30 ? "bg-accent" : timeLeft > 10 ? "bg-chart-3" : "bg-destructive";
 
@@ -352,7 +351,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
                   )}
                   {isLatest && !isStart && (
                     <Badge className="text-xs bg-[hsl(38,92%,50%)]/20 text-[hsl(38,92%,35%)] border border-[hsl(38,92%,50%)]/30 shrink-0" data-testid="badge-latest">
-                      +{wordLength * 5} pts
+                      +1
                     </Badge>
                   )}
                 </motion.div>
