@@ -4,5 +4,5 @@ set -e
 npm install
 
 if [ -n "$MYSQL_DATABASE_URL" ]; then
-  tsx scripts/migrate-attempt-tables.ts
+  npm run db:push
 fi
