@@ -474,7 +474,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
           Chain words by changing one letter at a time. You have 90 seconds!
         </p>
         <p className="text-xs text-muted-foreground">
-          Score = words chained × word length × 5
+          Score = number of words you chain beyond the starting word
         </p>
       </div>
 
