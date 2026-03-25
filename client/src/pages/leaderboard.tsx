@@ -208,6 +208,7 @@ export default function Leaderboard() {
           <CardContent>
             {hasModes ? (
               <ModeTabs
+                key={selectedGame}
                 modes={selectedGameObj!.modes!}
                 user={user}
                 onSignIn={() => setAuthOpen(true)}
