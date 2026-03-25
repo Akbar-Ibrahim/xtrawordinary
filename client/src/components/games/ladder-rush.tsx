@@ -6,11 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star } from "lucide-react";
+import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal } from "lucide-react";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
-import type { LadderRushPuzzle } from "@shared/schema";
+import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 const GAME_DURATION = 90;
@@ -43,7 +43,7 @@ interface LadderRushPlayProps {
 
 function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRushPlayProps) {
   const { playSound } = useSound();
-  const { reportResult } = useGameResult({ slug: "ladder-rush" });
+  const { reportResult } = useGameResult({ slug: `ladder-rush-${wordLength}` });
 
   const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
   const [chain, setChain] = useState<string[]>([]);
@@ -59,6 +59,13 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordedRef = useRef(false);
   const chainRef = useRef<string[]>([]);
+
+  const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/leaderboard", `ladder-rush-${wordLength}`],
+    queryFn: () => fetch(`/api/leaderboard?game=ladder-rush-${wordLength}&limit=5`).then(r => r.json()),
+    enabled: gameStatus === "ended",
+    staleTime: 10_000,
+  });
 
   const pickStartWord = useCallback((): string => {
     const filtered = puzzles.filter(p => p.wordLength === wordLength);
@@ -234,6 +241,26 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
                     >
                       {word}
                     </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {modeLeaderboard && modeLeaderboard.length > 0 && (
+              <div className="text-left space-y-2" data-testid="section-mode-leaderboard">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Medal className="h-3 w-3" />
+                  {wordLength}-letter Top Scores
+                </p>
+                <div className="space-y-1">
+                  {modeLeaderboard.slice(0, 5).map((entry, i) => (
+                    <div key={entry.id} className="flex items-center justify-between text-sm px-2 py-1 rounded bg-muted/50" data-testid={`leaderboard-row-${i}`}>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground w-4">{i + 1}.</span>
+                        <span className="font-medium">{entry.playerName}</span>
+                      </span>
+                      <span className="font-mono font-bold text-[hsl(38,92%,50%)]">{entry.score}</span>
+                    </div>
                   ))}
                 </div>
               </div>
