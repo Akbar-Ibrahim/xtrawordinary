@@ -814,6 +814,11 @@ export const gamesData: Game[] = [
     estimatedTime: "1-2 min",
     icon: "Zap",
     color: "hsl(38, 92%, 50%)",
-    playCount: 0
+    playCount: 0,
+    modes: [
+      { label: "Easy (4L)", slug: "ladder-rush-4" },
+      { label: "Medium (5L)", slug: "ladder-rush-5" },
+      { label: "Hard (6L)", slug: "ladder-rush-6" },
+    ],
   }
 ];

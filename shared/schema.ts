@@ -3,6 +3,12 @@ import { z } from "zod";
 export const difficultySchema = z.enum(["easy", "medium", "hard"]);
 export type Difficulty = z.infer<typeof difficultySchema>;
 
+export const gameModeSchema = z.object({
+  label: z.string(),
+  slug: z.string(),
+});
+export type GameMode = z.infer<typeof gameModeSchema>;
+
 export const gameSchema = z.object({
   id: z.number(),
   slug: z.string(),
@@ -15,6 +21,7 @@ export const gameSchema = z.object({
   icon: z.string(),
   color: z.string(),
   playCount: z.number(),
+  modes: z.array(gameModeSchema).optional(),
 });
 
 export type Game = z.infer<typeof gameSchema>;
