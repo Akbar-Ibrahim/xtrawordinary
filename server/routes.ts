@@ -371,6 +371,30 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/daily-challenge/attempt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { date } = req.body;
+      if (!date || typeof date !== "string") return res.status(400).json({ error: "date is required" });
+      const attempt = await storage.createDailyChallengeAttempt(userId, date);
+      res.json(attempt);
+    } catch {
+      res.status(500).json({ error: "Failed to record attempt" });
+    }
+  });
+
+  app.get("/api/daily-challenge/attempt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const date = req.query.date as string;
+      if (!date) return res.status(400).json({ error: "date is required" });
+      const attempt = await storage.getDailyChallengeAttempt(userId, date);
+      res.json({ attempt: attempt || null });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch attempt" });
+    }
+  });
+
   app.get("/api/games/:slug", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
@@ -1527,6 +1551,41 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/groups/:id/rounds/:roundId/attempt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
+      if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
+      const attempt = await storage.createGroupRoundAttempt(roundId, userId);
+      res.json(attempt);
+    } catch {
+      res.status(500).json({ error: "Failed to record attempt" });
+    }
+  });
+
+  app.get("/api/groups/:id/rounds/:roundId/attempt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const roundId = parseInt(req.params.roundId);
+      if (isNaN(groupId) || isNaN(roundId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const round = await storage.getGroupRound(roundId);
+      if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
+      const attempt = await storage.getGroupRoundAttempt(roundId, userId);
+      res.json({ attempt: attempt || null });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch attempt" });
+    }
+  });
+
   app.post("/api/groups/:id/rounds/:roundId/score", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
@@ -1540,6 +1599,8 @@ export async function registerRoutes(
       if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
       const { score, durationMs } = req.body;
       if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
+      const existing = await storage.getUserGroupRoundScore(roundId, userId);
+      if (existing) return res.status(409).json({ error: "Score already submitted" });
       const result = await storage.submitGroupRoundScore(roundId, userId, score, typeof durationMs === "number" ? durationMs : undefined);
       await storage.logGroupActivity(groupId, userId, "score_submitted", { score, gameSlug: round.gameSlug, roundId, name: (req.user as any).name });
       res.json(result);

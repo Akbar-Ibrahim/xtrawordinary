@@ -357,6 +357,22 @@ export const groupScoreReactionSchema = z.object({
 });
 export type GroupScoreReaction = z.infer<typeof groupScoreReactionSchema>;
 
+export const groupRoundAttemptSchema = z.object({
+  id: z.number(),
+  roundId: z.number(),
+  userId: z.number(),
+  startedAt: z.string(),
+});
+export type GroupRoundAttempt = z.infer<typeof groupRoundAttemptSchema>;
+
+export const dailyChallengeAttemptSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  challengeDate: z.string(),
+  startedAt: z.string(),
+});
+export type DailyChallengeAttempt = z.infer<typeof dailyChallengeAttemptSchema>;
+
 export const groupActivityEntrySchema = z.object({
   id: z.number(),
   groupId: z.number(),

@@ -188,6 +188,27 @@ export const groupActivity = mysqlTable("group_activity", {
   index("ga_created_at_idx").on(table.createdAt),
 ]);
 
+export const groupRoundAttempts = mysqlTable("group_round_attempts", {
+  id: int("id").primaryKey().autoincrement(),
+  roundId: int("round_id").notNull(),
+  userId: int("user_id").notNull(),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+}, (table) => [
+  index("gra_round_idx").on(table.roundId),
+  index("gra_user_idx").on(table.userId),
+  uniqueIndex("gra_round_user_idx").on(table.roundId, table.userId),
+]);
+
+export const dailyChallengeAttempts = mysqlTable("daily_challenge_attempts", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  challengeDate: varchar("challenge_date", { length: 20 }).notNull(),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+}, (table) => [
+  index("dca_user_idx").on(table.userId),
+  uniqueIndex("dca_user_date_idx").on(table.userId, table.challengeDate),
+]);
+
 export const games = mysqlTable("games", {
   id: int("id").primaryKey().autoincrement(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),

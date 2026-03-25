@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle } from "lucide-react"
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
 import { getDailyChallengeRecord, saveDailyChallengeRecord } from "@/lib/game-stats";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -34,6 +36,10 @@ interface DailyChallengeResponse {
   slug: string;
   game: Game;
   seed: number;
+}
+
+interface AttemptResponse {
+  attempt: { id: number; userId: number; challengeDate: string; startedAt: string } | null;
 }
 
 const LETTER_BALANCE_CATEGORIES = [
@@ -122,20 +128,46 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
 }
 
 export default function DailyChallenge() {
+  const { toast } = useToast();
   const [isPlaying, setIsPlaying] = useState(false);
 
   const { data, isLoading, error } = useQuery<DailyChallengeResponse>({
     queryKey: ["/api/daily-challenge"],
   });
 
-  const completedRecord = data ? getDailyChallengeRecord(data.date) : null;
-  const alreadyCompleted = !!completedRecord;
+  const { data: attemptData, isLoading: attemptLoading } = useQuery<AttemptResponse & { authenticated?: boolean }>({
+    queryKey: ["/api/daily-challenge/attempt", data?.date],
+    queryFn: async () => {
+      const res = await fetch(`/api/daily-challenge/attempt?date=${data!.date}`, { credentials: "include" });
+      if (res.status === 401) return { attempt: null, authenticated: false };
+      if (!res.ok) throw new Error("Failed");
+      return { ...(await res.json()), authenticated: true };
+    },
+    enabled: !!data?.date,
+  });
 
   const [completed, setCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [attemptStarted, setAttemptStarted] = useState(false);
+
+  const localRecord = data ? getDailyChallengeRecord(data.date) : null;
+  const serverAttemptLoaded = !attemptLoading && attemptData !== undefined;
+  const serverAuthenticated = serverAttemptLoaded && attemptData?.authenticated === true;
+  const serverAttempted = serverAuthenticated && !!attemptData?.attempt;
+  const localCompleted = !!localRecord;
+
+  const showCompleted = completed || attemptStarted || (serverAuthenticated ? serverAttempted : localCompleted);
+
+  const recordAttemptMutation = useMutation({
+    mutationFn: async (date: string) =>
+      apiRequest("POST", "/api/daily-challenge/attempt", { date }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/attempt", data?.date] });
+    },
+  });
 
   useEffect(() => {
-    if (!data || alreadyCompleted) return;
+    if (!data || !isPlaying || completed) return;
     const handleGameResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail.slug !== data.slug) return;
@@ -147,13 +179,31 @@ export default function DailyChallenge() {
       });
       setFinalScore(detail.score ?? 0);
       setCompleted(true);
+      setAttemptStarted(false);
       setIsPlaying(false);
     };
     window.addEventListener("wordplay-game-result", handleGameResult);
     return () => window.removeEventListener("wordplay-game-result", handleGameResult);
-  }, [data, alreadyCompleted]);
+  }, [data, isPlaying, completed]);
 
-  if (isLoading) {
+  const handleStartChallenge = async () => {
+    if (data?.date) {
+      try {
+        await recordAttemptMutation.mutateAsync(data.date);
+        setAttemptStarted(true);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "";
+        const isUnauthorized = msg.startsWith("401");
+        if (!isUnauthorized) {
+          toast({ title: "Unable to start challenge. Please try again.", variant: "destructive" });
+          return;
+        }
+      }
+    }
+    setIsPlaying(true);
+  };
+
+  if (isLoading || (!!data && attemptLoading)) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Skeleton className="h-8 w-48 mb-8" />
@@ -231,18 +281,26 @@ export default function DailyChallenge() {
                   </div>
                 </div>
 
-                {alreadyCompleted || completed ? (
+                {showCompleted ? (
                   <div className="text-center py-4 space-y-4">
                     <div className="inline-flex items-center gap-2 text-accent">
                       <CheckCircle className="h-6 w-6" />
-                      <span className="font-semibold text-lg">Challenge Complete</span>
-                    </div>
-                    <div className="flex items-center justify-center gap-2">
-                      <Trophy className="h-5 w-5 text-chart-2" />
-                      <span className="text-lg font-medium">
-                        Score: {completed ? finalScore : completedRecord?.score ?? 0}
+                      <span className="font-semibold text-lg">
+                        {localRecord || completed ? "Challenge Complete" : "Already Attempted"}
                       </span>
                     </div>
+                    {(localRecord || completed) ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Trophy className="h-5 w-5 text-chart-2" />
+                        <span className="text-lg font-medium">
+                          Score: {completed ? finalScore : localRecord?.score ?? 0}
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        You already started today's challenge. Each challenge can only be played once.
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       Come back tomorrow for a new challenge!
                     </p>
@@ -251,7 +309,8 @@ export default function DailyChallenge() {
                   <Button
                     className="w-full gap-2"
                     size="lg"
-                    onClick={() => setIsPlaying(true)}
+                    onClick={handleStartChallenge}
+                    disabled={recordAttemptMutation.isPending}
                     data-testid="button-play-daily"
                   >
                     <Play className="h-5 w-5" />

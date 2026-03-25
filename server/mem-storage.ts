@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
@@ -765,12 +765,7 @@ export class MemStorage implements IStorage {
 
   async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
     const existing = this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
-    if (existing) {
-      existing.score = score;
-      existing.durationMs = durationMs ?? null;
-      existing.completedAt = new Date().toISOString();
-      return existing;
-    }
+    if (existing) return existing;
     const s: GroupRoundScore = { id: this.grsIdCounter++, roundId, userId, score, durationMs: durationMs ?? null, completedAt: new Date().toISOString() };
     this.groupRoundScoresStore.push(s);
     return s;
@@ -861,5 +856,34 @@ export class MemStorage implements IStorage {
         const u = a.userId ? this.users.get(a.userId) : null;
         return { ...a, user: u ? { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null } : null };
       });
+  }
+
+  private groupRoundAttemptsStore: GroupRoundAttempt[] = [];
+  private graIdCounter = 1;
+  private dailyChallengeAttemptsStore: DailyChallengeAttempt[] = [];
+  private dcaIdCounter = 1;
+
+  async createGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt> {
+    const existing = await this.getGroupRoundAttempt(roundId, userId);
+    if (existing) return existing;
+    const attempt: GroupRoundAttempt = { id: this.graIdCounter++, roundId, userId, startedAt: new Date().toISOString() };
+    this.groupRoundAttemptsStore.push(attempt);
+    return attempt;
+  }
+
+  async getGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt | undefined> {
+    return this.groupRoundAttemptsStore.find(a => a.roundId === roundId && a.userId === userId);
+  }
+
+  async createDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt> {
+    const existing = await this.getDailyChallengeAttempt(userId, challengeDate);
+    if (existing) return existing;
+    const attempt: DailyChallengeAttempt = { id: this.dcaIdCounter++, userId, challengeDate, startedAt: new Date().toISOString() };
+    this.dailyChallengeAttemptsStore.push(attempt);
+    return attempt;
+  }
+
+  async getDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt | undefined> {
+    return this.dailyChallengeAttemptsStore.find(a => a.userId === userId && a.challengeDate === challengeDate);
   }
 }

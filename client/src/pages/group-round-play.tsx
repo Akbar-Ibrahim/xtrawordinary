@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Play, Trophy, CheckCircle, Users, X, Clock } from "lucide-react";
+import { ArrowLeft, Play, Trophy, CheckCircle, Users, X, Clock, Lock } from "lucide-react";
 import type { GroupRound, GroupRoundScore } from "@shared/schema";
 
 import { WordLadderGame } from "@/components/games/word-ladder";
@@ -95,6 +95,10 @@ interface RoundResponse {
   myScore: { id: number; score: number; durationMs: number | null; completedAt: string } | null;
 }
 
+interface AttemptResponse {
+  attempt: { id: number; roundId: number; userId: number; startedAt: string } | null;
+}
+
 export default function GroupRoundPlay() {
   const { id, roundId } = useParams<{ id: string; roundId: string }>();
   const groupId = parseInt(id);
@@ -104,12 +108,23 @@ export default function GroupRoundPlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [attemptStarted, setAttemptStarted] = useState(false);
   const startTimeRef = useRef<number | null>(null);
 
   const { data, isLoading, error } = useQuery<RoundResponse>({
     queryKey: ["/api/groups", groupId, "rounds", roundIdNum],
     queryFn: async () => {
       const res = await fetch(`/api/groups/${groupId}/rounds/${roundIdNum}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !isNaN(groupId) && !isNaN(roundIdNum),
+  });
+
+  const { data: attemptData, isLoading: attemptLoading } = useQuery<AttemptResponse>({
+    queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "attempt"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/rounds/${roundIdNum}/attempt`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -123,8 +138,17 @@ export default function GroupRoundPlay() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !isNaN(groupId) && !isNaN(roundIdNum) && (submitted || !!data?.myScore),
+    enabled: !isNaN(groupId) && !isNaN(roundIdNum) && (submitted || !!data?.myScore || !!attemptData?.attempt),
     refetchInterval: submitted ? 10000 : false,
+  });
+
+  const recordAttemptMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("POST", `/api/groups/${groupId}/rounds/${roundIdNum}/attempt`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "attempt"] });
+    },
+    onError: () => toast({ title: "Failed to start game", variant: "destructive" }),
   });
 
   const submitMutation = useMutation({
@@ -155,7 +179,16 @@ export default function GroupRoundPlay() {
     return () => window.removeEventListener("wordplay-game-result", handleResult);
   }, [isPlaying, data]);
 
-  if (isLoading) {
+  const handlePlayClick = async () => {
+    try {
+      await recordAttemptMutation.mutateAsync();
+      setAttemptStarted(true);
+      setIsPlaying(true);
+    } catch {
+    }
+  };
+
+  if (isLoading || attemptLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Skeleton className="h-8 w-48 mb-8" />
@@ -176,6 +209,7 @@ export default function GroupRoundPlay() {
   }
 
   const { round, myScore } = data;
+  const hasAttempt = attemptStarted || !!attemptData?.attempt;
   const alreadyPlayed = !!myScore || submitted;
   const gameName = GAME_NAMES[round.gameSlug] || round.gameSlug;
 
@@ -214,7 +248,7 @@ export default function GroupRoundPlay() {
                   </div>
                 </div>
 
-                {(alreadyPlayed) ? (
+                {alreadyPlayed ? (
                   <div className="space-y-5">
                     <div className="text-center py-2">
                       <div className="inline-flex items-center gap-2 text-green-600 mb-2">
@@ -271,6 +305,58 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
+                ) : hasAttempt ? (
+                  <div className="space-y-5">
+                    <div className="text-center py-4">
+                      <div className="inline-flex items-center gap-2 text-orange-500 mb-2">
+                        <Lock className="h-6 w-6" />
+                        <span className="font-semibold text-lg">Game Already Started</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        You already started this round. Your score was not submitted — the game is locked to prevent replays.
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Round Leaderboard
+                      </p>
+                      {scoresLoading ? (
+                        <div className="space-y-1">
+                          {[1, 2].map(i => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+                        </div>
+                      ) : roundScores && roundScores.length > 0 ? (
+                        <div className="space-y-1" data-testid="round-leaderboard">
+                          {roundScores.map((entry, i) => (
+                            <div key={entry.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${entry.userId}`}>
+                              <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                                {i + 1}
+                              </span>
+                              <Avatar className="h-7 w-7">
+                                <AvatarImage src={entry.user.avatarUrl || undefined} />
+                                <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {entry.durationMs != null
+                                  ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
+                                  : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">No scores yet.</p>
+                      )}
+                    </div>
+                    <Link href={`/groups/${groupId}`}>
+                      <Button variant="outline" className="w-full gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Group
+                      </Button>
+                    </Link>
+                  </div>
                 ) : round.status !== "active" ? (
                   <div className="text-center py-4">
                     <p className="text-muted-foreground mb-4">This round is closed.</p>
@@ -282,7 +368,8 @@ export default function GroupRoundPlay() {
                   <Button
                     className="w-full gap-2"
                     size="lg"
-                    onClick={() => setIsPlaying(true)}
+                    onClick={handlePlayClick}
+                    disabled={recordAttemptMutation.isPending}
                     data-testid="button-play-group-round"
                   >
                     <Play className="h-5 w-5" />

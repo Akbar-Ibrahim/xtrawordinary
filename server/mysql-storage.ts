@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -755,11 +755,7 @@ export class MySQLStorage implements IStorage {
   async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
     const db = await this.getDb();
     const existing = await this.getUserGroupRoundScore(roundId, userId);
-    if (existing) {
-      await db.update(schema.groupRoundScores).set({ score, durationMs: durationMs ?? null, completedAt: new Date() }).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId)));
-      const rows = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
-      return this.toGroupRoundScore(rows[0]);
-    }
+    if (existing) return existing;
     const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score, durationMs: durationMs ?? null });
     const rows = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.id, result[0].insertId)).limit(1);
     return this.toGroupRoundScore(rows[0]);
@@ -858,5 +854,59 @@ export class MySQLStorage implements IStorage {
         user: r.userId ? (userMap.get(r.userId) ?? null) : null,
       };
     });
+  }
+
+  async createGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt> {
+    const db = await this.getDb();
+    const existing = await this.getGroupRoundAttempt(roundId, userId);
+    if (existing) return existing;
+    try {
+      const result = await db.insert(schema.groupRoundAttempts).values({ roundId, userId });
+      const rows = await db.select().from(schema.groupRoundAttempts).where(eq(schema.groupRoundAttempts.id, result[0].insertId)).limit(1);
+      const r = rows[0];
+      return { id: r.id, roundId: r.roundId, userId: r.userId, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
+    } catch (err: unknown) {
+      const isDuplicateKey = (err as { code?: string })?.code === "ER_DUP_ENTRY";
+      if (isDuplicateKey) {
+        const row = await this.getGroupRoundAttempt(roundId, userId);
+        if (row) return row;
+      }
+      throw err;
+    }
+  }
+
+  async getGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.groupRoundAttempts).where(and(eq(schema.groupRoundAttempts.roundId, roundId), eq(schema.groupRoundAttempts.userId, userId))).limit(1);
+    if (!rows[0]) return undefined;
+    const r = rows[0];
+    return { id: r.id, roundId: r.roundId, userId: r.userId, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
+  }
+
+  async createDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt> {
+    const db = await this.getDb();
+    const existing = await this.getDailyChallengeAttempt(userId, challengeDate);
+    if (existing) return existing;
+    try {
+      const result = await db.insert(schema.dailyChallengeAttempts).values({ userId, challengeDate });
+      const rows = await db.select().from(schema.dailyChallengeAttempts).where(eq(schema.dailyChallengeAttempts.id, result[0].insertId)).limit(1);
+      const r = rows[0];
+      return { id: r.id, userId: r.userId, challengeDate: r.challengeDate, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
+    } catch (err: unknown) {
+      const isDuplicateKey = (err as { code?: string })?.code === "ER_DUP_ENTRY";
+      if (isDuplicateKey) {
+        const row = await this.getDailyChallengeAttempt(userId, challengeDate);
+        if (row) return row;
+      }
+      throw err;
+    }
+  }
+
+  async getDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.dailyChallengeAttempts).where(and(eq(schema.dailyChallengeAttempts.userId, userId), eq(schema.dailyChallengeAttempts.challengeDate, challengeDate))).limit(1);
+    if (!rows[0]) return undefined;
+    const r = rows[0];
+    return { id: r.id, userId: r.userId, challengeDate: r.challengeDate, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
   }
 }

@@ -42,3 +42,7 @@ waitForPort = 5000
 
 [userenv.development]
 DEV_MODE = "LOCAL"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
