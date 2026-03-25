@@ -165,6 +165,14 @@ export const wordLadderPuzzleSchema = z.object({
 export type WordLadderPuzzle = z.infer<typeof wordLadderPuzzleSchema>;
 export const wordLadderPuzzlesSchema = z.array(wordLadderPuzzleSchema);
 
+// Ladder Rush puzzle
+export const ladderRushPuzzleSchema = z.object({
+  start: z.string(),
+  wordLength: z.number(),
+});
+export type LadderRushPuzzle = z.infer<typeof ladderRushPuzzleSchema>;
+export const ladderRushPuzzlesSchema = z.array(ladderRushPuzzleSchema);
+
 export const userSchema = z.object({
   id: z.number(),
   email: z.string().email(),

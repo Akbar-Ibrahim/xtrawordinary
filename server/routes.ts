@@ -51,6 +51,19 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/ladder-rush/puzzles", async (req, res) => {
+    try {
+      const wordLength = parseInt(req.query.wordLength as string);
+      if (![4, 5, 6].includes(wordLength)) {
+        return res.status(400).json({ message: "wordLength must be 4, 5, or 6" });
+      }
+      const puzzles = await dataSource.getLadderRushPuzzles(wordLength);
+      res.json(puzzles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch ladder rush puzzles" });
+    }
+  });
+
   app.get("/api/games/anagram-solver/words", async (req, res) => {
     try {
       const wordSets = await dataSource.getAnagramWordSets();
@@ -339,6 +352,7 @@ export async function registerRoutes(
         "no-repeats",
         "word-sweep",
         "word-roots",
+        "ladder-rush",
       ];
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
