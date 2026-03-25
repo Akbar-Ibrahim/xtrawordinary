@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight } from "lucide-react";
+import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star } from "lucide-react";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
@@ -15,9 +15,9 @@ import { apiRequest } from "@/lib/queryClient";
 
 const GAME_DURATION = 90;
 const WORD_LENGTHS = [
-  { length: 4, label: "Easy", sublabel: "4-letter words" },
-  { length: 5, label: "Medium", sublabel: "5-letter words" },
-  { length: 6, label: "Hard", sublabel: "6-letter words" },
+  { length: 4, label: "Easy", sublabel: "4-letter words", description: "More neighbors, easier to chain" },
+  { length: 5, label: "Medium", sublabel: "5-letter words", description: "Balanced challenge" },
+  { length: 6, label: "Hard", sublabel: "6-letter words", description: "Trickier, but higher score" },
 ];
 
 function isOneLetterDiff(a: string, b: string): boolean {
@@ -30,87 +30,77 @@ function isOneLetterDiff(a: string, b: string): boolean {
   return diffs === 1;
 }
 
-interface LadderRushGameProps {
-  groupSeed?: number;
+function calcScore(wordsChained: number, wordLength: number): number {
+  return wordsChained * wordLength * 5;
 }
 
-export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
-  const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "ladder-rush" });
+interface LadderRushPlayProps {
+  wordLength: number;
+  puzzles: LadderRushPuzzle[];
+  onExit: () => void;
+  onPlayAgain: () => void;
+}
 
-  const [selectedLength, setSelectedLength] = useState<number | null>(null);
-  const [gameStatus, setGameStatus] = useState<"idle" | "playing" | "ended">("idle");
+function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRushPlayProps) {
+  const { playSound } = useSound();
+  const { reportResult, resetRecorded } = useGameResult({ slug: `ladder-rush-${wordLength}` });
+
+  const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
   const [chain, setChain] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState("");
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [shake, setShake] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [validating, setValidating] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
-  const [score, setScore] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const chainEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordedRef = useRef(false);
+  const chainRef = useRef<string[]>([]);
 
-  const { data: puzzles = [], isLoading } = useQuery<LadderRushPuzzle[]>({
-    queryKey: ["/api/games/ladder-rush/puzzles", selectedLength],
-    queryFn: async () => {
-      if (!selectedLength) return [];
-      const r = await fetch(`/api/games/ladder-rush/puzzles?wordLength=${selectedLength}`, {
-        credentials: "include",
-      });
-      return r.json();
-    },
-    enabled: selectedLength !== null,
-  });
-
-  const pickStartWord = useCallback((wordLength: number): string => {
-    if (puzzles.length === 0) return "";
+  const pickStartWord = useCallback((): string => {
     const filtered = puzzles.filter(p => p.wordLength === wordLength);
-    if (filtered.length === 0) return puzzles[0].start;
-    return filtered[Math.floor(Math.random() * filtered.length)].start;
-  }, [puzzles]);
+    const pool = filtered.length > 0 ? filtered : puzzles;
+    if (pool.length === 0) return "";
+    return pool[Math.floor(Math.random() * pool.length)].start;
+  }, [puzzles, wordLength]);
 
-  const startGame = useCallback((wordLength: number) => {
-    const startWord = pickStartWord(wordLength);
-    if (!startWord) return;
-    resetRecorded();
-    recordedRef.current = false;
-    setChain([startWord]);
-    setCurrentInput("");
-    setTimeLeft(GAME_DURATION);
-    setGameStatus("playing");
-    setErrorMsg("");
-    setScore(0);
-    setCompletionMessage("");
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [pickStartWord, resetRecorded]);
-
-  const endGame = useCallback((finalChain: string[], wordLength: number) => {
+  const endGame = useCallback((finalChain: string[]) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const wordsChained = finalChain.length - 1;
-    const finalScore = wordsChained * wordLength * 5;
-    setScore(finalScore);
+    const score = calcScore(wordsChained, wordLength);
+    setFinalScore(score);
     setGameStatus("ended");
     setCompletionMessage(getCompletionMessage(wordsChained > 3));
     playSound(wordsChained > 3 ? "win" : "wrong");
     if (!recordedRef.current) {
       recordedRef.current = true;
-      reportResult(finalScore, wordsChained > 0, wordsChained);
+      reportResult(score, wordsChained > 0, wordsChained);
     }
-  }, [playSound, reportResult]);
+  }, [wordLength, playSound, reportResult]);
 
   useEffect(() => {
-    if (gameStatus !== "playing") return;
+    const startWord = pickStartWord();
+    if (!startWord) return;
+    resetRecorded();
+    recordedRef.current = false;
+    const initialChain = [startWord];
+    chainRef.current = initialChain;
+    setChain(initialChain);
+    setCurrentInput("");
+    setTimeLeft(GAME_DURATION);
+    setErrorMsg("");
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          setChain(c => {
-            endGame(c, selectedLength!);
-            return c;
-          });
+          endGame(chainRef.current);
           return 0;
         }
         return prev - 1;
@@ -119,7 +109,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [gameStatus, endGame, selectedLength]);
+  }, [endGame]);
 
   useEffect(() => {
     if (chain.length > 1) {
@@ -128,19 +118,19 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
   }, [chain]);
 
   const submitWord = useCallback(async () => {
-    if (!selectedLength || validating || gameStatus !== "playing") return;
+    if (validating || gameStatus !== "playing") return;
     const word = currentInput.toUpperCase().trim();
     if (!word) return;
 
-    if (word.length !== selectedLength) {
-      setErrorMsg(`Word must be ${selectedLength} letters`);
+    if (word.length !== wordLength) {
+      setErrorMsg(`Word must be ${wordLength} letters`);
       setShake(true);
       playSound("wrong");
       setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
       return;
     }
 
-    const lastWord = chain[chain.length - 1];
+    const lastWord = chainRef.current[chainRef.current.length - 1];
     if (!isOneLetterDiff(lastWord, word)) {
       setErrorMsg("Change exactly one letter (same position)");
       setShake(true);
@@ -149,7 +139,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
       return;
     }
 
-    if (chain.includes(word)) {
+    if (chainRef.current.includes(word)) {
       setErrorMsg("Word already used in this chain");
       setShake(true);
       playSound("wrong");
@@ -174,9 +164,11 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
         return;
       }
 
+      const newChain = [...chainRef.current, word];
+      chainRef.current = newChain;
       flushSync(() => {
         setValidating(false);
-        setChain(prev => [...prev, word]);
+        setChain(newChain);
         setCurrentInput("");
       });
       playSound("correct");
@@ -188,81 +180,19 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
       });
       setTimeout(() => setErrorMsg(""), 2000);
     }
-  }, [selectedLength, currentInput, chain, validating, gameStatus, playSound]);
+  }, [currentInput, wordLength, validating, gameStatus, playSound]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      submitWord();
-    }
+    if (e.key === "Enter") { e.preventDefault(); submitWord(); }
   }, [submitWord]);
 
+  const wordsChained = chain.length - 1;
+  const liveScore = calcScore(wordsChained, wordLength);
   const timerPercent = (timeLeft / GAME_DURATION) * 100;
   const timerColor = timeLeft > 30 ? "bg-accent" : timeLeft > 10 ? "bg-chart-3" : "bg-destructive";
 
-  if (gameStatus === "idle") {
-    return (
-      <div className="space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <Zap className="h-7 w-7 text-[hsl(38,92%,50%)]" />
-            <h2 className="text-2xl font-bold">Ladder Rush</h2>
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Chain words by changing one letter at a time. You have 90 seconds!
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          {WORD_LENGTHS.map(({ length, label, sublabel }) => (
-            <motion.button
-              key={length}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full text-left"
-              onClick={() => {
-                setSelectedLength(length);
-              }}
-              data-testid={`button-mode-${length}`}
-            >
-              <Card className={`cursor-pointer transition-colors hover:border-[hsl(38,92%,50%)] ${selectedLength === length ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/5" : ""}`}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold flex items-center gap-2">
-                      {label}
-                      <Badge variant="outline" className="text-xs">{sublabel}</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-0.5">
-                      {length === 4 ? "More neighbors, easier to chain" : length === 5 ? "Balanced challenge" : "Harder to chain, higher score multiplier"}
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </CardContent>
-              </Card>
-            </motion.button>
-          ))}
-        </div>
-
-        {selectedLength && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <Button
-              className="w-full gap-2"
-              size="lg"
-              onClick={() => startGame(selectedLength)}
-              disabled={isLoading || puzzles.length === 0}
-              data-testid="button-start"
-            >
-              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
-              Start Rush!
-            </Button>
-          </motion.div>
-        )}
-      </div>
-    );
-  }
-
   if (gameStatus === "ended") {
-    const wordsChained = chain.length - 1;
+    const endedWordsChained = chain.length - 1;
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -279,15 +209,15 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg bg-muted p-3">
-                <div className="text-2xl font-bold" data-testid="text-words-chained">{wordsChained}</div>
+                <div className="text-2xl font-bold" data-testid="text-words-chained">{endedWordsChained}</div>
                 <div className="text-xs text-muted-foreground">words chained</div>
               </div>
               <div className="rounded-lg bg-muted p-3">
-                <div className="text-2xl font-bold" data-testid="text-score">{score}</div>
+                <div className="text-2xl font-bold text-[hsl(38,92%,50%)]" data-testid="text-score">{finalScore}</div>
                 <div className="text-xs text-muted-foreground">total score</div>
               </div>
               <div className="rounded-lg bg-muted p-3">
-                <div className="text-2xl font-bold">{selectedLength}L</div>
+                <div className="text-2xl font-bold">{wordLength}L</div>
                 <div className="text-xs text-muted-foreground">word length</div>
               </div>
             </div>
@@ -295,7 +225,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
             {chain.length > 0 && (
               <div className="text-left space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Your chain</p>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
                   {chain.map((word, i) => (
                     <Badge
                       key={i}
@@ -314,17 +244,14 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
               <Button
                 variant="outline"
                 className="flex-1 gap-2"
-                onClick={() => {
-                  setGameStatus("idle");
-                  setSelectedLength(null);
-                }}
+                onClick={onExit}
                 data-testid="button-change-mode"
               >
                 Change Mode
               </Button>
               <Button
                 className="flex-1 gap-2"
-                onClick={() => selectedLength && startGame(selectedLength)}
+                onClick={onPlayAgain}
                 data-testid="button-play-again"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -337,17 +264,19 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
     );
   }
 
-  const lastWord = chain[chain.length - 1];
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Badge variant="outline" data-testid="badge-length">
-            {selectedLength}-letter
+            {wordLength}-letter
           </Badge>
           <Badge variant="secondary" data-testid="badge-chain-length">
-            Chain: {chain.length - 1}
+            Chain: {wordsChained}
+          </Badge>
+          <Badge className="bg-[hsl(38,92%,50%)] text-white" data-testid="badge-live-score">
+            <Star className="h-3 w-3 mr-1" />
+            {liveScore} pts
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -362,8 +291,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
             size="sm"
             onClick={() => {
               if (timerRef.current) clearInterval(timerRef.current);
-              setGameStatus("idle");
-              setSelectedLength(null);
+              onExit();
             }}
             data-testid="button-quit"
           >
@@ -383,10 +311,11 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="h-[280px] overflow-y-auto space-y-2 flex flex-col">
+          <div className="h-[260px] overflow-y-auto space-y-2 flex flex-col">
             {chain.map((word, i) => {
               const isStart = i === 0;
               const isLatest = i === chain.length - 1;
+              const prevWord = i > 0 ? chain[i - 1] : null;
               return (
                 <motion.div
                   key={`${word}-${i}`}
@@ -398,7 +327,6 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
                 >
                   <div className="flex gap-1" data-testid={`chain-rung-${i}`}>
                     {word.split("").map((letter, li) => {
-                      const prevWord = i > 0 ? chain[i - 1] : null;
                       const changed = prevWord && prevWord[li] !== letter;
                       return (
                         <div
@@ -423,8 +351,8 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
                     </Badge>
                   )}
                   {isLatest && !isStart && (
-                    <Badge className="text-xs bg-[hsl(38,92%,50%)] text-white shrink-0" data-testid="badge-latest">
-                      +{selectedLength! * 5} pts
+                    <Badge className="text-xs bg-[hsl(38,92%,50%)]/20 text-[hsl(38,92%,35%)] border border-[hsl(38,92%,50%)]/30 shrink-0" data-testid="badge-latest">
+                      +{wordLength * 5} pts
                     </Badge>
                   )}
                 </motion.div>
@@ -436,10 +364,10 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
             <Input
               ref={inputRef}
               value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, selectedLength!))}
+              onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, wordLength))}
               onKeyDown={handleKeyDown}
-              placeholder={`${selectedLength}-letter word…`}
-              maxLength={selectedLength!}
+              placeholder={`${wordLength}-letter word…`}
+              maxLength={wordLength}
               className="font-mono text-lg tracking-wider uppercase max-w-xs"
               disabled={validating}
               autoFocus
@@ -447,7 +375,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
             />
             <Button
               onClick={submitWord}
-              disabled={validating || currentInput.length !== selectedLength}
+              disabled={validating || currentInput.length !== wordLength}
               data-testid="button-submit"
             >
               {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
@@ -469,6 +397,104 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+interface LadderRushGameProps {
+  groupSeed?: number;
+}
+
+export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
+  const [selectedLength, setSelectedLength] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [playKey, setPlayKey] = useState(0);
+
+  const { data: puzzles = [], isLoading } = useQuery<LadderRushPuzzle[]>({
+    queryKey: ["/api/games/ladder-rush/puzzles", selectedLength],
+    queryFn: async () => {
+      if (!selectedLength) return [];
+      const r = await fetch(`/api/games/ladder-rush/puzzles?wordLength=${selectedLength}`, {
+        credentials: "include",
+      });
+      return r.json();
+    },
+    enabled: selectedLength !== null,
+  });
+
+  if (playing && selectedLength) {
+    return (
+      <LadderRushPlay
+        key={playKey}
+        wordLength={selectedLength}
+        puzzles={puzzles}
+        onExit={() => {
+          setPlaying(false);
+          setSelectedLength(null);
+        }}
+        onPlayAgain={() => setPlayKey(k => k + 1)}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          <Zap className="h-7 w-7 text-[hsl(38,92%,50%)]" />
+          <h2 className="text-2xl font-bold">Ladder Rush</h2>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Chain words by changing one letter at a time. You have 90 seconds!
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Score = words chained × word length × 5
+        </p>
+      </div>
+
+      <div className="grid gap-3">
+        {WORD_LENGTHS.map(({ length, label, sublabel, description }) => (
+          <motion.button
+            key={length}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full text-left"
+            onClick={() => setSelectedLength(length)}
+            data-testid={`button-mode-${length}`}
+          >
+            <Card className={`cursor-pointer transition-colors hover:border-[hsl(38,92%,50%)] ${selectedLength === length ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/5" : ""}`}>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold flex items-center gap-2">
+                    {label}
+                    <Badge variant="outline" className="text-xs">{sublabel}</Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-0.5">{description}</div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </motion.button>
+        ))}
+      </div>
+
+      {selectedLength && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Button
+            className="w-full gap-2"
+            size="lg"
+            onClick={() => {
+              setPlayKey(k => k + 1);
+              setPlaying(true);
+            }}
+            disabled={isLoading || puzzles.length === 0}
+            data-testid="button-start"
+          >
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
+            Start Rush!
+          </Button>
+        </motion.div>
+      )}
     </div>
   );
 }
