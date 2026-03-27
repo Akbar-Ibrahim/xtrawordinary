@@ -28,6 +28,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
     queryKey: seeded ? ["/api/games/letter-pool/words", groupSeed] : ["/api/games/letter-pool/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/letter-pool/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
     refetchOnMount: seeded ? false : "always",
+    gcTime: 0,
   });
 
   const [variation, setVariation] = useState<Variation | null>(initialChallenge || null);
@@ -256,7 +257,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
       <Card>
         <CardContent className="p-12 text-center">
           <p className="text-destructive">Failed to load game data</p>
-          <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">
+          <Button onClick={() => window.location.reload()} className="mt-4" data-testid="button-retry">
             Retry
           </Button>
         </CardContent>

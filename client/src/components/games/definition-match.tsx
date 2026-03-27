@@ -26,6 +26,7 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
     queryKey: seeded ? ["/api/games/definition-match/words", groupSeed] : ["/api/games/definition-match/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
     refetchOnMount: seeded ? false : "always",
+    gcTime: 0,
   });
 
   const [activeWords, setActiveWords] = useState<DefinitionWord[]>([]);
@@ -140,7 +141,7 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
       <Card>
         <CardContent className="p-12 text-center">
           <p className="text-destructive">Failed to load game data</p>
-          <Button onClick={() => refetch()} className="mt-4">
+          <Button onClick={() => window.location.reload()} className="mt-4">
             Retry
           </Button>
         </CardContent>

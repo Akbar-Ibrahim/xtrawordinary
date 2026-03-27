@@ -27,6 +27,7 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
     queryKey: seeded ? ["/api/games/word-maker/words", groupSeed] : ["/api/games/word-maker/words"],
     queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-maker/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
     refetchOnMount: seeded ? false : "always",
+    gcTime: 0,
   });
 
   const [activeWords, setActiveWords] = useState<MakerWord[]>([]);
@@ -184,7 +185,7 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
       <Card>
         <CardContent className="p-12 text-center">
           <p className="text-destructive">Failed to load game data</p>
-          <Button onClick={() => refetch()} className="mt-4">
+          <Button onClick={() => window.location.reload()} className="mt-4">
             Retry
           </Button>
         </CardContent>
