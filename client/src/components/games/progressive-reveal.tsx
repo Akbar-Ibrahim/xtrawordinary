@@ -174,7 +174,7 @@ export function ProgressiveRevealGame() {
       <Card>
         <CardContent className="p-12 text-center">
           <p className="text-destructive">Failed to load game data</p>
-          <Button onClick={() => window.location.reload()} className="mt-4" data-testid="button-retry">
+          <Button onClick={() => refetch()} className="mt-4" data-testid="button-retry">
             Retry
           </Button>
         </CardContent>

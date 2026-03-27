@@ -140,7 +140,7 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
       <Card>
         <CardContent className="p-12 text-center">
           <p className="text-destructive">Failed to load game data</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
+          <Button onClick={() => refetch()} className="mt-4">
             Retry
           </Button>
         </CardContent>
