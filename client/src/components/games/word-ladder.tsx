@@ -49,7 +49,7 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
   );
   const { data: allPuzzles = [], isLoading, error, refetch } = useQuery<WordLadderPuzzle[]>({
     queryKey: seeded ? ["/api/games/word-ladder/puzzles", groupSeed] : ["/api/games/word-ladder/puzzles"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-ladder/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/word-ladder/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
   });
 

@@ -24,9 +24,9 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-pool" });
   const seeded = groupSeed !== undefined;
-  const { data: words = [], isLoading, error, refetch } = useQuery<LetterPoolWord[]>({
+  const { data: words = [], isLoading, error } = useQuery<LetterPoolWord[]>({
     queryKey: seeded ? ["/api/games/letter-pool/words", groupSeed] : ["/api/games/letter-pool/words"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/letter-pool/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/letter-pool/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
@@ -97,10 +97,10 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
     setUsedWords((prev) => new Set(Array.from(prev).concat(nextWord.word)));
   }, [usedWords, activeWords, setupWord, playSound, seeded]);
 
-  const initGame = useCallback(async (v: Variation) => {
+  const initGame = useCallback((v: Variation) => {
+    if (words.length === 0) return;
     resetRecorded();
-    const freshWords = seeded ? words : ((await refetch()).data || []);
-    if (freshWords.length === 0) return;
+    const freshWords = words;
     setActiveWords(freshWords);
     setVariation(v);
     setScore(0);
@@ -115,7 +115,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
     setupWord(firstWord);
     setUsedWords(new Set([firstWord.word]));
     setTimeout(() => gameAreaRef.current?.focus(), 100);
-  }, [refetch, setupWord, resetRecorded, seeded, words]);
+  }, [words, setupWord, resetRecorded, seeded]);
 
   useEffect(() => {
     if (initialChallenge && words.length > 0 && !currentWord) {

@@ -23,9 +23,9 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: words = [], isLoading, error, refetch } = useQuery<MakerWord[]>({
+  const { data: words = [], isLoading, error } = useQuery<MakerWord[]>({
     queryKey: seeded ? ["/api/games/word-maker/words", groupSeed] : ["/api/games/word-maker/words"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-maker/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/word-maker/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
@@ -74,12 +74,10 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedBaseWords, activeWords]);
 
-  const initGame = useCallback(async () => {
+  const initGame = useCallback(() => {
+    if (words.length === 0) return;
     resetRecorded();
-    const result = await refetch();
-    const freshWords = result.data || [];
-    if (freshWords.length === 0) return;
-    setActiveWords(freshWords);
+    setActiveWords(words);
     setScore(0);
     setStreak(0);
     setRoundsCompleted(0);
@@ -87,12 +85,12 @@ export function WordMakerGame({ groupSeed }: { groupSeed?: number } = {}) {
     setUsedBaseWords(new Set());
     setFoundWords(new Set());
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = freshWords[Math.floor(rng() * freshWords.length)];
+    const randomWord = words[Math.floor(rng() * words.length)];
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch, resetRecorded]);
+  }, [words, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {

@@ -20,7 +20,7 @@ const REVEAL_COST = 30;
 export function ProgressiveRevealGame() {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "progressive-reveal" });
-  const { data: words = [], isLoading, error, refetch } = useQuery<ProgressiveRevealWord[]>({
+  const { data: words = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
     queryKey: ["/api/games/progressive-reveal/words"],
     refetchOnMount: "always",
     gcTime: 0,
@@ -65,12 +65,10 @@ export function ProgressiveRevealGame() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, activeWords, setupWord, playSound]);
 
-  const initGame = useCallback(async () => {
+  const initGame = useCallback(() => {
+    if (words.length === 0) return;
     resetRecorded();
-    const result = await refetch();
-    const freshWords = result.data || [];
-    if (freshWords.length === 0) return;
-    setActiveWords(freshWords);
+    setActiveWords(words);
     setScore(0);
     setStreak(0);
     setLives(3);
@@ -78,12 +76,12 @@ export function ProgressiveRevealGame() {
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const randomWord = freshWords[Math.floor(Math.random() * freshWords.length)];
+    const randomWord = words[Math.floor(Math.random() * words.length)];
     setCurrentWord(randomWord);
     setupWord(randomWord);
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch, setupWord, resetRecorded]);
+  }, [words, setupWord, resetRecorded]);
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {

@@ -88,7 +88,7 @@ function getTotalRemaining(pool: Map<string, number>): number {
 export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-split" });
-  const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordSplitPuzzle[]>({
+  const { data: puzzles = [], isLoading, error } = useQuery<WordSplitPuzzle[]>({
     queryKey: ["/api/games/word-split/puzzles"],
     refetchOnMount: "always",
     gcTime: 0,
@@ -132,18 +132,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  const startGame = useCallback(async (diff: Difficulty) => {
-    const result = await refetch();
-    const freshPuzzles = result.data || [];
-    if (freshPuzzles.length === 0) return;
+  const startGame = useCallback((diff: Difficulty) => {
+    if (puzzles.length === 0) return;
 
     const config = DIFFICULTY_CONFIG[diff];
-    const filtered = freshPuzzles.filter(
+    const filtered = puzzles.filter(
       p => p.targetWord.length >= config.minLength && p.targetWord.length <= config.maxLength
     );
 
     if (filtered.length === 0) {
-      setActivePuzzles(freshPuzzles);
+      setActivePuzzles(puzzles);
     } else {
       setActivePuzzles(filtered);
     }
@@ -157,19 +155,19 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
     setGameState("playing");
     resetRecorded();
 
-    const puzzleList = filtered.length > 0 ? filtered : freshPuzzles;
+    const puzzleList = filtered.length > 0 ? filtered : puzzles;
     const puzzle = puzzleList[Math.floor(Math.random() * puzzleList.length)];
     if (puzzle) {
       setUsedPuzzles(new Set<string>([puzzle.targetWord]));
       startPuzzle(puzzle);
     }
-  }, [refetch, startPuzzle, resetRecorded]);
+  }, [puzzles, startPuzzle, resetRecorded]);
 
   useEffect(() => {
-    if (initialChallenge) {
+    if (initialChallenge && puzzles.length > 0 && gameState === "menu") {
       startGame(initialChallenge as Difficulty);
     }
-  }, []);
+  }, [initialChallenge, puzzles, startGame, gameState]);
 
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);

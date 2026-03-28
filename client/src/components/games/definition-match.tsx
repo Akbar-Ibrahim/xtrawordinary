@@ -22,9 +22,9 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: words = [], isLoading, error, refetch } = useQuery<DefinitionWord[]>({
+  const { data: words = [], isLoading, error } = useQuery<DefinitionWord[]>({
     queryKey: seeded ? ["/api/games/definition-match/words", groupSeed] : ["/api/games/definition-match/words"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
@@ -59,12 +59,10 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, activeWords]);
 
-  const initGame = useCallback(async () => {
+  const initGame = useCallback(() => {
+    if (words.length === 0) return;
     resetRecorded();
-    const result = await refetch();
-    const freshWords = result.data || [];
-    if (freshWords.length === 0) return;
-    setActiveWords(freshWords);
+    setActiveWords(words);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
@@ -72,12 +70,12 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
     setUsedWords(new Set());
     setShowAnswer(false);
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = freshWords[Math.floor(rng() * freshWords.length)];
+    const randomWord = words[Math.floor(rng() * words.length)];
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch, resetRecorded]);
+  }, [words, resetRecorded]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {

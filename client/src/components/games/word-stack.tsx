@@ -36,7 +36,7 @@ const challenges = [
 export function WordStackGame() {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-stack" });
-  const { data: puzzles = [], isLoading, error, refetch } = useQuery<WordStackPuzzle[]>({
+  const { data: puzzles = [], isLoading, error } = useQuery<WordStackPuzzle[]>({
     queryKey: ["/api/games/word-stack/puzzles"],
     refetchOnMount: "always",
     gcTime: 0,
@@ -116,35 +116,28 @@ export function WordStackGame() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedPuzzles, activePuzzles, isBuildUp]);
 
-  const initGame = useCallback(async (challenge: ChallengeType) => {
-    if (!challenge) return;
+  const initGame = useCallback((challenge: ChallengeType) => {
+    if (!challenge || puzzles.length === 0) return;
     resetRecorded();
-    const result = await refetch();
-    const freshPuzzles = result.data || [];
-    if (freshPuzzles.length === 0) return;
-    
     setSelectedChallenge(challenge);
-    setActivePuzzles(freshPuzzles);
+    setActivePuzzles(puzzles);
     setScore(0);
     setStreak(0);
     setPuzzlesCompleted(0);
     setGameStatus("playing");
     setUsedPuzzles(new Set());
     setShowHint(false);
-    
-    const randomPuzzle = freshPuzzles[Math.floor(Math.random() * freshPuzzles.length)];
+    const randomPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
     setCurrentPuzzle(randomPuzzle);
-    
     if (challenge === "build-up") {
       setStack([]);
     } else {
       setStack([randomPuzzle.targetWord.toUpperCase()]);
     }
-    
     setUserInput("");
     setUsedPuzzles(new Set([randomPuzzle.targetWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch, resetRecorded]);
+  }, [puzzles, resetRecorded]);
 
   useEffect(() => {
     if (gameStatus === "complete") {

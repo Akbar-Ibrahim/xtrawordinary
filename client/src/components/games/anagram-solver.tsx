@@ -22,9 +22,9 @@ export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: wordSets = [], isLoading, error, refetch } = useQuery<AnagramWordSet[]>({
+  const { data: wordSets = [], isLoading, error } = useQuery<AnagramWordSet[]>({
     queryKey: seeded ? ["/api/games/anagram-solver/words", groupSeed] : ["/api/games/anagram-solver/words"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/anagram-solver/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/anagram-solver/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
@@ -59,12 +59,10 @@ export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedSets, activeWordSets]);
 
-  const initGame = useCallback(async () => {
+  const initGame = useCallback(() => {
+    if (wordSets.length === 0) return;
     resetRecorded();
-    const result = await refetch();
-    const freshWordSets = result.data || [];
-    if (freshWordSets.length === 0) return;
-    setActiveWordSets(freshWordSets);
+    setActiveWordSets(wordSets);
     setScore(0);
     setStreak(0);
     setTimeLeft(90);
@@ -72,13 +70,13 @@ export function AnagramSolverGame({ groupSeed }: { groupSeed?: number } = {}) {
     setUsedSets(new Set());
     setWordsSolved(0);
     const rng = seedRngRef.current ?? Math.random;
-    const randomIndex = Math.floor(rng() * freshWordSets.length);
-    const newSet = freshWordSets[randomIndex];
+    const randomIndex = Math.floor(rng() * wordSets.length);
+    const newSet = wordSets[randomIndex];
     setCurrentSet(newSet);
     setUserInput("");
     setUsedSets(new Set([randomIndex]));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [refetch, resetRecorded]);
+  }, [wordSets, resetRecorded]);
 
   useEffect(() => {
     if (wordSets.length > 0 && !currentSet) {

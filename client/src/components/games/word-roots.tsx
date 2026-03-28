@@ -60,10 +60,11 @@ export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: puzzles, isLoading } = useQuery<WordRootsPuzzle[]>({
+  const { data: puzzles, isLoading, error, refetch } = useQuery<WordRootsPuzzle[]>({
     queryKey: seeded ? ["/api/games/word-roots/puzzles", groupSeed] : ["/api/games/word-roots/puzzles"],
-    queryFn: seeded ? async () => { const r = await fetch(`/api/games/word-roots/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } : undefined,
+    ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/word-roots/puzzles?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
+    gcTime: 0,
   });
 
   useEffect(() => {
@@ -147,11 +148,22 @@ export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
     setGameStatus("playing");
   };
 
-  if (isLoading || !puzzles) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">
           Loading puzzles…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !puzzles) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center space-y-3">
+          <p className="text-destructive font-medium">Failed to load puzzles</p>
+          <Button variant="outline" onClick={() => refetch()}>Retry</Button>
         </CardContent>
       </Card>
     );
