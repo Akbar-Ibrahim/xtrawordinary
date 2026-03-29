@@ -222,3 +222,10 @@ export const games = mysqlTable("games", {
   color: varchar("color", { length: 100 }).notNull(),
   playCount: int("play_count").notNull().default(0),
 });
+
+export const wordCategories = mysqlTable("word_categories", {
+  id: int("id").primaryKey().autoincrement(),
+  word: varchar("word", { length: 100 }).notNull().unique(),
+  subcategory: varchar("subcategory", { length: 255 }).notNull(),
+  wordLength: int("word_length").notNull(),
+});
