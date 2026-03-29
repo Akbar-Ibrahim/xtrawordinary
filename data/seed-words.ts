@@ -51,8 +51,7 @@ async function seed() {
   const connection = await mysql.createConnection(DATABASE_URL!);
   console.log(`Connected to database. Seeding ${allWords.length} words…`);
 
-  let inserted = 0;
-  let updated = 0;
+  let processed = 0;
 
   for (let i = 0; i < allWords.length; i += BATCH_SIZE) {
     const batch = allWords.slice(i, i + BATCH_SIZE);
@@ -61,7 +60,7 @@ async function seed() {
     const placeholders = values.map(() => "(?, ?, ?)").join(", ");
     const flat = values.flat();
 
-    const [result] = await connection.execute<ResultSetHeader>(
+    await connection.execute<ResultSetHeader>(
       `INSERT INTO word_categories (word, subcategory, word_length)
        VALUES ${placeholders}
        ON DUPLICATE KEY UPDATE
@@ -70,16 +69,14 @@ async function seed() {
       flat
     );
 
-    inserted += result.affectedRows - result.changedRows;
-    updated += result.changedRows;
-
+    processed += batch.length;
     console.log(
-      `  Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} rows processed`
+      `  Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} rows processed (${processed}/${allWords.length} total)`
     );
   }
 
   await connection.end();
-  console.log(`\nDone! ${inserted} inserted, ${updated} updated.`);
+  console.log(`\nDone! ${processed} words processed (inserted or updated).`);
 }
 
 seed().catch((err) => {
