@@ -17,7 +17,8 @@
  * Existing rows are updated (subcategory + word_length) if the word already exists.
  */
 
-import mysql from "mysql2/promise";
+import { config } from "dotenv";
+import mysql, { ResultSetHeader } from "mysql2/promise";
 import { fourLetterWords } from "./progressive-reveal-words-4";
 import { fiveLetterWords } from "./progressive-reveal-words-5";
 import { sixLetterWords } from "./progressive-reveal-words-6";
@@ -25,6 +26,8 @@ import { sevenLetterWords } from "./progressive-reveal-words-7";
 import { eightLetterWords } from "./progressive-reveal-words-8";
 import { nineLetterWords } from "./progressive-reveal-words-9";
 import { tenLetterWords } from "./progressive-reveal-words-10";
+
+config();
 
 const DATABASE_URL = process.env.MYSQL_DATABASE_URL;
 if (!DATABASE_URL) {
@@ -58,7 +61,7 @@ async function seed() {
     const placeholders = values.map(() => "(?, ?, ?)").join(", ");
     const flat = values.flat();
 
-    const [result]: any = await connection.execute(
+    const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO word_categories (word, subcategory, word_length)
        VALUES ${placeholders}
        ON DUPLICATE KEY UPDATE
