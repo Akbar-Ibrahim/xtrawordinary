@@ -359,7 +359,7 @@ export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
                             ? "invisible"
                             : isSelected
                             ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-1"
-                            : "bg-card border border-border text-foreground hover-elevate cursor-pointer"
+                            : "bg-primary/15 text-foreground hover-elevate cursor-pointer"
                         }`}
                         data-testid={`grid-cell-${cell.id}`}
                       >

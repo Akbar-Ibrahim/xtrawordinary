@@ -455,7 +455,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
                           className={`w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center text-lg font-bold rounded-md transition-colors ${
                             item.used
                               ? "bg-muted text-muted-foreground/30 cursor-default"
-                              : "bg-card border border-border text-foreground cursor-pointer hover-elevate"
+                              : "bg-primary text-primary-foreground cursor-pointer hover-elevate"
                           }`}
                           data-testid={`pool-letter-${item.id}`}
                         >
