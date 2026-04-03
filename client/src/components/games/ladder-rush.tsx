@@ -145,7 +145,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
 
     const lastWord = chainRef.current[chainRef.current.length - 1];
     if (!isOneLetterDiff(lastWord, word)) {
-      setErrorMsg("Change exactly one letter (same position)");
+      setErrorMsg("Change exactly one letter");
       setShake(true);
       playSound("wrong");
       setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
