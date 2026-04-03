@@ -315,17 +315,19 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
               {timeLeft}s
             </span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (timerRef.current) clearInterval(timerRef.current);
-              onExit();
-            }}
-            data-testid="button-quit"
-          >
-            Quit
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                onExit();
+              }}
+              data-testid="button-quit"
+            >
+              Quit
+            </Button>
+          )}
         </div>
       </div>
 
