@@ -260,7 +260,7 @@ export class MemStorage implements IStorage {
     const totalCells = size * size;
 
     const vowels = "AEIOU";
-    const uncommonLetters = "JKQVXZ";
+    const uncommonLetters = "JKVXZ";
 
     const rng = seed !== undefined ? mulberry32(seed) : Math.random;
 
@@ -274,7 +274,7 @@ export class MemStorage implements IStorage {
     const vowelWeights: Record<string, number> = { A: 8, E: 12, I: 7, O: 8, U: 3 };
     const consonantWeightsNormal: Record<string, number> = {
       B: 2, C: 3, D: 4, F: 2, G: 2, H: 6, J: 1, K: 1, L: 4, M: 3,
-      N: 7, P: 2, Q: 1, R: 6, S: 6, T: 9, V: 1, W: 2, X: 1, Y: 2, Z: 1,
+      N: 7, P: 2, R: 6, S: 6, T: 9, V: 1, W: 2, X: 1, Y: 2, Z: 1,
     };
 
     function buildPool(weights: Record<string, number>): string[] {
