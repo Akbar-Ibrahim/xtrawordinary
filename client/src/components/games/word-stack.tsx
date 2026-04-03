@@ -490,7 +490,7 @@ export function WordStackGame() {
                 <Input
                   ref={inputRef}
                   value={userInput}
-                  onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                  onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                   onKeyDown={handleKeyDown}
                   placeholder={`${requiredLength}-letter word...`}
                   aria-label="Enter your word"

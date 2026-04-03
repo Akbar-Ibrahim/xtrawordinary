@@ -386,7 +386,7 @@ export function NoRepeatsGame({ initialChallenge }: { initialChallenge?: Challen
               <Input
                 ref={inputRef}
                 value={userInput}
-                onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                 placeholder={`Enter a ${config.wordLength}-letter word...`}
                 aria-label="Enter your word"
                 className="text-center text-lg uppercase"

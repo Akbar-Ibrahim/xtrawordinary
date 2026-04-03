@@ -434,7 +434,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   <div className="relative">
                     <Input
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter your word..."
                       aria-label="Enter your word"

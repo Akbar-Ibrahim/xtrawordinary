@@ -388,7 +388,7 @@ export function WordLengthGame({ initialChallenge, groupSeed }: { initialChallen
                     <Input
                       ref={inputRef}
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                       placeholder={`Enter a ${constraint?.length || 5}-letter word...`}
                       aria-label="Enter your word"
                       className="text-center text-lg uppercase"

@@ -594,7 +594,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
                   <Input
                     ref={inputRef}
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                    onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a word (2+ letters)..."
                     aria-label="Enter a word to split from the target"

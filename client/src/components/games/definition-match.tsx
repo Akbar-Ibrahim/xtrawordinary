@@ -227,7 +227,7 @@ export function DefinitionMatchGame({ groupSeed }: { groupSeed?: number } = {}) 
                     <Input
                       ref={inputRef}
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Type the word..."
                       aria-label="Type the word"

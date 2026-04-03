@@ -328,7 +328,7 @@ export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
                 <Input
                   ref={inputRef}
                   value={userInput}
-                  onChange={e => setUserInput(e.target.value.toUpperCase())}
+                  onChange={e => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your parent word..."
                   className="text-center font-mono text-lg uppercase tracking-widest"

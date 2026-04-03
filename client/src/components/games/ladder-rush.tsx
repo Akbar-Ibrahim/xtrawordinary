@@ -390,7 +390,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
             <Input
               ref={inputRef}
               value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, wordLength))}
+              onChange={(e) => setCurrentInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, wordLength))}
               onKeyDown={handleKeyDown}
               placeholder={`${wordLength}-letter word…`}
               maxLength={wordLength}

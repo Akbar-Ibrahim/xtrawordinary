@@ -496,7 +496,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed }: { initialChallen
                     <Input
                       ref={inputRef}
                       value={userInput}
-                      onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                      onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                       onKeyDown={handleKeyDown}
                       placeholder="Enter a word containing those letters..."
                       aria-label="Enter a word containing the required letters"

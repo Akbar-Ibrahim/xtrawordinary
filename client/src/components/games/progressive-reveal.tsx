@@ -319,7 +319,7 @@ export function ProgressiveRevealGame() {
                   <Input
                     ref={inputRef}
                     value={guess}
-                    onChange={(e) => setGuess(e.target.value.toUpperCase())}
+                    onChange={(e) => setGuess(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your guess..."
                     disabled={!!feedback}

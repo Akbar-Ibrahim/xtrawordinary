@@ -445,7 +445,7 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
                 <Input
                   ref={inputRef}
                   value={currentInput}
-                  onChange={(e) => setCurrentInput(e.target.value.toUpperCase().slice(0, puzzle.start.length))}
+                  onChange={(e) => setCurrentInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, puzzle.start.length))}
                   onKeyDown={handleKeyDown}
                   placeholder={`Type a ${puzzle.start.length}-letter word...`}
                   maxLength={puzzle.start.length}

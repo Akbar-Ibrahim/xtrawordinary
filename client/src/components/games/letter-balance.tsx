@@ -991,7 +991,7 @@ export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChal
                   <Input
                     ref={inputRef}
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value.toUpperCase())}
+                    onChange={(e) => setUserInput(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
                     onKeyDown={handleKeyDown}
                     placeholder="Enter a word..."
                     aria-label="Enter your word"
