@@ -17,7 +17,8 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
-const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const EXCLUDED_LETTERS = new Set(["J", "Q", "V", "X", "Z"]);
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !EXCLUDED_LETTERS.has(l));
 
 type Challenge = 1 | 2 | 3 | 4 | 5 | "advanced";
 
