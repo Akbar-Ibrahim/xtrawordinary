@@ -123,7 +123,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
     }
 
     if (!isOneLetterDiff(lastWord, word)) {
-      setErrorMsg("Change exactly one letter to climb the ladder");
+      setErrorMsg("Change exactly one letter");
       setShake(true);
       playSound("wrong");
       setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
