@@ -21,24 +21,20 @@ interface WordLadderGameProps {
   locked?: boolean;
 }
 
-function getSortedLetters(word: string): string {
-  return word.split("").sort().join("");
-}
-
 function isOneLetterDiff(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
-  const len = a.length;
-  for (let i = 0; i < len; i++) {
-    const remaining = a.slice(0, i) + a.slice(i + 1);
-    const sortedRemaining = getSortedLetters(remaining);
-    for (let j = 0; j < len; j++) {
-      const otherRemaining = b.slice(0, j) + b.slice(j + 1);
-      if (getSortedLetters(otherRemaining) === sortedRemaining) {
-        return true;
-      }
-    }
+  const freqA: Record<string, number> = {};
+  const freqB: Record<string, number> = {};
+  for (const c of a) freqA[c] = (freqA[c] || 0) + 1;
+  for (const c of b) freqB[c] = (freqB[c] || 0) + 1;
+  let added = 0, removed = 0;
+  const allLetters = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
+  for (const c of allLetters) {
+    const diff = (freqB[c] || 0) - (freqA[c] || 0);
+    if (diff > 0) added += diff;
+    else removed -= diff;
   }
-  return false;
+  return added === 1 && removed === 1;
 }
 
 export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadderGameProps) {
