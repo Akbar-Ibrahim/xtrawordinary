@@ -303,6 +303,12 @@ export default function DailyChallenge() {
                     <p className="text-sm text-muted-foreground">
                       Come back tomorrow for a new challenge!
                     </p>
+                    <Link href="/">
+                      <Button variant="outline" className="gap-2" data-testid="button-back-home">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Games
+                      </Button>
+                    </Link>
                   </div>
                 ) : (
                   <Button
