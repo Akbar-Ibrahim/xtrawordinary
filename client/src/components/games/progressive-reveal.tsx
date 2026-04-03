@@ -17,7 +17,7 @@ import { useGameResult } from "@/hooks/use-game-result";
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
-export function ProgressiveRevealGame() {
+export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "progressive-reveal" });
   const { data: words = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
@@ -215,16 +215,18 @@ export function ProgressiveRevealGame() {
               </motion.div>
             ))}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={initGame}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restart
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={initGame}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart
+            </Button>
+          )}
         </div>
       </div>
 
@@ -399,9 +401,11 @@ export function ProgressiveRevealGame() {
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
-                <Button onClick={initGame} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                {!locked && (
+                  <Button onClick={initGame} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </motion.div>

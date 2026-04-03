@@ -95,7 +95,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
+export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-hunt" });
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -596,23 +596,25 @@ export function LetterHuntGame({ initialChallenge, groupSeed }: { initialChallen
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge, ordered)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Play Again
-                  </Button>
-                  {challenge !== "advanced" && getNextChallenge(challenge) && (
-                    <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
-                      Next Challenge
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge, ordered)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
                     </Button>
-                  )}
-                  {challenge !== "advanced" && (
-                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                      Back to Menu
-                    </Button>
-                  )}
-                </div>
+                    {challenge !== "advanced" && getNextChallenge(challenge) && (
+                      <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                        Next Challenge
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    )}
+                    {challenge !== "advanced" && (
+                      <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                        Back to Menu
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -652,15 +654,17 @@ export function LetterHuntGame({ initialChallenge, groupSeed }: { initialChallen
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge, ordered)} data-testid="button-play-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Play Again
-                  </Button>
-                  <Button onClick={goToMenu} variant="outline" data-testid="button-back-menu">
-                    Back to Menu
-                  </Button>
-                </div>
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge, ordered)} data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                    <Button onClick={goToMenu} variant="outline" data-testid="button-back-menu">
+                      Back to Menu
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

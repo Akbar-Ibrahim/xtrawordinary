@@ -18,9 +18,10 @@ type Variation = "with-pool" | "without-pool";
 interface LetterPoolGameProps {
   initialChallenge?: Variation;
   groupSeed?: number;
+  locked?: boolean;
 }
 
-export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGameProps) {
+export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPoolGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-pool" });
   const seeded = groupSeed !== undefined;
@@ -357,16 +358,18 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
               </motion.div>
             ))}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={restartGame}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restart
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={restartGame}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart
+            </Button>
+          )}
         </div>
       </div>
 
@@ -537,21 +540,23 @@ export function LetterPoolGame({ initialChallenge, groupSeed }: LetterPoolGamePr
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
-                <div className="flex gap-3 justify-center flex-wrap">
-                  <Button onClick={restartGame} data-testid="button-play-again">
-                    Play Again
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setGameStatus("menu");
-                      setCurrentWord(null);
-                    }}
-                    data-testid="button-change-mode"
-                  >
-                    Change Mode
-                  </Button>
-                </div>
+                {!locked && (
+                  <div className="flex gap-3 justify-center flex-wrap">
+                    <Button onClick={restartGame} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setGameStatus("menu");
+                        setCurrentWord(null);
+                      }}
+                      data-testid="button-change-mode"
+                    >
+                      Change Mode
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

@@ -62,66 +62,65 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const variation = (seed % 5) + 1;
-      return <WordLengthGame initialChallenge={variation} />;
+      return <WordLengthGame initialChallenge={variation} locked />;
     }
     case "letter-position": {
       const challenge = ((seed % 2) + 1) as 1 | 2;
-      return <LetterPositionGame initialChallenge={challenge} />;
+      return <LetterPositionGame initialChallenge={challenge} locked />;
     }
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const challenge = options[seed % options.length];
-      return <LetterHuntGame initialChallenge={challenge} />;
+      return <LetterHuntGame initialChallenge={challenge} locked />;
     }
     case "letter-balance": {
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat];
       const level = levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} />;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level }} locked />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       const challenge = options[seed % options.length];
-      return <LetterFrequencyGame initialChallenge={challenge} />;
+      return <LetterFrequencyGame initialChallenge={challenge} locked />;
     }
     case "no-repeats": {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
       const challenge = options[seed % options.length];
-      return <NoRepeatsGame initialChallenge={challenge} />;
+      return <NoRepeatsGame initialChallenge={challenge} locked />;
     }
     case "word-ladder":
-      return <WordLadderGame initialChallenge />;
-
+      return <WordLadderGame initialChallenge locked />;
     case "anagram-solver":
-      return <AnagramSolverGame />;
+      return <AnagramSolverGame locked />;
     case "word-scramble":
-      return <WordScrambleGame />;
+      return <WordScrambleGame locked />;
     case "definition-match":
-      return <DefinitionMatchGame />;
+      return <DefinitionMatchGame locked />;
     case "letter-pool": {
       const poolVariation = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={poolVariation as "with-pool" | "without-pool"} />;
+      return <LetterPoolGame initialChallenge={poolVariation as "with-pool" | "without-pool"} locked />;
     }
     case "word-maker":
-      return <WordMakerGame />;
+      return <WordMakerGame locked />;
     case "word-sweep":
-      return <WordSweepGame />;
+      return <WordSweepGame locked />;
     case "word-chain": {
       const variation = ((seed % 2) + 1) as 1 | 2;
       const level = ((seed >> 2) % 2 + 1) as 1 | 2;
-      return <WordChainGame initialChallenge={{ variation, level }} />;
+      return <WordChainGame initialChallenge={{ variation, level }} locked />;
     }
     case "word-split": {
       const difficulties = ["short", "medium", "long"] as const;
       const diff = difficulties[seed % difficulties.length];
-      return <WordSplitGame initialChallenge={diff} />;
+      return <WordSplitGame initialChallenge={diff} locked />;
     }
     case "word-stack":
-      return <WordStackGame />;
+      return <WordStackGame locked />;
     case "progressive-reveal":
-      return <ProgressiveRevealGame />;
+      return <ProgressiveRevealGame locked />;
     case "word-roots":
-      return <WordRootsGame />;
+      return <WordRootsGame locked />;
     default:
       return null;
   }

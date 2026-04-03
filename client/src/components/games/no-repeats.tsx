@@ -44,7 +44,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function NoRepeatsGame({ initialChallenge }: { initialChallenge?: Challenge } = {}) {
+export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?: Challenge; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "no-repeats" });
   const validateMutation = useMutation({
@@ -308,22 +308,24 @@ export function NoRepeatsGame({ initialChallenge }: { initialChallenge?: Challen
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={returnToMenu} variant="outline" className="gap-2" data-testid="button-menu">
-                <Menu className="w-4 h-4" />
-                Challenge Menu
-              </Button>
-              {nextChallenge && gameStatus === "won" && (
-                <Button onClick={() => startGame(nextChallenge)} className="gap-2" data-testid="button-next-challenge">
-                  Next Challenge
-                  <ArrowRight className="w-4 h-4" />
+            {!locked && (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={returnToMenu} variant="outline" className="gap-2" data-testid="button-menu">
+                  <Menu className="w-4 h-4" />
+                  Challenge Menu
                 </Button>
-              )}
-              <Button onClick={() => startGame(challenge)} variant="secondary" className="gap-2" data-testid="button-play-again">
-                <RotateCcw className="w-4 h-4" />
-                Play Again
-              </Button>
-            </div>
+                {nextChallenge && gameStatus === "won" && (
+                  <Button onClick={() => startGame(nextChallenge)} className="gap-2" data-testid="button-next-challenge">
+                    Next Challenge
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button onClick={() => startGame(challenge)} variant="secondary" className="gap-2" data-testid="button-play-again">
+                  <RotateCcw className="w-4 h-4" />
+                  Play Again
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

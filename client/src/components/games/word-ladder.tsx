@@ -18,6 +18,7 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 interface WordLadderGameProps {
   initialChallenge?: boolean;
   groupSeed?: number;
+  locked?: boolean;
 }
 
 function getSortedLetters(word: string): string {
@@ -40,7 +41,7 @@ function isOneLetterDiff(a: string, b: string): boolean {
   return false;
 }
 
-export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGameProps) {
+export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadderGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-ladder" });
   const seeded = groupSeed !== undefined;
@@ -271,16 +272,18 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
               Hint
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => initGame()}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            New Puzzle
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => initGame()}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              New Puzzle
+            </Button>
+          )}
         </div>
       </div>
 
@@ -611,9 +614,11 @@ export function WordLadderGame({ initialChallenge, groupSeed }: WordLadderGamePr
                   isWin={true}
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
                 />
-                <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
-                  Play Again
-                </Button>
+                {!locked && (
+                  <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </motion.div>

@@ -334,7 +334,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number } = {}) {
+export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-balance" });
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -690,18 +690,20 @@ export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChal
       <div className="space-y-6">
         <Card>
           <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={backToMenu}
-                className="gap-1"
-                data-testid="button-back-category"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </div>
+            {!locked && (
+              <div className="flex items-center gap-2 mb-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={backToMenu}
+                  className="gap-1"
+                  data-testid="button-back-category"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </Button>
+              </div>
+            )}
             
             <div className="text-center mb-6">
               <h3 className="text-xl font-bold">{categoryDef.name}</h3>
@@ -801,32 +803,34 @@ export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChal
               isWin={true}
             />
             
-            <div className="flex flex-col gap-3 max-w-xs mx-auto">
-              {canContinue && (
+            {!locked && (
+              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                {canContinue && (
+                  <Button
+                    className="gap-2"
+                    onClick={continueToNextLevel}
+                    data-testid="button-next-level"
+                  >
+                    Next Level
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button
-                  className="gap-2"
-                  onClick={continueToNextLevel}
-                  data-testid="button-next-level"
+                  variant="outline"
+                  onClick={backToLevelMenu}
+                  data-testid="button-level-menu"
                 >
-                  Next Level
-                  <ArrowRight className="h-4 w-4" />
+                  Choose Another Level
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={backToLevelMenu}
-                data-testid="button-level-menu"
-              >
-                Choose Another Level
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={backToMenu}
-                data-testid="button-main-menu"
-              >
-                Main Menu
-              </Button>
-            </div>
+                <Button
+                  variant="ghost"
+                  onClick={backToMenu}
+                  data-testid="button-main-menu"
+                >
+                  Main Menu
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -874,28 +878,30 @@ export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChal
               isWin={false}
             />
             
-            <div className="flex flex-col gap-3 max-w-xs mx-auto">
-              <Button
-                onClick={() => selectedLevel && startGame(selectedLevel)}
-                data-testid="button-try-again"
-              >
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                onClick={backToLevelMenu}
-                data-testid="button-level-menu"
-              >
-                Choose Another Level
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={backToMenu}
-                data-testid="button-main-menu"
-              >
-                Main Menu
-              </Button>
-            </div>
+            {!locked && (
+              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                <Button
+                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  data-testid="button-try-again"
+                >
+                  Try Again
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={backToLevelMenu}
+                  data-testid="button-level-menu"
+                >
+                  Choose Another Level
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={backToMenu}
+                  data-testid="button-main-menu"
+                >
+                  Main Menu
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -936,16 +942,18 @@ export function LetterBalanceGame({ initialChallenge, groupSeed }: { initialChal
             <Timer className="h-3.5 w-3.5" />
             {timeLeft}s
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={backToMenu}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Menu
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={backToMenu}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Menu
+            </Button>
+          )}
         </div>
       </div>
 

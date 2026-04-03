@@ -52,7 +52,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-position" });
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -453,23 +453,25 @@ export function LetterPositionGame({ initialChallenge, groupSeed }: { initialCha
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Play Again
-                  </Button>
-                  {getNextChallenge(challenge) && (
-                    <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
-                      Next Challenge
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
                     </Button>
-                  )}
-                  {challenge !== 2 && (
-                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                      Back to Menu
-                    </Button>
-                  )}
-                </div>
+                    {getNextChallenge(challenge) && (
+                      <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                        Next Challenge
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    )}
+                    {challenge !== 2 && (
+                      <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                        Back to Menu
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -509,15 +511,17 @@ export function LetterPositionGame({ initialChallenge, groupSeed }: { initialCha
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Try Again
-                  </Button>
-                  <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                    Back to Menu
-                  </Button>
-                </div>
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Try Again
+                    </Button>
+                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                      Back to Menu
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

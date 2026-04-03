@@ -33,7 +33,7 @@ const challenges = [
   },
 ];
 
-export function WordStackGame() {
+export function WordStackGame({ locked }: { locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-stack" });
   const { data: puzzles = [], isLoading, error } = useQuery<WordStackPuzzle[]>({
@@ -352,15 +352,17 @@ export function WordStackGame() {
               challengeName={selectedChallenge === "build-up" ? "Build Up" : "Break Down"}
               isWin={true}
             />
-            <div className="flex gap-4 justify-center">
-              <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Play Again
-              </Button>
-              <Button variant="outline" onClick={backToSelection} size="lg" data-testid="button-change-challenge">
-                Change Challenge
-              </Button>
-            </div>
+            {!locked && (
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Play Again
+                </Button>
+                <Button variant="outline" onClick={backToSelection} size="lg" data-testid="button-change-challenge">
+                  Change Challenge
+                </Button>
+              </div>
+            )}
           </motion.div>
         </CardContent>
       </Card>
@@ -400,15 +402,17 @@ export function WordStackGame() {
             Puzzles: {puzzlesCompleted}
           </Badge>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={backToSelection} data-testid="button-back">
-            Change Challenge
-          </Button>
-          <Button variant="outline" onClick={() => initGame(selectedChallenge)} data-testid="button-restart">
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Restart
-          </Button>
-        </div>
+        {!locked && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={backToSelection} data-testid="button-back">
+              Change Challenge
+            </Button>
+            <Button variant="outline" onClick={() => initGame(selectedChallenge)} data-testid="button-restart">
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Restart
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>

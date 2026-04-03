@@ -43,7 +43,7 @@ function letterMultisetCheck(word: string, derivative: string): boolean {
 type GameStatus = "playing" | "won" | "lost";
 type RoundResult = { word: string; canonical: boolean; points: number };
 
-export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
+export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { user } = useAuth();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots" });
   const seeded = groupSeed !== undefined;
@@ -215,12 +215,14 @@ export function WordRootsGame({ groupSeed }: { groupSeed?: number } = {}) {
               </div>
             )}
 
-            <div className="flex gap-2 justify-center">
-              <Button onClick={handleRestart} data-testid="button-play-again">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Play Again
-              </Button>
-            </div>
+            {!locked && (
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleRestart} data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Play Again
+                </Button>
+              </div>
+            )}
 
             {!user && (
               <div className="mt-2 p-3 rounded-lg bg-muted/50 text-center space-y-2">

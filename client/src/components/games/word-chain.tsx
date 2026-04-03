@@ -19,7 +19,7 @@ import { useGameResult } from "@/hooks/use-game-result";
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level } }) {
+export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-chain" });
 
@@ -368,16 +368,18 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <Timer className="h-3.5 w-3.5" />
             {timeLeft}s
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setGameStatus("menu")}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Menu
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGameStatus("menu")}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Menu
+            </Button>
+          )}
         </div>
       </div>
 
@@ -578,9 +580,11 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
-                <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                {!locked && (
+                  <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </motion.div>

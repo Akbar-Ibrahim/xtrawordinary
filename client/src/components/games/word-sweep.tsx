@@ -25,7 +25,7 @@ function calculateWordScore(wordLength: number): number {
   return Math.round(10 * Math.pow(2, wordLength - 3));
 }
 
-export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
+export function WordSweepGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-sweep" });
   const GRID_SIZE = 6;
@@ -300,16 +300,18 @@ export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
           <Badge variant="outline" className="gap-1.5" data-testid="badge-remaining">
             {remainingLetters} / {totalLetters} left
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={initGame}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restart
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={initGame}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart
+            </Button>
+          )}
         </div>
       </div>
 
@@ -548,9 +550,11 @@ export function WordSweepGame({ groupSeed }: { groupSeed?: number } = {}) {
                   wordsCompleted={wordsFound.length}
                   isWin={wordsFound.length > 0}
                 />
-                <Button onClick={initGame} data-testid="button-play-again">
-                  Play Again
-                </Button>
+                {!locked && (
+                  <Button onClick={initGame} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </motion.div>

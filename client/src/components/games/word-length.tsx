@@ -128,7 +128,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, groupSeed }: { initialChallenge?: number; groupSeed?: number } = {}) {
+export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: number; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-length" });
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -332,16 +332,18 @@ export function WordLengthGame({ initialChallenge, groupSeed }: { initialChallen
             <Timer className="h-3.5 w-3.5" />
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setGameStatus("menu")}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Back to Menu
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGameStatus("menu")}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Back to Menu
+            </Button>
+          )}
         </div>
       </div>
 
@@ -487,36 +489,38 @@ export function WordLengthGame({ initialChallenge, groupSeed }: { initialChallen
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => startGame(variation)} 
-                    className="gap-1.5"
-                    data-testid="button-play-again"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Play Again
-                  </Button>
-                  {gameStatus === "won" && variation < 5 && (
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button 
-                      onClick={() => startGame(variation + 1)} 
+                      variant="outline" 
+                      onClick={() => startGame(variation)} 
                       className="gap-1.5"
-                      data-testid="button-next-challenge"
+                      data-testid="button-play-again"
                     >
-                      Next Challenge
-                      <ArrowRight className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4" />
+                      Play Again
                     </Button>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setGameStatus("menu")} 
-                    className="gap-1.5"
-                    data-testid="button-back-menu"
-                  >
-                    <Menu className="h-4 w-4" />
-                    Back to Menu
-                  </Button>
-                </div>
+                    {gameStatus === "won" && variation < 5 && (
+                      <Button 
+                        onClick={() => startGame(variation + 1)} 
+                        className="gap-1.5"
+                        data-testid="button-next-challenge"
+                      >
+                        Next Challenge
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setGameStatus("menu")} 
+                      className="gap-1.5"
+                      data-testid="button-back-menu"
+                    >
+                      <Menu className="h-4 w-4" />
+                      Back to Menu
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

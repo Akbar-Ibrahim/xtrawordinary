@@ -39,9 +39,10 @@ interface LadderRushPlayProps {
   puzzles: LadderRushPuzzle[];
   onExit: () => void;
   onPlayAgain: () => void;
+  locked?: boolean;
 }
 
-function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRushPlayProps) {
+function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
   const { playSound } = useSound();
   const { reportResult } = useGameResult({ slug: `ladder-rush-${wordLength}` });
 
@@ -266,24 +267,26 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1 gap-2"
-                onClick={onExit}
-                data-testid="button-change-mode"
-              >
-                Change Mode
-              </Button>
-              <Button
-                className="flex-1 gap-2"
-                onClick={onPlayAgain}
-                data-testid="button-play-again"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Play Again
-              </Button>
-            </div>
+            {!locked && (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={onExit}
+                  data-testid="button-change-mode"
+                >
+                  Change Mode
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  onClick={onPlayAgain}
+                  data-testid="button-play-again"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Play Again
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -429,9 +432,10 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain }: LadderRush
 
 interface LadderRushGameProps {
   groupSeed?: number;
+  locked?: boolean;
 }
 
-export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
+export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
   const [selectedLength, setSelectedLength] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playKey, setPlayKey] = useState(0);
@@ -459,6 +463,7 @@ export function LadderRushGame({ groupSeed }: LadderRushGameProps) {
           setSelectedLength(null);
         }}
         onPlayAgain={() => setPlayKey(k => k + 1)}
+        locked={locked}
       />
     );
   }

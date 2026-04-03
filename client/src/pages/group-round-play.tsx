@@ -52,38 +52,38 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} groupSeed={seed} />;
+      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} groupSeed={seed} locked />;
     }
-    case "letter-position": return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} groupSeed={seed} />;
+    case "letter-position": return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} groupSeed={seed} locked />;
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <LetterHuntGame initialChallenge={options[seed % options.length]} groupSeed={seed} />;
+      return <LetterHuntGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
     }
     case "letter-balance": {
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat];
       const level = levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} />;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
-      return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} />;
+      return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
     }
     case "no-repeats": {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
-      return <NoRepeatsGame initialChallenge={options[seed % options.length]} />;
+      return <NoRepeatsGame initialChallenge={options[seed % options.length]} locked />;
     }
-    case "word-ladder": return <WordLadderGame initialChallenge groupSeed={seed} />;
-    case "anagram-solver": return <AnagramSolverGame groupSeed={seed} />;
-    case "word-scramble": return <WordScrambleGame groupSeed={seed} />;
-    case "definition-match": return <DefinitionMatchGame groupSeed={seed} />;
+    case "word-ladder": return <WordLadderGame initialChallenge groupSeed={seed} locked />;
+    case "anagram-solver": return <AnagramSolverGame groupSeed={seed} locked />;
+    case "word-scramble": return <WordScrambleGame groupSeed={seed} locked />;
+    case "definition-match": return <DefinitionMatchGame groupSeed={seed} locked />;
     case "letter-pool": {
       const v = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} />;
+      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} locked />;
     }
-    case "word-maker": return <WordMakerGame groupSeed={seed} />;
-    case "word-sweep": return <WordSweepGame groupSeed={seed} />;
-    case "word-roots": return <WordRootsGame groupSeed={seed} />;
+    case "word-maker": return <WordMakerGame groupSeed={seed} locked />;
+    case "word-sweep": return <WordSweepGame groupSeed={seed} locked />;
+    case "word-roots": return <WordRootsGame groupSeed={seed} locked />;
     default: return null;
   }
 }

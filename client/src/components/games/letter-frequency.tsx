@@ -101,7 +101,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, groupSeed }: { initialChallenge?: Challenge; groupSeed?: number } = {}) {
+export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-frequency" });
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -506,23 +506,25 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed }: { initialCh
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Play Again
-                  </Button>
-                  {getNextChallenge(challenge) && (
-                    <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
-                      Next Challenge
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
                     </Button>
-                  )}
-                  {challenge !== 4 && challenge !== "random" && (
-                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                      Back to Menu
-                    </Button>
-                  )}
-                </div>
+                    {getNextChallenge(challenge) && (
+                      <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                        Next Challenge
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    )}
+                    {challenge !== 4 && challenge !== "random" && (
+                      <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                        Back to Menu
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -562,15 +564,17 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed }: { initialCh
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <Button onClick={() => startGame(challenge)} data-testid="button-try-again">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Try Again
-                  </Button>
-                  <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                    Back to Menu
-                  </Button>
-                </div>
+                {!locked && (
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => startGame(challenge)} data-testid="button-try-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Try Again
+                    </Button>
+                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
+                      Back to Menu
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

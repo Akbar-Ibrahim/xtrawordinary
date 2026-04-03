@@ -85,7 +85,7 @@ function getTotalRemaining(pool: Map<string, number>): number {
   return total;
 }
 
-export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
+export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked }: { initialChallenge?: Difficulty | ""; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-split" });
   const { data: puzzles = [], isLoading, error } = useQuery<WordSplitPuzzle[]>({
@@ -426,14 +426,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
                 isWin={allSolved}
               />
-              <div className="flex gap-2 justify-center flex-wrap">
-                <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
-                  Main Menu
-                </Button>
-                <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
-                  Play Again
-                </Button>
-              </div>
+              {!locked && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
+                    Main Menu
+                  </Button>
+                  <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -483,16 +485,18 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "" }) {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setGameState("menu")}
-            className="gap-1.5"
-            data-testid="button-menu"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Menu
-          </Button>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGameState("menu")}
+              className="gap-1.5"
+              data-testid="button-menu"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Menu
+            </Button>
+          )}
         </div>
       </div>
 
