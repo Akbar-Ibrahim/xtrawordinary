@@ -268,7 +268,7 @@ export default function Leaderboard() {
           <CardContent>
             {hasModes ? (
               <ModeTabs
-                key={`${selectedGame}-${isSurvival}`}
+                key={selectedGame}
                 modes={selectedGameObj!.modes!}
                 isSurvival={isSurvival}
                 user={user}
