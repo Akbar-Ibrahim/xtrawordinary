@@ -236,7 +236,7 @@ export default function Leaderboard() {
 
         <div className="flex justify-center">
           <Select value={selectedGame} onValueChange={handleGameChange}>
-            <SelectTrigger className="w-64 cursor-pointer" data-testid="select-game-filter">
+            <SelectTrigger className="w-64" data-testid="select-game-filter">
               <SelectValue placeholder="Select a game" />
             </SelectTrigger>
             <SelectContent>
