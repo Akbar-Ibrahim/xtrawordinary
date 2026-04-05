@@ -7,13 +7,26 @@ import * as schema from "./db-schema";
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
   private dbPromise: Promise<any>;
+  private wordSet: Set<string> = new Set();
 
   constructor() {
     this.gameData = new MemStorage();
     if (!process.env.MYSQL_DATABASE_URL) {
       throw new Error("MYSQL_DATABASE_URL is required");
     }
-    this.dbPromise = import("./db").then(m => m.db);
+    this.dbPromise = import("./db").then(async (m) => {
+      const db = m.db;
+      try {
+        const rows = await db.select({ word: schema.words.word }).from(schema.words);
+        for (const row of rows) {
+          this.wordSet.add(row.word.toUpperCase());
+        }
+        console.log(`[MySQLStorage] Loaded ${this.wordSet.size} words into Set from MySQL`);
+      } catch (err) {
+        console.warn("[MySQLStorage] Failed to preload words Set — word validation may fall back to empty Set:", err);
+      }
+      return db;
+    });
   }
 
   private async getDb() {
@@ -85,8 +98,8 @@ export class MySQLStorage implements IStorage {
   async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> { return this.gameData.getWordRootsPuzzles(); }
   async getWordStackPuzzles(): Promise<WordStackPuzzle[]> { return this.gameData.getWordStackPuzzles(); }
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> { return this.gameData.getWordSplitPuzzles(); }
-  async getWordDictionary(): Promise<string[]> { return this.gameData.getWordDictionary(); }
-  async validateWord(word: string): Promise<boolean> { return this.gameData.validateWord(word); }
+  async getWordDictionary(): Promise<string[]> { return Array.from(this.wordSet); }
+  async validateWord(word: string): Promise<boolean> { return this.wordSet.has(word.toUpperCase()); }
   async getWordLengthConfig(): Promise<WordLengthConfig> { return this.gameData.getWordLengthConfig(); }
   async getLetterPositionConfig(): Promise<LetterPositionConfig> { return this.gameData.getLetterPositionConfig(); }
   async getLetterHuntConfig(): Promise<LetterHuntConfig> { return this.gameData.getLetterHuntConfig(); }
