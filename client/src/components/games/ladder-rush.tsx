@@ -21,7 +21,7 @@ const WORD_LENGTHS = [
   { length: 6, label: "Hard", sublabel: "6-letter words", description: "Trickier, but higher score" },
 ];
 
-function isOneLetterDiff(a: string, b: string): boolean {
+function isNLetterDiff(a: string, b: string, n: number): boolean {
   if (a.length !== b.length) return false;
   const freqA: Record<string, number> = {};
   const freqB: Record<string, number> = {};
@@ -34,7 +34,7 @@ function isOneLetterDiff(a: string, b: string): boolean {
     if (diff > 0) added += diff;
     else removed -= diff;
   }
-  return added === 1 && removed === 1;
+  return added === n && removed === n;
 }
 
 function calcScore(wordsChained: number): number {
@@ -45,14 +45,17 @@ interface LadderRushPlayProps {
   wordLength: number;
   puzzles: LadderRushPuzzle[];
   isSurvival: boolean;
+  doubleSwap?: boolean;
   onExit: () => void;
   onPlayAgain: () => void;
   locked?: boolean;
 }
 
-function LadderRushPlay({ wordLength, puzzles, isSurvival, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
+function LadderRushPlay({ wordLength, puzzles, isSurvival, doubleSwap, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
   const { playSound } = useSound();
-  const slug = isSurvival ? `ladder-rush-${wordLength}-survival` : `ladder-rush-${wordLength}`;
+  const swapCount = doubleSwap ? 2 : 1;
+  const baseSlug = doubleSwap ? `ladder-rush-double-${wordLength}` : `ladder-rush-${wordLength}`;
+  const slug = isSurvival ? `${baseSlug}-survival` : baseSlug;
   const { reportResult } = useGameResult({ slug });
 
   const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
@@ -178,8 +181,8 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, onExit, onPlayAgain, 
     }
 
     const lastWord = chainRef.current[chainRef.current.length - 1];
-    if (!isOneLetterDiff(lastWord, word)) {
-      setErrorMsg("Change exactly one letter");
+    if (!isNLetterDiff(lastWord, word, swapCount)) {
+      setErrorMsg(`Change exactly ${swapCount} letter${swapCount > 1 ? "s" : ""}`);
       setShake(true);
       playSound("wrong");
       setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
@@ -451,7 +454,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, onExit, onPlayAgain, 
                   )}
                   {isLatest && !isStart && (
                     <Badge className="text-xs bg-[hsl(38,92%,50%)]/20 text-[hsl(38,92%,35%)] border border-[hsl(38,92%,50%)]/30 shrink-0" data-testid="badge-latest">
-                      +1
+                      +{swapCount}
                     </Badge>
                   )}
                 </motion.div>
@@ -509,9 +512,10 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, onExit, onPlayAgain, 
 interface LadderRushGameProps {
   groupSeed?: number;
   locked?: boolean;
+  doubleSwap?: boolean;
 }
 
-export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
+export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGameProps) {
   const [selectedLength, setSelectedLength] = useState<number | null>(null);
   const [isSurvival, setIsSurvival] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -536,6 +540,7 @@ export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
         wordLength={selectedLength}
         puzzles={puzzles}
         isSurvival={isSurvival}
+        doubleSwap={doubleSwap}
         onExit={() => {
           setPlaying(false);
           setSelectedLength(null);
@@ -551,10 +556,10 @@ export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
           <Zap className="h-7 w-7 text-[hsl(38,92%,50%)]" />
-          <h2 className="text-2xl font-bold">Ladder Rush</h2>
+          <h2 className="text-2xl font-bold">{doubleSwap ? "Ladder Rush: Double Swap" : "Ladder Rush"}</h2>
         </div>
         <p className="text-muted-foreground text-sm">
-          Chain words by changing one letter at a time.
+          {doubleSwap ? "Chain words by changing two letters at a time." : "Chain words by changing one letter at a time."}
         </p>
         {!groupSeed && (
           <div className="flex items-center justify-center gap-2 pt-1">

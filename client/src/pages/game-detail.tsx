@@ -44,6 +44,9 @@ const difficultyColors = {
   hard: "bg-destructive text-destructive-foreground",
 };
 
+const LadderRushDoubleGame = (props: { groupSeed?: number; locked?: boolean }) =>
+  <LadderRushGame {...props} doubleSwap />;
+
 const gameComponents: Record<string, React.ComponentType> = {
   "word-ladder": WordLadderGame,
   "anagram-solver": AnagramSolverGame,
@@ -64,6 +67,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-sweep": WordSweepGame,
   "word-roots": WordRootsGame,
   "ladder-rush": LadderRushGame,
+  "ladder-rush-double": LadderRushDoubleGame,
 };
 
 export default function GameDetail() {

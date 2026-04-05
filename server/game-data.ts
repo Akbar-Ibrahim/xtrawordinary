@@ -820,5 +820,32 @@ export const gamesData: Game[] = [
       { label: "Medium (5L)", slug: "ladder-rush-5" },
       { label: "Hard (6L)", slug: "ladder-rush-6" },
     ],
+  },
+  {
+    id: 20,
+    slug: "ladder-rush-double",
+    name: "Ladder Rush: Double Swap",
+    description: "Change two letters at a time and chain as many words as possible before the clock runs out!",
+    longDescription: "A faster, wider version of Ladder Rush! Starting from a given word, change exactly two letters at a time to form a new valid word. More possible neighbors means longer chains — but you still need to think quick. Choose 4, 5, or 6-letter words, and tackle Classic or Survival mode.",
+    rules: [
+      "Choose your word length: 4 letters (Easy), 5 letters (Medium), or 6 letters (Hard)",
+      "You are given a starting word",
+      "Change exactly TWO letters at a time to form a new valid word",
+      "Changes are counted by letter frequency — no rearranging the same letters",
+      "You have 90 seconds — chain as many words as possible",
+      "Each word in the chain must be a real English word",
+      "Words already used in your chain cannot be reused",
+      "Score = number of words you chain beyond the starting word"
+    ],
+    difficulty: "medium",
+    estimatedTime: "1-2 min",
+    icon: "Zap",
+    color: "hsl(38, 92%, 50%)",
+    playCount: 0,
+    modes: [
+      { label: "Easy (4L)", slug: "ladder-rush-double-4" },
+      { label: "Medium (5L)", slug: "ladder-rush-double-5" },
+      { label: "Hard (6L)", slug: "ladder-rush-double-6" },
+    ],
   }
 ];
