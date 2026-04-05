@@ -127,96 +127,98 @@ export default function Home() {
             </motion.div>
           )}
 
-          {dailyChallenge && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
-              className="mb-8"
-            >
-              <Link href="/daily">
-                <Card className="hover-elevate cursor-pointer border-primary/20">
-                  <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            {dailyChallenge && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                className="flex flex-col"
+              >
+                <Link href="/daily" className="flex-1 flex flex-col">
+                  <Card className="hover-elevate cursor-pointer border-primary/20 flex-1 flex flex-col">
+                    <CardContent className="p-4 flex-1 flex flex-col justify-center">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: dailyChallenge.game.color }}
+                          >
+                            {(() => {
+                              const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
+                              return <Icon className="h-6 w-6 text-white" />;
+                            })()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Calendar className="h-4 w-4 text-primary" />
+                              <span className="font-semibold">Daily Challenge</span>
+                              {getDailyChallengeRecord(dailyChallenge.date) && (
+                                <CheckCircle className="h-4 w-4 text-accent" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Today: {dailyChallenge.game.name}
+                            </p>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-daily-challenge">
+                          {getDailyChallengeRecord(dailyChallenge.date) ? "View Result" : "Play Now"}
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </motion.div>
+            )}
+
+            {!isLoading && games && games.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.21 }}
+                className="flex flex-col"
+              >
+                <Card
+                  className="hover-elevate cursor-pointer border-dashed flex-1 flex flex-col"
+                  onClick={pickSurpriseGame}
+                  data-testid="card-surprise-me"
+                >
+                  <CardContent className="p-4 flex-1 flex flex-col justify-center">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                       <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: dailyChallenge.game.color }}
-                        >
-                          {(() => {
-                            const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
-                            return <Icon className="h-6 w-6 text-white" />;
-                          })()}
+                        <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
+                          <Shuffle className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="font-semibold">Daily Challenge</span>
-                            {getDailyChallengeRecord(dailyChallenge.date) && (
-                              <CheckCircle className="h-4 w-4 text-accent" />
-                            )}
+                          <div className="flex items-center gap-2">
+                            <Shuffle className="h-4 w-4 text-primary" />
+                            <span className="font-semibold">Surprise Me</span>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Today: {dailyChallenge.game.name}
+                            {!hasPlayed
+                              ? "Not sure where to start? Let us pick a game for you."
+                              : "Try something new — we'll find a game you haven't played yet."}
                           </p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-daily-challenge">
-                        {getDailyChallengeRecord(dailyChallenge.date) ? "View Result" : "Play Now"}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        data-testid="button-surprise-me"
+                        onClick={(e) => { e.stopPropagation(); pickSurpriseGame(); }}
+                      >
+                        Pick for me
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
-            </motion.div>
-          )}
-
-          {!isLoading && games && games.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.21 }}
-              className="mb-8"
-            >
-              <Card
-                className="hover-elevate cursor-pointer border-dashed"
-                onClick={pickSurpriseGame}
-                data-testid="card-surprise-me"
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
-                        <Shuffle className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Shuffle className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">Surprise Me</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {!hasPlayed
-                            ? "Not sure where to start? Let us pick a game for you."
-                            : "Try something new — we'll find a game you haven't played yet."}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5"
-                      data-testid="button-surprise-me"
-                      onClick={(e) => { e.stopPropagation(); pickSurpriseGame(); }}
-                    >
-                      Pick for me
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
+          </div>
 
           <motion.div
             initial={{ opacity: 0 }}
