@@ -182,7 +182,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, doubleSwap, onExit, o
 
     const lastWord = chainRef.current[chainRef.current.length - 1];
     if (!isNLetterDiff(lastWord, word, swapCount)) {
-      setErrorMsg(`Change exactly ${swapCount} letter${swapCount > 1 ? "s" : ""}`);
+      setErrorMsg(swapCount === 1 ? "Change exactly one letter" : `Change exactly ${swapCount} letters`);
       setShake(true);
       playSound("wrong");
       setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
