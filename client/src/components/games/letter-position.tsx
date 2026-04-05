@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu, Flame } from "lucide-react";
+import { RotateCcw, RefreshCw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -82,6 +82,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
+  const lastGameSeedRef = useRef<number | null>(null);
+  const constraintRngRef = useRef<(() => number) | null>(null);
 
   const wordsPerChallenge = 20;
   const timePerChallenge = 120;
@@ -111,7 +113,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
     }, 1000);
   }, [stopTimer, timePerChallenge]);
 
-  const startGame = useCallback((c: Challenge, survival: boolean) => {
+  const startGame = useCallback((c: Challenge, survival: boolean, seedOverride?: number) => {
     resetRecorded();
     stopTimer();
     isSurvivalRef.current = survival;
@@ -123,11 +125,23 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(generateRandomConstraint(seedRngRef.current));
+
+    let constraintRng: () => number;
+    if (groupSeed !== undefined) {
+      constraintRng = seedRngRef.current!;
+    } else {
+      const seed = seedOverride ?? Math.floor(Math.random() * 1_000_000_000);
+      lastGameSeedRef.current = seed;
+      const rng = makeSeededRng(seed);
+      constraintRngRef.current = rng;
+      constraintRng = rng;
+    }
+
+    setConstraint(generateRandomConstraint(constraintRng));
     setGameStatus("playing");
     startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, timePerChallenge, resetRecorded]);
+  }, [startTimer, stopTimer, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -207,7 +221,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
           setGameStatus("won");
         } else {
           if (CHALLENGE_CONFIG[challenge].changesPerWord) {
-            setConstraint(generateRandomConstraint(seedRngRef.current));
+            const rng = groupSeed !== undefined ? seedRngRef.current : constraintRngRef.current ?? undefined;
+            setConstraint(generateRandomConstraint(rng));
           }
           if (isSurvivalRef.current) {
             startTimer(true);
@@ -512,6 +527,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
+                    {lastGameSeedRef.current !== null && (
+                      <Button onClick={() => startGame(challenge, isSurvival, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Replay
+                      </Button>
+                    )}
                     {getNextChallenge(challenge) && (
                       <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} data-testid="button-next-challenge">
                         Next Challenge
@@ -576,6 +597,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Try Again
                     </Button>
+                    {lastGameSeedRef.current !== null && (
+                      <Button onClick={() => startGame(challenge, isSurvival, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Replay
+                      </Button>
+                    )}
                     <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
                       Back to Menu
                     </Button>

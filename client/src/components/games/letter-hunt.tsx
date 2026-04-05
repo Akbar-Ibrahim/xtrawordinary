@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search, ArrowUpDown, AlignLeft, Flame } from "lucide-react";
+import { RotateCcw, RefreshCw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search, ArrowUpDown, AlignLeft, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -127,6 +127,8 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
+  const lastGameSeedRef = useRef<number | null>(null);
+  const constraintRngRef = useRef<(() => number) | null>(null);
 
   const wordsToComplete = 20;
   const timePerChallenge = 120;
@@ -167,7 +169,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
     setGameStatus("mode-select");
   }, []);
 
-  const startGame = useCallback((c: Challenge, isOrdered: boolean) => {
+  const startGame = useCallback((c: Challenge, isOrdered: boolean, seedOverride?: number) => {
     resetRecorded();
     stopTimer();
     isSurvivalRef.current = isSurvival;
@@ -179,11 +181,23 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setCurrentLetters(generateLettersForChallenge(c, seedRngRef.current));
+
+    let constraintRng: (() => number) | undefined;
+    if (groupSeed !== undefined) {
+      constraintRng = seedRngRef.current;
+    } else {
+      const seed = seedOverride ?? Math.floor(Math.random() * 1_000_000_000);
+      lastGameSeedRef.current = seed;
+      const rng = makeSeededRng(seed);
+      constraintRngRef.current = rng;
+      constraintRng = rng;
+    }
+
+    setCurrentLetters(generateLettersForChallenge(c, constraintRng));
     setGameStatus("playing");
     startTimer(isSurvival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge, resetRecorded, isSurvival]);
+  }, [generateLettersForChallenge, startTimer, stopTimer, resetRecorded, isSurvival]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -283,7 +297,8 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
           setGameStatus("won");
         } else {
           if (challenge === "advanced") {
-            setCurrentLetters(generateLettersForChallenge("advanced", seedRngRef.current));
+            const rng = groupSeed !== undefined ? seedRngRef.current : constraintRngRef.current ?? undefined;
+            setCurrentLetters(generateLettersForChallenge("advanced", rng));
             setUsedWords(new Set());
           }
           if (isSurvivalRef.current) {
@@ -657,6 +672,12 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
+                    {lastGameSeedRef.current !== null && (
+                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Replay
+                      </Button>
+                    )}
                     {challenge !== "advanced" && getNextChallenge(challenge) && (
                       <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
                         Next Challenge
@@ -721,6 +742,12 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
+                    {lastGameSeedRef.current !== null && (
+                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Replay
+                      </Button>
+                    )}
                     <Button onClick={goToMenu} variant="outline" data-testid="button-back-menu">
                       Back to Menu
                     </Button>
