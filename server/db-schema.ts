@@ -221,6 +221,7 @@ export const games = mysqlTable("games", {
   icon: varchar("icon", { length: 100 }).notNull(),
   color: varchar("color", { length: 100 }).notNull(),
   playCount: int("play_count").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 export const wordCategories = mysqlTable("word_categories", {

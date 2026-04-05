@@ -18,6 +18,8 @@ export type ContainsConstraint = {
 
 export interface IStorage {
   getGames(): Promise<Game[]>;
+  getAllGames(): Promise<Game[]>;
+  setGameActive(slug: string, isActive: boolean): Promise<void>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
   getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]>;

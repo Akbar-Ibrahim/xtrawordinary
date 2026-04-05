@@ -1201,6 +1201,27 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/admin/games", requireAdmin, async (_req, res) => {
+    try {
+      const games = await storage.getAllGames();
+      res.json(games);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch games" });
+    }
+  });
+
+  app.patch("/api/admin/games/:slug/active", requireAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { isActive } = req.body;
+      if (typeof isActive !== "boolean") return res.status(400).json({ error: "isActive must be a boolean" });
+      await storage.setGameActive(slug, isActive);
+      res.json({ success: true, slug, isActive });
+    } catch {
+      res.status(500).json({ error: "Failed to update game" });
+    }
+  });
+
   app.delete("/api/admin/leaderboard/:id", requireAdmin, async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {

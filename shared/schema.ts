@@ -21,6 +21,7 @@ export const gameSchema = z.object({
   icon: z.string(),
   color: z.string(),
   playCount: z.number(),
+  isActive: z.boolean().optional(),
   modes: z.array(gameModeSchema).optional(),
 });
 

@@ -14,6 +14,14 @@ export class MemStorage implements IStorage {
     return this.games;
   }
 
+  async getAllGames(): Promise<Game[]> {
+    return this.games;
+  }
+
+  async setGameActive(_slug: string, _isActive: boolean): Promise<void> {
+    // no-op for in-memory storage
+  }
+
   async getGameBySlug(slug: string): Promise<Game | undefined> {
     return this.games.find((game) => game.slug === slug);
   }

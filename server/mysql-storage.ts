@@ -47,13 +47,25 @@ export class MySQLStorage implements IStorage {
       icon: row.icon,
       color: row.color,
       playCount: row.playCount,
+      isActive: row.isActive,
     };
   }
 
   async getGames(): Promise<Game[]> {
     const db = await this.getDb();
+    const rows = await db.select().from(schema.games).where(eq(schema.games.isActive, true));
+    return rows.map((row: typeof schema.games.$inferSelect) => this.mapDbRowToGame(row));
+  }
+
+  async getAllGames(): Promise<Game[]> {
+    const db = await this.getDb();
     const rows = await db.select().from(schema.games);
     return rows.map((row: typeof schema.games.$inferSelect) => this.mapDbRowToGame(row));
+  }
+
+  async setGameActive(slug: string, isActive: boolean): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.games).set({ isActive }).where(eq(schema.games.slug, slug));
   }
 
   async getGameBySlug(slug: string): Promise<Game | undefined> {
