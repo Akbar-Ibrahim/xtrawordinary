@@ -344,7 +344,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                       variant={survivalTime === opt.seconds ? "default" : "outline"}
                       size="sm"
                       onClick={() => setSurvivalTime(opt.seconds)}
-                      data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                      data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
                     >
                       {opt.label} ({opt.seconds}s)
                     </Button>
@@ -441,7 +441,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                     {wordsCompleted} / {wordsPerVariation} words
                   </p>
                   {isSurvival && (
-                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
+                    <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                   )}
                 </div>
 

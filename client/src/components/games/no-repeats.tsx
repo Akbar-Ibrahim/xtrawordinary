@@ -271,7 +271,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
                         variant={survivalTime === opt.seconds ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSurvivalTime(opt.seconds)}
-                        data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                        data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
                       >
                         {opt.label} ({opt.seconds}s)
                       </Button>
@@ -440,7 +440,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
               <h2 className="text-xl font-semibold">Find {config.wordLength}-letter words</h2>
               <p className="text-muted-foreground">All letters must be unique - no repeats!</p>
               {isSurvival && (
-                <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
+                <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
               )}
             </div>
 

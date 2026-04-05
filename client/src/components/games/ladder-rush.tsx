@@ -604,7 +604,7 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGame
                   variant={survivalTime === opt.seconds ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSurvivalTime(opt.seconds)}
-                  data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                  data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
                 >
                   {opt.label} ({opt.seconds}s)
                 </Button>

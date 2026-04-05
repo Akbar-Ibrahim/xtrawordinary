@@ -362,7 +362,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                             variant={survivalTime === opt.seconds ? "default" : "outline"}
                             size="sm"
                             onClick={() => setSurvivalTime(opt.seconds)}
-                            data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                            data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
                           >
                             {opt.label} ({opt.seconds}s)
                           </Button>
@@ -477,7 +477,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                     </Badge>
                   )}
                   {isSurvival && (
-                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
+                    <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                   )}
                 </div>
 

@@ -354,7 +354,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                       variant={survivalTime === opt.seconds ? "default" : "outline"}
                       size="sm"
                       onClick={() => setSurvivalTime(opt.seconds)}
-                      data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                      data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
                     >
                       {opt.label} ({opt.seconds}s)
                     </Button>
@@ -466,7 +466,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     {level === 2 && ` (${currentWord.length} letters)`}
                   </p>
                   {isSurvivalRef.current && (
-                    <p className="text-xs text-muted-foreground">Correct answer resets the 10s timer!</p>
+                    <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                   )}
                 </div>
 
