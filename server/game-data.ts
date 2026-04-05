@@ -569,7 +569,8 @@ export const gamesData: Game[] = [
     estimatedTime: "8-12 min",
     icon: "Ruler",
     color: "hsl(190, 70%, 45%)",
-    playCount: 4250
+    playCount: 4250,
+    hasSurvival: true,
   },
   {
     id: 8,
@@ -588,7 +589,8 @@ export const gamesData: Game[] = [
     estimatedTime: "6-10 min",
     icon: "MapPin",
     color: "hsl(45, 85%, 50%)",
-    playCount: 3890
+    playCount: 3890,
+    hasSurvival: true,
   },
   {
     id: 9,
@@ -608,7 +610,8 @@ export const gamesData: Game[] = [
     estimatedTime: "6-10 min",
     icon: "Search",
     color: "hsl(320, 70%, 50%)",
-    playCount: 4120
+    playCount: 4120,
+    hasSurvival: true,
   },
   {
     id: 10,
@@ -671,7 +674,8 @@ export const gamesData: Game[] = [
     estimatedTime: "6-10 min",
     icon: "Hash",
     color: "hsl(320, 70%, 50%)",
-    playCount: 0
+    playCount: 0,
+    hasSurvival: true,
   },
   {
     id: 13,
@@ -710,7 +714,8 @@ export const gamesData: Game[] = [
     estimatedTime: "5-8 min",
     icon: "Fingerprint",
     color: "hsl(180, 70%, 45%)",
-    playCount: 0
+    playCount: 0,
+    hasSurvival: true,
   },
   {
     id: 15,

@@ -13,17 +13,7 @@ export class MySQLStorage implements IStorage {
     if (!process.env.MYSQL_DATABASE_URL) {
       throw new Error("MYSQL_DATABASE_URL is required");
     }
-    this.dbPromise = import("./db").then(async m => {
-      const db = m.db;
-      // Idempotent: ensure has_survival is set for games that support survival mode.
-      // Runs after db:push adds the column (default false) and corrects existing rows.
-      const survivalSlugs = ["word-chain", "ladder-rush", "ladder-rush-double"];
-      await db
-        .update(schema.games)
-        .set({ hasSurvival: true })
-        .where(inArray(schema.games.slug, survivalSlugs));
-      return db;
-    });
+    this.dbPromise = import("./db").then(m => m.db);
   }
 
   private async getDb() {
