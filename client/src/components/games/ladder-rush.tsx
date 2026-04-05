@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal } from "lucide-react";
+import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal, Flame, Timer } from "lucide-react";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
@@ -14,6 +14,7 @@ import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 const GAME_DURATION = 90;
+const SURVIVAL_TIME_PER_WORD = 8;
 const WORD_LENGTHS = [
   { length: 4, label: "Easy", sublabel: "4-letter words", description: "More neighbors, easier to chain" },
   { length: 5, label: "Medium", sublabel: "5-letter words", description: "Balanced challenge" },
@@ -43,19 +44,21 @@ function calcScore(wordsChained: number): number {
 interface LadderRushPlayProps {
   wordLength: number;
   puzzles: LadderRushPuzzle[];
+  isSurvival: boolean;
   onExit: () => void;
   onPlayAgain: () => void;
   locked?: boolean;
 }
 
-function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
+function LadderRushPlay({ wordLength, puzzles, isSurvival, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
   const { playSound } = useSound();
-  const { reportResult } = useGameResult({ slug: `ladder-rush-${wordLength}` });
+  const slug = isSurvival ? `ladder-rush-${wordLength}-survival` : `ladder-rush-${wordLength}`;
+  const { reportResult } = useGameResult({ slug });
 
   const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
   const [chain, setChain] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState("");
-  const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
+  const [timeLeft, setTimeLeft] = useState(isSurvival ? SURVIVAL_TIME_PER_WORD : GAME_DURATION);
   const [shake, setShake] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [validating, setValidating] = useState(false);
@@ -66,10 +69,11 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordedRef = useRef(false);
   const chainRef = useRef<string[]>([]);
+  const isSurvivalRef = useRef(isSurvival);
 
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/leaderboard", `ladder-rush-${wordLength}`],
-    queryFn: () => fetch(`/api/leaderboard?game=ladder-rush-${wordLength}&limit=5`).then(r => r.json()),
+    queryKey: ["/api/leaderboard", slug],
+    queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
     enabled: gameStatus === "ended",
     staleTime: 10_000,
   });
@@ -93,22 +97,11 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
       recordedRef.current = true;
       reportResult(score, wordsChained > 0, wordsChained);
     }
-  }, [wordLength, playSound, reportResult]);
+  }, [playSound, reportResult]);
 
-  useEffect(() => {
-    const startWord = pickStartWord();
-    if (!startWord) return;
-    recordedRef.current = false;
-    const initialChain = [startWord];
-    chainRef.current = initialChain;
-    setChain(initialChain);
-    setCurrentInput("");
-    setTimeLeft(GAME_DURATION);
-    setErrorMsg("");
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, []);
-
-  useEffect(() => {
+  const startSurvivalTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(SURVIVAL_TIME_PER_WORD);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -119,6 +112,47 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
         return prev - 1;
       });
     }, 1000);
+  }, [endGame]);
+
+  useEffect(() => {
+    const startWord = pickStartWord();
+    if (!startWord) return;
+    recordedRef.current = false;
+    const initialChain = [startWord];
+    chainRef.current = initialChain;
+    setChain(initialChain);
+    setCurrentInput("");
+    setTimeLeft(isSurvivalRef.current ? SURVIVAL_TIME_PER_WORD : GAME_DURATION);
+    setErrorMsg("");
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }, []);
+
+  useEffect(() => {
+    if (isSurvivalRef.current) {
+      // Survival timer started in startSurvivalTimer after each word
+      // but we need to start the initial timer too
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            endGame(chainRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            endGame(chainRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -185,6 +219,11 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
         setCurrentInput("");
       });
       playSound("correct");
+
+      if (isSurvivalRef.current) {
+        startSurvivalTimer();
+      }
+
       setTimeout(() => inputRef.current?.focus(), 50);
     } catch {
       flushSync(() => {
@@ -193,7 +232,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
       });
       setTimeout(() => setErrorMsg(""), 2000);
     }
-  }, [currentInput, wordLength, validating, gameStatus, playSound]);
+  }, [currentInput, wordLength, validating, gameStatus, playSound, startSurvivalTimer]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); submitWord(); }
@@ -201,8 +240,9 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
 
   const wordsChained = chain.length - 1;
   const liveScore = calcScore(wordsChained);
-  const timerPercent = (timeLeft / GAME_DURATION) * 100;
-  const timerColor = timeLeft > 30 ? "bg-accent" : timeLeft > 10 ? "bg-chart-3" : "bg-destructive";
+  const maxTime = isSurvivalRef.current ? SURVIVAL_TIME_PER_WORD : GAME_DURATION;
+  const timerPercent = (timeLeft / maxTime) * 100;
+  const timerColor = timeLeft > (maxTime * 0.33) ? "bg-accent" : timeLeft > (maxTime * 0.11) ? "bg-chart-3" : "bg-destructive";
 
   if (gameStatus === "ended") {
     const endedWordsChained = chain.length - 1;
@@ -219,6 +259,17 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
               <h3 className="text-2xl font-bold">Time's Up!</h3>
               <p className="text-muted-foreground mt-1">{completionMessage}</p>
             </div>
+            {isSurvivalRef.current ? (
+              <Badge variant="secondary" className="gap-1.5">
+                <Flame className="h-3 w-3" />
+                Survival Mode
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1.5">
+                <Timer className="h-3 w-3" />
+                Classic Mode
+              </Badge>
+            )}
 
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg bg-muted p-3">
@@ -257,7 +308,7 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
               <div className="text-left space-y-2" data-testid="section-mode-leaderboard">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                   <Medal className="h-3 w-3" />
-                  {wordLength}-letter Top Scores
+                  {wordLength}-letter Top Scores {isSurvivalRef.current ? "(Survival)" : "(Classic)"}
                 </p>
                 <div className="space-y-1">
                   {modeLeaderboard.slice(0, 5).map((entry, i) => (
@@ -313,11 +364,22 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
             <Star className="h-3 w-3 mr-1" />
             {liveScore} pts
           </Badge>
+          {isSurvivalRef.current ? (
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3 w-3" />
+              Survival
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1" data-testid="badge-classic">
+              <Timer className="h-3 w-3" />
+              Classic
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5" data-testid="timer-display">
-            <Clock className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive animate-pulse" : "text-muted-foreground"}`} />
-            <span className={`font-mono font-bold tabular-nums ${timeLeft <= 10 ? "text-destructive" : timeLeft <= 30 ? "text-chart-3" : ""}`}>
+            <Clock className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : "text-muted-foreground"}`} />
+            <span className={`font-mono font-bold tabular-nums ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive" : timeLeft <= (maxTime * 0.33) ? "text-chart-3" : ""}`}>
               {timeLeft}s
             </span>
           </div>
@@ -397,6 +459,12 @@ function LadderRushPlay({ wordLength, puzzles, onExit, onPlayAgain, locked }: La
             })}
           </div>
 
+          {isSurvivalRef.current && (
+            <p className="text-xs text-center text-muted-foreground">
+              Correct answer resets the 8s timer!
+            </p>
+          )}
+
           <div className={`flex gap-2 justify-center ${shake ? "animate-shake" : ""}`}>
             <Input
               ref={inputRef}
@@ -445,6 +513,7 @@ interface LadderRushGameProps {
 
 export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
   const [selectedLength, setSelectedLength] = useState<number | null>(null);
+  const [isSurvival, setIsSurvival] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playKey, setPlayKey] = useState(0);
 
@@ -466,6 +535,7 @@ export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
         key={playKey}
         wordLength={selectedLength}
         puzzles={puzzles}
+        isSurvival={isSurvival}
         onExit={() => {
           setPlaying(false);
           setSelectedLength(null);
@@ -484,11 +554,39 @@ export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
           <h2 className="text-2xl font-bold">Ladder Rush</h2>
         </div>
         <p className="text-muted-foreground text-sm">
-          Chain words by changing one letter at a time. You have 90 seconds!
+          Chain words by changing one letter at a time.
         </p>
-        <p className="text-xs text-muted-foreground">
-          Score = number of words you chain beyond the starting word
-        </p>
+        <div className="flex items-center justify-center gap-2 pt-1">
+          <Button
+            variant={!isSurvival ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsSurvival(false)}
+            className="gap-1.5"
+            data-testid="button-mode-classic"
+          >
+            <Timer className="h-3.5 w-3.5" />
+            Classic (90s)
+          </Button>
+          <Button
+            variant={isSurvival ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsSurvival(true)}
+            className="gap-1.5"
+            data-testid="button-mode-survival"
+          >
+            <Flame className="h-3.5 w-3.5" />
+            Survival (8s/word)
+          </Button>
+        </div>
+        {isSurvival ? (
+          <p className="text-xs text-muted-foreground">
+            8 seconds per word — timer resets on each correct answer!
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Score = number of words you chain beyond the starting word
+          </p>
+        )}
       </div>
 
       <div className="grid gap-3">

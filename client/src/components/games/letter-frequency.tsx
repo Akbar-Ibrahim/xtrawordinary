@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Hash, Menu } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Hash, Menu, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -16,6 +16,8 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+
+const SURVIVAL_TIME_PER_WORD = 8;
 
 const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   A: 5, B: 3, C: 4, D: 4, E: 5, F: 3, G: 4, H: 4, I: 5, J: 2, K: 3, L: 4, M: 4,
@@ -103,7 +105,10 @@ function getNextChallenge(current: Challenge): Challenge | null {
 
 export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-frequency" });
+  const [isSurvival, setIsSurvival] = useState(false);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "letter-frequency-survival" : "letter-frequency",
+  });
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -128,6 +133,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSurvivalRef = useRef(false);
 
   const wordsPerChallenge = 20;
   const timePerChallenge = 120;
@@ -139,8 +145,10 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
     }
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -153,16 +161,17 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer]);
+  }, [stopTimer, timePerChallenge]);
 
-  const startGame = useCallback((c: Challenge) => {
+  const startGame = useCallback((c: Challenge, survival: boolean) => {
     resetRecorded();
     stopTimer();
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     setChallenge(c);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
@@ -174,13 +183,13 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
       setConstraint(generateConstraint(c, seedRngRef.current));
     }
     setGameStatus("playing");
-    startTimer();
+    startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [startTimer, stopTimer, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge);
+      startGame(initialChallenge, false);
     }
   }, []);
 
@@ -255,11 +264,16 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
         playSound("win");
         setCompletionMessage(getCompletionMessage(true));
         setGameStatus("won");
-      } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
-        if (challenge === "multi") {
-          setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
-        } else {
-          setConstraint(generateConstraint(challenge, seedRngRef.current));
+      } else {
+        if (CHALLENGE_CONFIG[challenge].changesPerWord) {
+          if (challenge === "multi") {
+            setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
+          } else {
+            setConstraint(generateConstraint(challenge, seedRngRef.current));
+          }
+        }
+        if (isSurvivalRef.current) {
+          startTimer(true);
         }
       }
 
@@ -282,6 +296,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
   };
 
   const formatTime = (seconds: number) => {
+    if (isSurvivalRef.current) return `${seconds}s`;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -305,6 +320,35 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                   <p className="text-muted-foreground">
                     Select a challenge to start playing
                   </p>
+                  {!groupSeed && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <Button
+                        variant={!isSurvival ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsSurvival(false)}
+                        className="gap-1.5"
+                        data-testid="button-mode-classic"
+                      >
+                        <Timer className="h-3.5 w-3.5" />
+                        Classic
+                      </Button>
+                      <Button
+                        variant={isSurvival ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsSurvival(true)}
+                        className="gap-1.5"
+                        data-testid="button-mode-survival"
+                      >
+                        <Flame className="h-3.5 w-3.5" />
+                        Survival
+                      </Button>
+                    </div>
+                  )}
+                  {isSurvival && (
+                    <p className="text-xs text-muted-foreground">
+                      8 seconds per word — timer resets on each correct answer!
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-3">
@@ -312,7 +356,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                     <Card
                       key={c}
                       className="cursor-pointer hover-elevate"
-                      onClick={() => startGame(c)}
+                      onClick={() => startGame(c, isSurvival)}
                       data-testid={`button-challenge-${c}`}
                     >
                       <CardContent className="p-4">
@@ -354,12 +398,20 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                     <Menu className="h-4 w-4 mr-2" />
                     Menu
                   </Button>
-                  <Badge variant="secondary" data-testid="badge-challenge">
-                    {CHALLENGE_CONFIG[challenge].name}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" data-testid="badge-challenge">
+                      {CHALLENGE_CONFIG[challenge].name}
+                    </Badge>
+                    {isSurvival && (
+                      <Badge variant="outline" className="gap-1 text-destructive border-destructive/50" data-testid="badge-survival">
+                        <Flame className="h-3 w-3" />
+                        Survival
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 text-sm" role="timer" aria-label={`Time remaining: ${formatTime(timeLeft)}`}>
-                    <Timer className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive" : ""}`} />
-                    <span className={timeLeft <= 10 ? "text-destructive font-bold" : ""}>
+                    <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive" : ""}`} />
+                    <span className={timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive font-bold" : ""}>
                       {formatTime(timeLeft)}
                     </span>
                   </div>
@@ -399,6 +451,9 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                     <Badge variant="outline" className="text-xs">
                       Constraint changes after each word!
                     </Badge>
+                  )}
+                  {isSurvival && (
+                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
                   )}
                 </div>
 
@@ -486,6 +541,12 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                   <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Frequency Master!</h3>
+                {isSurvival && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
@@ -500,7 +561,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                 </div>
                 <ShareResults
                   gameName="Letter Frequency"
-                  gameSlug="letter-frequency"
+                  gameSlug={isSurvival ? "letter-frequency-survival" : "letter-frequency"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -508,12 +569,12 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                 />
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => startGame(challenge)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, isSurvival)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
                     {getNextChallenge(challenge) && (
-                      <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                      <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -544,6 +605,12 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {isSurvival && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words
                 </p>
@@ -558,7 +625,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                 </div>
                 <ShareResults
                   gameName="Letter Frequency"
-                  gameSlug="letter-frequency"
+                  gameSlug={isSurvival ? "letter-frequency-survival" : "letter-frequency"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -566,7 +633,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                 />
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => startGame(challenge)} data-testid="button-try-again">
+                    <Button onClick={() => startGame(challenge, isSurvival)} data-testid="button-try-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Try Again
                     </Button>

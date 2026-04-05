@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search, ArrowUpDown, AlignLeft } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Search, ArrowUpDown, AlignLeft, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -16,6 +16,8 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+
+const SURVIVAL_TIME_PER_WORD = 8;
 
 const EXCLUDED_LETTERS = new Set(["J", "Q", "V", "X", "Z"]);
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !EXCLUDED_LETTERS.has(l));
@@ -60,19 +62,16 @@ function validateOrderedSubsequence(word: string, requiredLetters: string[]): { 
 function validateLetterHunt(word: string, requiredLetters: string[]): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
-  // Count occurrences of each required letter
   const requiredCounts: Record<string, number> = {};
   for (const letter of requiredLetters) {
     requiredCounts[letter] = (requiredCounts[letter] || 0) + 1;
   }
   
-  // Count occurrences of each letter in the word
   const wordCounts: Record<string, number> = {};
   for (const char of upperWord) {
     wordCounts[char] = (wordCounts[char] || 0) + 1;
   }
   
-  // Check that word has EXACTLY the required count for each required letter
   for (const [letter, requiredCount] of Object.entries(requiredCounts)) {
     const wordCount = wordCounts[letter] || 0;
     if (wordCount !== requiredCount) {
@@ -98,7 +97,10 @@ function getNextChallenge(current: Challenge): Challenge | null {
 
 export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-hunt" });
+  const [isSurvival, setIsSurvival] = useState(false);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "letter-hunt-survival" : "letter-hunt",
+  });
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -124,6 +126,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSurvivalRef = useRef(false);
 
   const wordsToComplete = 20;
   const timePerChallenge = 120;
@@ -135,8 +138,10 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
     }
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -149,7 +154,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer]);
+  }, [stopTimer, timePerChallenge]);
 
   const generateLettersForChallenge = useCallback((c: Challenge, rng?: () => number): string[] => {
     const config = CHALLENGE_CONFIG[c];
@@ -165,20 +170,20 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
   const startGame = useCallback((c: Challenge, isOrdered: boolean) => {
     resetRecorded();
     stopTimer();
+    isSurvivalRef.current = isSurvival;
     setChallenge(c);
     setOrdered(isOrdered);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     setCurrentLetters(generateLettersForChallenge(c, seedRngRef.current));
     setGameStatus("playing");
-    startTimer();
+    startTimer(isSurvival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge, resetRecorded]);
+  }, [generateLettersForChallenge, startTimer, stopTimer, timePerChallenge, resetRecorded, isSurvival]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -276,9 +281,14 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
-        } else if (challenge === "advanced") {
-          setCurrentLetters(generateLettersForChallenge("advanced", seedRngRef.current));
-          setUsedWords(new Set());
+        } else {
+          if (challenge === "advanced") {
+            setCurrentLetters(generateLettersForChallenge("advanced", seedRngRef.current));
+            setUsedWords(new Set());
+          }
+          if (isSurvivalRef.current) {
+            startTimer(true);
+          }
         }
       }, 500);
     } catch {
@@ -306,6 +316,35 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
             <p className="text-muted-foreground text-sm">
               Find words containing the required letters!
             </p>
+            {!groupSeed && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button
+                  variant={!isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(false)}
+                  className="gap-1.5"
+                  data-testid="button-mode-classic"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button
+                  variant={isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(true)}
+                  className="gap-1.5"
+                  data-testid="button-mode-survival"
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Survival
+                </Button>
+              </div>
+            )}
+            {isSurvival && (
+              <p className="text-xs text-muted-foreground">
+                8 seconds per word — timer resets on each correct answer!
+              </p>
+            )}
           </div>
           
           <div className="grid gap-3">
@@ -424,11 +463,17 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
           <Badge variant="secondary" className="gap-1.5" data-testid="badge-progress">
             {wordsCompleted}/{wordsToComplete}
           </Badge>
+          {isSurvivalRef.current && (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3.5 w-3.5" />
+              Survival
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}>
+          <Badge variant={timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}>
             <Timer className="h-3.5 w-3.5" />
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </Badge>
           <Button
             variant="outline"
@@ -489,6 +534,9 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                     <Badge variant="secondary" className="text-xs">
                       Letters change after each word!
                     </Badge>
+                  )}
+                  {isSurvivalRef.current && (
+                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
                   )}
                 </div>
 
@@ -577,6 +625,12 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                   <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">{CHALLENGE_CONFIG[challenge].name} Complete!</h3>
+                {isSurvivalRef.current && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words!
                 </p>
@@ -591,7 +645,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
-                  gameSlug="letter-hunt"
+                  gameSlug={isSurvivalRef.current ? "letter-hunt-survival" : "letter-hunt"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -635,6 +689,12 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {isSurvivalRef.current && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You found {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
@@ -649,7 +709,7 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                 </div>
                 <ShareResults
                   gameName="Letter Hunt"
-                  gameSlug="letter-hunt"
+                  gameSlug={isSurvivalRef.current ? "letter-hunt-survival" : "letter-hunt"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}

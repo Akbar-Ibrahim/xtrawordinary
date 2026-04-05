@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -16,14 +16,19 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
+const CLASSIC_TOTAL_TIME = 90;
+const SURVIVAL_TIME_PER_WORD = 10;
+
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
 export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-chain" });
+  const [isSurvival, setIsSurvival] = useState(true);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "word-chain" : "word-chain-classic",
+  });
 
-  // Word validation via backend - no dictionary pre-fetch
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -31,7 +36,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     },
   });
 
-  // Get start word from backend
   const startWordMutation = useMutation({
     mutationFn: async ({ variation, level }: { variation: number; level: number }) => {
       const response = await apiRequest("POST", "/api/games/word-chain/start", { variation, level });
@@ -39,7 +43,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     },
   });
 
-  // Get computer word from backend
   const computerWordMutation = useMutation({
     mutationFn: async ({ playerWord, variation, level, usedWords }: { playerWord: string; variation: number; level: number; usedWords: string[] }) => {
       const response = await apiRequest("POST", "/api/games/word-chain/computer-word", { playerWord, variation, level, usedWords });
@@ -54,7 +57,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(10);
+  const [timeLeft, setTimeLeft] = useState(SURVIVAL_TIME_PER_WORD);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost" | "levelComplete">("menu");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
@@ -62,9 +65,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const [completionMessage, setCompletionMessage] = useState("");
 
   const wordsPerLevel = 100;
-  const timePerWord = 10;
+  const isSurvivalRef = useRef(true);
   
-  // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -77,7 +79,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     }
   }, [currentWord, variation]);
 
-  // Validate user word constraints locally (chain rules)
   const validateUserWord = useCallback((word: string): { valid: boolean; message: string } => {
     const upperWord = word.toUpperCase();
     const constraint = getConstraint();
@@ -95,15 +96,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     return { valid: true, message: "" };
   }, [getConstraint, level, currentWord]);
 
-  // Timer effect - runs each second when timer is running
   useEffect(() => {
-    // Only run if timer should be running and game is playing
     if (!timerRunning || gameStatus !== "playing") return;
-    
-    // Don't start countdown if timeLeft isn't properly initialized
     if (timeLeft <= 0) return;
     
-    // Schedule next tick
     const timeoutId = setTimeout(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -126,31 +122,34 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     }
   }, [gameStatus, score, reportResult, wordsCompleted]);
 
-  // Start timer function - sets time first, then enables timer
-  const startTimer = useCallback(() => {
-    setTimerRunning(false); // Ensure clean state
-    setTimeLeft(timePerWord);
-    // Small delay to ensure state is updated
+  const startTimer = useCallback((survival: boolean) => {
+    setTimerRunning(false);
+    setTimeLeft(survival ? SURVIVAL_TIME_PER_WORD : CLASSIC_TOTAL_TIME);
     requestAnimationFrame(() => {
       setTimerRunning(true);
     });
-  }, [timePerWord]);
+  }, []);
 
-  // Stop timer function  
   const stopTimer = useCallback(() => {
     setTimerRunning(false);
   }, []);
 
-  // Reset timer helper
-  const resetTimer = useCallback(() => {
-    startTimer();
-  }, [startTimer]);
+  const resetTimer = useCallback((survival: boolean) => {
+    if (survival) {
+      setTimerRunning(false);
+      setTimeLeft(SURVIVAL_TIME_PER_WORD);
+      requestAnimationFrame(() => {
+        setTimerRunning(true);
+      });
+    }
+    // In classic mode, timer just keeps counting down — no reset on correct answer
+  }, []);
 
-  // Start game - get first word from backend
-  const startGame = useCallback(async (v: Variation, l: Level) => {
+  const startGame = useCallback(async (v: Variation, l: Level, survival: boolean) => {
     resetRecorded();
-    // Stop any existing timer
     stopTimer();
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     
     setVariation(v);
     setLevel(l);
@@ -161,7 +160,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     setChainHistory([]);
     setUserInput("");
     setFeedback(null);
-    setTimeLeft(timePerWord);
+    setTimeLeft(survival ? SURVIVAL_TIME_PER_WORD : CLASSIC_TOTAL_TIME);
     
     try {
       const result = await startWordMutation.mutateAsync({ variation: v, level: l });
@@ -176,24 +175,23 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       setChainHistory([{ word: result.word, isPlayer: false }]);
       setGameStatus("playing");
       
-      // Start timer after state updates
-      startTimer();
+      startTimer(survival);
       setTimeout(() => inputRef.current?.focus(), 100);
     } catch {
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
-  }, [startWordMutation, timePerWord, stopTimer, startTimer, resetRecorded]);
+  }, [startWordMutation, stopTimer, startTimer, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge.variation && initialChallenge.level) {
-      startGame(initialChallenge.variation, initialChallenge.level);
+      startGame(initialChallenge.variation, initialChallenge.level, true);
     }
   }, []);
 
   const startNextLevel = useCallback(() => {
     if (level === 1) {
-      startGame(variation, 2);
+      startGame(variation, 2, isSurvivalRef.current);
     }
   }, [level, variation, startGame]);
 
@@ -202,7 +200,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
 
     const upperWord = userInput.toUpperCase();
 
-    // Check if already used
     if (usedWords.has(upperWord)) {
       playSound("wrong");
       setStreak(0);
@@ -212,7 +209,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       return;
     }
 
-    // Validate chain constraint locally first
     const constraintCheck = validateUserWord(upperWord);
     if (!constraintCheck.valid) {
       playSound("wrong");
@@ -223,7 +219,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       return;
     }
 
-    // Then validate word exists via backend
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
@@ -235,7 +230,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
         return;
       }
 
-      // Stop timer while processing
       stopTimer();
       
       playSound("correct");
@@ -266,7 +260,6 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           return;
         }
 
-        // Get computer's response word from backend
         try {
           const computerResult = await computerWordMutation.mutateAsync({
             playerWord: upperWord,
@@ -285,7 +278,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           setCurrentWord(computerResult.word);
           setUsedWords(prev => new Set(Array.from(prev).concat(computerResult.word!)));
           setChainHistory(prev => [...prev, { word: computerResult.word!, isPlayer: false }]);
-          resetTimer();
+          resetTimer(isSurvivalRef.current);
         } catch {
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -305,6 +298,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     }
   };
 
+  const timerPercent = isSurvivalRef.current
+    ? (timeLeft / SURVIVAL_TIME_PER_WORD) * 100
+    : (timeLeft / CLASSIC_TOTAL_TIME) * 100;
+
   if (gameStatus === "menu") {
     return (
       <Card>
@@ -315,6 +312,33 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <p className="text-muted-foreground text-sm">
               Select a variation and level to start the word chain!
             </p>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button
+                variant={!isSurvival ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsSurvival(false)}
+                className="gap-1.5"
+                data-testid="button-mode-classic"
+              >
+                <Timer className="h-3.5 w-3.5" />
+                Classic (90s)
+              </Button>
+              <Button
+                variant={isSurvival ? "default" : "outline"}
+                size="sm"
+                onClick={() => setIsSurvival(true)}
+                className="gap-1.5"
+                data-testid="button-mode-survival"
+              >
+                <Flame className="h-3.5 w-3.5" />
+                Survival (10s/word)
+              </Button>
+            </div>
+            {isSurvival ? (
+              <p className="text-xs text-muted-foreground">10 seconds per word — timer resets on each correct answer!</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">90 seconds total to chain as many words as possible!</p>
+            )}
           </div>
           
           <div className="grid gap-4">
@@ -322,10 +346,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
               <h4 className="font-semibold">Variation 1: Last Letter</h4>
               <p className="text-sm text-muted-foreground">Use the last letter of our word to form yours</p>
               <div className="flex gap-2">
-                <Button onClick={() => startGame(1, 1)} className="flex-1" data-testid="button-v1-l1">
+                <Button onClick={() => startGame(1, 1, isSurvival)} className="flex-1" data-testid="button-v1-l1">
                   Level 1
                 </Button>
-                <Button onClick={() => startGame(1, 2)} variant="secondary" className="flex-1" data-testid="button-v1-l2">
+                <Button onClick={() => startGame(1, 2, isSurvival)} variant="secondary" className="flex-1" data-testid="button-v1-l2">
                   Level 2 (Match Length)
                 </Button>
               </div>
@@ -335,10 +359,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
               <h4 className="font-semibold">Variation 2: Last Two Letters</h4>
               <p className="text-sm text-muted-foreground">Use the last two letters of our word to form yours</p>
               <div className="flex gap-2">
-                <Button onClick={() => startGame(2, 1)} className="flex-1" data-testid="button-v2-l1">
+                <Button onClick={() => startGame(2, 1, isSurvival)} className="flex-1" data-testid="button-v2-l1">
                   Level 1
                 </Button>
-                <Button onClick={() => startGame(2, 2)} variant="secondary" className="flex-1" data-testid="button-v2-l2">
+                <Button onClick={() => startGame(2, 2, isSurvival)} variant="secondary" className="flex-1" data-testid="button-v2-l2">
                   Level 2 (Match Length)
                 </Button>
               </div>
@@ -362,9 +386,20 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <Zap className="h-3.5 w-3.5" />
             {wordsCompleted}/{wordsPerLevel}
           </Badge>
+          {isSurvivalRef.current ? (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3.5 w-3.5" />
+              Survival
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1.5" data-testid="badge-classic">
+              <Timer className="h-3.5 w-3.5" />
+              Classic
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 3 ? "destructive" : "secondary"} className="gap-1.5 min-w-[60px] justify-center" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${timeLeft} seconds`}>
+          <Badge variant={timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "destructive" : "secondary"} className="gap-1.5 min-w-[60px] justify-center" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${timeLeft} seconds`}>
             <Timer className="h-3.5 w-3.5" />
             {timeLeft}s
           </Badge>
@@ -404,6 +439,9 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                       : `Start with '${currentWord.slice(-2)}'`}
                     {level === 2 && ` (${currentWord.length} letters)`}
                   </p>
+                  {isSurvivalRef.current && (
+                    <p className="text-xs text-muted-foreground">Correct answer resets the 10s timer!</p>
+                  )}
                 </div>
 
                 <motion.div
@@ -430,7 +468,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   </div>
                 </motion.div>
 
-                <Progress value={(timeLeft / timePerWord) * 100} className="h-2" />
+                <Progress value={timerPercent} className="h-2" />
 
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
@@ -559,6 +597,17 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                 <h3 className="text-2xl font-bold">
                   {gameStatus === "won" ? "Chain Master!" : "Time's Up!"}
                 </h3>
+                {isSurvivalRef.current ? (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Timer className="h-3 w-3" />
+                    Classic Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
                     ? "You completed the word chain!"
@@ -575,7 +624,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                 </div>
                 <ShareResults
                   gameName="Word Chain"
-                  gameSlug="word-chain"
+                  gameSlug={isSurvivalRef.current ? "word-chain" : "word-chain-classic"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}

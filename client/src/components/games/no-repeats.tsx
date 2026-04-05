@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Fingerprint, Menu } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Fingerprint, Menu, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -15,6 +15,8 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+
+const SURVIVAL_TIME_PER_WORD = 8;
 
 type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -46,7 +48,10 @@ function getNextChallenge(current: Challenge): Challenge | null {
 
 export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?: Challenge; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "no-repeats" });
+  const [isSurvival, setIsSurvival] = useState(false);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "no-repeats-survival" : "no-repeats",
+  });
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
@@ -66,6 +71,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
   const [completionMessage, setCompletionMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSurvivalRef = useRef(false);
 
   const wordsPerChallenge = 15;
   const timePerChallenge = 120;
@@ -77,8 +83,10 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
     }
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -91,27 +99,28 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer]);
+  }, [stopTimer, timePerChallenge]);
 
-  const startGame = useCallback((c: Challenge) => {
+  const startGame = useCallback((c: Challenge, survival: boolean) => {
     resetRecorded();
     stopTimer();
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     setChallenge(c);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     setGameStatus("playing");
-    startTimer();
+    startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [stopTimer, startTimer, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge);
+      startGame(initialChallenge, false);
     }
   }, []);
 
@@ -121,7 +130,6 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
@@ -180,17 +188,20 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
         const wordScore = config.wordLength * 10;
         setScore((prev) => prev + wordScore);
         setStreak(prev => prev + 1);
-        setWordsCompleted((prev) => prev + 1);
+        const newWordsCompleted = wordsCompleted + 1;
+        setWordsCompleted(newWordsCompleted);
         setUsedWords((prev) => new Set(Array.from(prev).concat(word)));
         playSound("correct");
         setFeedback({ type: "correct", message: `+${wordScore} points!` });
         setUserInput("");
 
-        if (wordsCompleted + 1 >= wordsPerChallenge) {
+        if (newWordsCompleted >= wordsPerChallenge) {
           stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
+        } else if (isSurvivalRef.current) {
+          startTimer(true);
         }
       } else {
         playSound("wrong");
@@ -220,6 +231,33 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
               <p className="text-muted-foreground">
                 Find words where every letter is unique - no repeating letters allowed!
               </p>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button
+                  variant={!isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(false)}
+                  className="gap-1.5"
+                  data-testid="button-mode-classic"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button
+                  variant={isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(true)}
+                  className="gap-1.5"
+                  data-testid="button-mode-survival"
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Survival
+                </Button>
+              </div>
+              {isSurvival && (
+                <p className="text-xs text-muted-foreground">
+                  8 seconds per word — timer resets on each correct answer!
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -228,7 +266,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
           {([3, 4, 5, 6, 7, 8, 9] as Challenge[]).map((c) => {
             const config = CHALLENGE_CONFIG[c];
             return (
-              <Card key={c} className="hover-elevate cursor-pointer" onClick={() => startGame(c)} data-testid={`card-challenge-${c}`}>
+              <Card key={c} className="hover-elevate cursor-pointer" onClick={() => startGame(c, isSurvival)} data-testid={`card-challenge-${c}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -271,6 +309,12 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
             <h2 className="text-2xl font-bold mb-2" data-testid="text-game-result">
               {gameStatus === "won" ? "Challenge Complete!" : "Time's Up!"}
             </h2>
+            {isSurvival && (
+              <Badge variant="secondary" className="mb-2 gap-1.5">
+                <Flame className="h-3 w-3" />
+                Survival Mode
+              </Badge>
+            )}
             <p className="text-muted-foreground mb-4" data-testid="text-result-summary">
               {gameStatus === "won"
                 ? `You found ${wordsCompleted} unique-letter words!`
@@ -290,7 +334,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
 
             <ShareResults
               gameName="No Repeats"
-              gameSlug="no-repeats"
+              gameSlug={isSurvival ? "no-repeats-survival" : "no-repeats"}
               score={score}
               wordsCompleted={wordsCompleted}
               challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -315,12 +359,12 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
                   Challenge Menu
                 </Button>
                 {nextChallenge && gameStatus === "won" && (
-                  <Button onClick={() => startGame(nextChallenge)} className="gap-2" data-testid="button-next-challenge">
+                  <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2" data-testid="button-next-challenge">
                     Next Challenge
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
-                <Button onClick={() => startGame(challenge)} variant="secondary" className="gap-2" data-testid="button-play-again">
+                <Button onClick={() => startGame(challenge, isSurvival)} variant="secondary" className="gap-2" data-testid="button-play-again">
                   <RotateCcw className="w-4 h-4" />
                   Play Again
                 </Button>
@@ -343,6 +387,12 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
             Menu
           </Button>
           <Badge variant="secondary" data-testid="badge-current-challenge">{config.name}</Badge>
+          {isSurvival && (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3 w-3" />
+              Survival
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -351,9 +401,9 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
           </div>
           <StreakIndicator streak={streak} />
           <div className="flex items-center gap-2">
-            <Timer className={`w-4 h-4 ${timeLeft <= 30 ? "text-destructive" : "text-muted-foreground"}`} />
-            <span className={`font-mono ${timeLeft <= 30 ? "text-destructive font-bold" : ""}`} data-testid="text-timer" role="timer" aria-label={`${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds remaining`}>
-              {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+            <Timer className={`w-4 h-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive" : "text-muted-foreground"}`} />
+            <span className={`font-mono ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive font-bold" : ""}`} data-testid="text-timer" role="timer" aria-label={`${isSurvival ? timeLeft + " seconds" : Math.floor(timeLeft / 60) + " minutes " + timeLeft % 60 + " seconds"} remaining`}>
+              {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
             </span>
           </div>
         </div>
@@ -365,6 +415,9 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
             <div className="space-y-2">
               <h2 className="text-xl font-semibold">Find {config.wordLength}-letter words</h2>
               <p className="text-muted-foreground">All letters must be unique - no repeats!</p>
+              {isSurvival && (
+                <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
+              )}
             </div>
 
             <div className="flex justify-center gap-2">

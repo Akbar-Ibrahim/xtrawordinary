@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -16,6 +16,8 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+
+const SURVIVAL_TIME_PER_WORD = 8;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -32,14 +34,12 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; c
   2: { name: "Challenge 2", description: "Position & letter change after each word!", changesPerWord: true },
 };
 
-// Generate random position (1-8) and random letter (excluding rare letters J, Q, X, V, Z)
 function generateRandomConstraint(rng: () => number = Math.random): PositionConstraint {
-  const position = Math.floor(rng() * 8) + 1; // 1-8
+  const position = Math.floor(rng() * 8) + 1;
   const letter = POSITION_ALPHABET[Math.floor(rng() * POSITION_ALPHABET.length)];
   return { position, letter };
 }
 
-// Local constraint validation (does word have required letter at position?)
 function validateConstraint(word: string, constraint: PositionConstraint): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -54,7 +54,10 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
 
 export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-position" });
+  const [isSurvival, setIsSurvival] = useState(false);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "letter-position-survival" : "letter-position",
+  });
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -78,6 +81,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSurvivalRef = useRef(false);
 
   const wordsPerChallenge = 20;
   const timePerChallenge = 120;
@@ -89,8 +93,10 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
     }
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -103,29 +109,29 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer]);
+  }, [stopTimer, timePerChallenge]);
 
-  // Start game with selected challenge
-  const startGame = useCallback((c: Challenge) => {
+  const startGame = useCallback((c: Challenge, survival: boolean) => {
     resetRecorded();
     stopTimer();
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     setChallenge(c);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerChallenge);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     setConstraint(generateRandomConstraint(seedRngRef.current));
     setGameStatus("playing");
-    startTimer();
+    startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [startTimer, stopTimer, timePerChallenge, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge);
+      startGame(initialChallenge, false);
     }
   }, []);
 
@@ -199,9 +205,13 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
-        } else if (CHALLENGE_CONFIG[challenge].changesPerWord) {
-          // Challenge 2: new random constraint for each word
-          setConstraint(generateRandomConstraint(seedRngRef.current));
+        } else {
+          if (CHALLENGE_CONFIG[challenge].changesPerWord) {
+            setConstraint(generateRandomConstraint(seedRngRef.current));
+          }
+          if (isSurvivalRef.current) {
+            startTimer(true);
+          }
         }
       }, 500);
     } catch {
@@ -222,7 +232,6 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
     return 2;
   };
 
-  // Challenge selection menu
   if (gameStatus === "menu") {
     return (
       <Card>
@@ -233,6 +242,35 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
             <p className="text-muted-foreground text-sm">
               Find words with the right letter at the right position!
             </p>
+            {!groupSeed && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button
+                  variant={!isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(false)}
+                  className="gap-1.5"
+                  data-testid="button-mode-classic"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button
+                  variant={isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(true)}
+                  className="gap-1.5"
+                  data-testid="button-mode-survival"
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Survival
+                </Button>
+              </div>
+            )}
+            {isSurvival && (
+              <p className="text-xs text-muted-foreground">
+                8 seconds per word — timer resets on each correct answer!
+              </p>
+            )}
           </div>
           
           <div className="grid gap-3">
@@ -241,7 +279,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
               return (
                 <Button
                   key={c}
-                  onClick={() => startGame(c)}
+                  onClick={() => startGame(c, isSurvival)}
                   variant="outline"
                   className="w-full justify-start gap-3 h-auto py-3"
                   data-testid={`button-challenge-${c}`}
@@ -287,11 +325,17 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
             <Zap className="h-3.5 w-3.5" />
             {CHALLENGE_CONFIG[challenge].name}
           </Badge>
+          {isSurvival && (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3.5 w-3.5" />
+              Survival
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}>
+          <Badge variant={timeLeft <= (isSurvival ? 3 : 30) ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}>
             <Timer className="h-3.5 w-3.5" />
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </Badge>
           <Button
             variant="outline"
@@ -345,6 +389,9 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                     <Badge variant="secondary" className="text-xs">
                       Constraint changes after each word!
                     </Badge>
+                  )}
+                  {isSurvival && (
+                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
                   )}
                 </div>
 
@@ -433,6 +480,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Position Master!</h3>
+                {isSurvival && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
@@ -447,7 +500,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                 </div>
                 <ShareResults
                   gameName="Position Master"
-                  gameSlug="letter-position"
+                  gameSlug={isSurvival ? "letter-position-survival" : "letter-position"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -455,12 +508,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                 />
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => startGame(challenge)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, isSurvival)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
                     {getNextChallenge(challenge) && (
-                      <Button onClick={() => startGame(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                      <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -491,6 +544,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {isSurvival && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   You completed {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
@@ -505,7 +564,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                 </div>
                 <ShareResults
                   gameName="Position Master"
-                  gameSlug="letter-position"
+                  gameSlug={isSurvival ? "letter-position-survival" : "letter-position"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
@@ -513,7 +572,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                 />
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => startGame(challenge)} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, isSurvival)} data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Try Again
                     </Button>

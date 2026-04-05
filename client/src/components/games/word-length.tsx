@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRight, Menu } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, Loader2, ArrowRight, Menu, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -16,6 +16,8 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+
+const SURVIVAL_TIME_PER_WORD = 8;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -97,7 +99,6 @@ function formatConstraint(variation: number, constraint: LevelConstraint): strin
   return desc;
 }
 
-// Local constraint validation (length, starts with, ends with, contains)
 function validateConstraint(word: string, constraint: LevelConstraint, variation: number): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -111,13 +112,11 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
     return { valid: false, message: `Word must end with '${constraint.endsWith}'` };
   }
   if (constraint.contains) {
-    // For variation 4 (Starts & Contains): contains letter must not be at the last position only
-    // For variation 5 (Ends & Contains): contains letter must not be at the first position only
     const containsLetter = constraint.contains;
     const middlePart = variation === 4 
-      ? upperWord.slice(0, -1)  // Exclude last letter
+      ? upperWord.slice(0, -1)
       : variation === 5 
-        ? upperWord.slice(1)    // Exclude first letter
+        ? upperWord.slice(1)
         : upperWord;
     
     if (!middlePart.includes(containsLetter)) {
@@ -130,7 +129,10 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
 
 export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: number; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-length" });
+  const [isSurvival, setIsSurvival] = useState(false);
+  const { reportResult, resetRecorded, personalBest } = useGameResult({
+    slug: isSurvival ? "word-length-survival" : "word-length",
+  });
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -154,16 +156,26 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSurvivalRef = useRef(false);
 
   const wordsPerVariation = 20;
   const timePerVariation = 120;
 
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback((survivalMode: boolean) => {
+    stopTimer();
+    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerVariation;
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          clearInterval(timerRef.current!);
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
           setGameStatus("lost");
@@ -172,28 +184,29 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
         return prev - 1;
       });
     }, 1000);
-  }, []);
+  }, [stopTimer, timePerVariation]);
 
-  // Start game - generate constraint locally
-  const startGame = useCallback((varId: number) => {
+  const startGame = useCallback((varId: number, survival: boolean) => {
     resetRecorded();
+    stopTimer();
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     setVariation(varId);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
-    setTimeLeft(timePerVariation);
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
     setConstraint(generateConstraint(varId, seedRngRef.current));
     setGameStatus("playing");
-    startTimer();
+    startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [timePerVariation, startTimer, resetRecorded]);
+  }, [stopTimer, startTimer, resetRecorded]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge);
+      startGame(initialChallenge, false);
     }
   }, []);
 
@@ -262,11 +275,14 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
       setTimeout(() => {
         setFeedback(null);
         if (newWordsCompleted >= wordsPerVariation) {
-          if (timerRef.current) clearInterval(timerRef.current);
+          stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
           setGameStatus("won");
         } else {
+          if (isSurvivalRef.current) {
+            startTimer(true);
+          }
           inputRef.current?.focus();
         }
       }, 500);
@@ -285,7 +301,36 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
       <div className="space-y-6">
         <Card>
           <CardContent className="p-6">
-            <h3 className="text-xl font-bold text-center mb-6">Choose Your Challenge</h3>
+            <h3 className="text-xl font-bold text-center mb-4">Choose Your Challenge</h3>
+            {!groupSeed && (
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <Button
+                  variant={!isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(false)}
+                  className="gap-1.5"
+                  data-testid="button-mode-classic"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button
+                  variant={isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(true)}
+                  className="gap-1.5"
+                  data-testid="button-mode-survival"
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Survival
+                </Button>
+              </div>
+            )}
+            {isSurvival && (
+              <p className="text-xs text-center text-muted-foreground mb-4">
+                8 seconds per word — timer resets on each correct answer!
+              </p>
+            )}
             <div className="grid gap-3">
               {variationOptions.map((option) => (
                 <motion.div
@@ -296,7 +341,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                   <Button
                     variant="outline"
                     className="w-full h-auto py-4 px-6 flex flex-col items-start text-left gap-1"
-                    onClick={() => startGame(option.id)}
+                    onClick={() => startGame(option.id, isSurvival)}
                     data-testid={`button-var-${option.id}`}
                   >
                     <span className="font-semibold">Variation {option.id}: {option.name}</span>
@@ -326,17 +371,23 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
             <Zap className="h-3.5 w-3.5" />
             Variation {variation}
           </Badge>
+          {isSurvival && (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3.5 w-3.5" />
+              Survival
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}>
+          <Badge variant={timeLeft <= (isSurvival ? 3 : 30) ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}>
             <Timer className="h-3.5 w-3.5" />
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </Badge>
           {!locked && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setGameStatus("menu")}
+              onClick={() => { stopTimer(); setGameStatus("menu"); }}
               className="gap-1.5"
               data-testid="button-restart"
             >
@@ -365,6 +416,9 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                   <p className="text-sm text-muted-foreground">
                     {wordsCompleted} / {wordsPerVariation} words
                   </p>
+                  {isSurvival && (
+                    <p className="text-xs text-muted-foreground">Correct answer resets the 8s timer!</p>
+                  )}
                 </div>
 
                 <div className="max-w-md mx-auto space-y-4">
@@ -468,6 +522,12 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                 <h3 className="text-2xl font-bold">
                   {gameStatus === "won" ? "Champion!" : "Time's Up!"}
                 </h3>
+                {isSurvival && (
+                  <Badge variant="secondary" className="gap-1.5">
+                    <Flame className="h-3 w-3" />
+                    Survival Mode
+                  </Badge>
+                )}
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
                     ? `You completed Variation ${variation}!`
@@ -484,7 +544,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                 </div>
                 <ShareResults
                   gameName="Length Challenge"
-                  gameSlug="word-length"
+                  gameSlug={isSurvival ? "word-length-survival" : "word-length"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
@@ -493,7 +553,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button 
                       variant="outline" 
-                      onClick={() => startGame(variation)} 
+                      onClick={() => startGame(variation, isSurvival)} 
                       className="gap-1.5"
                       data-testid="button-play-again"
                     >
@@ -502,7 +562,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                     </Button>
                     {gameStatus === "won" && variation < 5 && (
                       <Button 
-                        onClick={() => startGame(variation + 1)} 
+                        onClick={() => startGame(variation + 1, isSurvival)} 
                         className="gap-1.5"
                         data-testid="button-next-challenge"
                       >
@@ -512,7 +572,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                     )}
                     <Button 
                       variant="ghost" 
-                      onClick={() => setGameStatus("menu")} 
+                      onClick={() => { stopTimer(); setGameStatus("menu"); }} 
                       className="gap-1.5"
                       data-testid="button-back-menu"
                     >
