@@ -283,12 +283,25 @@ function GamesTab() {
   const toggleMutation = useMutation({
     mutationFn: ({ slug, isActive }: { slug: string; isActive: boolean }) =>
       apiRequest("PATCH", `/api/admin/games/${slug}/active`, { isActive }),
-    onSuccess: () => {
+    onMutate: async ({ slug, isActive }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/admin/games"] });
+      const previous = queryClient.getQueryData<any[]>(["/api/admin/games"]);
+      queryClient.setQueryData<any[]>(["/api/admin/games"], (old) =>
+        old?.map((g) => g.slug === slug ? { ...g, isActive } : g) ?? []
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["/api/admin/games"], context.previous);
+      }
+      toast({ title: "Failed to update game", variant: "destructive" });
+    },
+    onSuccess: () => toast({ title: "Game updated" }),
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
       queryClient.invalidateQueries({ queryKey: ["/api/games"] });
-      toast({ title: "Game updated" });
     },
-    onError: () => toast({ title: "Failed to update game", variant: "destructive" }),
   });
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

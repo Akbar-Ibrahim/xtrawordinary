@@ -1215,6 +1215,8 @@ export async function registerRoutes(
       const { slug } = req.params;
       const { isActive } = req.body;
       if (typeof isActive !== "boolean") return res.status(400).json({ error: "isActive must be a boolean" });
+      const game = await storage.getGameBySlug(slug);
+      if (!game) return res.status(404).json({ error: "Game not found" });
       await storage.setGameActive(slug, isActive);
       res.json({ success: true, slug, isActive });
     } catch {
