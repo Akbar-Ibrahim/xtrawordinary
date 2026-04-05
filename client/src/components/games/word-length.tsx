@@ -18,6 +18,11 @@ import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const SURVIVAL_TIME_PER_WORD = 8;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "Easy",   seconds: 15 },
+  { label: "Normal", seconds: 8  },
+  { label: "Hard",   seconds: 5  },
+] as const;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const ENDS_WITH_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -130,6 +135,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
 export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: number; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
     slug: isSurvival ? "word-length-survival" : "word-length",
   });
@@ -170,7 +176,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
-    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerVariation;
+    const initialTime = survivalMode ? survivalTime : timePerVariation;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -184,7 +190,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer, timePerVariation]);
+  }, [stopTimer, timePerVariation, survivalTime]);
 
   const startGame = useCallback((varId: number, survival: boolean) => {
     resetRecorded();
@@ -212,9 +218,12 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
-      reportResult(score, gameStatus === "won", wordsCompleted);
+      const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
+      if (isCompetitive) {
+        reportResult(score, gameStatus === "won", wordsCompleted);
+      }
     }
-  }, [gameStatus, score, reportResult, wordsCompleted]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
     return () => {
@@ -322,14 +331,29 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                   data-testid="button-mode-survival"
                 >
                   <Flame className="h-3.5 w-3.5" />
-                  Survival
+                  {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
                 </Button>
               </div>
             )}
             {isSurvival && (
-              <p className="text-xs text-center text-muted-foreground mb-4">
-                8 seconds per word — timer resets on each correct answer!
-              </p>
+              <>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  {SURVIVAL_TIME_OPTIONS.map(opt => (
+                    <Button
+                      key={opt.seconds}
+                      variant={survivalTime === opt.seconds ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSurvivalTime(opt.seconds)}
+                      data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                    >
+                      {opt.label} ({opt.seconds}s)
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-center text-muted-foreground mb-4">
+                  {survivalTime}s per word — timer resets on each correct answer!
+                </p>
+              </>
             )}
             <div className="grid gap-3">
               {variationOptions.map((option) => (

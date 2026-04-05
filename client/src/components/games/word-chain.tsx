@@ -18,6 +18,11 @@ import { useGameResult } from "@/hooks/use-game-result";
 
 const CLASSIC_TOTAL_TIME = 90;
 const SURVIVAL_TIME_PER_WORD = 10;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "Easy",   seconds: 20 },
+  { label: "Normal", seconds: 10 },
+  { label: "Hard",   seconds: 6  },
+] as const;
 
 type Variation = 1 | 2;
 type Level = 1 | 2;
@@ -25,6 +30,7 @@ type Level = 1 | 2;
 export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(true);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
     slug: isSurvival ? "word-chain-survival" : "word-chain",
   });
@@ -118,17 +124,20 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
-      reportResult(score, gameStatus === "won", wordsCompleted);
+      const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
+      if (isCompetitive) {
+        reportResult(score, gameStatus === "won", wordsCompleted);
+      }
     }
-  }, [gameStatus, score, reportResult, wordsCompleted]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   const startTimer = useCallback((survival: boolean) => {
     setTimerRunning(false);
-    setTimeLeft(survival ? SURVIVAL_TIME_PER_WORD : CLASSIC_TOTAL_TIME);
+    setTimeLeft(survival ? survivalTime : CLASSIC_TOTAL_TIME);
     requestAnimationFrame(() => {
       setTimerRunning(true);
     });
-  }, []);
+  }, [survivalTime]);
 
   const stopTimer = useCallback(() => {
     setTimerRunning(false);
@@ -137,13 +146,13 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const resetTimer = useCallback((survival: boolean) => {
     if (survival) {
       setTimerRunning(false);
-      setTimeLeft(SURVIVAL_TIME_PER_WORD);
+      setTimeLeft(survivalTime);
       requestAnimationFrame(() => {
         setTimerRunning(true);
       });
     }
     // In classic mode, timer just keeps counting down — no reset on correct answer
-  }, []);
+  }, [survivalTime]);
 
   const startGame = useCallback(async (v: Variation, l: Level, survival: boolean) => {
     resetRecorded();
@@ -160,7 +169,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     setChainHistory([]);
     setUserInput("");
     setFeedback(null);
-    setTimeLeft(survival ? SURVIVAL_TIME_PER_WORD : CLASSIC_TOTAL_TIME);
+    setTimeLeft(survival ? survivalTime : CLASSIC_TOTAL_TIME);
     
     try {
       const result = await startWordMutation.mutateAsync({ variation: v, level: l });
@@ -301,7 +310,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   };
 
   const timerPercent = isSurvivalRef.current
-    ? (timeLeft / SURVIVAL_TIME_PER_WORD) * 100
+    ? (timeLeft / survivalTime) * 100
     : (timeLeft / CLASSIC_TOTAL_TIME) * 100;
 
   if (gameStatus === "menu") {
@@ -333,11 +342,26 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                 data-testid="button-mode-survival"
               >
                 <Flame className="h-3.5 w-3.5" />
-                Survival (10s/word)
+                {`Survival (${survivalTime}s/word)`}
               </Button>
             </div>
             {isSurvival ? (
-              <p className="text-xs text-muted-foreground">10 seconds per word — timer resets on each correct answer!</p>
+              <>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {SURVIVAL_TIME_OPTIONS.map(opt => (
+                    <Button
+                      key={opt.seconds}
+                      variant={survivalTime === opt.seconds ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSurvivalTime(opt.seconds)}
+                      data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                    >
+                      {opt.label} ({opt.seconds}s)
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{survivalTime}s per word — timer resets on each correct answer!</p>
+              </>
             ) : (
               <p className="text-xs text-muted-foreground">90 seconds total to chain as many words as possible!</p>
             )}

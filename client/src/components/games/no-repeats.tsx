@@ -17,6 +17,11 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 
 const SURVIVAL_TIME_PER_WORD = 8;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "Easy",   seconds: 15 },
+  { label: "Normal", seconds: 8  },
+  { label: "Hard",   seconds: 5  },
+] as const;
 
 type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
@@ -49,6 +54,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?: Challenge; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
     slug: isSurvival ? "no-repeats-survival" : "no-repeats",
   });
@@ -85,7 +91,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
-    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -99,7 +105,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer, timePerChallenge]);
+  }, [stopTimer, timePerChallenge, survivalTime]);
 
   const startGame = useCallback((c: Challenge, survival: boolean) => {
     resetRecorded();
@@ -137,9 +143,12 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
-      reportResult(score, gameStatus === "won", wordsCompleted);
+      const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
+      if (isCompetitive) {
+        reportResult(score, gameStatus === "won", wordsCompleted);
+      }
     }
-  }, [gameStatus, score, reportResult, wordsCompleted]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -250,13 +259,28 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
                   data-testid="button-mode-survival"
                 >
                   <Flame className="h-3.5 w-3.5" />
-                  Survival
+                  {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
                 </Button>
               </div>
               {isSurvival && (
-                <p className="text-xs text-muted-foreground">
-                  8 seconds per word — timer resets on each correct answer!
-                </p>
+                <>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    {SURVIVAL_TIME_OPTIONS.map(opt => (
+                      <Button
+                        key={opt.seconds}
+                        variant={survivalTime === opt.seconds ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSurvivalTime(opt.seconds)}
+                        data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                      >
+                        {opt.label} ({opt.seconds}s)
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {survivalTime}s per word — timer resets on each correct answer!
+                  </p>
+                </>
               )}
             </div>
           </CardContent>

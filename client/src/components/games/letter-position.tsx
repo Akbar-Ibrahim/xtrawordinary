@@ -18,6 +18,11 @@ import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const SURVIVAL_TIME_PER_WORD = 8;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "Easy",   seconds: 15 },
+  { label: "Normal", seconds: 8  },
+  { label: "Hard",   seconds: 5  },
+] as const;
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
@@ -55,6 +60,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
 export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
     slug: isSurvival ? "letter-position-survival" : "letter-position",
   });
@@ -97,7 +103,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
-    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -111,7 +117,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer, timePerChallenge]);
+  }, [stopTimer, timePerChallenge, survivalTime]);
 
   const startGame = useCallback((c: Challenge, survival: boolean, seedOverride?: number) => {
     resetRecorded();
@@ -156,9 +162,12 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
-      reportResult(score, gameStatus === "won", wordsCompleted);
+      const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
+      if (isCompetitive) {
+        reportResult(score, gameStatus === "won", wordsCompleted);
+      }
     }
-  }, [gameStatus, score, reportResult, wordsCompleted]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -277,14 +286,29 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   data-testid="button-mode-survival"
                 >
                   <Flame className="h-3.5 w-3.5" />
-                  Survival
+                  {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
                 </Button>
               </div>
             )}
             {isSurvival && (
-              <p className="text-xs text-muted-foreground">
-                8 seconds per word — timer resets on each correct answer!
-              </p>
+              <>
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  {SURVIVAL_TIME_OPTIONS.map(opt => (
+                    <Button
+                      key={opt.seconds}
+                      variant={survivalTime === opt.seconds ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSurvivalTime(opt.seconds)}
+                      data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                    >
+                      {opt.label} ({opt.seconds}s)
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {survivalTime}s per word — timer resets on each correct answer!
+                </p>
+              </>
             )}
           </div>
           

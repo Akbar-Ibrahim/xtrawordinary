@@ -18,6 +18,11 @@ import { useGameResult } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const SURVIVAL_TIME_PER_WORD = 8;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "Easy",   seconds: 15 },
+  { label: "Normal", seconds: 8  },
+  { label: "Hard",   seconds: 5  },
+] as const;
 
 const LETTER_MAX_FREQUENCIES: Record<string, number> = {
   A: 5, B: 3, C: 4, D: 4, E: 5, F: 3, G: 4, H: 4, I: 5, J: 2, K: 3, L: 4, M: 4,
@@ -106,6 +111,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
 export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
     slug: isSurvival ? "letter-frequency-survival" : "letter-frequency",
   });
@@ -147,7 +153,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
-    const initialTime = survivalMode ? SURVIVAL_TIME_PER_WORD : timePerChallenge;
+    const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -161,7 +167,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
         return prev - 1;
       });
     }, 1000);
-  }, [stopTimer, timePerChallenge]);
+  }, [stopTimer, timePerChallenge, survivalTime]);
 
   const startGame = useCallback((c: Challenge, survival: boolean) => {
     resetRecorded();
@@ -200,9 +206,12 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
-      reportResult(score, gameStatus === "won", wordsCompleted);
+      const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
+      if (isCompetitive) {
+        reportResult(score, gameStatus === "won", wordsCompleted);
+      }
     }
-  }, [gameStatus, score, reportResult, wordsCompleted]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -340,14 +349,29 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                         data-testid="button-mode-survival"
                       >
                         <Flame className="h-3.5 w-3.5" />
-                        Survival
+                        {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
                       </Button>
                     </div>
                   )}
                   {isSurvival && (
-                    <p className="text-xs text-muted-foreground">
-                      8 seconds per word — timer resets on each correct answer!
-                    </p>
+                    <>
+                      <div className="flex items-center justify-center gap-2 pt-1">
+                        {SURVIVAL_TIME_OPTIONS.map(opt => (
+                          <Button
+                            key={opt.seconds}
+                            variant={survivalTime === opt.seconds ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSurvivalTime(opt.seconds)}
+                            data-testid={`button-preset-${opt.label.toLowerCase()}`}
+                          >
+                            {opt.label} ({opt.seconds}s)
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {survivalTime}s per word — timer resets on each correct answer!
+                      </p>
+                    </>
                   )}
                 </div>
 
