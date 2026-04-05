@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Medal, Award, Crown, LogIn } from "lucide-react";
+import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { motion } from "framer-motion";
@@ -120,16 +120,56 @@ function LeaderboardEntries({
   );
 }
 
+function SurvivalToggle({
+  isSurvival,
+  onChange,
+}: {
+  isSurvival: boolean;
+  onChange: (val: boolean) => void;
+}) {
+  return (
+    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit mx-auto" data-testid="toggle-survival">
+      <button
+        onClick={() => onChange(false)}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+          !isSurvival
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+        data-testid="button-toggle-classic"
+      >
+        <Timer className="h-3.5 w-3.5" />
+        Classic
+      </button>
+      <button
+        onClick={() => onChange(true)}
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+          isSurvival
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+        data-testid="button-toggle-survival"
+      >
+        <Flame className="h-3.5 w-3.5" />
+        Survival
+      </button>
+    </div>
+  );
+}
+
 function ModeTabs({
   modes,
+  isSurvival,
   user,
   onSignIn,
 }: {
   modes: GameMode[];
+  isSurvival: boolean;
   user: ReturnType<typeof useAuth>["user"];
   onSignIn: () => void;
 }) {
   const [activeMode, setActiveMode] = useState(modes[0]?.slug ?? "");
+  const effectiveSlug = isSurvival ? `${activeMode}-survival` : activeMode;
 
   return (
     <div className="space-y-4">
@@ -138,7 +178,7 @@ function ModeTabs({
           <button
             key={mode.slug}
             onClick={() => setActiveMode(mode.slug)}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
               activeMode === mode.slug
                 ? "bg-background shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -149,13 +189,14 @@ function ModeTabs({
           </button>
         ))}
       </div>
-      <LeaderboardEntries slug={activeMode} user={user} onSignIn={onSignIn} />
+      <LeaderboardEntries slug={effectiveSlug} user={user} onSignIn={onSignIn} />
     </div>
   );
 }
 
 export default function Leaderboard() {
   const [selectedGame, setSelectedGame] = useState("overall");
+  const [isSurvival, setIsSurvival] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const { user } = useAuth();
 
@@ -165,10 +206,18 @@ export default function Leaderboard() {
 
   const selectedGameObj = games.find(g => g.slug === selectedGame);
   const hasModes = !!(selectedGameObj?.modes && selectedGameObj.modes.length > 0);
+  const showSurvivalToggle = !!(selectedGameObj?.hasSurvival);
 
   const cardTitle = selectedGame === "overall"
     ? "Overall Rankings"
     : selectedGameObj?.name || "Rankings";
+
+  function handleGameChange(slug: string) {
+    setSelectedGame(slug);
+    setIsSurvival(false);
+  }
+
+  const noModeSlug = isSurvival ? `${selectedGame}-survival` : selectedGame;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -186,8 +235,8 @@ export default function Leaderboard() {
         </div>
 
         <div className="flex justify-center">
-          <Select value={selectedGame} onValueChange={setSelectedGame}>
-            <SelectTrigger className="w-64" data-testid="select-game-filter">
+          <Select value={selectedGame} onValueChange={handleGameChange}>
+            <SelectTrigger className="w-64 cursor-pointer" data-testid="select-game-filter">
               <SelectValue placeholder="Select a game" />
             </SelectTrigger>
             <SelectContent>
@@ -201,21 +250,33 @@ export default function Leaderboard() {
           </Select>
         </div>
 
+        {showSurvivalToggle && (
+          <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">{cardTitle}</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              {cardTitle}
+              {showSurvivalToggle && (
+                <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
+                  {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
+                </Badge>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {hasModes ? (
               <ModeTabs
-                key={selectedGame}
+                key={`${selectedGame}-${isSurvival}`}
                 modes={selectedGameObj!.modes!}
+                isSurvival={isSurvival}
                 user={user}
                 onSignIn={() => setAuthOpen(true)}
               />
             ) : (
               <LeaderboardEntries
-                slug={selectedGame}
+                slug={noModeSlug}
                 user={user}
                 onSignIn={() => setAuthOpen(true)}
               />

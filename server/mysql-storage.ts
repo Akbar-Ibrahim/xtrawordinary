@@ -48,6 +48,7 @@ export class MySQLStorage implements IStorage {
       color: row.color,
       playCount: row.playCount,
       isActive: row.isActive,
+      hasSurvival: row.hasSurvival,
     };
   }
 

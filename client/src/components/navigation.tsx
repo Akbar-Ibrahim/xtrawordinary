@@ -107,32 +107,32 @@ export function Navigation() {
                     {user.email}
                   </DropdownMenuItem>
                   <Link href={`/profile/${user.id}`}>
-                    <DropdownMenuItem data-testid="link-profile">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-profile">
                       <User className="h-4 w-4 mr-2" />
                       My Profile
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/friends">
-                    <DropdownMenuItem data-testid="link-friends">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/groups">
-                    <DropdownMenuItem data-testid="link-groups">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-groups">
                       <Users className="h-4 w-4 mr-2" />
                       Groups
                     </DropdownMenuItem>
                   </Link>
                   {user.isAdmin && (
                     <Link href="/admin">
-                      <DropdownMenuItem data-testid="link-admin">
+                      <DropdownMenuItem className="cursor-pointer" data-testid="link-admin">
                         <Shield className="h-4 w-4 mr-2" />
                         Admin Dashboard
                       </DropdownMenuItem>
                     </Link>
                   )}
-                  <DropdownMenuItem onClick={logout} data-testid="button-signout">
+                  <DropdownMenuItem className="cursor-pointer" onClick={logout} data-testid="button-signout">
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
                   </DropdownMenuItem>

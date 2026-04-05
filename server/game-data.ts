@@ -628,7 +628,8 @@ export const gamesData: Game[] = [
     estimatedTime: "10-15 min",
     icon: "Link",
     color: "hsl(170, 65%, 45%)",
-    playCount: 3560
+    playCount: 3560,
+    hasSurvival: true,
   },
   {
     id: 11,
@@ -815,6 +816,7 @@ export const gamesData: Game[] = [
     icon: "Zap",
     color: "hsl(38, 92%, 50%)",
     playCount: 0,
+    hasSurvival: true,
     modes: [
       { label: "Easy (4L)", slug: "ladder-rush-4" },
       { label: "Medium (5L)", slug: "ladder-rush-5" },
@@ -842,6 +844,7 @@ export const gamesData: Game[] = [
     icon: "Zap",
     color: "hsl(38, 92%, 50%)",
     playCount: 0,
+    hasSurvival: true,
     modes: [
       { label: "Easy (4L)", slug: "ladder-rush-double-4" },
       { label: "Medium (5L)", slug: "ladder-rush-double-5" },
