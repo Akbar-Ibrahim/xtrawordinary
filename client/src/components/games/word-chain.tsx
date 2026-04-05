@@ -185,7 +185,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
 
   useEffect(() => {
     if (initialChallenge.variation && initialChallenge.level) {
-      startGame(initialChallenge.variation, initialChallenge.level, true);
+      startGame(initialChallenge.variation, initialChallenge.level, false);
     }
   }, []);
 
