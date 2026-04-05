@@ -666,6 +666,18 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="font-mono text-xs" data-testid={`badge-word-${word}`}>
+                          {word}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button onClick={() => startGame(challenge, ordered)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
@@ -736,6 +748,18 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="font-mono text-xs" data-testid={`badge-word-${word}`}>
+                          {word}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
                     <Button onClick={() => startGame(challenge, ordered)} data-testid="button-play-again">
