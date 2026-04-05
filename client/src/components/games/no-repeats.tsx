@@ -344,7 +344,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
             {usedWords.size > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium mb-2">Words Found:</h3>
-                <div className="flex flex-wrap gap-2 justify-center">
+                <div className="flex flex-wrap gap-2 justify-center max-h-48 overflow-y-auto">
                   {Array.from(usedWords).map((word) => (
                     <Badge key={word} variant="secondary" data-testid={`badge-word-${word}`}>{word}</Badge>
                   ))}
@@ -495,7 +495,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
         <Card>
           <CardContent className="p-4">
             <h3 className="text-sm font-medium mb-2">Words Found:</h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
               {Array.from(usedWords).map((word) => (
                 <Badge key={word} variant="outline" data-testid={`badge-found-word-${word}`}>{word}</Badge>
               ))}

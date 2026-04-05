@@ -456,7 +456,7 @@ export function WordSweepGame({ groupSeed, locked }: { groupSeed?: number; locke
                       <p className="text-xs text-center text-muted-foreground uppercase tracking-wider font-medium">
                         Words found
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1" data-testid="words-found-list">
+                      <div className="flex flex-wrap justify-center gap-1 max-h-40 overflow-y-auto" data-testid="words-found-list">
                         {wordsFound.map((word, i) => (
                           <Badge key={i} variant="secondary" className="text-xs">
                             {word}
@@ -535,7 +535,7 @@ export function WordSweepGame({ groupSeed, locked }: { groupSeed?: number; locke
                   )}
                 </div>
                 {wordsFound.length > 0 && (
-                  <div className="flex flex-wrap justify-center gap-1" data-testid="result-words-list">
+                  <div className="flex flex-wrap justify-center gap-1 max-h-48 overflow-y-auto" data-testid="result-words-list">
                     {wordsFound.map((word, i) => (
                       <Badge key={i} variant="secondary" className="text-xs">
                         {word}

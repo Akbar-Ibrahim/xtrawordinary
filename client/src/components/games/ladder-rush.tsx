@@ -292,7 +292,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, doubleSwap, onExit, o
             {chain.length > 0 && (
               <div className="text-left space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Your chain</p>
-                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
                   {chain.map((word, i) => (
                     <Badge
                       key={i}
