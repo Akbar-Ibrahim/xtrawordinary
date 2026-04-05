@@ -556,28 +556,30 @@ export function LadderRushGame({ groupSeed, locked }: LadderRushGameProps) {
         <p className="text-muted-foreground text-sm">
           Chain words by changing one letter at a time.
         </p>
-        <div className="flex items-center justify-center gap-2 pt-1">
-          <Button
-            variant={!isSurvival ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsSurvival(false)}
-            className="gap-1.5"
-            data-testid="button-mode-classic"
-          >
-            <Timer className="h-3.5 w-3.5" />
-            Classic (90s)
-          </Button>
-          <Button
-            variant={isSurvival ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsSurvival(true)}
-            className="gap-1.5"
-            data-testid="button-mode-survival"
-          >
-            <Flame className="h-3.5 w-3.5" />
-            Survival (8s/word)
-          </Button>
-        </div>
+        {!groupSeed && (
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <Button
+              variant={!isSurvival ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsSurvival(false)}
+              className="gap-1.5"
+              data-testid="button-mode-classic"
+            >
+              <Timer className="h-3.5 w-3.5" />
+              Classic (90s)
+            </Button>
+            <Button
+              variant={isSurvival ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsSurvival(true)}
+              className="gap-1.5"
+              data-testid="button-mode-survival"
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Survival (8s/word)
+            </Button>
+          </div>
+        )}
         {isSurvival ? (
           <p className="text-xs text-muted-foreground">
             8 seconds per word — timer resets on each correct answer!

@@ -26,7 +26,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(true);
   const { reportResult, resetRecorded, personalBest } = useGameResult({
-    slug: isSurvival ? "word-chain" : "word-chain-classic",
+    slug: isSurvival ? "word-chain-survival" : "word-chain",
   });
 
   const validateMutation = useMutation({
@@ -230,7 +230,9 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
         return;
       }
 
-      stopTimer();
+      if (isSurvivalRef.current) {
+        stopTimer();
+      }
       
       playSound("correct");
       setStreak(prev => prev + 1);
@@ -624,7 +626,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                 </div>
                 <ShareResults
                   gameName="Word Chain"
-                  gameSlug={isSurvivalRef.current ? "word-chain" : "word-chain-classic"}
+                  gameSlug={isSurvivalRef.current ? "word-chain-survival" : "word-chain"}
                   score={score}
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
