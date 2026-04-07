@@ -19,7 +19,6 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   const [open, setOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<(() => void) | null>(null);
   const dummyPushedRef = useRef(false);
-  const listenerRef = useRef<(() => void) | null>(null);
   const activeRef = useRef(active);
 
   useEffect(() => {
@@ -47,24 +46,19 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
 
     const handlePopState = () => {
       // The dummy was consumed; user is now at the real game-page position.
-      // history.back() on confirm will navigate one step further to [prev page].
+      // Confirming leave calls history.back() — one step from [game] to [prev].
       dummyPushedRef.current = false;
       setOpen(true);
       setPendingConfirm(() => () => window.history.back());
     };
 
-    listenerRef.current = handlePopState;
     window.addEventListener("popstate", handlePopState);
 
     return () => {
-      // Always remove listener before any history manipulation.
+      // Remove listener first, then clean up the dummy entry.
+      // Since the listener is already removed, the resulting history.back()
+      // cannot re-trigger this guard (same-URL move, no visible navigation).
       window.removeEventListener("popstate", handlePopState);
-      listenerRef.current = null;
-
-      // Clean up the dummy entry so normal back navigation is restored.
-      // Listener is already removed above, so this history.back() is safe —
-      // it moves the history pointer (same URL, no visible navigation) and
-      // cannot re-trigger the guard dialog.
       if (dummyPushedRef.current) {
         dummyPushedRef.current = false;
         window.history.back();
@@ -86,10 +80,11 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
     setOpen(false);
   }, [pendingConfirm]);
 
+  // All dismiss paths (Cancel button, Escape, outside-click) go through here
+  // so the dummy entry is always re-pushed and the guard stays active.
   const handleCancel = useCallback(() => {
     setOpen(false);
     setPendingConfirm(null);
-    // Re-establish the dummy entry so subsequent back presses are still guarded.
     if (activeRef.current && !dummyPushedRef.current) {
       window.history.pushState(null, "", window.location.href);
       dummyPushedRef.current = true;
@@ -97,7 +92,12 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   }, []);
 
   const ConfirmDialog = (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleCancel();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Leave the game?</AlertDialogTitle>
