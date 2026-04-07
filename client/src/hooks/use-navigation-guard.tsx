@@ -19,43 +19,60 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   const [open, setOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<(() => void) | null>(null);
   const dummyPushedRef = useRef(false);
+  const listenerRef = useRef<(() => void) | null>(null);
+  const activeRef = useRef(active);
 
   useEffect(() => {
-    if (!active) {
-      dummyPushedRef.current = false;
-      setOpen(false);
-      setPendingConfirm(null);
-      return;
-    }
+    activeRef.current = active;
+  });
 
+  // beforeunload: native browser prompt on refresh / tab close
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [active]);
+
+  // popstate: intercept browser back / forward button while playing
+  useEffect(() => {
+    if (!active) return;
+
+    // Push one dummy entry (same URL) to absorb the first back press.
     window.history.pushState(null, "", window.location.href);
     dummyPushedRef.current = true;
 
     const handlePopState = () => {
-      // Immediately re-push so the guard persists for repeated back presses.
-      // After re-push the history is always: [prev] | [game] | [repushed-dummy].
-      // Confirming leave will call history.go(-2) to jump directly to [prev].
-      window.history.pushState(null, "", window.location.href);
+      // The dummy was consumed; user is now at the real game-page position.
+      // history.back() on confirm will navigate one step further to [prev page].
+      dummyPushedRef.current = false;
       setOpen(true);
-      setPendingConfirm(() => () => window.history.go(-2));
+      setPendingConfirm(() => () => window.history.back());
     };
 
+    listenerRef.current = handlePopState;
     window.addEventListener("popstate", handlePopState);
+
     return () => {
+      // Always remove listener before any history manipulation.
       window.removeEventListener("popstate", handlePopState);
+      listenerRef.current = null;
+
+      // Clean up the dummy entry so normal back navigation is restored.
+      // Listener is already removed above, so this history.back() is safe —
+      // it moves the history pointer (same URL, no visible navigation) and
+      // cannot re-trigger the guard dialog.
+      if (dummyPushedRef.current) {
+        dummyPushedRef.current = false;
+        window.history.back();
+      }
     };
   }, [active]);
 
-  useEffect(() => {
-    if (!active) return;
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [active]);
-
+  // confirmExit: used by the in-page Exit button
   const confirmExit = useCallback((onConfirm: () => void) => {
     setOpen(true);
     setPendingConfirm(() => onConfirm);
@@ -72,6 +89,11 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   const handleCancel = useCallback(() => {
     setOpen(false);
     setPendingConfirm(null);
+    // Re-establish the dummy entry so subsequent back presses are still guarded.
+    if (activeRef.current && !dummyPushedRef.current) {
+      window.history.pushState(null, "", window.location.href);
+      dummyPushedRef.current = true;
+    }
   }, []);
 
   const ConfirmDialog = (
