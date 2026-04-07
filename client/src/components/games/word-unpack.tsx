@@ -122,6 +122,10 @@ export function WordUnpackGame({ groupSeed, locked }: { groupSeed?: number; lock
     playSound("click");
   }, [gameStatus, playSound]);
 
+  const clearSelectionOnly = useCallback(() => {
+    setGrid(prev => prev.map(c => ({ ...c, selected: false, selectionOrder: 0 })));
+  }, []);
+
   const clearSelection = useCallback(() => {
     setGrid(prev => prev.map(c => ({ ...c, selected: false, selectionOrder: 0 })));
     setFeedback(null);
@@ -163,11 +167,11 @@ export function WordUnpackGame({ groupSeed, locked }: { groupSeed?: number; lock
         message: isAlreadyFound ? "Already found!" : "Not in the word list",
       });
       setWrongAttempts(prev => prev + 1);
-      clearSelection();
+      clearSelectionOnly();
     }
 
     setTimeout(() => setFeedback(null), 1800);
-  }, [currentWord, remainingWords, wordsFound, puzzleWords.length, wrongAttempts, playSound, clearSelection]);
+  }, [currentWord, remainingWords, wordsFound, puzzleWords.length, wrongAttempts, playSound, clearSelectionOnly]);
 
   const handleGiveUp = useCallback(() => {
     setCompletionMessage(getCompletionMessage(false));

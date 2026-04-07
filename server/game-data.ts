@@ -836,12 +836,12 @@ export const gamesData: Game[] = [
     longDescription: "A 5x5 grid holds the exact letters of a set of secret words. The word list is shown — your challenge is to tap the right letters in the right order to spell each one and clear the grid. Every letter belongs to a word, and every word is solvable. Can you unpack the grid perfectly?",
     rules: [
       "A 5x5 grid contains the exact letters of all the target words",
-      "The word list is shown — tap grid letters to spell each word",
+      "The word list is shown — tap grid letters to spell each word in order",
       "Letters can be selected in any order from anywhere in the grid",
-      "Submit a word to clear its letters from the grid",
-      "Wrong submissions lose points — pick carefully",
+      "Submit a word to check it against the word list and clear its letters",
+      "Wrong submissions count as misses — zero misses earns a precision bonus",
       "Find all words to clear the grid and win",
-      "Score = 10 × word length per word, +50 completion bonus, +30 precision bonus for zero wrong attempts"
+      "Score = 10 × word length per word found, +50 completion bonus, +30 for zero misses"
     ],
     difficulty: "medium",
     estimatedTime: "3-7 min",
