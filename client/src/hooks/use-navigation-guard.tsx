@@ -18,19 +18,13 @@ interface NavigationGuard {
 export function useNavigationGuard(active: boolean): NavigationGuard {
   const [open, setOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<(() => void) | null>(null);
-  const activeRef = useRef(active);
   const dummyPushedRef = useRef(false);
 
   useEffect(() => {
-    activeRef.current = active;
-  }, [active]);
-
-  useEffect(() => {
     if (!active) {
-      if (dummyPushedRef.current) {
-        dummyPushedRef.current = false;
-        window.history.back();
-      }
+      dummyPushedRef.current = false;
+      setOpen(false);
+      setPendingConfirm(null);
       return;
     }
 
@@ -38,15 +32,18 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
     dummyPushedRef.current = true;
 
     const handlePopState = () => {
-      dummyPushedRef.current = false;
+      // Immediately re-push so the guard persists for repeated back presses.
+      // After re-push the history is always: [prev] | [game] | [repushed-dummy].
+      // Confirming leave will call history.go(-2) to jump directly to [prev].
+      window.history.pushState(null, "", window.location.href);
       setOpen(true);
-      setPendingConfirm(() => () => {
-        window.history.back();
-      });
+      setPendingConfirm(() => () => window.history.go(-2));
     };
 
     window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, [active]);
 
   useEffect(() => {
@@ -75,10 +72,6 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   const handleCancel = useCallback(() => {
     setOpen(false);
     setPendingConfirm(null);
-    if (activeRef.current && !dummyPushedRef.current) {
-      window.history.pushState(null, "", window.location.href);
-      dummyPushedRef.current = true;
-    }
   }, []);
 
   const ConfirmDialog = (
