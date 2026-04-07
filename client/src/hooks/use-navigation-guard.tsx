@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +18,36 @@ interface NavigationGuard {
 export function useNavigationGuard(active: boolean): NavigationGuard {
   const [open, setOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<(() => void) | null>(null);
-  const [doNavigateBack, setDoNavigateBack] = useState(false);
+  const activeRef = useRef(active);
+  const dummyPushedRef = useRef(false);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) {
+      if (dummyPushedRef.current) {
+        dummyPushedRef.current = false;
+        window.history.back();
+      }
+      return;
+    }
+
+    window.history.pushState(null, "", window.location.href);
+    dummyPushedRef.current = true;
+
+    const handlePopState = () => {
+      dummyPushedRef.current = false;
+      setOpen(true);
+      setPendingConfirm(() => () => {
+        window.history.back();
+      });
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [active]);
 
   useEffect(() => {
     if (!active) return;
@@ -29,25 +58,6 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [active]);
-
-  useEffect(() => {
-    if (!active) return;
-    window.history.pushState(null, "", window.location.href);
-    const handlePopState = () => {
-      window.history.pushState(null, "", window.location.href);
-      setOpen(true);
-      setPendingConfirm(() => () => setDoNavigateBack(true));
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [active]);
-
-  useEffect(() => {
-    if (!doNavigateBack) return;
-    setDoNavigateBack(false);
-    setOpen(false);
-    window.history.go(-2);
-  }, [doNavigateBack]);
 
   const confirmExit = useCallback((onConfirm: () => void) => {
     setOpen(true);
@@ -65,6 +75,10 @@ export function useNavigationGuard(active: boolean): NavigationGuard {
   const handleCancel = useCallback(() => {
     setOpen(false);
     setPendingConfirm(null);
+    if (activeRef.current && !dummyPushedRef.current) {
+      window.history.pushState(null, "", window.location.href);
+      dummyPushedRef.current = true;
+    }
   }, []);
 
   const ConfirmDialog = (
