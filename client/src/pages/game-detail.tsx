@@ -37,6 +37,7 @@ import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { LadderRushGame } from "@/components/games/ladder-rush";
+import { WordUnpackGame } from "@/components/games/word-unpack";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -68,6 +69,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-roots": WordRootsGame,
   "ladder-rush": LadderRushGame,
   "ladder-rush-double": LadderRushDoubleGame,
+  "word-unpack": WordUnpackGame,
 };
 
 export default function GameDetail() {

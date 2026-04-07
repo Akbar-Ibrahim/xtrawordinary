@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
@@ -261,6 +261,65 @@ export class MemStorage implements IStorage {
 
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> {
     return progressiveRevealWords;
+  }
+
+  async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> {
+    const TARGET = 25;
+    const SIZE = 5;
+    const rng = seed !== undefined ? mulberry32(seed) : Math.random;
+
+    function shuffle<T>(arr: T[]): T[] {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    const candidates = wordDictionary.filter(w => w.length >= 3 && w.length <= 7);
+
+    // Try several shuffles until we find a set of words summing to exactly TARGET
+    let chosenWords: string[] = [];
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const shuffled = shuffle(candidates);
+      const words: string[] = [];
+      let remaining = TARGET;
+
+      for (const word of shuffled) {
+        if (remaining === 0) break;
+        if (word.length > remaining) continue;
+        // Never leave a gap too small for any word (< 3), unless it would be exactly 0
+        const afterThis = remaining - word.length;
+        if (afterThis !== 0 && afterThis < 3) continue;
+        if (words.includes(word)) continue;
+        words.push(word);
+        remaining -= word.length;
+      }
+
+      if (remaining === 0) {
+        chosenWords = words;
+        break;
+      }
+    }
+
+    // Fallback: if no combination found, force-fill with 3-letter words
+    if (chosenWords.length === 0) {
+      const threeLetters = shuffle(candidates.filter(w => w.length === 3));
+      chosenWords = threeLetters.slice(0, Math.floor(TARGET / 3));
+      // Pad remaining with extra letters from the last word repeated if needed
+    }
+
+    // Combine all letters, shuffle, build grid
+    const allLetters = chosenWords.flatMap(w => w.split(""));
+    const shuffledLetters = shuffle(allLetters);
+
+    const grid: string[][] = [];
+    for (let row = 0; row < SIZE; row++) {
+      grid.push(shuffledLetters.slice(row * SIZE, (row + 1) * SIZE));
+    }
+
+    return { grid, size: SIZE, words: chosenWords };
   }
 
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {

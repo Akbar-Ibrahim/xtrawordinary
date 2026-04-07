@@ -829,6 +829,27 @@ export const gamesData: Game[] = [
     ],
   },
   {
+    id: 21,
+    slug: "word-unpack",
+    name: "Word Unpack",
+    description: "You know the words — now find their letters hidden in the grid!",
+    longDescription: "A 5x5 grid holds the exact letters of a set of secret words. The word list is shown — your challenge is to tap the right letters in the right order to spell each one and clear the grid. Every letter belongs to a word, and every word is solvable. Can you unpack the grid perfectly?",
+    rules: [
+      "A 5x5 grid contains the exact letters of all the target words",
+      "The word list is shown — tap grid letters to spell each word",
+      "Letters can be selected in any order from anywhere in the grid",
+      "Submit a word to clear its letters from the grid",
+      "Wrong submissions lose points — pick carefully",
+      "Find all words to clear the grid and win",
+      "Score = 10 × word length per word, +50 completion bonus, +30 precision bonus for zero wrong attempts"
+    ],
+    difficulty: "medium",
+    estimatedTime: "3-7 min",
+    icon: "PackageOpen",
+    color: "hsl(270, 60%, 55%)",
+    playCount: 0
+  },
+  {
     id: 20,
     slug: "ladder-rush-double",
     name: "Ladder Rush: Double Swap",

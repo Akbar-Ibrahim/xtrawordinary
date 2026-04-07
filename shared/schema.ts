@@ -164,6 +164,14 @@ export const wordSweepGridSchema = z.object({
 });
 export type WordSweepGrid = z.infer<typeof wordSweepGridSchema>;
 
+// Word Unpack puzzle
+export const wordUnpackPuzzleSchema = z.object({
+  grid: z.array(z.array(z.string())),
+  size: z.number(),
+  words: z.array(z.string()),
+});
+export type WordUnpackPuzzle = z.infer<typeof wordUnpackPuzzleSchema>;
+
 // Word Ladder puzzle
 export const wordLadderPuzzleSchema = z.object({
   start: z.string(),

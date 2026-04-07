@@ -325,6 +325,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-unpack/puzzle", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      const puzzle = await dataSource.generateWordUnpackPuzzle(isNaN(seed) ? undefined : seed);
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate puzzle" });
+    }
+  });
+
   app.get("/api/daily-challenge", async (_req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
@@ -353,6 +363,7 @@ export async function registerRoutes(
         "word-sweep",
         "word-roots",
         "ladder-rush",
+        "word-unpack",
       ];
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
