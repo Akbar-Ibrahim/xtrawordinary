@@ -163,7 +163,6 @@ export function WordUnpackGame({ groupSeed, locked }: { groupSeed?: number; lock
         message: isAlreadyFound ? "Already found!" : "Not in the word list",
       });
       setWrongAttempts(prev => prev + 1);
-      setScore(prev => Math.max(0, prev - 5));
       clearSelection();
     }
 
@@ -308,7 +307,7 @@ export function WordUnpackGame({ groupSeed, locked }: { groupSeed?: number; lock
         <div className="flex items-center gap-2">
           {wrongAttempts > 0 && (
             <Badge variant="outline" className="text-destructive gap-1" data-testid="badge-wrong-attempts">
-              -{wrongAttempts * 5} pts
+              {wrongAttempts} {wrongAttempts === 1 ? "miss" : "misses"}
             </Badge>
           )}
           {!locked && (

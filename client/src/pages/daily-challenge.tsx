@@ -108,7 +108,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     case "word-sweep":
       return <WordSweepGame locked />;
     case "word-unpack":
-      return <WordUnpackGame locked />;
+      return <WordUnpackGame groupSeed={seed} locked />;
     case "word-chain": {
       const variation = ((seed % 2) + 1) as 1 | 2;
       const level = ((seed >> 2) % 2 + 1) as 1 | 2;

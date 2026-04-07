@@ -266,6 +266,8 @@ export class MemStorage implements IStorage {
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> {
     const TARGET = 25;
     const SIZE = 5;
+    const MIN_WORDS = 4;
+    const MAX_WORDS = 6;
     const rng = seed !== undefined ? mulberry32(seed) : Math.random;
 
     function shuffle<T>(arr: T[]): T[] {
@@ -279,35 +281,50 @@ export class MemStorage implements IStorage {
 
     const candidates = wordDictionary.filter(w => w.length >= 3 && w.length <= 7);
 
-    // Try several shuffles until we find a set of words summing to exactly TARGET
+    // Try up to 50 shuffles to find a set of 4–6 words summing to exactly 25
     let chosenWords: string[] = [];
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 50; attempt++) {
       const shuffled = shuffle(candidates);
       const words: string[] = [];
       let remaining = TARGET;
 
       for (const word of shuffled) {
         if (remaining === 0) break;
+        if (words.length >= MAX_WORDS) break;
         if (word.length > remaining) continue;
-        // Never leave a gap too small for any word (< 3), unless it would be exactly 0
+
         const afterThis = remaining - word.length;
-        if (afterThis !== 0 && afterThis < 3) continue;
-        if (words.includes(word)) continue;
+
+        if (afterThis === 0) {
+          // Perfect fill — only accept if we'll have enough words
+          if (words.length + 1 >= MIN_WORDS) {
+            words.push(word);
+            remaining = 0;
+          }
+          // Too few words — skip this exact match and keep looking
+          continue;
+        }
+
+        // afterThis > 0: ensure the gap can still be filled within the remaining word budget
+        if (afterThis < 3) continue; // Gap too small for any word
+        const wordsLeft = MAX_WORDS - (words.length + 1);
+        if (wordsLeft === 0) continue; // Already at max words but didn't land on 0
+        if (afterThis > wordsLeft * 7) continue; // Gap too large to fill with remaining budget
+
         words.push(word);
         remaining -= word.length;
       }
 
-      if (remaining === 0) {
+      if (remaining === 0 && words.length >= MIN_WORDS && words.length <= MAX_WORDS) {
         chosenWords = words;
         break;
       }
     }
 
-    // Fallback: if no combination found, force-fill with 3-letter words
+    // Guaranteed fallback: 5 five-letter words = exactly 25 letters, always valid
     if (chosenWords.length === 0) {
-      const threeLetters = shuffle(candidates.filter(w => w.length === 3));
-      chosenWords = threeLetters.slice(0, Math.floor(TARGET / 3));
-      // Pad remaining with extra letters from the last word repeated if needed
+      const fiveLetters = shuffle(candidates.filter(w => w.length === 5));
+      chosenWords = fiveLetters.slice(0, 5);
     }
 
     // Combine all letters, shuffle, build grid
