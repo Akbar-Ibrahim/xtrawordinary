@@ -26,6 +26,7 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
+import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 const GAME_NAMES: Record<string, string> = {
   "word-ladder": "Word Ladder", "anagram-solver": "Anagram Solver",
@@ -110,6 +111,8 @@ export default function GroupRoundPlay() {
   const [finalScore, setFinalScore] = useState(0);
   const [attemptStarted, setAttemptStarted] = useState(false);
   const startTimeRef = useRef<number | null>(null);
+
+  const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !submitted);
 
   const { data, isLoading, error } = useQuery<RoundResponse>({
     queryKey: ["/api/groups", groupId, "rounds", roundIdNum],
@@ -215,6 +218,7 @@ export default function GroupRoundPlay() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
+      {ConfirmDialog}
       <Link href={`/groups/${groupId}`}>
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back-group">
           <ArrowLeft className="h-4 w-4" />
@@ -392,7 +396,7 @@ export default function GroupRoundPlay() {
                 <h2 className="text-xl font-semibold">{gameName}</h2>
                 <Badge variant="outline" className="text-xs mt-1"><Users className="h-3 w-3 mr-1" />Group Round</Badge>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setIsPlaying(false)} className="gap-1.5" data-testid="button-exit-round">
+              <Button variant="outline" size="sm" onClick={() => confirmExit(() => setIsPlaying(false))} className="gap-1.5" data-testid="button-exit-round">
                 <X className="h-4 w-4" />
                 Exit
               </Button>

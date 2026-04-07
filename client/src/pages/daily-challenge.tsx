@@ -30,6 +30,7 @@ import { WordSplitGame } from "@/components/games/word-split";
 import { WordStackGame } from "@/components/games/word-stack";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { WordRootsGame } from "@/components/games/word-roots";
+import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 interface DailyChallengeResponse {
   date: string;
@@ -149,6 +150,8 @@ export default function DailyChallenge() {
   const [finalScore, setFinalScore] = useState(0);
   const [attemptStarted, setAttemptStarted] = useState(false);
 
+  const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !completed);
+
   const localRecord = data ? getDailyChallengeRecord(data.date) : null;
   const serverAttemptLoaded = !attemptLoading && attemptData !== undefined;
   const serverAuthenticated = serverAttemptLoaded && attemptData?.authenticated === true;
@@ -237,6 +240,7 @@ export default function DailyChallenge() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {ConfirmDialog}
       <Link href="/">
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back-daily">
           <ArrowLeft className="h-4 w-4" />
@@ -353,7 +357,7 @@ export default function DailyChallenge() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsPlaying(false)}
+                onClick={() => confirmExit(() => setIsPlaying(false))}
                 className="gap-1.5"
                 data-testid="button-exit-daily"
               >
