@@ -285,7 +285,7 @@ function CommentItem({
               )}
             </div>
             {comment.isDeleted ? (
-              <p className="text-sm text-muted-foreground italic">[This comment has been removed]</p>
+              <p className="text-sm text-muted-foreground italic">[deleted]</p>
             ) : (
               <p className="text-sm whitespace-pre-wrap break-words" data-testid={`comment-content-${comment.id}`}>
                 {comment.content}

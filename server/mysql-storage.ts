@@ -997,6 +997,13 @@ export class MySQLStorage implements IStorage {
     return roots.map(root => ({ ...root, replies: replies.filter(r => r.parentId === root.id) }));
   }
 
+  async getCommentById(id: number): Promise<Comment | null> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
+    if (!rows[0]) return null;
+    return this.mapDbRowToComment(rows[0], undefined);
+  }
+
   async deleteComment(id: number, userId: number, isAdmin = false): Promise<boolean> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);

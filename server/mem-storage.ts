@@ -1007,6 +1007,11 @@ export class MemStorage implements IStorage {
     }));
   }
 
+  async getCommentById(id: number): Promise<Comment | null> {
+    const c = this.commentsStore.find(c => c.id === id);
+    return c ? this.commentToPublic(c) : null;
+  }
+
   async deleteComment(id: number, userId: number, isAdmin = false): Promise<boolean> {
     const c = this.commentsStore.find(c => c.id === id);
     if (!c) return false;

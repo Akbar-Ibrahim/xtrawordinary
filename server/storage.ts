@@ -140,6 +140,7 @@ export interface IStorage {
   // Comments
   createComment(comment: InsertComment): Promise<Comment>;
   getComments(targetType: CommentTargetType, targetId: string): Promise<Comment[]>;
+  getCommentById(id: number): Promise<Comment | null>;
   deleteComment(id: number, userId: number, isAdmin?: boolean): Promise<boolean>;
   reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport>;
   getCommentReports(): Promise<CommentReport[]>;

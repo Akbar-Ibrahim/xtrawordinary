@@ -1778,9 +1778,10 @@ export async function registerRoutes(
 
   // ==================== COMMENT ROUTES ====================
 
-  app.get("/api/comments", async (req, res) => {
+  const fetchComments = async (req: any, res: any) => {
     try {
-      const { targetType, targetId } = req.query;
+      const targetType = req.params.targetType ?? req.query.targetType;
+      const targetId = req.params.targetId ?? req.query.targetId;
       if (!targetType || !targetId || typeof targetType !== "string" || typeof targetId !== "string") {
         return res.status(400).json({ error: "targetType and targetId are required" });
       }
@@ -1792,7 +1793,10 @@ export async function registerRoutes(
     } catch {
       res.status(500).json({ error: "Failed to fetch comments" });
     }
-  });
+  };
+
+  app.get("/api/comments", fetchComments);
+  app.get("/api/comments/:targetType/:targetId", fetchComments);
 
   app.post("/api/comments", requireAuth, async (req, res) => {
     try {
@@ -1862,6 +1866,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Reason is required" });
       }
       if (reason.length > 500) return res.status(400).json({ error: "Reason cannot exceed 500 characters" });
+      const comment = await storage.getCommentById(commentId);
+      if (!comment) return res.status(404).json({ error: "Comment not found" });
       const report = await storage.reportComment(commentId, reportingUserId, reason.trim());
       res.status(201).json(report);
     } catch {
@@ -1870,14 +1876,17 @@ export async function registerRoutes(
   });
 
   // Admin comment routes
-  app.get("/api/admin/comment-reports", requireAuth, requireAdmin, async (_req, res) => {
+  const fetchCommentReports = async (_req: any, res: any) => {
     try {
       const reports = await storage.getCommentReports();
       res.json(reports);
     } catch {
       res.status(500).json({ error: "Failed to fetch comment reports" });
     }
-  });
+  };
+
+  app.get("/api/admin/comment-reports", requireAuth, requireAdmin, fetchCommentReports);
+  app.get("/api/admin/comments/reported", requireAuth, requireAdmin, fetchCommentReports);
 
   app.delete("/api/admin/comments/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
