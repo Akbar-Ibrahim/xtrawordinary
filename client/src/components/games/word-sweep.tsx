@@ -28,9 +28,6 @@ function calculateWordScore(wordLength: number): number {
   return Math.round(10 * Math.pow(2, wordLength - 3));
 }
 
-// ─────────────────────────────────────────────
-// Classic Mode (original Word Sweep behaviour)
-// ─────────────────────────────────────────────
 function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: boolean }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-sweep" });
@@ -424,9 +421,6 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   );
 }
 
-// ─────────────────────────────────────────────
-// Guided Mode (timed Word Unpack on 6×6 grid)
-// ─────────────────────────────────────────────
 function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: number; locked?: boolean; overrideSlug?: string }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-unpack" });
@@ -522,13 +516,11 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
       stopTimer();
       reportResult(score, wordsFound.length === puzzleWords.length, wordsFound.length);
       if (overrideSlug) {
-        try {
-          window.dispatchEvent(
-            new CustomEvent("wordplay-game-result", {
-              detail: { slug: overrideSlug, score, won: wordsFound.length === puzzleWords.length },
-            })
-          );
-        } catch {}
+        window.dispatchEvent(
+          new CustomEvent("wordplay-game-result", {
+            detail: { slug: overrideSlug, score, won: wordsFound.length === puzzleWords.length },
+          })
+        );
       }
     }
   }, [gameStatus]);
@@ -855,9 +847,6 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
   );
 }
 
-// ─────────────────────────────────────────────
-// Mode selector (shown in free-play when no mode prop)
-// ─────────────────────────────────────────────
 function ModeSelector({ onSelect }: { onSelect: (mode: "classic" | "guided") => void }) {
   return (
     <Card>
@@ -901,9 +890,6 @@ function ModeSelector({ onSelect }: { onSelect: (mode: "classic" | "guided") => 
   );
 }
 
-// ─────────────────────────────────────────────
-// Public export (wrapper)
-// ─────────────────────────────────────────────
 export function WordSweepGame({
   groupSeed,
   locked,

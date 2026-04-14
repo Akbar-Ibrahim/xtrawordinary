@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -29,6 +29,23 @@ export class MySQLStorage implements IStorage {
     return this.dbPromise;
   }
 
+  private static readonly GAME_MODES: Record<string, GameMode[]> = {
+    "word-sweep": [
+      { label: "Classic", slug: "word-sweep" },
+      { label: "Guided", slug: "word-unpack" },
+    ],
+    "ladder-rush": [
+      { label: "Easy (4L)", slug: "ladder-rush-4" },
+      { label: "Medium (5L)", slug: "ladder-rush-5" },
+      { label: "Hard (6L)", slug: "ladder-rush-6" },
+    ],
+    "ladder-rush-double": [
+      { label: "Easy (4L)", slug: "ladder-rush-double-4" },
+      { label: "Medium (5L)", slug: "ladder-rush-double-5" },
+      { label: "Hard (6L)", slug: "ladder-rush-double-6" },
+    ],
+  };
+
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
     let rules: string[];
     if (typeof row.rules === "string") {
@@ -44,6 +61,7 @@ export class MySQLStorage implements IStorage {
       ? (row.difficulty as Game["difficulty"])
       : "medium";
 
+    const modes = MySQLStorage.GAME_MODES[row.slug];
     return {
       id: row.id,
       slug: row.slug,
@@ -58,6 +76,7 @@ export class MySQLStorage implements IStorage {
       playCount: row.playCount,
       isActive: row.isActive,
       hasSurvival: row.hasSurvival,
+      ...(modes ? { modes } : {}),
     };
   }
 
