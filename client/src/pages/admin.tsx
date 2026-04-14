@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { Shield, Users, Trophy, BarChart3, Ban, ShieldCheck, Trash2, Loader2, Star, Gamepad2 } from "lucide-react";
+import { Shield, Users, Trophy, BarChart3, Ban, ShieldCheck, Trash2, Loader2, Star, Gamepad2, MessageSquare, Flag } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Admin() {
@@ -35,18 +35,20 @@ export default function Admin() {
           <Shield className="h-8 w-8" /> Admin Dashboard
         </h1>
         <Tabs defaultValue="overview" data-testid="admin-tabs">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="overview" data-testid="tab-overview"><BarChart3 className="h-4 w-4 mr-1" />Overview</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users"><Users className="h-4 w-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
             <TabsTrigger value="groups" data-testid="tab-groups"><Users className="h-4 w-4 mr-1" />Groups</TabsTrigger>
             <TabsTrigger value="games" data-testid="tab-games"><Gamepad2 className="h-4 w-4 mr-1" />Games</TabsTrigger>
+            <TabsTrigger value="comments" data-testid="tab-comments"><MessageSquare className="h-4 w-4 mr-1" />Comments</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="users"><UsersTab /></TabsContent>
           <TabsContent value="leaderboard"><LeaderboardTab gameFilter={gameFilter} setGameFilter={setGameFilter} /></TabsContent>
           <TabsContent value="groups"><GroupsTab /></TabsContent>
           <TabsContent value="games"><GamesTab /></TabsContent>
+          <TabsContent value="comments"><CommentsTab /></TabsContent>
         </Tabs>
       </motion.div>
     </div>
@@ -358,6 +360,91 @@ function GamesTab() {
               ))}
             </tbody>
           </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CommentsTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: reports, isLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/comment-reports"],
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/comments/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/comment-reports"] }); toast({ title: "Comment deleted" }); },
+    onError: () => toast({ title: "Failed to delete comment", variant: "destructive" }),
+  });
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+
+  if (!reports?.length) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Flag className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-muted-foreground" data-testid="text-no-reports">No reported comments.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Reported Comments ({reports.length})</CardTitle></CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {reports.map((r: any) => (
+            <div key={r.id} className="border rounded-lg p-4 space-y-2" data-testid={`report-row-${r.id}`}>
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      <Flag className="h-3 w-3 mr-1" />
+                      Report #{r.id}
+                    </Badge>
+                    {r.reporter && (
+                      <span className="text-xs text-muted-foreground">
+                        by <strong>{r.reporter.name}</strong>
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-sm"><strong>Reason:</strong> {r.reason}</p>
+                  {r.comment && (
+                    <div className="bg-muted/40 rounded p-2 mt-1">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        <strong>{r.comment.user?.name ?? "Unknown"}</strong> · {r.comment.targetType}/{r.comment.targetId}
+                      </p>
+                      {r.comment.isDeleted ? (
+                        <p className="text-sm text-muted-foreground italic">[Already deleted]</p>
+                      ) : (
+                        <p className="text-sm break-words">{r.comment.content}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {r.comment && !r.comment.isDeleted && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => deleteMutation.mutate(r.comment.id)}
+                    disabled={deleteMutation.isPending}
+                    data-testid={`button-delete-reported-${r.comment.id}`}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Delete Comment
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

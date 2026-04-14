@@ -18,6 +18,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import type { Game, FriendChallenge } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
+import { CommentSection } from "@/components/comment-section";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -213,6 +214,8 @@ export default function GameDetail() {
                   </ul>
                 </CardContent>
               </Card>
+
+              <CommentSection targetType="game" targetId={game.slug} />
             </div>
 
             <div className="lg:sticky lg:top-24 h-fit">

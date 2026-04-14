@@ -393,3 +393,35 @@ export const groupActivityEntrySchema = z.object({
   user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).nullable().optional(),
 });
 export type GroupActivityEntry = z.infer<typeof groupActivityEntrySchema>;
+
+// ==================== COMMENTS ====================
+
+export const commentTargetTypeSchema = z.enum(["game", "group_round"]);
+export type CommentTargetType = z.infer<typeof commentTargetTypeSchema>;
+
+export const commentSchema = z.object({
+  id: z.number(),
+  targetType: commentTargetTypeSchema,
+  targetId: z.string(),
+  userId: z.number(),
+  parentId: z.number().nullable(),
+  content: z.string(),
+  isDeleted: z.boolean(),
+  createdAt: z.string(),
+  user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).optional(),
+  replies: z.array(z.lazy((): z.ZodType<any> => commentSchema)).optional(),
+});
+export type Comment = z.infer<typeof commentSchema>;
+export const insertCommentSchema = commentSchema.omit({ id: true, createdAt: true, isDeleted: true, user: true, replies: true });
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+
+export const commentReportSchema = z.object({
+  id: z.number(),
+  commentId: z.number(),
+  reportingUserId: z.number(),
+  reason: z.string(),
+  createdAt: z.string(),
+  comment: commentSchema.optional(),
+  reporter: z.object({ id: z.number(), name: z.string() }).optional(),
+});
+export type CommentReport = z.infer<typeof commentReportSchema>;

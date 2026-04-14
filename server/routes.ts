@@ -1776,5 +1776,101 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== COMMENT ROUTES ====================
+
+  app.get("/api/comments", async (req, res) => {
+    try {
+      const { targetType, targetId } = req.query;
+      if (!targetType || !targetId || typeof targetType !== "string" || typeof targetId !== "string") {
+        return res.status(400).json({ error: "targetType and targetId are required" });
+      }
+      if (targetType !== "game" && targetType !== "group_round") {
+        return res.status(400).json({ error: "Invalid targetType" });
+      }
+      const comments = await storage.getComments(targetType, targetId);
+      res.json(comments);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/comments", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { targetType, targetId, content, parentId } = req.body;
+      if (!targetType || !targetId || !content || typeof content !== "string") {
+        return res.status(400).json({ error: "targetType, targetId, and content are required" });
+      }
+      if (targetType !== "game" && targetType !== "group_round") {
+        return res.status(400).json({ error: "Invalid targetType" });
+      }
+      const trimmed = content.trim();
+      if (!trimmed) return res.status(400).json({ error: "Content cannot be empty" });
+      if (trimmed.length > 500) return res.status(400).json({ error: "Comment cannot exceed 500 characters" });
+      const comment = await storage.createComment({
+        targetType,
+        targetId: String(targetId),
+        userId,
+        parentId: parentId ? parseInt(parentId) : null,
+        content: trimmed,
+      });
+      res.status(201).json(comment);
+    } catch {
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.delete("/api/comments/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
+      const isAdmin = !!(req.user as any).isAdmin;
+      const deleted = await storage.deleteComment(id, userId, isAdmin);
+      if (!deleted) return res.status(403).json({ error: "Cannot delete this comment" });
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  app.post("/api/comments/:id/report", requireAuth, async (req, res) => {
+    try {
+      const reportingUserId = req.user!.id;
+      const commentId = parseInt(req.params.id);
+      if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
+      const { reason } = req.body;
+      if (!reason || typeof reason !== "string" || !reason.trim()) {
+        return res.status(400).json({ error: "Reason is required" });
+      }
+      if (reason.length > 500) return res.status(400).json({ error: "Reason cannot exceed 500 characters" });
+      const report = await storage.reportComment(commentId, reportingUserId, reason.trim());
+      res.status(201).json(report);
+    } catch {
+      res.status(500).json({ error: "Failed to report comment" });
+    }
+  });
+
+  // Admin comment routes
+  app.get("/api/admin/comment-reports", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const reports = await storage.getCommentReports();
+      res.json(reports);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch comment reports" });
+    }
+  });
+
+  app.delete("/api/admin/comments/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
+      await storage.deleteCommentAdmin(id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
   return httpServer;
 }

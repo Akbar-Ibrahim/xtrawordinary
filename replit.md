@@ -34,8 +34,11 @@ A global leaderboard allows players to compare scores across different games. Us
 ### Groups & Community System
 A groups feature lets signed-in users create or join groups with an invite code. Each group has owner/admin/member roles. Admins can start "rounds" — a specific game with a deterministic seed — so all group members play the same variant. Members submit scores after playing, and a per-group leaderboard aggregates all-time scores. The system uses 4 new DB tables: `groups`, `group_members`, `group_rounds`, `group_round_scores`. Frontend pages: `/groups` (list + create/join), `/groups/:id` (detail with tabs: Rounds, Leaderboard, Members), `/groups/:id/rounds/:roundId/play` (game play with auto-score submission). "Groups" link appears in the authenticated user dropdown.
 
+### Comment System
+A polymorphic comment system allows signed-in users to comment on games and group rounds. Features: one-level threading (replies), 500-char plain text, soft delete (content cleared but comment preserved for thread integrity), report system with reason text. Reads are public; create/delete/report require authentication. DB tables: `comments` (targetType + targetId polymorphic, parentId nullable), `comment_reports`. Reusable `<CommentSection targetType="game" targetId={slug} />` component used in game-detail and group-round-play pages. Admin dashboard has a "Comments" tab showing reported comments with delete action. REST routes: GET/POST `/api/comments`, DELETE `/api/comments/:id`, POST `/api/comments/:id/report`, GET `/api/admin/comment-reports`, DELETE `/api/admin/comments/:id`.
+
 ### Admin Dashboard
-An admin dashboard provides analytics, user management (ban/unban, admin status toggle), and leaderboard entry management. Access is restricted to users with `isAdmin: true`.
+An admin dashboard provides analytics, user management (ban/unban, admin status toggle), leaderboard entry management, and a Comments tab for moderating reported comments. Access is restricted to users with `isAdmin: true`.
 
 ### Game Design Examples
 - **Word Ladder:** A game where players transform one word into another by changing one letter at a time. It features a par system, visual ladder, hint system, and specific scoring mechanics.

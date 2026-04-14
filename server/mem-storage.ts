@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords } from "./game-data";
@@ -969,5 +969,85 @@ export class MemStorage implements IStorage {
 
   async getDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt | undefined> {
     return this.dailyChallengeAttemptsStore.find(a => a.userId === userId && a.challengeDate === challengeDate);
+  }
+
+  private commentsStore: Comment[] = [];
+  private commentReportsStore: CommentReport[] = [];
+  private cmtIdCounter = 1;
+  private crIdCounter = 1;
+
+  private commentToPublic(c: Comment): Comment {
+    const user = this.users.get(c.userId);
+    return {
+      ...c,
+      user: user ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl || null } : undefined,
+    };
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const c: Comment = {
+      id: this.cmtIdCounter++,
+      ...comment,
+      isDeleted: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.commentsStore.push(c);
+    return this.commentToPublic(c);
+  }
+
+  async getComments(targetType: CommentTargetType, targetId: string): Promise<Comment[]> {
+    const all = this.commentsStore
+      .filter(c => c.targetType === targetType && c.targetId === targetId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const roots = all.filter(c => c.parentId === null).map(c => this.commentToPublic(c));
+    const replies = all.filter(c => c.parentId !== null).map(c => this.commentToPublic(c));
+    return roots.map(root => ({
+      ...root,
+      replies: replies.filter(r => r.parentId === root.id),
+    }));
+  }
+
+  async deleteComment(id: number, userId: number, isAdmin = false): Promise<boolean> {
+    const c = this.commentsStore.find(c => c.id === id);
+    if (!c) return false;
+    if (!isAdmin && c.userId !== userId) return false;
+    c.isDeleted = true;
+    c.content = "";
+    return true;
+  }
+
+  async reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport> {
+    const report: CommentReport = {
+      id: this.crIdCounter++,
+      commentId,
+      reportingUserId,
+      reason,
+      createdAt: new Date().toISOString(),
+    };
+    this.commentReportsStore.push(report);
+    return report;
+  }
+
+  async getCommentReports(): Promise<CommentReport[]> {
+    return this.commentReportsStore
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(r => {
+        const comment = this.commentsStore.find(c => c.id === r.commentId);
+        const user = this.users.get(r.reportingUserId);
+        const commentUser = comment ? this.users.get(comment.userId) : undefined;
+        return {
+          ...r,
+          reporter: user ? { id: user.id, name: user.name } : undefined,
+          comment: comment ? this.commentToPublic(comment) : undefined,
+        };
+      });
+  }
+
+  async deleteCommentAdmin(id: number): Promise<void> {
+    const c = this.commentsStore.find(c => c.id === id);
+    if (c) {
+      c.isDeleted = true;
+      c.content = "";
+    }
   }
 }

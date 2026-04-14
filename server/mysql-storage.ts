@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -950,5 +950,91 @@ export class MySQLStorage implements IStorage {
     if (!rows[0]) return undefined;
     const r = rows[0];
     return { id: r.id, userId: r.userId, challengeDate: r.challengeDate, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
+  }
+
+  private mapDbRowToComment(r: typeof schema.comments.$inferSelect, user?: { id: number; name: string; avatarUrl: string | null }): Comment {
+    return {
+      id: r.id,
+      targetType: r.targetType as CommentTargetType,
+      targetId: r.targetId,
+      userId: r.userId,
+      parentId: r.parentId ?? null,
+      content: r.isDeleted ? "" : r.content,
+      isDeleted: r.isDeleted,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      user,
+    };
+  }
+
+  async createComment(comment: InsertComment): Promise<Comment> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.comments).values({
+      targetType: comment.targetType,
+      targetId: comment.targetId,
+      userId: comment.userId,
+      parentId: comment.parentId ?? null,
+      content: comment.content,
+    });
+    const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, result[0].insertId)).limit(1);
+    const r = rows[0];
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(eq(schema.users.id, r.userId)).limit(1);
+    const user = userRows[0] ? { id: userRows[0].id, name: userRows[0].name, avatarUrl: userRows[0].avatarUrl || null } : undefined;
+    return this.mapDbRowToComment(r, user);
+  }
+
+  async getComments(targetType: CommentTargetType, targetId: string): Promise<Comment[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.comments)
+      .where(and(eq(schema.comments.targetType, targetType), eq(schema.comments.targetId, targetId)))
+      .orderBy(asc(schema.comments.createdAt));
+    if (rows.length === 0) return [];
+    const userIds = [...new Set(rows.map(r => r.userId))];
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(userRows.map(u => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    const allComments = rows.map(r => this.mapDbRowToComment(r, userMap.get(r.userId)));
+    const roots = allComments.filter(c => c.parentId === null);
+    const replies = allComments.filter(c => c.parentId !== null);
+    return roots.map(root => ({ ...root, replies: replies.filter(r => r.parentId === root.id) }));
+  }
+
+  async deleteComment(id: number, userId: number, isAdmin = false): Promise<boolean> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
+    if (!rows[0]) return false;
+    if (!isAdmin && rows[0].userId !== userId) return false;
+    await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
+    return true;
+  }
+
+  async reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.commentReports).values({ commentId, reportingUserId, reason });
+    const rows = await db.select().from(schema.commentReports).where(eq(schema.commentReports.id, result[0].insertId)).limit(1);
+    const r = rows[0];
+    return { id: r.id, commentId: r.commentId, reportingUserId: r.reportingUserId, reason: r.reason, createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) };
+  }
+
+  async getCommentReports(): Promise<CommentReport[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.commentReports).orderBy(desc(schema.commentReports.createdAt));
+    if (rows.length === 0) return [];
+    const commentIds = [...new Set(rows.map(r => r.commentId))];
+    const reporterIds = [...new Set(rows.map(r => r.reportingUserId))];
+    const commentRows = await db.select().from(schema.comments).where(inArray(schema.comments.id, commentIds));
+    const userIds = [...new Set([...reporterIds, ...commentRows.map(c => c.userId)])];
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(userRows.map(u => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+    const commentMap = new Map(commentRows.map(c => [c.id, this.mapDbRowToComment(c, userMap.get(c.userId))]));
+    return rows.map(r => ({
+      id: r.id, commentId: r.commentId, reportingUserId: r.reportingUserId, reason: r.reason,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      reporter: userMap.get(r.reportingUserId) ? { id: userMap.get(r.reportingUserId)!.id, name: userMap.get(r.reportingUserId)!.name } : undefined,
+      comment: commentMap.get(r.commentId),
+    }));
+  }
+
+  async deleteCommentAdmin(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
   }
 }

@@ -231,3 +231,30 @@ export const wordCategories = mysqlTable("word_categories", {
   subcategory: varchar("subcategory", { length: 255 }).notNull(),
   wordLength: int("word_length").notNull(),
 });
+
+export const comments = mysqlTable("comments", {
+  id: int("id").primaryKey().autoincrement(),
+  targetType: varchar("target_type", { length: 20 }).notNull(),
+  targetId: varchar("target_id", { length: 100 }).notNull(),
+  userId: int("user_id").notNull(),
+  parentId: int("parent_id"),
+  content: text("content").notNull(),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("cmt_target_idx").on(table.targetType, table.targetId),
+  index("cmt_user_idx").on(table.userId),
+  index("cmt_parent_idx").on(table.parentId),
+  index("cmt_created_at_idx").on(table.createdAt),
+]);
+
+export const commentReports = mysqlTable("comment_reports", {
+  id: int("id").primaryKey().autoincrement(),
+  commentId: int("comment_id").notNull(),
+  reportingUserId: int("reporting_user_id").notNull(),
+  reason: varchar("reason", { length: 500 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("cr_comment_idx").on(table.commentId),
+  index("cr_user_idx").on(table.reportingUserId),
+]);

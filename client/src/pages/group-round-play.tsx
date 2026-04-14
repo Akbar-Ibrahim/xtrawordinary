@@ -27,6 +27,7 @@ import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
+import { CommentSection } from "@/components/comment-section";
 
 const GAME_NAMES: Record<string, string> = {
   "word-ladder": "Word Ladder", "anagram-solver": "Anagram Solver",
@@ -256,6 +257,7 @@ export default function GroupRoundPlay() {
                 </div>
 
                 {alreadyPlayed ? (
+                  <>
                   <div className="space-y-5">
                     <div className="text-center py-2">
                       <div className="inline-flex items-center gap-2 text-green-600 mb-2">
@@ -312,6 +314,8 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
+                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
+                  </>
                 ) : hasAttempt ? (
                   <div className="space-y-5">
                     <div className="text-center py-4">
