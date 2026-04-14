@@ -850,40 +850,44 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
 function ModeSelector({ onSelect }: { onSelect: (mode: "classic" | "guided") => void }) {
   return (
     <Card>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-6 space-y-4">
         <div className="text-center space-y-1">
           <h3 className="text-xl font-bold">Choose Your Mode</h3>
           <p className="text-sm text-muted-foreground">Two ways to play Word Sweep</p>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => onSelect("classic")}
-            className="group p-5 rounded-xl border-2 border-border hover:border-primary bg-muted/30 hover:bg-primary/5 transition-all text-left space-y-2"
-            data-testid="button-mode-classic"
-          >
-            <div className="flex items-center gap-2">
-              <Grid3X3 className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Classic</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Free-form — pick any letters from the 6×6 grid to spell valid words. Clear as much of the grid as you can!
-            </p>
-            <div className="text-xs text-muted-foreground font-medium">Longer words = exponential points · Shuffle 3×</div>
-          </button>
-          <button
-            onClick={() => onSelect("guided")}
-            className="group p-5 rounded-xl border-2 border-border hover:border-primary bg-muted/30 hover:bg-primary/5 transition-all text-left space-y-2"
-            data-testid="button-mode-guided"
-          >
-            <div className="flex items-center gap-2">
-              <PackageOpen className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Guided</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Timed challenge — find specific words hidden in the grid. Every letter belongs to a word. Race the clock!
-            </p>
-            <div className="text-xs text-muted-foreground font-medium">Speed scoring · Wrong answer = +10s penalty</div>
-          </button>
+        <div className="grid gap-3">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
+              onClick={() => onSelect("classic")}
+              data-testid="button-mode-classic"
+            >
+              <Grid3X3 className="h-6 w-6 text-primary flex-shrink-0" />
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-semibold">Classic</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Free-form — pick any letters from the 6×6 grid to spell valid words. Clear as much of the grid as you can!
+                </span>
+              </div>
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
+              onClick={() => onSelect("guided")}
+              data-testid="button-mode-guided"
+            >
+              <PackageOpen className="h-6 w-6 text-primary flex-shrink-0" />
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-semibold">Guided</span>
+                <span className="text-sm text-muted-foreground font-normal">
+                  Timed challenge — find specific words hidden in the grid. Every letter belongs to a word. Race the clock!
+                </span>
+              </div>
+            </Button>
+          </motion.div>
         </div>
       </CardContent>
     </Card>

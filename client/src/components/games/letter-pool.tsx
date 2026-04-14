@@ -276,43 +276,41 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPo
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Card
-              className="cursor-pointer hover-elevate h-full"
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
               onClick={() => initGame("with-pool")}
               data-testid="card-with-pool"
             >
-              <CardContent className="p-6 text-center space-y-3">
-                <div className="w-14 h-14 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                  <Eye className="h-7 w-7 text-primary" />
-                </div>
-                <h4 className="font-semibold text-lg">With Letter Pool</h4>
-                <p className="text-sm text-muted-foreground">
+              <Eye className="h-6 w-6 text-primary flex-shrink-0" />
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-semibold">With Letter Pool</span>
+                <span className="text-sm text-muted-foreground font-normal">
                   See scrambled letters as a reference. Click them or type your answer.
-                </p>
-                <Badge variant="secondary">Easier</Badge>
-              </CardContent>
-            </Card>
+                </span>
+              </div>
+              <Badge variant="secondary" className="ml-auto">Easier</Badge>
+            </Button>
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Card
-              className="cursor-pointer hover-elevate h-full"
+            <Button
+              variant="outline"
+              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
               onClick={() => initGame("without-pool")}
               data-testid="card-without-pool"
             >
-              <CardContent className="p-6 text-center space-y-3">
-                <div className="w-14 h-14 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                  <EyeOff className="h-7 w-7 text-primary" />
-                </div>
-                <h4 className="font-semibold text-lg">Without Letter Pool</h4>
-                <p className="text-sm text-muted-foreground">
+              <EyeOff className="h-6 w-6 text-primary flex-shrink-0" />
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-semibold">Without Letter Pool</span>
+                <span className="text-sm text-muted-foreground font-normal">
                   No clues — just blank spaces. Type each letter from memory.
-                </p>
-                <Badge variant="secondary">Harder</Badge>
-              </CardContent>
-            </Card>
+                </span>
+              </div>
+              <Badge variant="secondary" className="ml-auto">Harder</Badge>
+            </Button>
           </motion.div>
         </div>
       </div>
