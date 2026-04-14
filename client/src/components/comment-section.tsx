@@ -56,7 +56,7 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
         content,
         isDeleted: false,
         createdAt: new Date().toISOString(),
-        user: user ? { id: user.id, name: user.name, avatarUrl: (user as any).avatarUrl ?? null } : undefined,
+        user: user ? { id: user.id, name: user.name, avatarUrl: user.avatarUrl ?? null } : undefined,
         replies: [],
       };
       queryClient.setQueryData<Comment[]>(queryKey, (old = []) => {
