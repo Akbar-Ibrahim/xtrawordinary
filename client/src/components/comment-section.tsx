@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import type { Comment, CommentTargetType } from "@shared/schema";
 import {
   Dialog,
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Link } from "wouter";
 
 interface CommentSectionProps {
   targetType: CommentTargetType;
@@ -39,16 +40,58 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async ({ content, parentId }: { content: string; parentId?: number }) =>
-      apiRequest("POST", "/api/comments", { targetType, targetId, content, parentId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: () => toast({ title: "Failed to post comment", variant: "destructive" }),
+    mutationFn: async ({ content, parentId }: { content: string; parentId?: number }) => {
+      const res = await apiRequest("POST", "/api/comments", { targetType, targetId, content, parentId });
+      return res.json();
+    },
+    onMutate: async ({ content, parentId }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Comment[]>(queryKey);
+      const tempComment: Comment = {
+        id: -Date.now(),
+        targetType,
+        targetId,
+        userId: user?.id ?? 0,
+        parentId: parentId ?? null,
+        content,
+        isDeleted: false,
+        createdAt: new Date().toISOString(),
+        user: user ? { id: user.id, name: user.name, avatarUrl: (user as any).avatarUrl ?? null } : undefined,
+        replies: [],
+      };
+      queryClient.setQueryData<Comment[]>(queryKey, (old = []) => {
+        if (parentId) {
+          return old.map(c => c.id === parentId ? { ...c, replies: [...(c.replies ?? []), tempComment] } : c);
+        }
+        return [...old, tempComment];
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      toast({ title: "Failed to post comment", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => apiRequest("DELETE", `/api/comments/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: () => toast({ title: "Failed to delete comment", variant: "destructive" }),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Comment[]>(queryKey);
+      queryClient.setQueryData<Comment[]>(queryKey, (old = []) =>
+        old.map(c => {
+          if (c.id === id) return { ...c, isDeleted: true, content: "" };
+          return { ...c, replies: (c.replies ?? []).map(r => r.id === id ? { ...r, isDeleted: true, content: "" } : r) };
+        })
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      toast({ title: "Failed to delete comment", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const reportMutation = useMutation({
@@ -74,12 +117,22 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
 
       {expanded && (
         <div className="space-y-4">
-          {isAuthenticated && (
+          {isAuthenticated ? (
             <CommentForm
               onSubmit={(content) => createMutation.mutate({ content })}
               isPending={createMutation.isPending}
-              placeholder="Share your thoughts about this game..."
+              placeholder="Share your thoughts..."
             />
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground" data-testid="comments-sign-in-cta">
+              <span className="flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                Sign in to join the conversation
+              </span>
+              <Link href="/auth">
+                <Button size="sm" variant="outline" data-testid="button-sign-in-to-comment">Sign In</Button>
+              </Link>
+            </div>
           )}
 
           {isLoading ? (
@@ -88,7 +141,7 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
             </div>
           ) : !comments?.length ? (
             <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-comments">
-              No comments yet. {isAuthenticated ? "Be the first!" : "Sign in to comment."}
+              No comments yet. {isAuthenticated ? "Be the first!" : ""}
             </p>
           ) : (
             <div className="space-y-3" data-testid="comments-list">

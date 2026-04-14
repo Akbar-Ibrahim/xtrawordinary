@@ -317,6 +317,7 @@ export default function GroupRoundPlay() {
                   <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : hasAttempt ? (
+                  <>
                   <div className="space-y-5">
                     <div className="text-center py-4">
                       <div className="inline-flex items-center gap-2 text-orange-500 mb-2">
@@ -368,6 +369,8 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
+                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
+                  </>
                 ) : round.status !== "active" ? (
                   <div className="text-center py-4">
                     <p className="text-muted-foreground mb-4">This round is closed.</p>

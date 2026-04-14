@@ -1807,11 +1807,29 @@ export async function registerRoutes(
       const trimmed = content.trim();
       if (!trimmed) return res.status(400).json({ error: "Content cannot be empty" });
       if (trimmed.length > 500) return res.status(400).json({ error: "Comment cannot exceed 500 characters" });
+
+      let resolvedParentId: number | null = null;
+      if (parentId) {
+        const pid = parseInt(parentId);
+        if (isNaN(pid)) return res.status(400).json({ error: "Invalid parentId" });
+        const existingComments = await storage.getComments(targetType, String(targetId));
+        const allComments = [...existingComments, ...existingComments.flatMap(c => c.replies ?? [])];
+        const parent = allComments.find(c => c.id === pid);
+        if (!parent) return res.status(400).json({ error: "Parent comment not found" });
+        if (parent.targetType !== targetType || parent.targetId !== String(targetId)) {
+          return res.status(400).json({ error: "Parent comment belongs to a different target" });
+        }
+        if (parent.parentId !== null) {
+          return res.status(400).json({ error: "Replies can only be one level deep" });
+        }
+        resolvedParentId = pid;
+      }
+
       const comment = await storage.createComment({
         targetType,
         targetId: String(targetId),
         userId,
-        parentId: parentId ? parseInt(parentId) : null,
+        parentId: resolvedParentId,
         content: trimmed,
       });
       res.status(201).json(comment);
