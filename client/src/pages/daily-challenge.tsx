@@ -25,7 +25,6 @@ import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
-import { WordUnpackGame } from "@/components/games/word-unpack";
 import { WordChainGame } from "@/components/games/word-chain";
 import { WordSplitGame } from "@/components/games/word-split";
 import { WordStackGame } from "@/components/games/word-stack";
@@ -105,10 +104,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     }
     case "word-maker":
       return <WordMakerGame locked />;
-    case "word-sweep":
-      return <WordSweepGame locked />;
-    case "word-unpack":
-      return <WordUnpackGame groupSeed={seed} locked />;
+    case "word-sweep": {
+      const sweepMode = seed % 2 === 0 ? "classic" : "guided";
+      return <WordSweepGame mode={sweepMode} groupSeed={seed} locked />;
+    }
     case "word-chain": {
       const variation = ((seed % 2) + 1) as 1 | 2;
       const level = ((seed >> 2) % 2 + 1) as 1 | 2;

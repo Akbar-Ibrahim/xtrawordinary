@@ -778,7 +778,11 @@ export const gamesData: Game[] = [
     estimatedTime: "5-10 min",
     icon: "Grid3X3",
     color: "hsl(200, 70%, 50%)",
-    playCount: 0
+    playCount: 0,
+    modes: [
+      { label: "Classic", slug: "word-sweep" },
+      { label: "Guided", slug: "word-unpack" },
+    ],
   },
   {
     id: 18,
@@ -827,27 +831,6 @@ export const gamesData: Game[] = [
       { label: "Medium (5L)", slug: "ladder-rush-5" },
       { label: "Hard (6L)", slug: "ladder-rush-6" },
     ],
-  },
-  {
-    id: 21,
-    slug: "word-unpack",
-    name: "Word Unpack",
-    description: "You know the words — now find their letters hidden in the grid!",
-    longDescription: "A 5x5 grid holds the exact letters of a set of secret words. The word list is shown — your challenge is to tap the right letters in the right order to spell each one and clear the grid. Every letter belongs to a word, and every word is solvable. Can you unpack the grid perfectly?",
-    rules: [
-      "A 5x5 grid contains the exact letters of all the target words",
-      "The word list is shown — tap grid letters to spell each word in order",
-      "Letters can be selected in any order from anywhere in the grid",
-      "Submit a word to check it against the word list and clear its letters",
-      "Wrong submissions count as misses — zero misses earns a precision bonus",
-      "Find all words to clear the grid and win",
-      "Score = 10 × word length per word found, +50 completion bonus, +30 for zero misses"
-    ],
-    difficulty: "medium",
-    estimatedTime: "3-7 min",
-    icon: "PackageOpen",
-    color: "hsl(270, 60%, 55%)",
-    playCount: 0
   },
   {
     id: 20,

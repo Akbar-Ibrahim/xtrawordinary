@@ -26,7 +26,6 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
-import { WordUnpackGame } from "@/components/games/word-unpack";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 const GAME_NAMES: Record<string, string> = {
@@ -37,7 +36,6 @@ const GAME_NAMES: Record<string, string> = {
   "letter-hunt": "Letter Hunt", "letter-balance": "Letter Balance",
   "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
-  "word-unpack": "Word Unpack",
 };
 
 const LETTER_BALANCE_CATEGORIES = [
@@ -85,9 +83,11 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
       return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} locked />;
     }
     case "word-maker": return <WordMakerGame groupSeed={seed} locked />;
-    case "word-sweep": return <WordSweepGame groupSeed={seed} locked />;
+    case "word-sweep": {
+      const sweepMode = seed % 2 === 0 ? "classic" : "guided";
+      return <WordSweepGame mode={sweepMode} groupSeed={seed} locked />;
+    }
     case "word-roots": return <WordRootsGame groupSeed={seed} locked />;
-    case "word-unpack": return <WordUnpackGame groupSeed={seed} locked />;
     default: return null;
   }
 }

@@ -264,10 +264,10 @@ export class MemStorage implements IStorage {
   }
 
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> {
-    const TARGET = 25;
-    const SIZE = 5;
-    const MIN_WORDS = 4;
-    const MAX_WORDS = 6;
+    const TARGET = 36;
+    const SIZE = 6;
+    const MIN_WORDS = 5;
+    const MAX_WORDS = 9;
     const rng = seed !== undefined ? mulberry32(seed) : Math.random;
 
     function shuffle<T>(arr: T[]): T[] {
@@ -279,9 +279,9 @@ export class MemStorage implements IStorage {
       return a;
     }
 
-    const candidates = wordDictionary.filter(w => w.length >= 3 && w.length <= 7);
+    const candidates = wordDictionary.filter(w => w.length >= 3 && w.length <= 8);
 
-    // Try up to 50 shuffles to find a set of 4–6 words summing to exactly 25
+    // Try up to 50 shuffles to find a set of 5–9 words summing to exactly 36
     let chosenWords: string[] = [];
     for (let attempt = 0; attempt < 50; attempt++) {
       const shuffled = shuffle(candidates);
@@ -309,7 +309,7 @@ export class MemStorage implements IStorage {
         if (afterThis < 3) continue; // Gap too small for any word
         const wordsLeft = MAX_WORDS - (words.length + 1);
         if (wordsLeft === 0) continue; // Already at max words but didn't land on 0
-        if (afterThis > wordsLeft * 7) continue; // Gap too large to fill with remaining budget
+        if (afterThis > wordsLeft * 8) continue; // Gap too large to fill with remaining budget
 
         words.push(word);
         remaining -= word.length;
@@ -321,10 +321,10 @@ export class MemStorage implements IStorage {
       }
     }
 
-    // Guaranteed fallback: 5 five-letter words = exactly 25 letters, always valid
+    // Guaranteed fallback: 6 six-letter words = exactly 36 letters, always valid
     if (chosenWords.length === 0) {
-      const fiveLetters = shuffle(candidates.filter(w => w.length === 5));
-      chosenWords = fiveLetters.slice(0, 5);
+      const sixLetters = shuffle(candidates.filter(w => w.length === 6));
+      chosenWords = sixLetters.slice(0, 6);
     }
 
     // Combine all letters, shuffle, build grid
