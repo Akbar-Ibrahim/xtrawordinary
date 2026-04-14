@@ -497,6 +497,17 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
               Menu
             </Button>
           )}
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGameState("completed")}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

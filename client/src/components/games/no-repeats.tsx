@@ -430,6 +430,17 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
               {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
             </span>
           </div>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

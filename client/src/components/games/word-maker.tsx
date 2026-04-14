@@ -36,7 +36,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
   const [foundWords, setFoundWords] = useState<Set<string>>(new Set());
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");
+  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [completionMessage, setCompletionMessage] = useState("");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "duplicate" | null>(null);
   const [usedBaseWords, setUsedBaseWords] = useState<Set<string>>(new Set());
@@ -101,6 +101,8 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
   useEffect(() => {
     if (gameStatus === "won") {
       reportResult(score, true, foundWords.size);
+    } else if (gameStatus === "lost") {
+      reportResult(score, false, foundWords.size);
     }
   }, [gameStatus, score, reportResult, foundWords.size]);
 
@@ -211,18 +213,31 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
             {roundsCompleted} rounds
           </Badge>
         </div>
-        {!locked && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={initGame}
-            className="gap-1.5"
-            data-testid="button-restart"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Restart
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={initGame}
+              className="gap-1.5"
+              data-testid="button-restart"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Restart
+            </Button>
+          )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -343,7 +358,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
               </CardContent>
             </Card>
           </motion.div>
-        ) : (
+        ) : gameStatus === "won" ? (
           <motion.div
             key="result"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -380,6 +395,50 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                   score={score}
                   wordsCompleted={roundsCompleted}
                   isWin={true}
+                />
+                {!locked && (
+                  <Button onClick={initGame} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="lost"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card>
+              <CardContent className="p-6 text-center space-y-4">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", bounce: 0.5 }}
+                >
+                  <XCircle className="h-16 w-16 mx-auto text-destructive" />
+                </motion.div>
+                <h3 className="text-2xl font-bold">Game Over</h3>
+                <p className="text-muted-foreground">You ended the game early.</p>
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                <div className="space-y-1">
+                  <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
+                  <div className="text-sm text-muted-foreground">
+                    {roundsCompleted} rounds completed
+                  </div>
+                </div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
+                <ShareResults
+                  gameName="Word Maker"
+                  gameSlug="word-maker"
+                  score={score}
+                  wordsCompleted={roundsCompleted}
+                  isWin={false}
                 />
                 {!locked && (
                   <Button onClick={initGame} data-testid="button-play-again">

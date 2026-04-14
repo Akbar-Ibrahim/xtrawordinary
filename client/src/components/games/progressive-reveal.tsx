@@ -227,6 +227,17 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
               Restart
             </Button>
           )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setGameStatus("lost"); setCompletionMessage(getCompletionMessage(false)); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

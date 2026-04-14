@@ -954,6 +954,17 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
               Menu
             </Button>
           )}
+          {!locked && gameState === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { clearTimer(); setCompletionMessage(getCompletionMessage(false)); setGameState("game_over"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

@@ -394,6 +394,17 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
               Menu
             </Button>
           )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

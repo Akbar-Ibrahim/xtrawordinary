@@ -419,6 +419,17 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
               Back to Menu
             </Button>
           )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

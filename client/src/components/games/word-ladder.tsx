@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Lightbulb, Trophy, X, Loader2, ArrowUp, Minus } from "lucide-react";
+import { RotateCcw, Lightbulb, Trophy, X, XCircle, Loader2, ArrowUp, Minus } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
@@ -50,7 +50,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
     refetchOnMount: seeded ? false : "always",
   });
 
-  const [gameStatus, setGameStatus] = useState<"playing" | "won">("playing");
+  const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [puzzle, setPuzzle] = useState<WordLadderPuzzle | null>(null);
   const [ladder, setLadder] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState("");
@@ -92,6 +92,12 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
       initGame();
     }
   }, [allPuzzles, puzzle, initGame]);
+
+  useEffect(() => {
+    if (gameStatus === "lost") {
+      reportResult(score, false);
+    }
+  }, [gameStatus, score, reportResult]);
 
   const lastWord = ladder[ladder.length - 1];
   const isOneStepAway = gameStatus === "playing" && ladder.length > 1 && lastWord && puzzle ? isOneLetterDiff(lastWord, puzzle.target) : false;
@@ -278,6 +284,17 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
             >
               <RotateCcw className="h-4 w-4" />
               New Puzzle
+            </Button>
+          )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
             </Button>
           )}
         </div>
@@ -609,6 +626,44 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   score={score}
                   isWin={true}
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
+                />
+                {!locked && (
+                  <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {gameStatus === "lost" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+          >
+            <Card>
+              <CardContent className="p-6 text-center space-y-3">
+                <XCircle className="h-12 w-12 mx-auto text-destructive" />
+                <h3 className="text-xl font-bold">Game Over</h3>
+                <p className="text-muted-foreground">You ended the game early.</p>
+                <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
+                {score > 0 && (
+                  <p className="text-lg font-semibold" data-testid="text-score">Score: {score} pts</p>
+                )}
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
+                <ShareResults
+                  gameName="Word Ladder"
+                  gameSlug="word-ladder"
+                  score={score}
+                  isWin={false}
                 />
                 {!locked && (
                   <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">

@@ -418,10 +418,22 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <Button variant="ghost" size="sm" onClick={goToMenu} data-testid="button-menu">
-                    <Menu className="h-4 w-4 mr-2" />
-                    Menu
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={goToMenu} data-testid="button-menu">
+                      <Menu className="h-4 w-4 mr-2" />
+                      Menu
+                    </Button>
+                    {!locked && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                        data-testid="button-end-game"
+                      >
+                        End Game
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" data-testid="badge-challenge">
                       {CHALLENGE_CONFIG[challenge].name}

@@ -204,6 +204,17 @@ export function AnagramSolverGame({ groupSeed, locked }: { groupSeed?: number; l
               Restart
             </Button>
           )}
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setGameStatus("timeup"); setCompletionMessage(getCompletionMessage(false)); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

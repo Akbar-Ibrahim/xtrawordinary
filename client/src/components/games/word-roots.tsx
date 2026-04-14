@@ -251,10 +251,22 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
             Round {round + 1}/{TOTAL_ROUNDS}
           </Badge>
         </div>
-        <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer">
-          <Timer className="h-3.5 w-3.5" />
-          {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer">
+            <Timer className="h-3.5 w-3.5" />
+            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+          </Badge>
+          {!locked && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { clearInterval(timerRef.current!); setGameStatus("lost"); }}
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">

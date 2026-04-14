@@ -386,6 +386,17 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
             <Menu className="h-4 w-4" />
             Menu
           </Button>
+          {!locked && gameStatus === "playing" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              className="gap-1.5"
+              data-testid="button-end-game"
+            >
+              End Game
+            </Button>
+          )}
         </div>
       </div>
 

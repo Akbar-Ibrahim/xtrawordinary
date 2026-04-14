@@ -411,6 +411,15 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
               <RotateCcw className="mr-2 h-4 w-4" />
               Restart
             </Button>
+            {gameStatus === "playing" && (
+              <Button
+                variant="outline"
+                onClick={() => setGameStatus("complete")}
+                data-testid="button-end-game"
+              >
+                End Game
+              </Button>
+            )}
           </div>
         )}
       </div>
