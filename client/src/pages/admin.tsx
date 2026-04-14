@@ -371,12 +371,12 @@ function CommentsTab() {
   const queryClient = useQueryClient();
 
   const { data: reports, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/comment-reports"],
+    queryKey: ["/api/admin/comments/reported"],
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/comments/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/comment-reports"] }); toast({ title: "Comment deleted" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/comments/reported"] }); toast({ title: "Comment deleted" }); },
     onError: () => toast({ title: "Failed to delete comment", variant: "destructive" }),
   });
 

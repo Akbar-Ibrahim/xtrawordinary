@@ -156,6 +156,7 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
                   onReply={(content, parentId) => createMutation.mutate({ content, parentId })}
                   isAuthenticated={isAuthenticated}
                   isDeleting={deleteMutation.isPending}
+                  isReplying={createMutation.isPending}
                 />
               ))}
             </div>
@@ -232,6 +233,7 @@ function CommentItem({
   onReply,
   isAuthenticated,
   isDeleting,
+  isReplying,
   isReply = false,
 }: {
   comment: Comment;
@@ -242,6 +244,7 @@ function CommentItem({
   onReply: (content: string, parentId: number) => void;
   isAuthenticated: boolean;
   isDeleting: boolean;
+  isReplying: boolean;
   isReply?: boolean;
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -336,7 +339,7 @@ function CommentItem({
                   onReply(content, comment.id);
                   setShowReplyForm(false);
                 }}
-                isPending={false}
+                isPending={isReplying}
                 placeholder={`Reply to ${comment.user?.name ?? "comment"}...`}
                 compact
                 onCancel={() => setShowReplyForm(false)}
@@ -357,6 +360,7 @@ function CommentItem({
                   onReply={onReply}
                   isAuthenticated={isAuthenticated}
                   isDeleting={isDeleting}
+                  isReplying={isReplying}
                   isReply
                 />
               ))}
