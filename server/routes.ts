@@ -1778,6 +1778,17 @@ export async function registerRoutes(
 
   // ==================== COMMENT ROUTES ====================
 
+  const checkGroupRoundAccess = async (roundId: number, userId: number | null): Promise<boolean> => {
+    const round = await storage.getGroupRound(roundId);
+    if (!round) return false;
+    const group = await storage.getGroup(round.groupId);
+    if (!group) return false;
+    if (group.isPublic) return true;
+    if (!userId) return false;
+    const membership = await storage.getGroupMember(round.groupId, userId);
+    return !!membership;
+  };
+
   const fetchComments = async (req: any, res: any) => {
     try {
       const targetType = req.params.targetType ?? req.query.targetType;
@@ -1787,6 +1798,13 @@ export async function registerRoutes(
       }
       if (targetType !== "game" && targetType !== "group_round") {
         return res.status(400).json({ error: "Invalid targetType" });
+      }
+      if (targetType === "group_round") {
+        const roundId = parseInt(targetId);
+        if (isNaN(roundId)) return res.status(400).json({ error: "Invalid round ID" });
+        const userId = req.user?.id ?? null;
+        const hasAccess = await checkGroupRoundAccess(roundId, userId);
+        if (!hasAccess) return res.status(403).json({ error: "Access denied" });
       }
       const comments = await storage.getComments(targetType, targetId);
       res.json(comments);
@@ -1807,6 +1825,12 @@ export async function registerRoutes(
       }
       if (targetType !== "game" && targetType !== "group_round") {
         return res.status(400).json({ error: "Invalid targetType" });
+      }
+      if (targetType === "group_round") {
+        const roundId = parseInt(String(targetId));
+        if (isNaN(roundId)) return res.status(400).json({ error: "Invalid round ID" });
+        const hasAccess = await checkGroupRoundAccess(roundId, userId);
+        if (!hasAccess) return res.status(403).json({ error: "Access denied — must be a group member" });
       }
       const trimmed = content.trim();
       if (!trimmed) return res.status(400).json({ error: "Content cannot be empty" });
@@ -1868,6 +1892,11 @@ export async function registerRoutes(
       if (reason.length > 500) return res.status(400).json({ error: "Reason cannot exceed 500 characters" });
       const comment = await storage.getCommentById(commentId);
       if (!comment) return res.status(404).json({ error: "Comment not found" });
+      if (comment.targetType === "group_round") {
+        const roundId = parseInt(comment.targetId);
+        const hasAccess = !isNaN(roundId) && await checkGroupRoundAccess(roundId, reportingUserId);
+        if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+      }
       const report = await storage.reportComment(commentId, reportingUserId, reason.trim());
       res.status(201).json(report);
     } catch {
