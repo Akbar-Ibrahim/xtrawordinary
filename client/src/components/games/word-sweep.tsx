@@ -427,7 +427,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
 // ─────────────────────────────────────────────
 // Guided Mode (timed Word Unpack on 6×6 grid)
 // ─────────────────────────────────────────────
-function WordSweepGuided({ groupSeed, locked }: { groupSeed?: number; locked?: boolean }) {
+function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: number; locked?: boolean; overrideSlug?: string }) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-unpack" });
   const seeded = groupSeed !== undefined;
@@ -521,6 +521,15 @@ function WordSweepGuided({ groupSeed, locked }: { groupSeed?: number; locked?: b
     if (gameStatus === "ended") {
       stopTimer();
       reportResult(score, wordsFound.length === puzzleWords.length, wordsFound.length);
+      if (overrideSlug) {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("wordplay-game-result", {
+              detail: { slug: overrideSlug, score, won: wordsFound.length === puzzleWords.length },
+            })
+          );
+        } catch {}
+      }
     }
   }, [gameStatus]);
 
@@ -911,7 +920,7 @@ export function WordSweepGame({
   }
 
   if (selectedMode === "guided") {
-    return <WordSweepGuided groupSeed={groupSeed} locked={locked} />;
+    return <WordSweepGuided groupSeed={groupSeed} locked={locked} overrideSlug={locked ? "word-sweep" : undefined} />;
   }
 
   return <WordSweepClassic groupSeed={groupSeed} locked={locked} />;
