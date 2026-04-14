@@ -1847,7 +1847,7 @@ export async function registerRoutes(
       const userId = req.user!.id;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
-      const isAdmin = !!(req.user as any).isAdmin;
+      const isAdmin = req.user!.isAdmin;
       const deleted = await storage.deleteComment(id, userId, isAdmin);
       if (!deleted) return res.status(403).json({ error: "Cannot delete this comment" });
       res.json({ success: true });

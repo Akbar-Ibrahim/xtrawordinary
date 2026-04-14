@@ -399,7 +399,20 @@ export type GroupActivityEntry = z.infer<typeof groupActivityEntrySchema>;
 export const commentTargetTypeSchema = z.enum(["game", "group_round"]);
 export type CommentTargetType = z.infer<typeof commentTargetTypeSchema>;
 
-export const commentSchema = z.object({
+export type Comment = {
+  id: number;
+  targetType: CommentTargetType;
+  targetId: string;
+  userId: number;
+  parentId: number | null;
+  content: string;
+  isDeleted: boolean;
+  createdAt: string;
+  user?: { id: number; name: string; avatarUrl: string | null };
+  replies?: Comment[];
+};
+
+export const commentSchema: z.ZodType<Comment> = z.object({
   id: z.number(),
   targetType: commentTargetTypeSchema,
   targetId: z.string(),
@@ -409,10 +422,15 @@ export const commentSchema = z.object({
   isDeleted: z.boolean(),
   createdAt: z.string(),
   user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).optional(),
-  replies: z.array(z.lazy((): z.ZodType<any> => commentSchema)).optional(),
+  replies: z.array(z.lazy(() => commentSchema)).optional(),
 });
-export type Comment = z.infer<typeof commentSchema>;
-export const insertCommentSchema = commentSchema.omit({ id: true, createdAt: true, isDeleted: true, user: true, replies: true });
+export const insertCommentSchema = z.object({
+  targetType: commentTargetTypeSchema,
+  targetId: z.string(),
+  userId: z.number(),
+  parentId: z.number().nullable(),
+  content: z.string(),
+});
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 
 export const commentReportSchema = z.object({
