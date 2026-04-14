@@ -414,6 +414,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
             {gameStatus === "playing" && (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setGameStatus("complete")}
                 data-testid="button-end-game"
               >

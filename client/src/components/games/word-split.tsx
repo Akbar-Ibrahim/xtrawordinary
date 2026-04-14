@@ -299,6 +299,9 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       const allSolved = puzzlesSkipped === 0 && puzzlesCompleted > 0;
       setCompletionMessage(getCompletionMessage(allSolved));
       reportResult(score, true, puzzlesCompleted);
+    } else if (gameState === "failed") {
+      setCompletionMessage(getCompletionMessage(false));
+      reportResult(score, false, puzzlesCompleted);
     }
   }, [gameState, puzzlesSkipped, puzzlesCompleted, score, reportResult]);
 
@@ -443,6 +446,68 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     );
   }
 
+  if (gameState === "failed") {
+    const totalPuzzles = puzzlesCompleted + puzzlesSkipped;
+    return (
+      <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <Card>
+            <CardContent className="p-6 text-center space-y-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", bounce: 0.5 }}
+              >
+                <XCircle className="h-16 w-16 mx-auto text-destructive" />
+              </motion.div>
+              <h3 className="text-2xl font-bold">Game Over</h3>
+              <p className="text-muted-foreground">
+                {puzzlesCompleted === 0
+                  ? "You ended before solving any puzzles."
+                  : `You solved ${puzzlesCompleted} of ${totalPuzzles} puzzles before ending.`}
+              </p>
+              <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+              <div className="space-y-1">
+                <div className="text-3xl font-bold text-primary" data-testid="text-final-score">
+                  <AnimatedNumber value={score} /> points
+                </div>
+                <div className="text-sm text-muted-foreground" data-testid="text-puzzles-completed">
+                  {puzzlesCompleted} puzzle{puzzlesCompleted !== 1 ? "s" : ""} solved
+                </div>
+                {personalBest > 0 && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
+                    Personal Best: {personalBest} pts
+                  </p>
+                )}
+              </div>
+              <ShareResults
+                gameName="Word Split"
+                gameSlug="word-split"
+                score={score}
+                wordsCompleted={puzzlesCompleted}
+                challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
+                isWin={false}
+              />
+              {!locked && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
+                    Main Menu
+                  </Button>
+                  <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
   if (!currentPuzzle) return null;
 
   const totalLetters = currentPuzzle.targetWord.length;
@@ -501,7 +566,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setGameState("completed")}
+              onClick={() => setGameState("failed")}
               className="gap-1.5"
               data-testid="button-end-game"
             >

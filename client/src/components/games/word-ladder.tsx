@@ -651,9 +651,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                 <h3 className="text-xl font-bold">Game Over</h3>
                 <p className="text-muted-foreground">You ended the game early.</p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
-                {score > 0 && (
-                  <p className="text-lg font-semibold" data-testid="text-score">Score: {score} pts</p>
-                )}
+                <p className="text-lg font-semibold" data-testid="text-score">Score: {score} pts</p>
                 {personalBest > 0 && (
                   <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
                     Personal Best: {personalBest} pts
