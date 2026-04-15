@@ -50,22 +50,32 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
 export function useGameResult({ slug, challengeId: explicitChallengeId }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
-  const personalBest = getPersonalBest(slug);
   const { isAuthenticated } = useAuth();
-  const challengeId = explicitChallengeId || (() => {
+
+  const challengeIdRef = useRef<number | undefined>((() => {
+    if (explicitChallengeId !== undefined) return explicitChallengeId;
     if (typeof window === "undefined") return undefined;
     const params = new URLSearchParams(window.location.search);
     const id = params.get("challenge");
     return id ? parseInt(id) : undefined;
-  })();
+  })());
+
+  const slugRef = useRef(slug);
+  slugRef.current = slug;
+
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
 
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
       if (recordedRef.current) return { isNewBest: false, newAchievements: [] as Achievement[] };
       recordedRef.current = true;
 
+      const currentSlug = slugRef.current;
+      const personalBest = getPersonalBest(currentSlug);
+
       const result = recordGameResult({
-        slug,
+        slug: currentSlug,
         score,
         won,
         wordsFound,
@@ -89,7 +99,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
           }, result.isNewBest ? 2000 : 0);
         }
 
-        if (isAuthenticated) {
+        if (isAuthenticatedRef.current) {
           for (const achievement of result.newAchievements) {
             fetch("/api/user/achievements", {
               method: "POST",
@@ -101,8 +111,9 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
         }
       }
 
-      if (isAuthenticated) {
-        syncToBackend(slug, score, won, wordsFound);
+      if (isAuthenticatedRef.current) {
+        syncToBackend(currentSlug, score, won, wordsFound);
+        const challengeId = challengeIdRef.current;
         if (challengeId) {
           fetch(`/api/challenges/${challengeId}/complete`, {
             method: "POST",
@@ -115,12 +126,12 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
 
       return result;
     },
-    [slug, toast, personalBest, isAuthenticated, challengeId]
+    [toast]
   );
 
   const resetRecorded = useCallback(() => {
     recordedRef.current = false;
   }, []);
 
-  return { reportResult, resetRecorded, personalBest };
+  return { reportResult, resetRecorded, personalBest: getPersonalBest(slug) };
 }
