@@ -433,6 +433,40 @@ export const progressiveRevealWords: ProgressiveRevealWord[] = [
   { word: "TITANIUM", subcategory: "Strong metal" },
 ];
 
+// Precomputed shell word data (words where inner = word.slice(1,-1) is also valid)
+const _dictSet = new Set(wordDictionary);
+
+export const shellWordSet: Set<string> = (() => {
+  const result = new Set<string>();
+  for (const word of wordDictionary) {
+    if (word.length >= 4 && _dictSet.has(word.slice(1, -1))) {
+      result.add(word);
+    }
+  }
+  return result;
+})();
+
+export interface ShellWordPuzzle {
+  middle: string;
+  wrappers: string[];
+}
+
+export const shellWordPuzzles: ShellWordPuzzle[] = (() => {
+  const middleMap = new Map<string, string[]>();
+  for (const word of shellWordSet) {
+    const inner = word.slice(1, -1);
+    if (!middleMap.has(inner)) middleMap.set(inner, []);
+    middleMap.get(inner)!.push(word);
+  }
+  const result: ShellWordPuzzle[] = [];
+  for (const [middle, wrappers] of middleMap.entries()) {
+    if (wrappers.length >= 3) {
+      result.push({ middle, wrappers });
+    }
+  }
+  return result;
+})();
+
 export const gamesData: Game[] = [
   {
     id: 1,
@@ -858,6 +892,30 @@ export const gamesData: Game[] = [
       { label: "Easy (4L)", slug: "ladder-rush-double-4" },
       { label: "Medium (5L)", slug: "ladder-rush-double-5" },
       { label: "Hard (6L)", slug: "ladder-rush-double-6" },
+    ],
+  },
+  {
+    id: 21,
+    slug: "shell-words",
+    name: "Shell Words",
+    description: "Find words that hide another word inside — remove the first and last letter to reveal it!",
+    longDescription: "A hidden word lurks inside every shell word! Remove the first and last letter of any valid word to reveal the inner word. For example, MORALE → ORAL, BRAND → RAN, GRAPE → RAP. Play Blitz mode to find as many shell words as you can in 90 seconds, or try Wrapper mode where you're given an inner word and must find all the outer shells that wrap it!",
+    rules: [
+      "A shell word is a word where removing the first AND last letter reveals another valid word",
+      "Example: BRAND → RAN, MORALE → ORAL, GRAPE → RAP",
+      "Blitz mode: Enter as many shell words as possible in 90 seconds",
+      "Wrapper mode: You're given an inner word — find all words that wrap around it",
+      "The server validates all words — the dictionary never leaves the server",
+      "Longer outer words score more points in Blitz mode",
+    ],
+    difficulty: "medium",
+    estimatedTime: "2-3 min",
+    icon: "Shell",
+    color: "hsl(175, 60%, 40%)",
+    playCount: 0,
+    modes: [
+      { label: "Blitz", slug: "shell-words" },
+      { label: "Wrapper", slug: "shell-words-guided" },
     ],
   }
 ];

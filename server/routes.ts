@@ -115,6 +115,28 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/shell-words/validate", async (req, res) => {
+    try {
+      const word = (req.query.word as string) || "";
+      const result = await dataSource.validateShellWord(word);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word" });
+    }
+  });
+
+  app.get("/api/games/shell-words/puzzle", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getShellWordPuzzle(seed);
+      if (!puzzle) return res.status(404).json({ message: "No puzzle found" });
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch puzzle" });
+    }
+  });
+
   app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
       const allPuzzles = await dataSource.getWordRootsPuzzles();
@@ -363,6 +385,7 @@ export async function registerRoutes(
         "word-sweep",
         "word-roots",
         "ladder-rush",
+        "shell-words",
       ];
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;

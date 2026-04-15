@@ -46,6 +46,8 @@ export interface IStorage {
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
   generateWordSweepGrid(seed?: number): Promise<WordSweepGrid>;
   generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle>;
+  validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }>;
+  getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;

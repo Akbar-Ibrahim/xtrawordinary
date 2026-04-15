@@ -128,6 +128,8 @@ export class MySQLStorage implements IStorage {
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
+  async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateShellWord(word); }
+  async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getShellWordPuzzle(seed); }
 
   private toUser(row: any): User {
     return {
