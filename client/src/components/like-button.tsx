@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth-modal";
@@ -28,6 +28,14 @@ export function LikeButton({
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const hasInteracted = useRef(false);
+
+  useEffect(() => {
+    if (!hasInteracted.current) {
+      setLiked(initialLikedByMe);
+      setCount(initialCount);
+    }
+  }, [initialCount, initialLikedByMe]);
 
   const handleClick = async () => {
     if (!user) {
@@ -35,6 +43,7 @@ export function LikeButton({
       return;
     }
     if (loading) return;
+    hasInteracted.current = true;
     setLoading(true);
     const newLiked = !liked;
     const newCount = newLiked ? count + 1 : count - 1;

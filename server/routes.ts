@@ -1938,6 +1938,17 @@ export async function registerRoutes(
       if (targetType !== "game" && targetType !== "comment") {
         return res.status(400).json({ error: "Invalid targetType" });
       }
+      if (targetType === "comment") {
+        const commentId = parseInt(String(targetId));
+        if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
+        const comment = await storage.getCommentById(commentId);
+        if (!comment) return res.status(404).json({ error: "Comment not found" });
+        if (comment.targetType === "group_round") {
+          const roundId = parseInt(comment.targetId);
+          const hasAccess = !isNaN(roundId) && await checkGroupRoundAccess(roundId, userId);
+          if (!hasAccess) return res.status(403).json({ error: "Access denied" });
+        }
+      }
       const result = await storage.toggleLike(userId, targetType, String(targetId));
       res.json(result);
     } catch {
