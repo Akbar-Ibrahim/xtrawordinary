@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 const SURVIVAL_TIME_PER_WORD = 10;
 const SURVIVAL_TIME_OPTIONS = [
@@ -29,9 +29,10 @@ type Level = 1 | 2;
 export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
-  const { reportResult, resetRecorded, personalBest } = useGameResult({
+  const { reportResult, resetRecorded } = useGameResult({
     slug: "word-chain-survival",
   });
+  const personalBest = usePersonalBest("word-chain-survival");
 
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {

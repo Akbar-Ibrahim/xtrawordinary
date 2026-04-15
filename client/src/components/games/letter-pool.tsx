@@ -11,7 +11,7 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { LetterPoolWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 type Variation = "with-pool" | "without-pool";
 
@@ -23,7 +23,8 @@ interface LetterPoolGameProps {
 
 export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPoolGameProps) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-pool" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool" });
+  const personalBest = usePersonalBest("letter-pool");
   const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error } = useQuery<LetterPoolWord[]>({
     queryKey: seeded ? ["/api/games/letter-pool/words", groupSeed] : ["/api/games/letter-pool/words"],

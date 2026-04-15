@@ -10,7 +10,7 @@ import { RotateCcw, Lightbulb, Trophy, X, XCircle, Loader2, ArrowUp, Minus } fro
 import { ShareResults } from "@/components/share-results";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { makeSeededRng } from "@/lib/seeded-rng";
@@ -39,7 +39,8 @@ function isOneLetterDiff(a: string, b: string): boolean {
 
 export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadderGameProps) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-ladder" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-ladder" });
+  const personalBest = usePersonalBest("word-ladder");
   const seeded = groupSeed !== undefined;
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined

@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -55,9 +55,10 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
-  const { reportResult, resetRecorded, personalBest } = useGameResult({
+  const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "no-repeats-survival" : "no-repeats",
   });
+  const personalBest = usePersonalBest(isSurvival ? "no-repeats-survival" : "no-repeats");
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });

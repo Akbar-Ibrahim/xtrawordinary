@@ -12,12 +12,13 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { AnagramWordSet } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 export function AnagramSolverGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "anagram-solver" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver" });
+  const personalBest = usePersonalBest("anagram-solver");
   const seeded = groupSeed !== undefined;
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined

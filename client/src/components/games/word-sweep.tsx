@@ -12,7 +12,7 @@ import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse, WordSweepGrid, WordUnpackPuzzle } from "@shared/schema";
 
@@ -30,7 +30,8 @@ function calculateWordScore(wordLength: number): number {
 
 function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: boolean }) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-sweep" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-sweep" });
+  const personalBest = usePersonalBest("word-sweep");
   const GRID_SIZE = 6;
   const MAX_SHUFFLES = 3;
   const seeded = groupSeed !== undefined;
@@ -425,7 +426,8 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
 
 function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: number; locked?: boolean; overrideSlug?: string }) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-unpack" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-unpack" });
+  const personalBest = usePersonalBest("word-unpack");
   const seeded = groupSeed !== undefined;
 
   const { data: puzzleData, isLoading, error, refetch } = useQuery<WordUnpackPuzzle>({

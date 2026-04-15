@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const SURVIVAL_TIME_PER_WORD = 8;
@@ -61,9 +61,10 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
-  const { reportResult, resetRecorded, personalBest } = useGameResult({
+  const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-position-survival" : "letter-position",
   });
+  const personalBest = usePersonalBest(isSurvival ? "letter-position-survival" : "letter-position");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );

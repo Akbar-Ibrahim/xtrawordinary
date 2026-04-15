@@ -12,14 +12,15 @@ import { StreakIndicator } from "@/components/streak-indicator";
 import type { ProgressiveRevealWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
 export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "progressive-reveal" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal" });
+  const personalBest = usePersonalBest("progressive-reveal");
   const { data: words = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
     queryKey: ["/api/games/progressive-reveal/words"],
     refetchOnMount: "always",

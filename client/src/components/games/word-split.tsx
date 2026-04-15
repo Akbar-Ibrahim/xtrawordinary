@@ -24,7 +24,7 @@ import type { WordSplitPuzzle } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { apiRequest } from "@/lib/queryClient";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 type Difficulty = "short" | "medium" | "long";
 type GameState = "menu" | "playing" | "completed" | "failed";
@@ -87,7 +87,8 @@ function getTotalRemaining(pool: Map<string, number>): number {
 
 export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked }: { initialChallenge?: Difficulty | ""; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-split" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-split" });
+  const personalBest = usePersonalBest("word-split");
   const { data: puzzles = [], isLoading, error } = useQuery<WordSplitPuzzle[]>({
     queryKey: ["/api/games/word-split/puzzles"],
     refetchOnMount: "always",

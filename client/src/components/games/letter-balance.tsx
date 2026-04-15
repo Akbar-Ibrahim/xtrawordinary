@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
@@ -336,7 +336,8 @@ type GameState =
 
 export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "letter-balance" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance" });
+  const personalBest = usePersonalBest("letter-balance");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );

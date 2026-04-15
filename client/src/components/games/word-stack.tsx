@@ -13,7 +13,7 @@ import type { WordStackPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = "build-up" | "break-down" | null;
@@ -35,7 +35,8 @@ const challenges = [
 
 export function WordStackGame({ locked }: { locked?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded, personalBest } = useGameResult({ slug: "word-stack" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-stack" });
+  const personalBest = usePersonalBest("word-stack");
   const { data: puzzles = [], isLoading, error } = useQuery<WordStackPuzzle[]>({
     queryKey: ["/api/games/word-stack/puzzles"],
     refetchOnMount: "always",

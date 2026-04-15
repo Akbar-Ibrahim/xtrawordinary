@@ -68,8 +68,6 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
 
-  const personalBest = useMemo(() => getPersonalBest(slug), [slug]);
-
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
       if (recordedRef.current) return { isNewBest: false, newAchievements: [] as Achievement[] };
@@ -137,5 +135,9 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
     recordedRef.current = false;
   }, []);
 
-  return { reportResult, resetRecorded, personalBest };
+  return { reportResult, resetRecorded };
+}
+
+export function usePersonalBest(slug: string): number {
+  return useMemo(() => getPersonalBest(slug), [slug]);
 }

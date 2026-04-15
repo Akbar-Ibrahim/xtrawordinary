@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 
 const SURVIVAL_TIME_PER_WORD = 8;
@@ -136,9 +136,10 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
-  const { reportResult, resetRecorded, personalBest } = useGameResult({
+  const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "word-length-survival" : "word-length",
   });
+  const personalBest = usePersonalBest(isSurvival ? "word-length-survival" : "word-length");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
