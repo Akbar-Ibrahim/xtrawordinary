@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -195,7 +195,9 @@ function ModeTabs({
 }
 
 export default function Leaderboard() {
-  const [selectedGame, setSelectedGame] = useState("overall");
+  const search = useSearch();
+  const initialGame = new URLSearchParams(search).get("game") ?? "overall";
+  const [selectedGame, setSelectedGame] = useState(initialGame);
   const [isSurvival, setIsSurvival] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const { user } = useAuth();

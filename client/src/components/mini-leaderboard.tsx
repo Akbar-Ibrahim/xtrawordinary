@@ -170,7 +170,7 @@ export function MiniLeaderboard({ game }: MiniLeaderboardProps) {
 
         <LeaderboardList slug={activeSlug} />
 
-        <Link href="/leaderboard">
+        <Link href={`/leaderboard?game=${game.slug}`}>
           <div
             className="flex items-center justify-end gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors pt-1 cursor-pointer"
             data-testid="link-full-leaderboard"
