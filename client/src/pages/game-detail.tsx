@@ -19,6 +19,7 @@ import * as LucideIcons from "lucide-react";
 import type { Game, FriendChallenge } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { CommentSection } from "@/components/comment-section";
+import { LikeButton } from "@/components/like-button";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -97,6 +98,16 @@ export default function GameDetail() {
 
   const { data: game, isLoading, error } = useQuery<Game>({
     queryKey: ["/api/games", slug],
+  });
+
+  const { data: likeData } = useQuery<{ counts: Record<string, number>; likedByMe: Record<string, boolean> }>({
+    queryKey: ["/api/likes", "game", slug],
+    queryFn: async () => {
+      const res = await fetch(`/api/likes?targetType=game&targetIds=${slug}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!slug,
   });
 
   if (isLoading) {
@@ -183,15 +194,23 @@ export default function GameDetail() {
 
                 <p className="text-lg text-muted-foreground">{game.longDescription}</p>
 
-                <div className="flex items-center gap-6 text-muted-foreground">
-                  <span className="flex items-center gap-2">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-5 w-5" />
                     {game.estimatedTime}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-muted-foreground">
                     <TrendingUp className="h-5 w-5" />
                     {game.playCount.toLocaleString()} plays
                   </span>
+                  {slug && (
+                    <LikeButton
+                      targetType="game"
+                      targetId={slug}
+                      initialCount={likeData?.counts[slug] ?? 0}
+                      initialLikedByMe={likeData?.likedByMe[slug] ?? false}
+                    />
+                  )}
                 </div>
               </div>
 

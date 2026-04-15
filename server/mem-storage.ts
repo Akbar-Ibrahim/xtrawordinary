@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles } from "./game-data";
@@ -993,6 +993,9 @@ export class MemStorage implements IStorage {
   private cmtIdCounter = 1;
   private crIdCounter = 1;
 
+  private likesStore: Array<{ id: number; userId: number; targetType: string; targetId: string }> = [];
+  private likeIdCounter = 1;
+
   private commentToPublic(c: Comment): Comment {
     const user = this.users.get(c.userId);
     return {
@@ -1012,16 +1015,53 @@ export class MemStorage implements IStorage {
     return this.commentToPublic(c);
   }
 
-  async getComments(targetType: CommentTargetType, targetId: string): Promise<Comment[]> {
+  async getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> {
     const all = this.commentsStore
       .filter(c => c.targetType === targetType && c.targetId === targetId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const roots = all.filter(c => c.parentId === null).map(c => this.commentToPublic(c));
-    const replies = all.filter(c => c.parentId !== null).map(c => this.commentToPublic(c));
+    const allIds = all.map(c => String(c.id));
+    const countMap = await this.getLikeCounts("comment", allIds);
+    const likedSet = userId ? await this.getUserLikes(userId, "comment", allIds) : new Set<string>();
+    const roots = all.filter(c => c.parentId === null).map(c => ({
+      ...this.commentToPublic(c),
+      likeCount: countMap[String(c.id)] ?? 0,
+      likedByMe: likedSet.has(String(c.id)),
+    }));
+    const replies = all.filter(c => c.parentId !== null).map(c => ({
+      ...this.commentToPublic(c),
+      likeCount: countMap[String(c.id)] ?? 0,
+      likedByMe: likedSet.has(String(c.id)),
+    }));
     return roots.map(root => ({
       ...root,
       replies: replies.filter(r => r.parentId === root.id),
     }));
+  }
+
+  async toggleLike(userId: number, targetType: LikeTargetType, targetId: string): Promise<{ liked: boolean; count: number }> {
+    const idx = this.likesStore.findIndex(l => l.userId === userId && l.targetType === targetType && l.targetId === targetId);
+    if (idx >= 0) {
+      this.likesStore.splice(idx, 1);
+    } else {
+      this.likesStore.push({ id: this.likeIdCounter++, userId, targetType, targetId });
+    }
+    const count = this.likesStore.filter(l => l.targetType === targetType && l.targetId === targetId).length;
+    return { liked: idx < 0, count };
+  }
+
+  async getLikeCounts(targetType: LikeTargetType, targetIds: string[]): Promise<Record<string, number>> {
+    const result: Record<string, number> = {};
+    for (const id of targetIds) {
+      result[id] = this.likesStore.filter(l => l.targetType === targetType && l.targetId === id).length;
+    }
+    return result;
+  }
+
+  async getUserLikes(userId: number, targetType: LikeTargetType, targetIds: string[]): Promise<Set<string>> {
+    const liked = this.likesStore
+      .filter(l => l.userId === userId && l.targetType === targetType && targetIds.includes(l.targetId))
+      .map(l => l.targetId);
+    return new Set(liked);
   }
 
   async getCommentById(id: number): Promise<Comment | null> {

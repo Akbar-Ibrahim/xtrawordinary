@@ -410,6 +410,8 @@ export type Comment = {
   createdAt: string;
   user?: { id: number; name: string; avatarUrl: string | null };
   replies?: Comment[];
+  likeCount?: number;
+  likedByMe?: boolean;
 };
 
 export const commentSchema: z.ZodType<Comment> = z.object({
@@ -423,6 +425,8 @@ export const commentSchema: z.ZodType<Comment> = z.object({
   createdAt: z.string(),
   user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).optional(),
   replies: z.array(z.lazy(() => commentSchema)).optional(),
+  likeCount: z.number().optional(),
+  likedByMe: z.boolean().optional(),
 });
 export const insertCommentSchema = z.object({
   targetType: commentTargetTypeSchema,
@@ -443,3 +447,8 @@ export const commentReportSchema = z.object({
   reporter: z.object({ id: z.number(), name: z.string() }).optional(),
 });
 export type CommentReport = z.infer<typeof commentReportSchema>;
+
+// ==================== LIKES ====================
+
+export const likeTargetTypeSchema = z.enum(["game", "comment"]);
+export type LikeTargetType = z.infer<typeof likeTargetTypeSchema>;

@@ -1829,7 +1829,7 @@ export async function registerRoutes(
         const hasAccess = await checkGroupRoundAccess(roundId, userId);
         if (!hasAccess) return res.status(403).json({ error: "Access denied" });
       }
-      const comments = await storage.getComments(targetType, targetId);
+      const comments = await storage.getComments(targetType, targetId, req.user?.id);
       res.json(comments);
     } catch {
       res.status(500).json({ error: "Failed to fetch comments" });
@@ -1924,6 +1924,49 @@ export async function registerRoutes(
       res.status(201).json(report);
     } catch {
       res.status(500).json({ error: "Failed to report comment" });
+    }
+  });
+
+  // Like routes
+  app.post("/api/likes", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { targetType, targetId } = req.body;
+      if (!targetType || !targetId) {
+        return res.status(400).json({ error: "targetType and targetId are required" });
+      }
+      if (targetType !== "game" && targetType !== "comment") {
+        return res.status(400).json({ error: "Invalid targetType" });
+      }
+      const result = await storage.toggleLike(userId, targetType, String(targetId));
+      res.json(result);
+    } catch {
+      res.status(500).json({ error: "Failed to toggle like" });
+    }
+  });
+
+  app.get("/api/likes", async (req, res) => {
+    try {
+      const { targetType, targetIds } = req.query;
+      if (!targetType || !targetIds) {
+        return res.status(400).json({ error: "targetType and targetIds are required" });
+      }
+      if (targetType !== "game" && targetType !== "comment") {
+        return res.status(400).json({ error: "Invalid targetType" });
+      }
+      const ids = Array.isArray(targetIds) ? targetIds.map(String) : String(targetIds).split(",");
+      const counts = await storage.getLikeCounts(targetType as "game" | "comment", ids);
+      const userId = req.user?.id;
+      const likedByMe: Record<string, boolean> = {};
+      if (userId) {
+        const likedSet = await storage.getUserLikes(userId, targetType as "game" | "comment", ids);
+        for (const id of ids) likedByMe[id] = likedSet.has(id);
+      } else {
+        for (const id of ids) likedByMe[id] = false;
+      }
+      res.json({ counts, likedByMe });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch likes" });
     }
   });
 

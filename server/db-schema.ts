@@ -258,3 +258,14 @@ export const commentReports = mysqlTable("comment_reports", {
   index("cr_comment_idx").on(table.commentId),
   index("cr_user_idx").on(table.reportingUserId),
 ]);
+
+export const likes = mysqlTable("likes", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  targetType: varchar("target_type", { length: 20 }).notNull(),
+  targetId: varchar("target_id", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("likes_user_target_idx").on(table.userId, table.targetType, table.targetId),
+  index("likes_target_idx").on(table.targetType, table.targetId),
+]);

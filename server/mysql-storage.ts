@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -988,7 +988,7 @@ export class MySQLStorage implements IStorage {
     return this.mapDbRowToComment(r, user);
   }
 
-  async getComments(targetType: CommentTargetType, targetId: string): Promise<Comment[]> {
+  async getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.comments)
       .where(and(eq(schema.comments.targetType, targetType), eq(schema.comments.targetId, targetId)))
@@ -997,10 +997,65 @@ export class MySQLStorage implements IStorage {
     const userIds = [...new Set(rows.map(r => r.userId))];
     const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
     const userMap = new Map(userRows.map(u => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
-    const allComments = rows.map(r => this.mapDbRowToComment(r, userMap.get(r.userId)));
+    const commentIdStrings = rows.map(r => String(r.id));
+    const countRows = await db
+      .select({ targetId: schema.likes.targetId, count: sql<number>`COUNT(*)` })
+      .from(schema.likes)
+      .where(and(eq(schema.likes.targetType, "comment"), inArray(schema.likes.targetId, commentIdStrings)))
+      .groupBy(schema.likes.targetId);
+    const countMap = new Map(countRows.map(r => [r.targetId, Number(r.count)]));
+    let likedSet = new Set<string>();
+    if (userId) {
+      const likedRows = await db.select({ targetId: schema.likes.targetId }).from(schema.likes)
+        .where(and(eq(schema.likes.targetType, "comment"), eq(schema.likes.userId, userId), inArray(schema.likes.targetId, commentIdStrings)));
+      likedSet = new Set(likedRows.map(r => r.targetId));
+    }
+    const allComments = rows.map(r => ({
+      ...this.mapDbRowToComment(r, userMap.get(r.userId)),
+      likeCount: countMap.get(String(r.id)) ?? 0,
+      likedByMe: likedSet.has(String(r.id)),
+    }));
     const roots = allComments.filter(c => c.parentId === null);
     const replies = allComments.filter(c => c.parentId !== null);
     return roots.map(root => ({ ...root, replies: replies.filter(r => r.parentId === root.id) }));
+  }
+
+  async toggleLike(userId: number, targetType: LikeTargetType, targetId: string): Promise<{ liked: boolean; count: number }> {
+    const db = await this.getDb();
+    const existing = await db.select().from(schema.likes)
+      .where(and(eq(schema.likes.userId, userId), eq(schema.likes.targetType, targetType), eq(schema.likes.targetId, targetId)))
+      .limit(1);
+    if (existing.length > 0) {
+      await db.delete(schema.likes)
+        .where(and(eq(schema.likes.userId, userId), eq(schema.likes.targetType, targetType), eq(schema.likes.targetId, targetId)));
+    } else {
+      await db.insert(schema.likes).values({ userId, targetType, targetId });
+    }
+    const [{ count }] = await db.select({ count: sql<number>`COUNT(*)` }).from(schema.likes)
+      .where(and(eq(schema.likes.targetType, targetType), eq(schema.likes.targetId, targetId)));
+    return { liked: existing.length === 0, count: Number(count) };
+  }
+
+  async getLikeCounts(targetType: LikeTargetType, targetIds: string[]): Promise<Record<string, number>> {
+    if (targetIds.length === 0) return {};
+    const db = await this.getDb();
+    const rows = await db
+      .select({ targetId: schema.likes.targetId, count: sql<number>`COUNT(*)` })
+      .from(schema.likes)
+      .where(and(eq(schema.likes.targetType, targetType), inArray(schema.likes.targetId, targetIds)))
+      .groupBy(schema.likes.targetId);
+    const result: Record<string, number> = {};
+    for (const id of targetIds) result[id] = 0;
+    for (const r of rows) result[r.targetId] = Number(r.count);
+    return result;
+  }
+
+  async getUserLikes(userId: number, targetType: LikeTargetType, targetIds: string[]): Promise<Set<string>> {
+    if (targetIds.length === 0) return new Set();
+    const db = await this.getDb();
+    const rows = await db.select({ targetId: schema.likes.targetId }).from(schema.likes)
+      .where(and(eq(schema.likes.userId, userId), eq(schema.likes.targetType, targetType), inArray(schema.likes.targetId, targetIds)));
+    return new Set(rows.map(r => r.targetId));
   }
 
   async getCommentById(id: number): Promise<Comment | null> {

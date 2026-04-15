@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import type { Comment, CommentTargetType } from "@shared/schema";
+import { LikeButton } from "@/components/like-button";
 import {
   Dialog,
   DialogContent,
@@ -298,6 +299,13 @@ function CommentItem({
 
           {!comment.isDeleted && (
             <div className="flex items-center gap-3 mt-1 pl-1">
+              <LikeButton
+                targetType="comment"
+                targetId={String(comment.id)}
+                initialCount={comment.likeCount ?? 0}
+                initialLikedByMe={comment.likedByMe ?? false}
+                size="sm"
+              />
               {isAuthenticated && !isReply && (
                 <button
                   className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
