@@ -533,7 +533,7 @@ export function ShellWordsGame({
               )}
 
               {completionMessage && (
-                <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">
+                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">
                   {completionMessage}
                 </p>
               )}
