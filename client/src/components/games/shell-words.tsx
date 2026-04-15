@@ -425,29 +425,28 @@ export function ShellWordsGame({
               )}
 
               {/* Found words list */}
-              {foundWords.length > 0 && (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                    Found ({foundWords.length})
-                  </div>
+              <div className="h-52 overflow-y-auto space-y-2 border rounded-lg p-3">
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                  Found ({foundWords.length})
+                </div>
+                {foundWords.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center pt-6">
+                    Your found words will appear here
+                  </p>
+                ) : (
                   <AnimatePresence initial={false}>
                     {foundWords.map((fw, i) => (
                       <motion.div
                         key={fw.outer}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i === 0 ? 0 : 0 }}
                         className="flex items-center justify-between px-3 py-2 rounded-md bg-muted/40 border"
                         data-testid={`item-found-${i}`}
                       >
                         <div className="font-mono text-sm">
-                          <span className="text-muted-foreground">
-                            {fw.outer[0]}
-                          </span>
+                          <span className="text-muted-foreground">{fw.outer[0]}</span>
                           <span className="text-foreground font-bold">{fw.inner}</span>
-                          <span className="text-muted-foreground">
-                            {fw.outer[fw.outer.length - 1]}
-                          </span>
+                          <span className="text-muted-foreground">{fw.outer[fw.outer.length - 1]}</span>
                           <span className="text-muted-foreground ml-2">→ {fw.inner}</span>
                         </div>
                         {mode === "blitz" && (
@@ -458,8 +457,8 @@ export function ShellWordsGame({
                       </motion.div>
                     ))}
                   </AnimatePresence>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
