@@ -248,7 +248,7 @@ export function ShellWordsGame({
 
   return (
     <>
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
 
       <Card>
         <CardContent className="p-6 space-y-5">
