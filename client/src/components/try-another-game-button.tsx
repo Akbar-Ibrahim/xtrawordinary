@@ -12,11 +12,12 @@ export function TryAnotherGameButton({ currentSlug }: TryAnotherGameButtonProps)
   const { data: games } = useQuery<Game[]>({ queryKey: ["/api/games"] });
   const [, navigate] = useLocation();
 
+  const others = games?.filter(g => g.slug !== currentSlug) ?? [];
+
+  if (others.length === 0) return null;
+
   const handleClick = () => {
-    if (!games?.length) return;
-    const others = games.filter(g => g.slug !== currentSlug);
-    const pool = others.length > 0 ? others : games;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const pick = others[Math.floor(Math.random() * others.length)];
     navigate(`/game/${pick.slug}`);
   };
 
