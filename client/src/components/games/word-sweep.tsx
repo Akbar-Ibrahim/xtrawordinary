@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Check, Timer, Grid3X3, PackageOpen,
+  RotateCcw, Trophy, XCircle, Shuffle, Send, Undo2, Loader2,
 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";

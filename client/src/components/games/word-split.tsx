@@ -15,6 +15,7 @@ import {
   Sparkles,
   Lightbulb,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";

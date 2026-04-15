@@ -12,6 +12,7 @@ import {
   LogIn,
   Shell,
   ChevronRight,
+  Trophy,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
