@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
 import type { Achievement } from "@/lib/game-stats";
@@ -52,13 +52,15 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
   const recordedRef = useRef(false);
   const { isAuthenticated } = useAuth();
 
-  const challengeIdRef = useRef<number | undefined>((() => {
-    if (explicitChallengeId !== undefined) return explicitChallengeId;
-    if (typeof window === "undefined") return undefined;
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("challenge");
-    return id ? parseInt(id) : undefined;
-  })());
+  const challengeIdRef = useRef<number | undefined | null>(null);
+  if (challengeIdRef.current === null) {
+    challengeIdRef.current = explicitChallengeId ?? (() => {
+      if (typeof window === "undefined") return undefined;
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("challenge");
+      return id ? parseInt(id) : undefined;
+    })();
+  }
 
   const slugRef = useRef(slug);
   slugRef.current = slug;
@@ -66,13 +68,15 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
 
+  const personalBest = useMemo(() => getPersonalBest(slug), [slug]);
+
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
       if (recordedRef.current) return { isNewBest: false, newAchievements: [] as Achievement[] };
       recordedRef.current = true;
 
       const currentSlug = slugRef.current;
-      const personalBest = getPersonalBest(currentSlug);
+      const currentBest = getPersonalBest(currentSlug);
 
       const result = recordGameResult({
         slug: currentSlug,
@@ -85,7 +89,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
       if (result.isNewBest && score > 0) {
         toast({
           title: "New Personal Best!",
-          description: `${score} points - you beat your previous record of ${personalBest}!`,
+          description: `${score} points - you beat your previous record of ${currentBest}!`,
         });
       }
 
@@ -133,5 +137,5 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
     recordedRef.current = false;
   }, []);
 
-  return { reportResult, resetRecorded, personalBest: getPersonalBest(slug) };
+  return { reportResult, resetRecorded, personalBest };
 }
