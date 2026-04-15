@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,6 +140,10 @@ export function MiniLeaderboard({ game }: MiniLeaderboardProps) {
   const [activeModeSlug, setActiveModeSlug] = useState(
     hasModes ? game.modes![0].slug : game.slug
   );
+
+  useEffect(() => {
+    setActiveModeSlug(hasModes ? game.modes![0].slug : game.slug);
+  }, [game.slug]);
 
   const activeSlug = hasModes ? activeModeSlug : game.slug;
 
