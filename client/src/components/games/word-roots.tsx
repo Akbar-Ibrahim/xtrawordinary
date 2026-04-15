@@ -20,6 +20,8 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { useGameResult } from "@/hooks/use-game-result";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
+import { ShareResults } from "@/components/share-results";
+import { getCompletionMessage } from "@/lib/completion-messages";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordRootsPuzzle } from "@shared/schema";
 
@@ -57,6 +59,7 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
   const [feedback, setFeedback] = useState<{ type: "bonus" | "correct" | "invalid"; message: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
+  const [completionMessage, setCompletionMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +89,7 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
     if (gameStatus === "won" || gameStatus === "lost") {
       clearInterval(timerRef.current!);
       reportResult(score, gameStatus === "won");
+      setCompletionMessage(getCompletionMessage(gameStatus === "won"));
     }
   }, [gameStatus, score, reportResult]);
 
@@ -145,6 +149,7 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
     setRoundResults([]);
     setFeedback(null);
     setTimeLeft(TOTAL_TIME);
+    setCompletionMessage("");
     setGameStatus("playing");
   };
 
@@ -214,6 +219,20 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
                 ))}
               </div>
             )}
+
+            {completionMessage && (
+              <p className="text-sm italic text-muted-foreground text-center" data-testid="text-completion-message">
+                {completionMessage}
+              </p>
+            )}
+
+            <ShareResults
+              gameName="Word Roots"
+              gameSlug="word-roots"
+              score={score}
+              wordsCompleted={roundResults.length}
+              isWin={gameStatus === "won"}
+            />
 
             {!locked && (
               <div className="flex gap-2 justify-center">

@@ -18,6 +18,8 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { useGameResult } from "@/hooks/use-game-result";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
+import { ShareResults } from "@/components/share-results";
+import { getCompletionMessage } from "@/lib/completion-messages";
 
 const BLITZ_TIME = 90;
 const WRAPPER_TIME = 120;
@@ -57,6 +59,7 @@ export function ShellWordsGame({
   const [foundWords, setFoundWords] = useState<FoundWord[]>([]);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; message: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState("");
 
   const [puzzleMiddle, setPuzzleMiddle] = useState<string | null>(null);
   const [puzzleCount, setPuzzleCount] = useState<number>(0);
@@ -80,6 +83,7 @@ export function ShellWordsGame({
     (finalScore: number, finalTimeLeft: number) => {
       if (timerRef.current) clearInterval(timerRef.current);
       setGameStatus("ended");
+      setCompletionMessage(getCompletionMessage(true));
       const actualScore =
         mode === "blitz" ? finalScore : wrapperScore(foundSet.current.size, finalTimeLeft);
       reportResult(actualScore, true, foundSet.current.size);
@@ -130,6 +134,7 @@ export function ShellWordsGame({
     setScore(0);
     setInput("");
     setFeedback(null);
+    setCompletionMessage("");
 
     if (mode === "wrapper") {
       const seed = groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000);
@@ -158,6 +163,7 @@ export function ShellWordsGame({
       setFoundWords([]);
       setInput("");
       setFeedback(null);
+      setCompletionMessage("");
       setPuzzleMiddle(null);
       foundSet.current = new Set();
       resetRecorded();
@@ -525,6 +531,20 @@ export function ShellWordsGame({
                   ))}
                 </div>
               )}
+
+              {completionMessage && (
+                <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">
+                  {completionMessage}
+                </p>
+              )}
+
+              <ShareResults
+                gameName={mode === "blitz" ? "Shell Words" : "Shell Words: Wrapper"}
+                gameSlug={activeSlug}
+                score={mode === "blitz" ? score : wrapperScore(foundWords.length, timeLeft)}
+                wordsCompleted={foundWords.length}
+                isWin
+              />
 
               {!user && (
                 <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
