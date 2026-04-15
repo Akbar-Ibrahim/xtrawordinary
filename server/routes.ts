@@ -1962,15 +1962,15 @@ export async function registerRoutes(
       if (!targetType || !targetIds) {
         return res.status(400).json({ error: "targetType and targetIds are required" });
       }
-      if (targetType !== "game" && targetType !== "comment") {
-        return res.status(400).json({ error: "Invalid targetType" });
+      if (targetType !== "game") {
+        return res.status(400).json({ error: "Only targetType=game is supported on this endpoint; comment likes are returned via /api/comments" });
       }
       const ids = Array.isArray(targetIds) ? targetIds.map(String) : String(targetIds).split(",");
-      const counts = await storage.getLikeCounts(targetType as "game" | "comment", ids);
+      const counts = await storage.getLikeCounts("game", ids);
       const userId = req.user?.id;
       const likedByMe: Record<string, boolean> = {};
       if (userId) {
-        const likedSet = await storage.getUserLikes(userId, targetType as "game" | "comment", ids);
+        const likedSet = await storage.getUserLikes(userId, "game", ids);
         for (const id of ids) likedByMe[id] = likedSet.has(id);
       } else {
         for (const id of ids) likedByMe[id] = false;
