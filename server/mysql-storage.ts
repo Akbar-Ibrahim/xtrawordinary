@@ -44,6 +44,10 @@ export class MySQLStorage implements IStorage {
       { label: "Medium (5L)", slug: "ladder-rush-double-5" },
       { label: "Hard (6L)", slug: "ladder-rush-double-6" },
     ],
+    "shell-words": [
+      { label: "Blitz", slug: "shell-words" },
+      { label: "Wrapper", slug: "shell-words-guided" },
+    ],
   };
 
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
