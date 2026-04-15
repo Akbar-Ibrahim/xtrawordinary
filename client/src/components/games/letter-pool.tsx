@@ -12,6 +12,7 @@ import type { LetterPoolWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 type Variation = "with-pool" | "without-pool";
 
@@ -555,6 +556,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPo
                     <Button onClick={restartGame} data-testid="button-play-again">
                       Play Again
                     </Button>
+                    <TryAnotherGameButton currentSlug="letter-pool" />
                     <Button
                       variant="outline"
                       onClick={() => {

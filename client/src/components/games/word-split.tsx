@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  RotateCcw,
   Trophy,
   CheckCircle,
   XCircle,
@@ -17,6 +16,7 @@ import {
   Lightbulb,
   ArrowRight,
 } from "lucide-react";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
@@ -438,6 +438,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                   <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
                     Play Again
                   </Button>
+                  <TryAnotherGameButton currentSlug="word-split" />
                 </div>
               )}
             </CardContent>
@@ -500,6 +501,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                   <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
                     Play Again
                   </Button>
+                  <TryAnotherGameButton currentSlug="word-split" />
                 </div>
               )}
             </CardContent>

@@ -24,6 +24,7 @@ import { ShareResults } from "@/components/share-results";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordRootsPuzzle } from "@shared/schema";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const TOTAL_ROUNDS = 5;
 const TOTAL_TIME = 180;
@@ -235,11 +236,12 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
             />
 
             {!locked && (
-              <div className="flex gap-2 justify-center">
+              <div className="flex gap-2 justify-center flex-wrap">
                 <Button onClick={handleRestart} data-testid="button-play-again">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Play Again
                 </Button>
+                <TryAnotherGameButton currentSlug="word-roots" />
               </div>
             )}
 

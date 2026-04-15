@@ -16,6 +16,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -570,7 +571,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+                    <TryAnotherGameButton currentSlug="letter-position" />
                     <Button onClick={() => startGame(challenge, isSurvival)} variant={challenge === 2 ? "default" : "outline"} data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
@@ -652,7 +654,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+                    <TryAnotherGameButton currentSlug="letter-position" />
                     <Button onClick={() => startGame(challenge, isSurvival)} data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Try Again

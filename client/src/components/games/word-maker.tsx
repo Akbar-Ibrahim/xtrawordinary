@@ -15,7 +15,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
-
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-maker" });
@@ -398,9 +398,12 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                   isWin={true}
                 />
                 {!locked && (
-                  <Button onClick={initGame} data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={initGame} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-maker" />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -442,9 +445,12 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                   isWin={false}
                 />
                 {!locked && (
-                  <Button onClick={initGame} data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={initGame} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-maker" />
+                  </div>
                 )}
               </CardContent>
             </Card>

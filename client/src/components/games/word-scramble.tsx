@@ -14,6 +14,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
@@ -397,9 +398,12 @@ export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; lo
                   isWin={gameStatus === "won"}
                 />
                 {!locked && (
-                  <Button onClick={initGame} data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={initGame} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-scramble" />
+                  </div>
                 )}
               </CardContent>
             </Card>

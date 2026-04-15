@@ -14,6 +14,7 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 interface WordLadderGameProps {
   initialChallenge?: boolean;
@@ -629,9 +630,12 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
                 />
                 {!locked && (
-                  <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap mt-2">
+                    <Button onClick={() => initGame()} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-ladder" />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -665,9 +669,12 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   isWin={false}
                 />
                 {!locked && (
-                  <Button onClick={() => initGame()} className="mt-2" data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap mt-2">
+                    <Button onClick={() => initGame()} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-ladder" />
+                  </div>
                 )}
               </CardContent>
             </Card>

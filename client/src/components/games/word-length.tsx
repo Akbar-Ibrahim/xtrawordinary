@@ -16,6 +16,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -598,7 +599,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
                     <Button 
                       variant="outline" 
                       onClick={() => startGame(variation, isSurvival)} 
@@ -608,6 +609,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                       <RotateCcw className="h-4 w-4" />
                       Play Again
                     </Button>
+                    <TryAnotherGameButton currentSlug="word-length" />
                     {gameStatus === "won" && variation < 5 && (
                       <Button 
                         onClick={() => startGame(variation + 1, isSurvival)} 

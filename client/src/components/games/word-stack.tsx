@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = "build-up" | "break-down" | null;
@@ -354,7 +355,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
               isWin={true}
             />
             {!locked && (
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center flex-wrap">
                 <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
@@ -362,6 +363,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
                 <Button variant="outline" onClick={backToSelection} size="lg" data-testid="button-change-challenge">
                   Change Challenge
                 </Button>
+                <TryAnotherGameButton currentSlug="word-stack" />
               </div>
             )}
           </motion.div>

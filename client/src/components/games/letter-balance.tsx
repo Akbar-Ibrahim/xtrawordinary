@@ -16,6 +16,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -830,6 +831,7 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
                 >
                   Main Menu
                 </Button>
+                <TryAnotherGameButton currentSlug="letter-balance" />
               </div>
             )}
           </CardContent>
@@ -901,6 +903,7 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
                 >
                   Main Menu
                 </Button>
+                <TryAnotherGameButton currentSlug="letter-balance" />
               </div>
             )}
           </CardContent>

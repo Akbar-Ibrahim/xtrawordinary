@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Trophy,
   Timer,
   RotateCcw,
   CheckCircle2,
@@ -14,6 +13,7 @@ import {
   Shell,
   ChevronRight,
 } from "lucide-react";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
 import { useGameResult } from "@/hooks/use-game-result";
 import { useAuth } from "@/lib/auth-context";
@@ -562,7 +562,7 @@ export function ShellWordsGame({
                 </div>
               )}
 
-              <div className="flex gap-2 justify-center">
+              <div className="flex gap-2 justify-center flex-wrap">
                 <Button
                   variant="outline"
                   onClick={() => switchMode(mode)}
@@ -571,6 +571,7 @@ export function ShellWordsGame({
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Play Again
                 </Button>
+                {!locked && <TryAnotherGameButton currentSlug={activeSlug} />}
               </div>
             </div>
           )}

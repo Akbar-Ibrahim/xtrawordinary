@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  RotateCcw, Trophy, XCircle, Shuffle, Send, Undo2, Loader2,
   Sparkles, Check, Timer, Grid3X3, PackageOpen,
 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
@@ -15,7 +14,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse, WordSweepGrid, WordUnpackPuzzle } from "@shared/schema";
-
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 interface GridCell {
   letter: string;
   id: number;
@@ -413,7 +412,10 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                 )}
                 <ShareResults gameName="Word Sweep" gameSlug="word-sweep" score={score} wordsCompleted={wordsFound.length} isWin={wordsFound.length > 0} />
                 {!locked && (
-                  <Button onClick={initGame} data-testid="button-play-again">Play Again</Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={initGame} data-testid="button-play-again">Play Again</Button>
+                    <TryAnotherGameButton currentSlug="word-sweep" />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -690,10 +692,13 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
             </div>
             <ShareResults gameName="Word Sweep (Guided)" gameSlug="word-unpack" score={score} wordsCompleted={wordsFound.length} isWin={isPerfectClear} />
             {!locked && (
-              <Button onClick={initGame} className="gap-1.5" data-testid="button-play-again">
-                <RotateCcw className="h-4 w-4" />
-                New Puzzle
-              </Button>
+              <div className="flex gap-2 justify-center flex-wrap">
+                <Button onClick={initGame} className="gap-1.5" data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4" />
+                  New Puzzle
+                </Button>
+                <TryAnotherGameButton currentSlug="word-unpack" />
+              </div>
             )}
           </CardContent>
         </Card>

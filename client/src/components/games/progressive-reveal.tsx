@@ -13,7 +13,7 @@ import type { ProgressiveRevealWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
-
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
@@ -414,9 +414,12 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
                   isWin={gameStatus === "won"}
                 />
                 {!locked && (
-                  <Button onClick={initGame} data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={initGame} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="progressive-reveal" />
+                  </div>
                 )}
               </CardContent>
             </Card>

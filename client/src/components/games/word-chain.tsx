@@ -15,7 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
-
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 const SURVIVAL_TIME_PER_WORD = 10;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 20 },
@@ -612,9 +612,12 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   isWin={gameStatus === "won"}
                 />
                 {!locked && (
-                  <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
-                    Play Again
-                  </Button>
+                  <div className="flex gap-2 justify-center flex-wrap">
+                    <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
+                      Play Again
+                    </Button>
+                    <TryAnotherGameButton currentSlug="word-chain" />
+                  </div>
                 )}
               </CardContent>
             </Card>

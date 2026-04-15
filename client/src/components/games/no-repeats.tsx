@@ -15,7 +15,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
-
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 15 },
@@ -378,7 +378,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
             )}
 
             {!locked && (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
                 <Button onClick={returnToMenu} variant="outline" className="gap-2" data-testid="button-menu">
                   <Menu className="w-4 h-4" />
                   Challenge Menu
@@ -393,6 +393,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
                   <RotateCcw className="w-4 h-4" />
                   Play Again
                 </Button>
+                <TryAnotherGameButton currentSlug="no-repeats" />
               </div>
             )}
           </CardContent>
