@@ -30,6 +30,7 @@ import { WordSplitGame } from "@/components/games/word-split";
 import { WordStackGame } from "@/components/games/word-stack";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { WordRootsGame } from "@/components/games/word-roots";
+import { ShellWordsGame } from "@/components/games/shell-words";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 interface DailyChallengeResponse {
@@ -124,6 +125,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <ProgressiveRevealGame locked />;
     case "word-roots":
       return <WordRootsGame locked />;
+    case "shell-words": {
+      const shellMode = seed % 2 === 0 ? "blitz" : "wrapper";
+      return <ShellWordsGame initialMode={shellMode} groupSeed={seed} locked />;
+    }
     default:
       return null;
   }

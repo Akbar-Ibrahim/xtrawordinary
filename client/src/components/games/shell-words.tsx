@@ -44,11 +44,12 @@ function wrapperScore(found: number, timeLeft: number): number {
 export function ShellWordsGame({
   groupSeed,
   locked,
-}: { groupSeed?: number; locked?: boolean } = {}) {
+  initialMode,
+}: { groupSeed?: number; locked?: boolean; initialMode?: Mode } = {}) {
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const [mode, setMode] = useState<Mode>("blitz");
+  const [mode, setMode] = useState<Mode>(initialMode ?? "blitz");
   const [gameStatus, setGameStatus] = useState<GameStatus>("idle");
   const [timeLeft, setTimeLeft] = useState(BLITZ_TIME);
   const [score, setScore] = useState(0);
@@ -252,22 +253,24 @@ export function ShellWordsGame({
 
       <Card>
         <CardContent className="p-6 space-y-5">
-          {/* Mode tabs */}
-          <div className="flex gap-2">
-            {(["blitz", "wrapper"] as Mode[]).map((m) => (
-              <Button
-                key={m}
-                variant={mode === m ? "default" : "outline"}
-                size="sm"
-                onClick={() => switchMode(m)}
-                disabled={gameStatus === "playing"}
-                data-testid={`button-mode-${m}`}
-                className="capitalize"
-              >
-                {m === "blitz" ? "Blitz (90s)" : "Wrapper (2min)"}
-              </Button>
-            ))}
-          </div>
+          {/* Mode tabs — hidden when mode is pre-selected by daily/group context */}
+          {!initialMode && (
+            <div className="flex gap-2">
+              {(["blitz", "wrapper"] as Mode[]).map((m) => (
+                <Button
+                  key={m}
+                  variant={mode === m ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => switchMode(m)}
+                  disabled={gameStatus === "playing"}
+                  data-testid={`button-mode-${m}`}
+                  className="capitalize"
+                >
+                  {m === "blitz" ? "Blitz (90s)" : "Wrapper (2min)"}
+                </Button>
+              ))}
+            </div>
+          )}
 
           {/* Header: timer + score */}
           <div className="flex items-center justify-between">

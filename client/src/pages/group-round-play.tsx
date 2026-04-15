@@ -26,6 +26,7 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
+import { ShellWordsGame } from "@/components/games/shell-words";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 import { CommentSection } from "@/components/comment-section";
 
@@ -37,6 +38,7 @@ const GAME_NAMES: Record<string, string> = {
   "letter-hunt": "Letter Hunt", "letter-balance": "Letter Balance",
   "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
+  "shell-words": "Shell Words",
 };
 
 const LETTER_BALANCE_CATEGORIES = [
@@ -89,6 +91,10 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
       return <WordSweepGame mode={sweepMode} groupSeed={seed} locked />;
     }
     case "word-roots": return <WordRootsGame groupSeed={seed} locked />;
+    case "shell-words": {
+      const shellMode = seed % 2 === 0 ? "blitz" : "wrapper";
+      return <ShellWordsGame initialMode={shellMode} groupSeed={seed} locked />;
+    }
     default: return null;
   }
 }
