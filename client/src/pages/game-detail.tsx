@@ -20,6 +20,7 @@ import type { Game, FriendChallenge } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { CommentSection } from "@/components/comment-section";
 import { LikeButton } from "@/components/like-button";
+import { MiniLeaderboard } from "@/components/mini-leaderboard";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -239,7 +240,7 @@ export default function GameDetail() {
               <CommentSection targetType="game" targetId={game.slug} />
             </div>
 
-            <div className="lg:sticky lg:top-24 h-fit">
+            <div className="lg:sticky lg:top-24 h-fit space-y-4">
               <Card>
                 <CardContent className="p-6 space-y-4">
                   <div className="text-center">
@@ -259,6 +260,7 @@ export default function GameDetail() {
                   </Button>
                 </CardContent>
               </Card>
+              <MiniLeaderboard game={game} />
             </div>
           </motion.div>
         ) : (
