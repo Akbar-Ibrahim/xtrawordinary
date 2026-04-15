@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { SoundProvider } from "@/lib/sound-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { Navigation } from "@/components/navigation";
+import { Footer } from "@/components/footer";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
 import Stats from "@/pages/stats";
@@ -56,11 +57,12 @@ function App() {
         <ThemeProvider>
           <SoundProvider>
             <TooltipProvider>
-            <div className="min-h-screen bg-background">
+            <div className="min-h-screen bg-background flex flex-col">
               <Navigation />
-              <main>
+              <main className="flex-1">
                 <Router />
               </main>
+              <Footer />
             </div>
             <Toaster />
             </TooltipProvider>

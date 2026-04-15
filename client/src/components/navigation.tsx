@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Gamepad2, Home, Info, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
+import { Sun, Moon, Gamepad2, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
@@ -22,7 +22,6 @@ export function Navigation() {
     { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },
-    { href: "/about", label: "About", icon: Info },
   ];
 
   return (
