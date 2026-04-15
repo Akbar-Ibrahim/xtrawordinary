@@ -526,7 +526,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
                     )}
                   </div>
 
-                  <div aria-live="polite">
+                  <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
                     {feedback && feedback.type !== "correct" && (
                       <motion.p
                         initial={{ opacity: 0, y: -10 }}

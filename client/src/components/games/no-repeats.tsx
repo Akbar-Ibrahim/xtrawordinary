@@ -489,7 +489,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
               </Button>
             </form>
 
-            <div aria-live="polite">
+            <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
               <AnimatePresence mode="wait">
                 {feedback && (
                   <motion.div

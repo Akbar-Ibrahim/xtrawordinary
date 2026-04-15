@@ -459,7 +459,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
             />
           )}
 
-          <div aria-live="polite">
+          <div aria-live="polite" className="min-h-[3.5rem] flex items-center justify-center">
             <AnimatePresence>
               {feedback && (
                 <motion.div
@@ -467,7 +467,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   data-testid={`feedback-${feedback.type}`}
-                  className={`text-center p-3 rounded-lg ${
+                  className={`w-full text-center p-3 rounded-lg ${
                     feedback.type === "correct"
                       ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                       : feedback.type === "wrong"

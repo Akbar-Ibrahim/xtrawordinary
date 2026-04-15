@@ -317,13 +317,14 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
                 </div>
               </div>
 
+              <div aria-live="polite" className="min-h-[2.25rem] flex items-center justify-center">
               <AnimatePresence>
                 {feedback && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -8 }}
-                    className={`text-center text-sm font-semibold py-2 rounded-md ${
+                    className={`w-full text-center text-sm font-semibold py-2 rounded-md ${
                       feedback.type === "bonus"
                         ? "text-yellow-600 bg-yellow-50 dark:bg-yellow-950"
                         : feedback.type === "correct"
@@ -337,6 +338,7 @@ export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locke
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
 
               <div className="space-y-2">
                 <Input

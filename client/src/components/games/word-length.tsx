@@ -500,7 +500,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
                     </Button>
                   </form>
 
-                  <div aria-live="polite">
+                  <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
                     <AnimatePresence mode="wait">
                       {feedback && (
                         <motion.div

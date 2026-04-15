@@ -321,6 +321,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                     </div>
                   </div>
 
+                  <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
                   <AnimatePresence>
                     {feedback && (
                       <motion.div
@@ -334,6 +335,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                       </motion.div>
                     )}
                   </AnimatePresence>
+                  </div>
 
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={clearSelection} disabled={selectedCells.length === 0 || isSubmitting} className="gap-1.5" data-testid="button-clear">
@@ -792,6 +794,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
               {currentWord || "Select letters..."}
             </div>
 
+            <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
             <AnimatePresence>
               {feedback && (
                 <motion.div
@@ -805,6 +808,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
                 </motion.div>
               )}
             </AnimatePresence>
+            </div>
 
             <div className="flex items-center justify-center gap-2">
               <Button variant="outline" size="sm" onClick={clearSelection} disabled={selectedCells.length === 0} className="gap-1.5" data-testid="button-clear">

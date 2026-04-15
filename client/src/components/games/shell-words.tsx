@@ -384,6 +384,7 @@ export function ShellWordsGame({
               </div>
 
               {/* Feedback */}
+              <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
               <AnimatePresence>
                 {feedback && (
                   <motion.div
@@ -407,6 +408,7 @@ export function ShellWordsGame({
                   </motion.div>
                 )}
               </AnimatePresence>
+              </div>
 
               {/* End Game button */}
               {!locked && (
