@@ -115,6 +115,7 @@ export function ShellWordsGame({
   const feedbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const foundSet = useRef<Set<string>>(new Set());
   const scoreRef = useRef(0);
+  const solvedCountRef = useRef(0);
   const variationRef = useRef<Variation>(variation);
   const subModeRef = useRef<SubMode>(subMode);
   const timeLeftRef = useRef(BLITZ_TIME);
@@ -145,10 +146,10 @@ export function ShellWordsGame({
       setCompletionMessage(getCompletionMessage(true));
       let finalScore = scoreRef.current;
       if (variationRef.current === "wrapper" && subModeRef.current === "classic") {
-        finalScore = wrapperClassicScore(foundSet.current.size, tLeft);
+        finalScore = wrapperClassicScore(solvedCountRef.current, tLeft);
       }
       setScore(finalScore);
-      reportResult(finalScore, true, foundSet.current.size);
+      reportResult(finalScore, true, solvedCountRef.current);
     },
     [reportResult]
   );
@@ -186,19 +187,6 @@ export function ShellWordsGame({
     }, 1000);
   }, [endGame]);
 
-  const resetSurvivalTimer = useCallback(() => {
-    if (survivalTimerRef.current) clearInterval(survivalTimerRef.current);
-    setSurvivalTime(SURVIVAL_TIME);
-    let remaining = SURVIVAL_TIME;
-    survivalTimerRef.current = setInterval(() => {
-      remaining -= 1;
-      setSurvivalTime(remaining);
-      if (remaining <= 0) {
-        clearInterval(survivalTimerRef.current!);
-        endGame(0);
-      }
-    }, 1000);
-  }, [endGame]);
 
   const fetchWrapperPuzzle = useCallback(async (seed: number) => {
     const res = await fetch(`/api/games/shell-words/puzzle?seed=${seed}`, { credentials: "include" });
@@ -243,11 +231,8 @@ export function ShellWordsGame({
     setInput("");
     setFeedback(null);
     setCompletionMessage("");
+    solvedCountRef.current = 0;
     setCrackAdvancing(false);
-
-    if (variation === "wrapper" || (variation === "blitz" && subMode === "survival") || variation === "crack") {
-      // no-op for blitz classic
-    }
 
     if (variation === "wrapper") {
       const seed = groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000);
@@ -343,6 +328,7 @@ export function ShellWordsGame({
 
         const pts = crackScore(word.length);
         scoreRef.current += pts;
+        solvedCountRef.current++;
         setScore(scoreRef.current);
         setFoundWords(prev => [{ outer, inner: word, points: pts }, ...prev]);
         setFeedback({ type: "ok", message: `+${pts} pts` });
@@ -355,7 +341,7 @@ export function ShellWordsGame({
             advanceCrackRound(crackRound + 1, crackSeedBase);
           }, 600);
         } else {
-          resetSurvivalTimer();
+          startSurvivalTimer();
           const newSeed = Math.floor(Math.random() * 100000);
           fetchCrackPair(newSeed).then(pair => {
             setCrackPair(pair);
@@ -397,6 +383,7 @@ export function ShellWordsGame({
       foundSet.current.add(word);
       const pts = variation === "blitz" ? blitzScore(word.length) : 15;
       scoreRef.current += pts;
+      solvedCountRef.current++;
       setFoundWords(prev => [{ outer: word, inner: data.innerWord!, points: pts }, ...prev]);
       setScore(scoreRef.current);
       setFeedback({
@@ -407,7 +394,7 @@ export function ShellWordsGame({
       clearFeedback();
 
       if (variation === "wrapper" && subMode === "survival") {
-        resetSurvivalTimer();
+        startSurvivalTimer();
         const newSeed = wrapperSeed + 1;
         setWrapperSeed(newSeed);
         foundSet.current = new Set();
@@ -427,7 +414,7 @@ export function ShellWordsGame({
       }
 
       if (variation === "blitz" && subMode === "survival") {
-        resetSurvivalTimer();
+        startSurvivalTimer();
       }
 
     } catch {
@@ -441,7 +428,7 @@ export function ShellWordsGame({
     input, isValidating, gameStatus, crackAdvancing,
     variation, subMode, crackPair, crackRound, crackSeedBase,
     puzzleMiddle, puzzleCount, wrapperSeed,
-    clearFeedback, endGame, advanceCrackRound, resetSurvivalTimer,
+    clearFeedback, endGame, advanceCrackRound, startSurvivalTimer,
     fetchWrapperPuzzle, fetchCrackPair,
   ]);
 
