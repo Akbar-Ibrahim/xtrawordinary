@@ -308,12 +308,12 @@ export function ShellWordsGame({
     try {
       if (variation === "crack") {
         if (!crackPair) return;
-        const outer = crackPair.first + word + crackPair.last;
-        if (outer[0] !== crackPair.first || outer[outer.length - 1] !== crackPair.last) {
-          setFeedback({ type: "err", message: "Middle word must fit between the boundary letters" });
+        if (!/^[A-Z]+$/.test(word)) {
+          setFeedback({ type: "err", message: "Middle word must contain letters only" });
           clearFeedback();
           return;
         }
+        const outer = crackPair.first + word + crackPair.last;
 
         const res = await fetch(
           `/api/games/shell-words/validate?word=${encodeURIComponent(outer)}`,
