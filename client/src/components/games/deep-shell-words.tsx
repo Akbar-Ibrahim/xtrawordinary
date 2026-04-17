@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Trophy,
   Zap,
+  SkipForward,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
@@ -468,6 +469,13 @@ export function DeepShellWordsGame({
     fetchWrapperPuzzle, fetchCrackPair,
   ]);
 
+  const handleSkip = useCallback(() => {
+    if (gameStatus !== "playing" || crackAdvancing || isValidating || variation !== "crack" || subMode !== "classic") return;
+    setInput("");
+    setCrackAdvancing(true);
+    advanceCrackRound(crackRound + 1, crackSeedBase);
+  }, [gameStatus, crackAdvancing, isValidating, variation, subMode, crackRound, crackSeedBase, advanceCrackRound]);
+
   useEffect(() => {
     return () => clearAllTimers();
   }, [clearAllTimers]);
@@ -662,6 +670,21 @@ export function DeepShellWordsGame({
                       → <span className="text-foreground font-bold">
                         {crackPair.first}{input}{crackPair.last}
                       </span>
+                    </div>
+                  )}
+                  {subMode === "classic" && (
+                    <div className="flex justify-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSkip}
+                        disabled={crackAdvancing || isValidating}
+                        className="text-muted-foreground gap-1.5"
+                        data-testid="button-skip"
+                      >
+                        <SkipForward className="h-3.5 w-3.5" />
+                        Skip
+                      </Button>
                     </div>
                   )}
                 </div>
