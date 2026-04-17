@@ -108,6 +108,7 @@ export function ShellWordsGame({
   const [crackRound, setCrackRound] = useState(0);
   const [crackSeedBase, setCrackSeedBase] = useState(0);
   const [crackAdvancing, setCrackAdvancing] = useState(false);
+  const [wrapperTransitioning, setWrapperTransitioning] = useState(false);
 
   const classicTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const survivalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -233,6 +234,7 @@ export function ShellWordsGame({
     setCompletionMessage("");
     solvedCountRef.current = 0;
     setCrackAdvancing(false);
+    setWrapperTransitioning(false);
 
     if (variation === "wrapper") {
       const seed = groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000);
@@ -291,6 +293,7 @@ export function ShellWordsGame({
       setCrackPair(null);
       setCrackRound(0);
       setCrackAdvancing(false);
+      setWrapperTransitioning(false);
       foundSet.current = new Set();
       resetRecorded();
     },
@@ -298,7 +301,7 @@ export function ShellWordsGame({
   );
 
   const handleSubmit = useCallback(async () => {
-    if (!input.trim() || isValidating || gameStatus !== "playing" || crackAdvancing) return;
+    if (!input.trim() || isValidating || gameStatus !== "playing" || crackAdvancing || wrapperTransitioning) return;
     const word = input.trim().toUpperCase();
 
     setIsValidating(true);
@@ -341,13 +344,16 @@ export function ShellWordsGame({
             advanceCrackRound(crackRound + 1, crackSeedBase);
           }, 600);
         } else {
+          setCrackAdvancing(true);
           startSurvivalTimer();
           const newSeed = Math.floor(Math.random() * 100000);
           fetchCrackPair(newSeed).then(pair => {
             setCrackPair(pair);
+            setCrackAdvancing(false);
             setTimeout(() => inputRef.current?.focus(), 50);
           }).catch(() => {
             setFeedback({ type: "err", message: "Failed to load next puzzle" });
+            setCrackAdvancing(false);
           });
         }
         return;
@@ -394,6 +400,7 @@ export function ShellWordsGame({
       clearFeedback();
 
       if (variation === "wrapper" && subMode === "survival") {
+        setWrapperTransitioning(true);
         startSurvivalTimer();
         const newSeed = wrapperSeed + 1;
         setWrapperSeed(newSeed);
@@ -401,9 +408,11 @@ export function ShellWordsGame({
         fetchWrapperPuzzle(newSeed).then(puzzle => {
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
+          setWrapperTransitioning(false);
           setTimeout(() => inputRef.current?.focus(), 50);
         }).catch(() => {
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
+          setWrapperTransitioning(false);
         });
         return;
       }
@@ -425,7 +434,7 @@ export function ShellWordsGame({
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [
-    input, isValidating, gameStatus, crackAdvancing,
+    input, isValidating, gameStatus, crackAdvancing, wrapperTransitioning,
     variation, subMode, crackPair, crackRound, crackSeedBase,
     puzzleMiddle, puzzleCount, wrapperSeed,
     clearFeedback, endGame, advanceCrackRound, startSurvivalTimer,
@@ -443,10 +452,6 @@ export function ShellWordsGame({
   const isSurvival = subMode === "survival";
   const modeKey = `${variation}-${subMode}`;
 
-  const finalDisplayScore =
-    variation === "wrapper" && subMode === "classic"
-      ? wrapperClassicScore(foundWords.length, timeLeft)
-      : score;
 
   return (
     <>
@@ -767,7 +772,7 @@ export function ShellWordsGame({
               <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
                 <div className="p-3 rounded-lg bg-muted/50 text-center">
                   <div className="text-2xl font-bold" data-testid="text-final-score">
-                    {finalDisplayScore}
+                    {score}
                   </div>
                   <div className="text-xs text-muted-foreground">Score</div>
                 </div>
@@ -806,7 +811,7 @@ export function ShellWordsGame({
               <ShareResults
                 gameName={`Shell Words: ${VARIATION_LABELS[variation]} ${subMode === "survival" ? "Survival" : "Classic"}`}
                 gameSlug={activeSlug}
-                score={finalDisplayScore}
+                score={score}
                 wordsCompleted={foundWords.length}
                 isWin
               />
