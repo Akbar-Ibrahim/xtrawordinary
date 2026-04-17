@@ -311,6 +311,11 @@ export function ShellWordsGame({
         if (!/^[A-Z]+$/.test(word)) {
           setFeedback({ type: "err", message: "Middle word must contain letters only" });
           clearFeedback();
+          setInput("");
+          if (subMode === "classic") {
+            setCrackAdvancing(true);
+            setTimeout(() => { advanceCrackRound(crackRound + 1, crackSeedBase); }, 1500);
+          }
           return;
         }
         const outer = crackPair.first + word + crackPair.last;
