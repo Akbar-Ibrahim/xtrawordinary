@@ -120,6 +120,7 @@ export function ShellWordsGame({
   const variationRef = useRef<Variation>(variation);
   const subModeRef = useRef<SubMode>(subMode);
   const timeLeftRef = useRef(BLITZ_TIME);
+  const survivalTurnRef = useRef(0);
 
   useEffect(() => { variationRef.current = variation; }, [variation]);
   useEffect(() => { subModeRef.current = subMode; }, [subMode]);
@@ -174,11 +175,24 @@ export function ShellWordsGame({
     [endGame]
   );
 
+  const stopSurvivalTimer = useCallback(() => {
+    if (survivalTimerRef.current) {
+      clearInterval(survivalTimerRef.current);
+      survivalTimerRef.current = null;
+    }
+    survivalTurnRef.current++;
+  }, []);
+
   const startSurvivalTimer = useCallback(() => {
-    if (survivalTimerRef.current) clearInterval(survivalTimerRef.current);
+    stopSurvivalTimer();
+    const thisTurn = survivalTurnRef.current;
     setSurvivalTime(SURVIVAL_TIME);
     let remaining = SURVIVAL_TIME;
     survivalTimerRef.current = setInterval(() => {
+      if (survivalTurnRef.current !== thisTurn) {
+        clearInterval(survivalTimerRef.current!);
+        return;
+      }
       remaining -= 1;
       setSurvivalTime(remaining);
       if (remaining <= 0) {
@@ -186,7 +200,7 @@ export function ShellWordsGame({
         endGame(0);
       }
     }, 1000);
-  }, [endGame]);
+  }, [stopSurvivalTimer, endGame]);
 
 
   const fetchWrapperPuzzle = useCallback(async (seed: number) => {
@@ -355,6 +369,7 @@ export function ShellWordsGame({
             advanceCrackRound(crackRound + 1, crackSeedBase);
           }, 600);
         } else {
+          stopSurvivalTimer();
           setCrackAdvancing(true);
           const newSeed = Math.floor(Math.random() * 100000);
           fetchCrackPair(newSeed).then(pair => {
@@ -412,6 +427,7 @@ export function ShellWordsGame({
       clearFeedback();
 
       if (variation === "wrapper" && subMode === "survival") {
+        stopSurvivalTimer();
         setWrapperTransitioning(true);
         const newSeed = wrapperSeed + 1;
         setWrapperSeed(newSeed);
@@ -449,7 +465,7 @@ export function ShellWordsGame({
     input, isValidating, gameStatus, crackAdvancing, wrapperTransitioning,
     variation, subMode, crackPair, crackRound, crackSeedBase,
     puzzleMiddle, puzzleCount, wrapperSeed,
-    clearFeedback, endGame, advanceCrackRound, startSurvivalTimer,
+    clearFeedback, endGame, advanceCrackRound, startSurvivalTimer, stopSurvivalTimer,
     fetchWrapperPuzzle, fetchCrackPair,
   ]);
 
