@@ -432,6 +432,7 @@ export async function registerRoutes(
         "word-roots",
         "ladder-rush",
         "shell-words",
+        "deep-shell-words",
       ];
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -1340,7 +1341,7 @@ export async function registerRoutes(
     "word-ladder", "anagram-solver", "word-scramble", "definition-match",
     "letter-pool", "word-maker", "word-length", "letter-position",
     "letter-hunt", "letter-balance", "letter-frequency", "no-repeats",
-    "word-sweep", "word-roots",
+    "word-sweep", "word-roots", "shell-words", "deep-shell-words",
   ];
 
   app.get("/api/groups", async (req, res) => {

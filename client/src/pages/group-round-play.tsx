@@ -27,8 +27,23 @@ import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { ShellWordsGame } from "@/components/games/shell-words";
+import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 import { CommentSection } from "@/components/comment-section";
+
+const SLUG_TO_PRIMARY: Record<string, string> = {
+  "shell-words-guided": "shell-words",
+  "shell-words-blitz-survival": "shell-words",
+  "shell-words-wrapper-survival": "shell-words",
+  "shell-words-crack": "shell-words",
+  "shell-words-crack-survival": "shell-words",
+  "deep-shell-words-guided": "deep-shell-words",
+  "deep-shell-words-blitz-survival": "deep-shell-words",
+  "deep-shell-words-wrapper-survival": "deep-shell-words",
+  "deep-shell-words-crack": "deep-shell-words",
+  "deep-shell-words-crack-survival": "deep-shell-words",
+};
+function primarySlug(slug: string): string { return SLUG_TO_PRIMARY[slug] ?? slug; }
 
 const GAME_NAMES: Record<string, string> = {
   "word-ladder": "Word Ladder", "anagram-solver": "Anagram Solver",
@@ -39,6 +54,7 @@ const GAME_NAMES: Record<string, string> = {
   "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
   "shell-words": "Shell Words",
+  "deep-shell-words": "Deep Shell Words",
 };
 
 const LETTER_BALANCE_CATEGORIES = [
@@ -94,6 +110,10 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
     case "shell-words": {
       const shellMode = seed % 2 === 0 ? "blitz" : "wrapper";
       return <ShellWordsGame initialMode={shellMode} groupSeed={seed} locked />;
+    }
+    case "deep-shell-words": {
+      const deepShellMode = seed % 2 === 0 ? "blitz" : "wrapper";
+      return <DeepShellWordsGame initialMode={deepShellMode} groupSeed={seed} locked />;
     }
     default: return null;
   }
@@ -180,7 +200,7 @@ export default function GroupRoundPlay() {
     startTimeRef.current = Date.now();
     const handleResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail.slug !== data.round.gameSlug) return;
+      if (primarySlug(detail.slug) !== data.round.gameSlug) return;
       const score = detail.score ?? 0;
       const durationMs = startTimeRef.current ? Date.now() - startTimeRef.current : undefined;
       setFinalScore(score);

@@ -31,6 +31,7 @@ import { WordStackGame } from "@/components/games/word-stack";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { ShellWordsGame } from "@/components/games/shell-words";
+import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 interface DailyChallengeResponse {
@@ -43,6 +44,20 @@ interface DailyChallengeResponse {
 interface AttemptResponse {
   attempt: { id: number; userId: number; challengeDate: string; startedAt: string } | null;
 }
+
+const SLUG_TO_PRIMARY: Record<string, string> = {
+  "shell-words-guided": "shell-words",
+  "shell-words-blitz-survival": "shell-words",
+  "shell-words-wrapper-survival": "shell-words",
+  "shell-words-crack": "shell-words",
+  "shell-words-crack-survival": "shell-words",
+  "deep-shell-words-guided": "deep-shell-words",
+  "deep-shell-words-blitz-survival": "deep-shell-words",
+  "deep-shell-words-wrapper-survival": "deep-shell-words",
+  "deep-shell-words-crack": "deep-shell-words",
+  "deep-shell-words-crack-survival": "deep-shell-words",
+};
+function primarySlug(slug: string): string { return SLUG_TO_PRIMARY[slug] ?? slug; }
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -129,6 +144,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       const shellMode = seed % 2 === 0 ? "blitz" : "wrapper";
       return <ShellWordsGame initialMode={shellMode} groupSeed={seed} locked />;
     }
+    case "deep-shell-words": {
+      const deepShellMode = seed % 2 === 0 ? "blitz" : "wrapper";
+      return <DeepShellWordsGame initialMode={deepShellMode} groupSeed={seed} locked />;
+    }
     default:
       return null;
   }
@@ -179,7 +198,7 @@ export default function DailyChallenge() {
     if (!data || !isPlaying || completed) return;
     const handleGameResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail.slug !== data.slug) return;
+      if (primarySlug(detail.slug) !== data.slug) return;
       saveDailyChallengeRecord({
         date: data.date,
         slug: data.slug,
