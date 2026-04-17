@@ -345,11 +345,11 @@ export function ShellWordsGame({
           }, 600);
         } else {
           setCrackAdvancing(true);
-          startSurvivalTimer();
           const newSeed = Math.floor(Math.random() * 100000);
           fetchCrackPair(newSeed).then(pair => {
             setCrackPair(pair);
             setCrackAdvancing(false);
+            startSurvivalTimer();
             setTimeout(() => inputRef.current?.focus(), 50);
           }).catch(() => {
             setFeedback({ type: "err", message: "Failed to load next puzzle" });
@@ -401,7 +401,6 @@ export function ShellWordsGame({
 
       if (variation === "wrapper" && subMode === "survival") {
         setWrapperTransitioning(true);
-        startSurvivalTimer();
         const newSeed = wrapperSeed + 1;
         setWrapperSeed(newSeed);
         foundSet.current = new Set();
@@ -409,6 +408,7 @@ export function ShellWordsGame({
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
           setWrapperTransitioning(false);
+          startSurvivalTimer();
           setTimeout(() => inputRef.current?.focus(), 50);
         }).catch(() => {
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
