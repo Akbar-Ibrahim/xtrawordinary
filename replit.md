@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering 21 interactive vocabulary games designed for educational entertainment and vocabulary improvement. It's a full-stack TypeScript project with a React frontend and Express backend. Key features include optional user accounts (Google OAuth + email/password), a global leaderboard, and hybrid statistics that work for both guests (localStorage) and signed-in users (synced to backend). The platform aims to provide an engaging experience for vocabulary enhancement with diverse game mechanics.
+WordPlay is a web-based platform offering 22 interactive vocabulary games designed for educational entertainment and vocabulary improvement. It's a full-stack TypeScript project with a React frontend and Express backend. Key features include optional user accounts (Google OAuth + email/password), a global leaderboard, and hybrid statistics that work for both guests (localStorage) and signed-in users (synced to backend). The platform aims to provide an engaging experience for vocabulary enhancement with diverse game mechanics.
 
 **Word Sweep** has two modes: Classic (free-form 6×6 grid, gravity, shuffle) and Guided (timed 6×6 puzzle with known word list, speed scoring: `max(50, 1000 - elapsed_seconds*5 - wrong_attempts*50)`). Leaderboard tabs for each mode (Classic → `word-sweep`, Guided → `word-unpack`). Daily challenge and group rounds use `seed % 2 === 0 → classic, odd → guided`.
 
@@ -14,6 +14,15 @@ WordPlay is a web-based platform offering 21 interactive vocabulary games design
 - Crack Classic (`shell-words-crack`, 10 rounds): given boundary letters, type the middle; score = 20 + innerLen×8
 - Crack Survival (`shell-words-crack-survival`): 8s per boundary pair, correct → new pair
 Shell word data: `shellWordSet` (O(1) lookup), `shellWordPuzzles` (≥3 wrappers), `crackPuzzles` (boundary letter pairs with ≥2 valid shells). APIs: `GET /api/games/shell-words/validate?word=`, `GET /api/games/shell-words/puzzle?seed=`, `GET /api/games/shell-words/crack?seed=`. Mode selector hidden when `initialMode` prop set (daily/group context).
+
+**Deep Shell Words** (id: 22, slug: `deep-shell-words`): Same structure as Shell Words but removes the first TWO and last TWO letters (e.g., STRANGER → RANG, SPLINTER → LINT). Minimum outer word length 7 letters. Three variations × two sub-modes = 6 slugs total:
+- Blitz Classic (`deep-shell-words`, 90s): find any deep shell words; score = 10 + outerLen×2
+- Blitz Survival (`deep-shell-words-blitz-survival`): 8s per word, correct → reset clock
+- Wrapper Classic (`deep-shell-words-guided`, 2min): given inner word, find all wrappers; score = found×15 + timeLeft×2
+- Wrapper Survival (`deep-shell-words-wrapper-survival`): 8s per wrapper, correct → new inner word
+- Crack Classic (`deep-shell-words-crack`, 10 rounds): given 2-letter boundary pairs, type the middle; score = 20 + innerLen×8
+- Crack Survival (`deep-shell-words-crack-survival`): 8s per boundary pair, correct → new pair
+Deep shell data: `deepShellWordSet`, `deepShellWordPuzzles` (≥3 wrappers), `deepCrackPuzzles` (2-char boundary pairs with ≥2 valid shells). APIs: `GET /api/games/deep-shell-words/validate?word=`, `GET /api/games/deep-shell-words/puzzle?seed=`, `GET /api/games/deep-shell-words/crack?seed=`. Daily challenge and group round integration deferred (out of scope).
 
 ## User Preferences
 

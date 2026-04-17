@@ -149,6 +149,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/deep-shell-words/validate", async (req, res) => {
+    try {
+      const word = (req.query.word as string) || "";
+      const result = await dataSource.validateDeepShellWord(word);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word" });
+    }
+  });
+
+  app.get("/api/games/deep-shell-words/puzzle", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getDeepShellWordPuzzle(seed);
+      if (!puzzle) return res.status(404).json({ message: "No puzzle found" });
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch puzzle" });
+    }
+  });
+
+  app.get("/api/games/deep-shell-words/crack", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getDeepCrackPuzzle(seed);
+      if (!puzzle) return res.status(404).json({ message: "No crack puzzle found" });
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch crack puzzle" });
+    }
+  });
+
   app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
       const allPuzzles = await dataSource.getWordRootsPuzzles();

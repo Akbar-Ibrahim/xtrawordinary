@@ -1,7 +1,7 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
-import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles } from "./game-data";
+import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles } from "./game-data";
 
 export class MemStorage implements IStorage {
   private games: Game[];
@@ -360,6 +360,29 @@ export class MemStorage implements IStorage {
     if (crackPuzzles.length === 0) return null;
     const idx = ((seed % crackPuzzles.length) + crackPuzzles.length) % crackPuzzles.length;
     return crackPuzzles[idx];
+  }
+
+  async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
+    const upper = word.toUpperCase().trim();
+    if (upper.length < 7) return { valid: false, innerWord: null };
+    const inner = upper.slice(2, -2);
+    if (deepShellWordSet.has(upper)) {
+      return { valid: true, innerWord: inner };
+    }
+    return { valid: false, innerWord: null };
+  }
+
+  async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> {
+    if (deepShellWordPuzzles.length === 0) return null;
+    const idx = ((seed % deepShellWordPuzzles.length) + deepShellWordPuzzles.length) % deepShellWordPuzzles.length;
+    const puzzle = deepShellWordPuzzles[idx];
+    return { middle: puzzle.middle, count: puzzle.wrappers.length };
+  }
+
+  async getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> {
+    if (deepCrackPuzzles.length === 0) return null;
+    const idx = ((seed % deepCrackPuzzles.length) + deepCrackPuzzles.length) % deepCrackPuzzles.length;
+    return deepCrackPuzzles[idx];
   }
 
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {

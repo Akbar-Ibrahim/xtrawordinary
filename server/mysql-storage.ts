@@ -52,6 +52,14 @@ export class MySQLStorage implements IStorage {
       { label: "Crack", slug: "shell-words-crack" },
       { label: "Crack Survival", slug: "shell-words-crack-survival" },
     ],
+    "deep-shell-words": [
+      { label: "Blitz", slug: "deep-shell-words" },
+      { label: "Blitz Survival", slug: "deep-shell-words-blitz-survival" },
+      { label: "Wrapper", slug: "deep-shell-words-guided" },
+      { label: "Wrapper Survival", slug: "deep-shell-words-wrapper-survival" },
+      { label: "Crack", slug: "deep-shell-words-crack" },
+      { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
+    ],
   };
 
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
@@ -139,6 +147,9 @@ export class MySQLStorage implements IStorage {
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateShellWord(word); }
   async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getShellWordPuzzle(seed); }
   async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return this.gameData.getCrackPuzzle(seed); }
+  async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateDeepShellWord(word); }
+  async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getDeepShellWordPuzzle(seed); }
+  async getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return this.gameData.getDeepCrackPuzzle(seed); }
 
   private toUser(row: any): User {
     return {

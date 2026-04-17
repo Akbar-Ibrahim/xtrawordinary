@@ -49,6 +49,9 @@ export interface IStorage {
   validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }>;
   getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null>;
   getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null>;
+  validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }>;
+  getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null>;
+  getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;

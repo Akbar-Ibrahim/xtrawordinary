@@ -488,6 +488,58 @@ export const crackPuzzles: CrackPuzzle[] = (() => {
   return result;
 })();
 
+export const deepShellWordSet: Set<string> = (() => {
+  const result = new Set<string>();
+  for (const word of wordDictionary) {
+    if (word.length >= 7 && _dictSet.has(word.slice(2, -2))) {
+      result.add(word);
+    }
+  }
+  return result;
+})();
+
+export interface DeepShellWordPuzzle {
+  middle: string;
+  wrappers: string[];
+}
+
+export const deepShellWordPuzzles: DeepShellWordPuzzle[] = (() => {
+  const middleMap = new Map<string, string[]>();
+  for (const word of deepShellWordSet) {
+    const inner = word.slice(2, -2);
+    if (!middleMap.has(inner)) middleMap.set(inner, []);
+    middleMap.get(inner)!.push(word);
+  }
+  const result: DeepShellWordPuzzle[] = [];
+  for (const [middle, wrappers] of middleMap.entries()) {
+    if (wrappers.length >= 3) {
+      result.push({ middle, wrappers });
+    }
+  }
+  return result;
+})();
+
+export interface DeepCrackPuzzle {
+  first: string;
+  last: string;
+}
+
+export const deepCrackPuzzles: DeepCrackPuzzle[] = (() => {
+  const pairCount = new Map<string, number>();
+  for (const word of deepShellWordSet) {
+    const key = `${word.slice(0, 2)}-${word.slice(-2)}`;
+    pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
+  }
+  const result: DeepCrackPuzzle[] = [];
+  for (const [key, count] of pairCount.entries()) {
+    if (count >= 2) {
+      const dashIdx = key.indexOf("-");
+      result.push({ first: key.slice(0, dashIdx), last: key.slice(dashIdx + 1) });
+    }
+  }
+  return result;
+})();
+
 export const gamesData: Game[] = [
   {
     id: 1,
@@ -942,6 +994,36 @@ export const gamesData: Game[] = [
       { label: "Wrapper Survival", slug: "shell-words-wrapper-survival" },
       { label: "Crack", slug: "shell-words-crack" },
       { label: "Crack Survival", slug: "shell-words-crack-survival" },
+    ],
+  },
+  {
+    id: 22,
+    slug: "deep-shell-words",
+    name: "Deep Shell Words",
+    description: "Strip the first two and last two letters to reveal the hidden inner word — a deeper challenge!",
+    longDescription: "A more devious twist on Shell Words! Remove the first TWO and last TWO letters of any valid word to reveal a hidden inner word. For example, STRANGER → RANG, SPLINTER → LINT, SPRINGER → RING. Three variations: Blitz (find deep shell words freely), Wrapper (given an inner word, find the shells), and Crack (given two boundary letters on each side, find the inner word). Each variation has Classic and Survival sub-modes.",
+    rules: [
+      "A deep shell word is a word where removing the first TWO AND last TWO letters reveals another valid word",
+      "Example: STRANGER → RANG, SPLINTER → LINT, SPRINGER → RING",
+      "Words must be at least 7 letters long (2 outer + 3 inner + 2 outer)",
+      "Blitz: Enter as many deep shell words as you can — Classic gives 90 seconds, Survival resets an 8s clock per word",
+      "Wrapper: Given an inner word, find outer shells — Classic finds all in 2 min, Survival gives 8s per wrapper",
+      "Crack: Given two boundary letters on each side, type a word that fits in the middle to form a deep shell word",
+      "Crack Classic: 10 rounds at your own pace. Crack Survival: 8s per boundary pair",
+      "The server validates all words — the dictionary never leaves the server",
+    ],
+    difficulty: "hard",
+    estimatedTime: "2-3 min",
+    icon: "Shell",
+    color: "hsl(200, 70%, 40%)",
+    playCount: 0,
+    modes: [
+      { label: "Blitz", slug: "deep-shell-words" },
+      { label: "Blitz Survival", slug: "deep-shell-words-blitz-survival" },
+      { label: "Wrapper", slug: "deep-shell-words-guided" },
+      { label: "Wrapper Survival", slug: "deep-shell-words-wrapper-survival" },
+      { label: "Crack", slug: "deep-shell-words-crack" },
+      { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
     ],
   }
 ];
