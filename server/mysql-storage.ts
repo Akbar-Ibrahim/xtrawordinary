@@ -134,6 +134,7 @@ export class MySQLStorage implements IStorage {
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateShellWord(word); }
   async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getShellWordPuzzle(seed); }
+  async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return this.gameData.getCrackPuzzle(seed); }
 
   private toUser(row: any): User {
     return {

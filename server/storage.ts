@@ -48,6 +48,7 @@ export interface IStorage {
   generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle>;
   validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }>;
   getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null>;
+  getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;

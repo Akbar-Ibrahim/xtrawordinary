@@ -467,6 +467,27 @@ export const shellWordPuzzles: ShellWordPuzzle[] = (() => {
   return result;
 })();
 
+export interface CrackPuzzle {
+  first: string;
+  last: string;
+}
+
+export const crackPuzzles: CrackPuzzle[] = (() => {
+  const pairCount = new Map<string, number>();
+  for (const word of shellWordSet) {
+    const key = `${word[0]}-${word[word.length - 1]}`;
+    pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
+  }
+  const result: CrackPuzzle[] = [];
+  for (const [key, count] of pairCount.entries()) {
+    if (count >= 2) {
+      const [first, last] = key.split("-");
+      result.push({ first, last });
+    }
+  }
+  return result;
+})();
+
 export const gamesData: Game[] = [
   {
     id: 1,
@@ -899,14 +920,15 @@ export const gamesData: Game[] = [
     slug: "shell-words",
     name: "Shell Words",
     description: "Find words that hide another word inside — remove the first and last letter to reveal it!",
-    longDescription: "A hidden word lurks inside every shell word! Remove the first and last letter of any valid word to reveal the inner word. For example, MORALE → ORAL, BRAND → RAN, GRAPE → RAP. Play Blitz mode to find as many shell words as you can in 90 seconds, or try Wrapper mode where you're given an inner word and must find all the outer shells that wrap it!",
+    longDescription: "A hidden word lurks inside every shell word! Remove the first and last letter of any valid word to reveal the inner word. For example, MORALE → ORAL, BRAND → RAN, GRAPE → RAP. Three variations: Blitz (find shell words freely), Wrapper (given an inner word, find the shells), and Crack (given boundary letters, find the inner word). Each variation has Classic and Survival sub-modes.",
     rules: [
       "A shell word is a word where removing the first AND last letter reveals another valid word",
       "Example: BRAND → RAN, MORALE → ORAL, GRAPE → RAP",
-      "Blitz mode: Enter as many shell words as possible in 90 seconds",
-      "Wrapper mode: You're given an inner word — find all words that wrap around it",
+      "Blitz: Enter as many shell words as you can — Classic gives 90 seconds, Survival resets an 8s clock per word",
+      "Wrapper: Given an inner word, find outer shells — Classic finds all in 2 min, Survival gives 8s per wrapper",
+      "Crack: Given boundary letters (e.g. B and D), type a word that fits in the middle to form a shell word",
+      "Crack Classic: 10 rounds at your own pace. Crack Survival: 8s per boundary pair",
       "The server validates all words — the dictionary never leaves the server",
-      "Longer outer words score more points in Blitz mode",
     ],
     difficulty: "medium",
     estimatedTime: "2-3 min",
@@ -915,7 +937,11 @@ export const gamesData: Game[] = [
     playCount: 0,
     modes: [
       { label: "Blitz", slug: "shell-words" },
+      { label: "Blitz Survival", slug: "shell-words-blitz-survival" },
       { label: "Wrapper", slug: "shell-words-guided" },
+      { label: "Wrapper Survival", slug: "shell-words-wrapper-survival" },
+      { label: "Crack", slug: "shell-words-crack" },
+      { label: "Crack Survival", slug: "shell-words-crack-survival" },
     ],
   }
 ];

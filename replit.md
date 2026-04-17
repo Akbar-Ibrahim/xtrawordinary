@@ -6,7 +6,14 @@ WordPlay is a web-based platform offering 21 interactive vocabulary games design
 
 **Word Sweep** has two modes: Classic (free-form 6×6 grid, gravity, shuffle) and Guided (timed 6×6 puzzle with known word list, speed scoring: `max(50, 1000 - elapsed_seconds*5 - wrong_attempts*50)`). Leaderboard tabs for each mode (Classic → `word-sweep`, Guided → `word-unpack`). Daily challenge and group rounds use `seed % 2 === 0 → classic, odd → guided`.
 
-**Shell Words** (id: 21, slug: `shell-words`): A game where removing the first and last letter of a word reveals a hidden inner word (e.g., BRAND → RAN). Two modes: Blitz (90s free entry, slug `shell-words`, score = 10 + outerLen×2) and Wrapper (2min, given middle word find wrappers, slug `shell-words-guided`, score = found×15 + timeLeft×2). Shell word data precomputed at startup in `server/game-data.ts` using `shellWordSet` (O(1) lookup) and `shellWordPuzzles` (≥3 wrappers each). API: `GET /api/games/shell-words/validate?word=` and `GET /api/games/shell-words/puzzle?seed=`.
+**Shell Words** (id: 21, slug: `shell-words`): A game where removing the first and last letter of a word reveals a hidden inner word (e.g., BRAND → RAN). Three variations × two sub-modes = 6 slugs total:
+- Blitz Classic (`shell-words`, 90s): find any shell words; score = 10 + outerLen×2
+- Blitz Survival (`shell-words-blitz-survival`): 8s per word, correct → reset clock
+- Wrapper Classic (`shell-words-guided`, 2min): given inner word, find all wrappers; score = found×15 + timeLeft×2
+- Wrapper Survival (`shell-words-wrapper-survival`): 8s per wrapper, correct → new inner word
+- Crack Classic (`shell-words-crack`, 10 rounds): given boundary letters, type the middle; score = 20 + innerLen×8
+- Crack Survival (`shell-words-crack-survival`): 8s per boundary pair, correct → new pair
+Shell word data: `shellWordSet` (O(1) lookup), `shellWordPuzzles` (≥3 wrappers), `crackPuzzles` (boundary letter pairs with ≥2 valid shells). APIs: `GET /api/games/shell-words/validate?word=`, `GET /api/games/shell-words/puzzle?seed=`, `GET /api/games/shell-words/crack?seed=`. Mode selector hidden when `initialMode` prop set (daily/group context).
 
 ## User Preferences
 

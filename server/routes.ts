@@ -137,6 +137,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/shell-words/crack", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getCrackPuzzle(seed);
+      if (!puzzle) return res.status(404).json({ message: "No crack puzzle found" });
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch crack puzzle" });
+    }
+  });
+
   app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
       const allPuzzles = await dataSource.getWordRootsPuzzles();
