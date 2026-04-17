@@ -324,6 +324,7 @@ export function ShellWordsGame({
           `/api/games/shell-words/validate?word=${encodeURIComponent(outer)}`,
           { credentials: "include" }
         );
+        if (!res.ok) throw new Error("Validation request failed");
         const data = (await res.json()) as { valid: boolean; innerWord: string | null };
 
         if (!data.valid) {
@@ -380,6 +381,7 @@ export function ShellWordsGame({
         `/api/games/shell-words/validate?word=${encodeURIComponent(word)}`,
         { credentials: "include" }
       );
+      if (!res.ok) throw new Error("Validation request failed");
       const data = (await res.json()) as { valid: boolean; innerWord: string | null };
 
       if (!data.valid) {
