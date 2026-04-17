@@ -309,6 +309,11 @@ export function ShellWordsGame({
       if (variation === "crack") {
         if (!crackPair) return;
         const outer = crackPair.first + word + crackPair.last;
+        if (outer[0] !== crackPair.first || outer[outer.length - 1] !== crackPair.last) {
+          setFeedback({ type: "err", message: "Middle word must fit between the boundary letters" });
+          clearFeedback();
+          return;
+        }
 
         const res = await fetch(
           `/api/games/shell-words/validate?word=${encodeURIComponent(outer)}`,
@@ -559,6 +564,12 @@ export function ShellWordsGame({
                 <p className="font-semibold text-base">
                   {VARIATION_LABELS[variation]} — {subMode === "classic" ? "Classic" : "Survival"}
                 </p>
+                {isSurvival && (
+                  <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-400 text-xs font-medium">
+                    <Zap className="h-3 w-3" />
+                    8 seconds per word
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                   {MODE_DESCRIPTIONS[modeKey]}
                 </p>
