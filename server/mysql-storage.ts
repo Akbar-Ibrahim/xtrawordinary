@@ -46,7 +46,11 @@ export class MySQLStorage implements IStorage {
     ],
     "shell-words": [
       { label: "Blitz", slug: "shell-words" },
+      { label: "Blitz Survival", slug: "shell-words-blitz-survival" },
       { label: "Wrapper", slug: "shell-words-guided" },
+      { label: "Wrapper Survival", slug: "shell-words-wrapper-survival" },
+      { label: "Crack", slug: "shell-words-crack" },
+      { label: "Crack Survival", slug: "shell-words-crack-survival" },
     ],
   };
 
