@@ -385,6 +385,17 @@ export class MemStorage implements IStorage {
     return deepCrackPuzzles[idx];
   }
 
+  async getDeepCrackAnswer(seed: number): Promise<string | null> {
+    const pair = await this.getDeepCrackPuzzle(seed);
+    if (!pair) return null;
+    for (const word of deepShellWordSet) {
+      if (word.slice(0, 2) === pair.first && word.slice(-2) === pair.last) {
+        return word.slice(2, -2);
+      }
+    }
+    return null;
+  }
+
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {
     const size = 6;
     const totalCells = size * size;

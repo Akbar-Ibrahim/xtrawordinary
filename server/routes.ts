@@ -183,6 +183,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/deep-shell-words/crack-answer", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const answer = await dataSource.getDeepCrackAnswer(seed);
+      if (!answer) return res.status(404).json({ message: "No answer found" });
+      res.json({ example: answer });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch crack answer" });
+    }
+  });
+
   app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
       const allPuzzles = await dataSource.getWordRootsPuzzles();

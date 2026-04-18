@@ -15,6 +15,7 @@ import {
   Trophy,
   Zap,
   SkipForward,
+  Eye,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
@@ -53,6 +54,7 @@ interface CrackRoundResult {
   status: "correct" | "skipped" | "failed";
   first: string;
   last: string;
+  seed?: number;
   inner?: string;
   outer?: string;
   points?: number;
@@ -121,6 +123,8 @@ export function DeepShellWordsGame({
   const [crackSeedBase, setCrackSeedBase] = useState(0);
   const [crackAdvancing, setCrackAdvancing] = useState(false);
   const [wrapperTransitioning, setWrapperTransitioning] = useState(false);
+  const [revealedAnswers, setRevealedAnswers] = useState<Record<number, string>>({});
+  const [loadingReveal, setLoadingReveal] = useState<Set<number>>(new Set());
 
   const classicTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const survivalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -261,6 +265,8 @@ export function DeepShellWordsGame({
     solvedCountRef.current = 0;
     setCrackAdvancing(false);
     setWrapperTransitioning(false);
+    setRevealedAnswers({});
+    setLoadingReveal(new Set());
 
     if (variation === "wrapper") {
       const seed = groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000);
@@ -321,6 +327,8 @@ export function DeepShellWordsGame({
       setCrackRound(0);
       setCrackAdvancing(false);
       setWrapperTransitioning(false);
+      setRevealedAnswers({});
+      setLoadingReveal(new Set());
       foundSet.current = new Set();
       resetRecorded();
     },
@@ -340,7 +348,7 @@ export function DeepShellWordsGame({
           clearFeedback();
           setInput("");
           if (subMode === "classic") {
-            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last }]);
+            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last, seed: crackSeedBase + crackRound }]);
             setCrackAdvancing(true);
             setTimeout(() => { advanceCrackRound(crackRound + 1, crackSeedBase); }, 1500);
           }
@@ -360,7 +368,7 @@ export function DeepShellWordsGame({
           clearFeedback();
           setInput("");
           if (subMode === "classic") {
-            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last }]);
+            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last, seed: crackSeedBase + crackRound }]);
             setCrackAdvancing(true);
             setTimeout(() => {
               advanceCrackRound(crackRound + 1, crackSeedBase);
@@ -487,10 +495,25 @@ export function DeepShellWordsGame({
     fetchWrapperPuzzle, fetchCrackPair,
   ]);
 
+  const revealAnswer = useCallback(async (seed: number) => {
+    if (loadingReveal.has(seed) || revealedAnswers[seed]) return;
+    setLoadingReveal(prev => new Set(prev).add(seed));
+    try {
+      const res = await fetch(`/api/games/deep-shell-words/crack-answer?seed=${seed}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch answer");
+      const data = (await res.json()) as { example: string };
+      setRevealedAnswers(prev => ({ ...prev, [seed]: data.example }));
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingReveal(prev => { const s = new Set(prev); s.delete(seed); return s; });
+    }
+  }, [loadingReveal, revealedAnswers]);
+
   const handleSkip = useCallback(() => {
     if (gameStatus !== "playing" || crackAdvancing || isValidating || variation !== "crack" || subMode !== "classic") return;
     if (crackPair) {
-      setCrackRoundResults(prev => [...prev, { round: crackRound, status: "skipped", first: crackPair.first, last: crackPair.last }]);
+      setCrackRoundResults(prev => [...prev, { round: crackRound, status: "skipped", first: crackPair.first, last: crackPair.last, seed: crackSeedBase + crackRound }]);
     }
     setInput("");
     setCrackAdvancing(true);
@@ -868,35 +891,48 @@ export function DeepShellWordsGame({
                 <div className="text-left space-y-1 max-h-48 overflow-y-auto border rounded-lg p-3">
                   <div className="text-xs text-muted-foreground font-medium mb-2">Round summary:</div>
                   {crackRoundResults.map((result) => {
-                    if (result.status === "skipped") {
+                    if (result.status === "skipped" || result.status === "failed") {
+                      const seed = result.seed;
+                      const revealed = seed !== undefined ? revealedAnswers[seed] : undefined;
+                      const isLoading = seed !== undefined && loadingReveal.has(seed);
                       return (
-                        <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-skipped-${result.round}`}>
+                        <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-${result.status}-${result.round}`}>
                           <div className="flex items-center gap-1">
                             <span className="text-muted-foreground w-5 text-xs">R{result.round + 1}</span>
-                            <span className="font-bold text-muted-foreground">{result.first}</span>
-                            <span className="text-muted-foreground">+???+</span>
-                            <span className="font-bold text-muted-foreground">{result.last}</span>
+                            {revealed ? (
+                              <span className="font-mono text-sm font-bold text-green-600 dark:text-green-400" data-testid={`answer-${result.round}`}>
+                                {result.first}<span className="underline">{revealed}</span>{result.last}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="font-bold text-muted-foreground">{result.first}</span>
+                                <span className="text-muted-foreground">+???+</span>
+                                <span className="font-bold text-muted-foreground">{result.last}</span>
+                              </>
+                            )}
                           </div>
-                          <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/30 gap-1">
-                            <SkipForward className="h-3 w-3" />
-                            skipped
-                          </Badge>
-                        </div>
-                      );
-                    }
-                    if (result.status === "failed") {
-                      return (
-                        <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-failed-${result.round}`}>
                           <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground w-5 text-xs">R{result.round + 1}</span>
-                            <span className="font-bold text-muted-foreground">{result.first}</span>
-                            <span className="text-muted-foreground">+???+</span>
-                            <span className="font-bold text-muted-foreground">{result.last}</span>
+                            {!revealed && seed !== undefined && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs gap-1"
+                                onClick={() => revealAnswer(seed)}
+                                disabled={isLoading}
+                                data-testid={`button-reveal-${result.round}`}
+                              >
+                                <Eye className="h-3 w-3" />
+                                {isLoading ? "…" : "Show"}
+                              </Button>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className={`text-xs gap-1 ${result.status === "skipped" ? "text-muted-foreground border-muted-foreground/30" : "text-muted-foreground/60 border-muted-foreground/20"}`}
+                            >
+                              {result.status === "skipped" ? <SkipForward className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                              {result.status === "skipped" ? "skipped" : "missed"}
+                            </Badge>
                           </div>
-                          <Badge variant="outline" className="text-xs text-muted-foreground/60 border-muted-foreground/20 gap-1">
-                            <XCircle className="h-3 w-3" />
-                            missed
-                          </Badge>
                         </div>
                       );
                     }
