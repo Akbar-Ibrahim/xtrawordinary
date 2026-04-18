@@ -435,6 +435,7 @@ export const progressiveRevealWords: ProgressiveRevealWord[] = [
 
 // Precomputed shell word data (words where inner = word.slice(1,-1) is also valid)
 const _dictSet = new Set(wordDictionary);
+export const wordDictSet = _dictSet;
 
 export const shellWordSet: Set<string> = (() => {
   const result = new Set<string>();
@@ -536,6 +537,40 @@ export const deepCrackPuzzles: DeepCrackPuzzle[] = (() => {
       const dashIdx = key.indexOf("-");
       result.push({ first: key.slice(0, dashIdx), last: key.slice(dashIdx + 1) });
     }
+  }
+  return result;
+})();
+
+export interface WordStretchPuzzle {
+  word: string;
+  solutions: string[];
+}
+
+export const wordStretchPuzzles: WordStretchPuzzle[] = (() => {
+  const seedMap = new Map<string, Set<string>>();
+  for (const stretched of _dictSet) {
+    const len = stretched.length;
+    if (len < 4 || len > 7) continue;
+    for (let i = 0; i < len; i++) {
+      const seed = stretched.slice(0, i) + stretched.slice(i + 1);
+      if (seed.length >= 3 && seed.length <= 6 && _dictSet.has(seed)) {
+        if (!seedMap.has(seed)) seedMap.set(seed, new Set());
+        seedMap.get(seed)!.add(stretched);
+      }
+    }
+  }
+  const result: WordStretchPuzzle[] = [];
+  for (const [word, solutionSet] of seedMap.entries()) {
+    const solutions = [...solutionSet];
+    if (solutions.length < 4) continue;
+    const hasMiddle = solutions.some(s => {
+      for (let i = 1; i < s.length - 1; i++) {
+        if (s.slice(0, i) + s.slice(i + 1) === word) return true;
+      }
+      return false;
+    });
+    if (!hasMiddle) continue;
+    result.push({ word, solutions });
   }
   return result;
 })();
@@ -1024,6 +1059,34 @@ export const gamesData: Game[] = [
       { label: "Wrapper Survival", slug: "deep-shell-words-wrapper-survival" },
       { label: "Crack", slug: "deep-shell-words-crack" },
       { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
+    ],
+  },
+  {
+    id: 23,
+    slug: "word-stretch",
+    name: "Word Stretch",
+    description: "Insert one letter anywhere into a word to make a new valid word. Find as many as you can!",
+    longDescription: "You're given a short seed word — your challenge is to stretch it into a longer valid word by inserting exactly one letter anywhere (without rearranging). For example, SIDE can become ASIDE, SNIDE, SLIDE, SIDED, or SIDES. Each valid find scores points, with a bonus for tricky middle insertions. Find them all to claim a completion bonus!",
+    rules: [
+      "You are given a seed word (3–6 letters)",
+      "Type any valid word that is exactly one letter longer, formed by inserting a letter anywhere in the seed",
+      "The remaining letters must stay in the same order — no rearranging",
+      "Example: SIDE → ASIDE (insert A), SNIDE (insert N), SIDED (insert D at end)",
+      "Each valid word found: 10 points",
+      "Middle insertions (letter not at the start or end): 15 points",
+      "Find all solutions for a completion bonus: +25 points",
+      "Classic: 2 minutes to find as many as possible — 'X of Y found' shown",
+      "Survival: find any valid insertion within 8 seconds to move to the next word",
+      "The dictionary never leaves the server — all validation is server-side",
+    ],
+    difficulty: "medium",
+    estimatedTime: "2-3 min",
+    icon: "Expand",
+    color: "hsl(262, 70%, 55%)",
+    playCount: 0,
+    modes: [
+      { label: "Classic", slug: "word-stretch" },
+      { label: "Survival", slug: "word-stretch-survival" },
     ],
   }
 ];

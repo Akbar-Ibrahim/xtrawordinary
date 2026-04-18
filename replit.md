@@ -2,7 +2,7 @@
 
 ## Overview
 
-WordPlay is a web-based platform offering 22 interactive vocabulary games designed for educational entertainment and vocabulary improvement. It's a full-stack TypeScript project with a React frontend and Express backend. Key features include optional user accounts (Google OAuth + email/password), a global leaderboard, and hybrid statistics that work for both guests (localStorage) and signed-in users (synced to backend). The platform aims to provide an engaging experience for vocabulary enhancement with diverse game mechanics.
+WordPlay is a web-based platform offering 23 interactive vocabulary games designed for educational entertainment and vocabulary improvement. It's a full-stack TypeScript project with a React frontend and Express backend. Key features include optional user accounts (Google OAuth + email/password), a global leaderboard, and hybrid statistics that work for both guests (localStorage) and signed-in users (synced to backend). The platform aims to provide an engaging experience for vocabulary enhancement with diverse game mechanics.
 
 **Word Sweep** has two modes: Classic (free-form 6×6 grid, gravity, shuffle) and Guided (timed 6×6 puzzle with known word list, speed scoring: `max(50, 1000 - elapsed_seconds*5 - wrong_attempts*50)`). Leaderboard tabs for each mode (Classic → `word-sweep`, Guided → `word-unpack`). Daily challenge and group rounds use `seed % 2 === 0 → classic, odd → guided`.
 
@@ -23,6 +23,11 @@ Shell word data: `shellWordSet` (O(1) lookup), `shellWordPuzzles` (≥3 wrappers
 - Crack Classic (`deep-shell-words-crack`, 10 rounds): given 2-letter boundary pairs, type the middle; score = 20 + innerLen×8
 - Crack Survival (`deep-shell-words-crack-survival`): 8s per boundary pair, correct → new pair
 Deep shell data: `deepShellWordSet`, `deepShellWordPuzzles` (≥3 wrappers), `deepCrackPuzzles` (2-char boundary pairs with ≥2 valid shells). APIs: `GET /api/games/deep-shell-words/validate?word=`, `GET /api/games/deep-shell-words/puzzle?seed=`, `GET /api/games/deep-shell-words/crack?seed=`. Daily challenge and group round integration deferred (out of scope).
+
+**Word Stretch** (id: 23, slug: `word-stretch`): Given a seed word (3–6 letters), insert exactly one letter anywhere (without rearranging) to form a valid longer word. Example: SIDE → ASIDE, SNIDE, SLIDE, SIDED, SIDES. Two modes:
+- Classic (`word-stretch`, 2min): find all valid insertions; each = 10 pts, middle insertion (not at pos 0 or last) = 15 pts, complete all = +25 bonus
+- Survival (`word-stretch-survival`): 8s per seed word, any correct insertion resets clock, score keeps accumulating
+Precomputed data: `wordStretchPuzzles` (seed words with ≥4 solutions including ≥1 middle insertion); `wordDictSet` exported from game-data.ts for O(1) dict lookups. APIs: `GET /api/games/word-stretch/puzzle?seed=N` → { word, totalSolutions }, `GET /api/games/word-stretch/validate?stretched=ASIDE&seedWord=SIDE` → { valid, isMiddle }. Dictionary never exposed to frontend.
 
 ## User Preferences
 

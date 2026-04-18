@@ -183,6 +183,29 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-stretch/puzzle", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getWordStretchPuzzle(seed);
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word stretch puzzle" });
+    }
+  });
+
+  app.get("/api/games/word-stretch/validate", async (req, res) => {
+    try {
+      const stretched = (req.query.stretched as string) || "";
+      const seedWord = (req.query.seedWord as string) || "";
+      if (!stretched || !seedWord) return res.status(400).json({ message: "stretched and seedWord are required" });
+      const result = await dataSource.validateWordStretch(stretched, seedWord);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word stretch" });
+    }
+  });
+
   app.get("/api/games/deep-shell-words/crack-answer", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);

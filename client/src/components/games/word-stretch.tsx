@@ -1,0 +1,569 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Timer,
+  RotateCcw,
+  Trophy,
+  Flame,
+  Expand,
+  CheckCircle2,
+  ChevronRight,
+} from "lucide-react";
+import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { AnimatedNumber } from "@/components/animated-number";
+import { useGameResult } from "@/hooks/use-game-result";
+import { getCompletionMessage } from "@/lib/completion-messages";
+
+const CLASSIC_TIME = 120;
+const SURVIVAL_TIME = 8;
+const POINTS_NORMAL = 10;
+const POINTS_MIDDLE = 15;
+const POINTS_COMPLETION = 25;
+
+type Mode = "classic" | "survival";
+type GameStatus = "idle" | "playing" | "ended";
+
+interface FoundEntry {
+  word: string;
+  isMiddle: boolean;
+  points: number;
+  insertPos: number;
+}
+
+function findInsertionPos(stretched: string, seed: string): number {
+  for (let i = 0; i < stretched.length; i++) {
+    if (stretched.slice(0, i) + stretched.slice(i + 1) === seed) return i;
+  }
+  return -1;
+}
+
+function isValidInsertion(input: string, seed: string): boolean {
+  if (input.length !== seed.length + 1) return false;
+  return findInsertionPos(input, seed) !== -1;
+}
+
+interface PuzzleData {
+  word: string;
+  totalSolutions: number;
+}
+
+interface WordStretchPlayProps {
+  mode: Mode;
+  initialSeed: number;
+  onExit: () => void;
+  locked?: boolean;
+}
+
+function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayProps) {
+  const slug = mode === "classic" ? "word-stretch" : "word-stretch-survival";
+  const { reportResult } = useGameResult({ slug });
+
+  const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
+  const [seed, setSeed] = useState(initialSeed);
+  const [puzzle, setPuzzle] = useState<PuzzleData | null>(null);
+  const [timeLeft, setTimeLeft] = useState(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+  const [found, setFound] = useState<FoundEntry[]>([]);
+  const [input, setInput] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [shake, setShake] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [finalScore, setFinalScore] = useState(0);
+  const [completionMessage, setCompletionMessage] = useState("");
+  const [survivalSolvedCount, setSurvivalSolvedCount] = useState(0);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordedRef = useRef(false);
+  const gameStatusRef = useRef<GameStatus>("playing");
+  const foundRef = useRef<FoundEntry[]>([]);
+  const puzzleRef = useRef<PuzzleData | null>(null);
+  const modeRef = useRef<Mode>(mode);
+
+  const calcScore = (entries: FoundEntry[], total: number): number => {
+    const base = entries.reduce((sum, e) => sum + e.points, 0);
+    const bonus = entries.length >= total ? POINTS_COMPLETION : 0;
+    return base + bonus;
+  };
+
+  const endGame = useCallback((finalFound: FoundEntry[], total: number) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    gameStatusRef.current = "ended";
+    const score = calcScore(finalFound, total);
+    setFinalScore(score);
+    setGameStatus("ended");
+    setCompletionMessage(getCompletionMessage(finalFound.length > 2));
+    if (!recordedRef.current) {
+      recordedRef.current = true;
+      reportResult(score, finalFound.length > 0, finalFound.length);
+    }
+  }, [reportResult]);
+
+  const fetchPuzzle = useCallback(async (s: number): Promise<PuzzleData | null> => {
+    try {
+      const r = await fetch(`/api/games/word-stretch/puzzle?seed=${s}`, { credentials: "include" });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          if (gameStatusRef.current === "playing") {
+            const total = puzzleRef.current?.totalSolutions ?? 0;
+            endGame(foundRef.current, total);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [mode, endGame]);
+
+  useEffect(() => {
+    (async () => {
+      const p = await fetchPuzzle(initialSeed);
+      if (!p) return;
+      setPuzzle(p);
+      puzzleRef.current = p;
+      startTimer();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    })();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  const showError = (msg: string) => {
+    setErrorMsg(msg);
+    setShake(true);
+    setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+  };
+
+  const handleSubmit = useCallback(async () => {
+    if (validating || gameStatusRef.current !== "playing" || !puzzle) return;
+    const word = input.toUpperCase().trim();
+    if (!word) return;
+
+    if (!isValidInsertion(word, puzzle.word)) {
+      showError(`Must be ${puzzle.word.length + 1} letters with ${puzzle.word} inside`);
+      return;
+    }
+
+    if (foundRef.current.some(e => e.word === word)) {
+      showError("Already found!");
+      return;
+    }
+
+    setValidating(true);
+    try {
+      const r = await fetch(
+        `/api/games/word-stretch/validate?stretched=${encodeURIComponent(word)}&seedWord=${encodeURIComponent(puzzle.word)}`,
+        { credentials: "include" }
+      );
+      const data = await r.json();
+
+      if (!data.valid) {
+        showError("Not a valid word");
+        setValidating(false);
+        inputRef.current?.focus();
+        return;
+      }
+
+      const insertPos = findInsertionPos(word, puzzle.word);
+      const isMiddle = data.isMiddle as boolean;
+      const points = isMiddle ? POINTS_MIDDLE : POINTS_NORMAL;
+      const entry: FoundEntry = { word, isMiddle, points, insertPos };
+      const newFound = [...foundRef.current, entry];
+      foundRef.current = newFound;
+      setFound(newFound);
+      setInput("");
+      setValidating(false);
+
+      if (modeRef.current === "survival") {
+        setSurvivalSolvedCount(c => c + 1);
+        if (timerRef.current) clearInterval(timerRef.current);
+        const nextSeed = seed + 1;
+        setSeed(nextSeed);
+        foundRef.current = [];
+        setFound([]);
+        const nextPuzzle = await fetchPuzzle(nextSeed);
+        if (nextPuzzle) {
+          setPuzzle(nextPuzzle);
+          puzzleRef.current = nextPuzzle;
+        }
+        startTimer();
+      } else if (newFound.length >= puzzle.totalSolutions) {
+        endGame(newFound, puzzle.totalSolutions);
+      }
+
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } catch {
+      showError("Validation failed, try again");
+      setValidating(false);
+    }
+  }, [input, puzzle, validating, seed, fetchPuzzle, startTimer, endGame]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
+  };
+
+  const maxTime = mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME;
+  const timerPercent = (timeLeft / maxTime) * 100;
+  const timerColor = timerPercent > 33 ? "bg-[hsl(262,70%,55%)]" : timerPercent > 11 ? "bg-chart-3" : "bg-destructive";
+
+  if (gameStatus === "ended") {
+    const total = puzzle?.totalSolutions ?? 0;
+    const score = finalScore;
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="space-y-4"
+      >
+        <Card className="border-[hsl(262,70%,55%)]">
+          <CardContent className="p-6 text-center space-y-4">
+            <Trophy className="h-14 w-14 mx-auto text-[hsl(262,70%,55%)]" />
+            <div>
+              <h3 className="text-2xl font-bold">
+                {mode === "survival" ? "Time's Up!" : found.length >= total ? "All Found!" : "Time's Up!"}
+              </h3>
+              <p className="text-muted-foreground mt-1">{completionMessage}</p>
+            </div>
+            <Badge variant="secondary" className="gap-1.5">
+              {mode === "survival" ? <Flame className="h-3 w-3" /> : <Timer className="h-3 w-3" />}
+              {mode === "survival" ? "Survival Mode" : "Classic Mode"}
+            </Badge>
+
+            <div className="grid grid-cols-3 gap-3">
+              {mode === "survival" ? (
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="text-2xl font-bold" data-testid="text-words-solved">{survivalSolvedCount}</div>
+                  <div className="text-xs text-muted-foreground">words solved</div>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="text-2xl font-bold" data-testid="text-found-count">{found.length}</div>
+                  <div className="text-xs text-muted-foreground">of {total} found</div>
+                </div>
+              )}
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-2xl font-bold text-[hsl(262,70%,55%)]" data-testid="text-score">{score}</div>
+                <div className="text-xs text-muted-foreground">total score</div>
+              </div>
+              <div className="rounded-lg bg-muted p-3">
+                <div className="text-2xl font-bold">{found.filter(e => e.isMiddle).length}</div>
+                <div className="text-xs text-muted-foreground">middle bonus</div>
+              </div>
+            </div>
+
+            {mode === "classic" && found.length > 0 && (
+              <div className="text-left space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                  {found.map((e, i) => (
+                    <StretchedWordBadge key={i} entry={e} seed={puzzle?.word ?? ""} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!locked && (
+              <div className="flex gap-3 pt-2 flex-wrap">
+                <Button variant="outline" className="flex-1 gap-2" onClick={onExit} data-testid="button-change-mode">
+                  Change Mode
+                </Button>
+                <Button
+                  className="flex-1 gap-2 bg-[hsl(262,70%,55%)] hover:bg-[hsl(262,70%,45%)]"
+                  onClick={() => {
+                    foundRef.current = [];
+                    recordedRef.current = false;
+                    gameStatusRef.current = "playing";
+                    setFound([]);
+                    setInput("");
+                    setFinalScore(0);
+                    setSurvivalSolvedCount(0);
+                    setGameStatus("playing");
+                    const newSeed = Math.floor(Math.random() * 100000);
+                    setSeed(newSeed);
+                    fetchPuzzle(newSeed).then(p => {
+                      if (p) { setPuzzle(p); puzzleRef.current = p; }
+                      startTimer();
+                      setTimeout(() => inputRef.current?.focus(), 100);
+                    });
+                  }}
+                  data-testid="button-play-again"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Play Again
+                </Button>
+                <TryAnotherGameButton currentSlug="word-stretch" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  const seedWord = puzzle?.word ?? "";
+  const total = puzzle?.totalSolutions ?? 0;
+  const liveScore = calcScore(found, total);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-1" data-testid="badge-mode">
+            {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
+            {mode === "survival" ? "Survival" : "Classic"}
+          </Badge>
+          {mode === "classic" && (
+            <Badge variant="secondary" data-testid="badge-found-count">
+              {found.length} / {total} found
+            </Badge>
+          )}
+          {mode === "survival" && (
+            <Badge variant="secondary" data-testid="badge-solved">
+              Solved: {survivalSolvedCount}
+            </Badge>
+          )}
+          <Badge className="bg-[hsl(262,70%,55%)] text-white" data-testid="badge-score">
+            {liveScore} pts
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`font-mono font-bold tabular-nums text-sm ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive" : ""}`}
+            data-testid="text-timer"
+          >
+            {timeLeft}s
+          </span>
+          {!locked && (
+            <Button variant="outline" size="sm" onClick={() => { if (timerRef.current) clearInterval(timerRef.current); onExit(); }} data-testid="button-quit">
+              Quit
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+        <motion.div
+          className={`h-full rounded-full transition-colors ${timerColor}`}
+          animate={{ width: `${timerPercent}%` }}
+          transition={{ duration: 0.5 }}
+          data-testid="timer-bar"
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-4 sm:p-6 space-y-4">
+          {!puzzle ? (
+            <div className="text-center py-8 text-muted-foreground">Loading puzzle…</div>
+          ) : (
+            <>
+              <div className="text-center space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Insert one letter anywhere to make a new word</p>
+                <div className="flex justify-center gap-1.5 flex-wrap" data-testid="seed-word-display">
+                  {seedWord.split("").map((letter, i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg sm:text-xl font-bold rounded-md border-2 border-[hsl(262,70%,55%)] bg-[hsl(262,70%,55%)]/10 text-[hsl(262,70%,40%)] dark:text-[hsl(262,70%,70%)]"
+                      data-testid={`seed-letter-${i}`}
+                    >
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`flex gap-2 justify-center ${shake ? "animate-shake" : ""}`}>
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, seedWord.length + 1))}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`${seedWord.length + 1}-letter word…`}
+                  maxLength={seedWord.length + 1}
+                  className="font-mono text-lg tracking-wider uppercase max-w-xs"
+                  disabled={validating}
+                  autoFocus
+                  data-testid="input-word"
+                />
+                <Button
+                  onClick={handleSubmit}
+                  disabled={validating || input.length !== seedWord.length + 1}
+                  className="bg-[hsl(262,70%,55%)] hover:bg-[hsl(262,70%,45%)]"
+                  data-testid="button-submit"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <AnimatePresence>
+                {errorMsg && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm text-destructive text-center font-medium"
+                    data-testid="text-error"
+                  >
+                    {errorMsg}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+
+              {found.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Found words</p>
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                    <AnimatePresence>
+                      {found.map((e, i) => (
+                        <motion.div
+                          key={e.word}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                          data-testid={`found-word-${i}`}
+                        >
+                          <StretchedWordBadge entry={e} seed={seedWord} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+
+              {mode === "survival" && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Find any valid stretched word to reset the {SURVIVAL_TIME}s timer!
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function StretchedWordBadge({ entry, seed }: { entry: FoundEntry; seed: string }) {
+  const before = entry.word.slice(0, entry.insertPos);
+  const inserted = entry.word[entry.insertPos];
+  const after = entry.word.slice(entry.insertPos + 1);
+  return (
+    <div className="inline-flex items-center gap-0.5">
+      <span className="font-mono text-sm px-2 py-0.5 rounded-l-md bg-muted border border-border">
+        {before}
+        <span className="text-[hsl(262,70%,55%)] font-bold">{inserted}</span>
+        {after}
+      </span>
+      <Badge
+        className={`rounded-l-none text-xs ${entry.isMiddle ? "bg-[hsl(262,70%,55%)]" : "bg-secondary text-secondary-foreground"}`}
+      >
+        +{entry.points}
+      </Badge>
+    </div>
+  );
+}
+
+interface WordStretchGameProps {
+  groupSeed?: number;
+  locked?: boolean;
+  initialMode?: Mode;
+}
+
+export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchGameProps) {
+  const [mode, setMode] = useState<Mode | null>(initialMode ?? null);
+  const [playKey, setPlayKey] = useState(0);
+  const initialSeed = groupSeed ?? Math.floor(Math.random() * 100000);
+
+  if (mode !== null) {
+    return (
+      <WordStretchPlay
+        key={playKey}
+        mode={mode}
+        initialSeed={initialSeed}
+        onExit={() => { if (!initialMode) setMode(null); }}
+        locked={locked}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          <Expand className="h-7 w-7 text-[hsl(262,70%,55%)]" />
+          <h2 className="text-2xl font-bold">Word Stretch</h2>
+        </div>
+        <p className="text-muted-foreground text-sm">
+          Insert one letter anywhere into the seed word to make a new valid word. Find as many as you can!
+        </p>
+      </div>
+
+      <div className="grid gap-3">
+        <Card
+          className="cursor-pointer hover:border-[hsl(262,70%,55%)] transition-colors"
+          onClick={() => setMode("classic")}
+          data-testid="button-mode-classic"
+        >
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <div className="font-semibold flex items-center gap-2">
+                <Timer className="h-4 w-4 text-[hsl(262,70%,55%)]" />
+                Classic
+              </div>
+              <div className="text-sm text-muted-foreground">2 minutes — find all valid insertions</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer hover:border-destructive transition-colors"
+          onClick={() => setMode("survival")}
+          data-testid="button-mode-survival"
+        >
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <div className="font-semibold flex items-center gap-2">
+                <Flame className="h-4 w-4 text-destructive" />
+                Survival
+              </div>
+              <div className="text-sm text-muted-foreground">8 seconds — find one, move on</div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">How to score</p>
+        <div className="space-y-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(262,70%,55%)]" />
+            <span>Any valid insertion: <strong>10 pts</strong></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(262,70%,55%)]" />
+            <span>Middle insertion (not at start or end): <strong>15 pts</strong></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Trophy className="h-3.5 w-3.5 text-[hsl(262,70%,55%)]" />
+            <span>Find all solutions: <strong>+25 bonus pts</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

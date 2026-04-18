@@ -1,7 +1,7 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
-import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles } from "./game-data";
+import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordDictSet } from "./game-data";
 
 export class MemStorage implements IStorage {
   private games: Game[];
@@ -394,6 +394,27 @@ export class MemStorage implements IStorage {
       }
     }
     return null;
+  }
+
+  async getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }> {
+    if (wordStretchPuzzles.length === 0) throw new Error("No word stretch puzzles");
+    const idx = ((seed % wordStretchPuzzles.length) + wordStretchPuzzles.length) % wordStretchPuzzles.length;
+    const puzzle = wordStretchPuzzles[idx];
+    return { word: puzzle.word, totalSolutions: puzzle.solutions.length };
+  }
+
+  async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> {
+    const upper = stretched.toUpperCase().trim();
+    const upperSeed = seedWord.toUpperCase().trim();
+    if (upper.length !== upperSeed.length + 1) return { valid: false, isMiddle: false };
+    if (!wordDictSet.has(upper)) return { valid: false, isMiddle: false };
+    for (let i = 0; i < upper.length; i++) {
+      if (upper.slice(0, i) + upper.slice(i + 1) === upperSeed) {
+        const isMiddle = i > 0 && i < upper.length - 1;
+        return { valid: true, isMiddle };
+      }
+    }
+    return { valid: false, isMiddle: false };
   }
 
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {

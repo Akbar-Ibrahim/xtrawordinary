@@ -53,6 +53,8 @@ export interface IStorage {
   getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null>;
   getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null>;
   getDeepCrackAnswer(seed: number): Promise<string | null>;
+  getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }>;
+  validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;
