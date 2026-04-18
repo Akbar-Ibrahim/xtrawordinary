@@ -48,6 +48,16 @@ interface FoundWord {
   points: number;
 }
 
+interface CrackRoundResult {
+  round: number;
+  status: "correct" | "skipped" | "failed";
+  first: string;
+  last: string;
+  inner?: string;
+  outer?: string;
+  points?: number;
+}
+
 function blitzScore(outerLen: number) { return 10 + outerLen * 2; }
 function wrapperClassicScore(found: number, timeLeft: number) { return found * 15 + timeLeft * 2; }
 function crackScore(innerLen: number) { return 20 + innerLen * 8; }
@@ -94,6 +104,7 @@ export function DeepShellWordsGame({
   const [score, setScore] = useState(0);
   const [input, setInput] = useState("");
   const [foundWords, setFoundWords] = useState<FoundWord[]>([]);
+  const [crackRoundResults, setCrackRoundResults] = useState<CrackRoundResult[]>([]);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; message: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
@@ -242,6 +253,7 @@ export function DeepShellWordsGame({
     foundSet.current = new Set();
     scoreRef.current = 0;
     setFoundWords([]);
+    setCrackRoundResults([]);
     setScore(0);
     setInput("");
     setFeedback(null);
@@ -299,6 +311,7 @@ export function DeepShellWordsGame({
       setScore(0);
       scoreRef.current = 0;
       setFoundWords([]);
+      setCrackRoundResults([]);
       setInput("");
       setFeedback(null);
       setCompletionMessage("");
@@ -327,6 +340,7 @@ export function DeepShellWordsGame({
           clearFeedback();
           setInput("");
           if (subMode === "classic") {
+            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last }]);
             setCrackAdvancing(true);
             setTimeout(() => { advanceCrackRound(crackRound + 1, crackSeedBase); }, 1500);
           }
@@ -346,6 +360,7 @@ export function DeepShellWordsGame({
           clearFeedback();
           setInput("");
           if (subMode === "classic") {
+            setCrackRoundResults(prev => [...prev, { round: crackRound, status: "failed", first: crackPair.first, last: crackPair.last }]);
             setCrackAdvancing(true);
             setTimeout(() => {
               advanceCrackRound(crackRound + 1, crackSeedBase);
@@ -359,6 +374,9 @@ export function DeepShellWordsGame({
         solvedCountRef.current++;
         setScore(scoreRef.current);
         setFoundWords(prev => [{ outer, inner: word, points: pts }, ...prev]);
+        if (subMode === "classic") {
+          setCrackRoundResults(prev => [...prev, { round: crackRound, status: "correct", first: crackPair.first, last: crackPair.last, inner: word, outer, points: pts }]);
+        }
         setFeedback({ type: "ok", message: `+${pts} pts` });
         clearFeedback();
         setInput("");
@@ -471,10 +489,13 @@ export function DeepShellWordsGame({
 
   const handleSkip = useCallback(() => {
     if (gameStatus !== "playing" || crackAdvancing || isValidating || variation !== "crack" || subMode !== "classic") return;
+    if (crackPair) {
+      setCrackRoundResults(prev => [...prev, { round: crackRound, status: "skipped", first: crackPair.first, last: crackPair.last }]);
+    }
     setInput("");
     setCrackAdvancing(true);
     advanceCrackRound(crackRound + 1, crackSeedBase);
-  }, [gameStatus, crackAdvancing, isValidating, variation, subMode, crackRound, crackSeedBase, advanceCrackRound]);
+  }, [gameStatus, crackAdvancing, isValidating, variation, subMode, crackRound, crackSeedBase, crackPair, advanceCrackRound]);
 
   useEffect(() => {
     return () => clearAllTimers();
@@ -843,7 +864,58 @@ export function DeepShellWordsGame({
                 </div>
               </div>
 
-              {foundWords.length > 0 && (
+              {variation === "crack" && subMode === "classic" && crackRoundResults.length > 0 ? (
+                <div className="text-left space-y-1 max-h-48 overflow-y-auto border rounded-lg p-3">
+                  <div className="text-xs text-muted-foreground font-medium mb-2">Round summary:</div>
+                  {crackRoundResults.map((result) => {
+                    if (result.status === "skipped") {
+                      return (
+                        <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-skipped-${result.round}`}>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground w-5 text-xs">R{result.round + 1}</span>
+                            <span className="font-bold text-muted-foreground">{result.first}</span>
+                            <span className="text-muted-foreground">+???+</span>
+                            <span className="font-bold text-muted-foreground">{result.last}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs text-muted-foreground border-muted-foreground/30 gap-1">
+                            <SkipForward className="h-3 w-3" />
+                            skipped
+                          </Badge>
+                        </div>
+                      );
+                    }
+                    if (result.status === "failed") {
+                      return (
+                        <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-failed-${result.round}`}>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground w-5 text-xs">R{result.round + 1}</span>
+                            <span className="font-bold text-muted-foreground">{result.first}</span>
+                            <span className="text-muted-foreground">+???+</span>
+                            <span className="font-bold text-muted-foreground">{result.last}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs text-muted-foreground/60 border-muted-foreground/20 gap-1">
+                            <XCircle className="h-3 w-3" />
+                            missed
+                          </Badge>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={result.round} className="flex items-center justify-between font-mono text-sm" data-testid={`text-crack-round-found-${result.round}`}>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground w-5 text-xs">R{result.round + 1}</span>
+                          <span className="text-muted-foreground">{result.outer!.slice(0, 2)}</span>
+                          <span className="font-bold">{result.inner}</span>
+                          <span className="text-muted-foreground">{result.outer!.slice(-2)}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          +{result.points}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : foundWords.length > 0 ? (
                 <div className="text-left space-y-1 max-h-40 overflow-y-auto border rounded-lg p-3">
                   <div className="text-xs text-muted-foreground font-medium mb-2">Words you found:</div>
                   {foundWords.map((fw, i) => (
@@ -855,7 +927,7 @@ export function DeepShellWordsGame({
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
 
               {completionMessage && (
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">
