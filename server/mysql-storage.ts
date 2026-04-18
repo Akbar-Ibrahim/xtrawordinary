@@ -60,6 +60,10 @@ export class MySQLStorage implements IStorage {
       { label: "Crack", slug: "deep-shell-words-crack" },
       { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
     ],
+    "word-stretch": [
+      { label: "Classic", slug: "word-stretch" },
+      { label: "Survival", slug: "word-stretch-survival" },
+    ],
   };
 
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
