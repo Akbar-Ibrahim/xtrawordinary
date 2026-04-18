@@ -423,7 +423,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="h-[260px] overflow-y-auto space-y-2 flex flex-col">
+          <div className="h-[260px] overflow-y-auto space-y-2 flex flex-col items-center">
             {chain.map((word, i) => {
               const isStart = i === 0;
               const isLatest = i === chain.length - 1;
