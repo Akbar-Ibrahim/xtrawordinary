@@ -153,6 +153,7 @@ export class MySQLStorage implements IStorage {
   async getDeepCrackAnswer(seed: number): Promise<string | null> { return this.gameData.getDeepCrackAnswer(seed); }
   async getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }> { return this.gameData.getWordStretchPuzzle(seed); }
   async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordStretch(stretched, seedWord); }
+  async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }
 
   private toUser(row: any): User {
     return {

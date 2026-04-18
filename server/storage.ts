@@ -55,6 +55,7 @@ export interface IStorage {
   getDeepCrackAnswer(seed: number): Promise<string | null>;
   getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }>;
   validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
+  getWordStretchSolutions(seed: number): Promise<string[]>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;

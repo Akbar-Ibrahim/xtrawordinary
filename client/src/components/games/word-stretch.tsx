@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,13 @@ import {
   Expand,
   CheckCircle2,
   ChevronRight,
+  Medal,
+  XCircle,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
-import { AnimatedNumber } from "@/components/animated-number";
 import { useGameResult } from "@/hooks/use-game-result";
 import { getCompletionMessage } from "@/lib/completion-messages";
+import type { LeaderboardEntry } from "@shared/schema";
 
 const CLASSIC_TIME = 120;
 const SURVIVAL_TIME = 8;
@@ -74,6 +77,8 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   const [finalScore, setFinalScore] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
   const [survivalSolvedCount, setSurvivalSolvedCount] = useState(0);
+  const [accumulatedScore, setAccumulatedScore] = useState(0);
+  const [finalSeed, setFinalSeed] = useState(initialSeed);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -81,26 +86,47 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   const gameStatusRef = useRef<GameStatus>("playing");
   const foundRef = useRef<FoundEntry[]>([]);
   const puzzleRef = useRef<PuzzleData | null>(null);
-  const modeRef = useRef<Mode>(mode);
+  const accumulatedScoreRef = useRef(0);
+  const survivalSolvedCountRef = useRef(0);
 
-  const calcScore = (entries: FoundEntry[], total: number): number => {
+  const { data: solutions } = useQuery<string[]>({
+    queryKey: ["/api/games/word-stretch/solutions", finalSeed],
+    queryFn: async () => {
+      const r = await fetch(`/api/games/word-stretch/solutions?seed=${finalSeed}`, { credentials: "include" });
+      const data = await r.json();
+      return data.solutions as string[];
+    },
+    enabled: gameStatus === "ended" && mode === "classic",
+    staleTime: 60_000,
+  });
+
+  const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/leaderboard", slug],
+    queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
+    enabled: gameStatus === "ended",
+    staleTime: 10_000,
+  });
+
+  const calcClassicScore = (entries: FoundEntry[], total: number): number => {
     const base = entries.reduce((sum, e) => sum + e.points, 0);
     const bonus = entries.length >= total ? POINTS_COMPLETION : 0;
     return base + bonus;
   };
 
-  const endGame = useCallback((finalFound: FoundEntry[], total: number) => {
+  const endGame = useCallback((finalFound: FoundEntry[], total: number, survivedScore: number, survivedCount: number, endedSeed: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     gameStatusRef.current = "ended";
-    const score = calcScore(finalFound, total);
+    const score = mode === "survival" ? survivedScore : calcClassicScore(finalFound, total);
     setFinalScore(score);
+    setFinalSeed(endedSeed);
     setGameStatus("ended");
-    setCompletionMessage(getCompletionMessage(finalFound.length > 2));
+    setCompletionMessage(getCompletionMessage(mode === "survival" ? survivedCount > 3 : finalFound.length > 2));
     if (!recordedRef.current) {
       recordedRef.current = true;
-      reportResult(score, finalFound.length > 0, finalFound.length);
+      const count = mode === "survival" ? survivedCount : finalFound.length;
+      reportResult(score, count > 0, count);
     }
-  }, [reportResult]);
+  }, [mode, reportResult]);
 
   const fetchPuzzle = useCallback(async (s: number): Promise<PuzzleData | null> => {
     try {
@@ -112,16 +138,17 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
     }
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((currentSeed: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
-    setTimeLeft(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+    const duration = mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME;
+    setTimeLeft(duration);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
           if (gameStatusRef.current === "playing") {
             const total = puzzleRef.current?.totalSolutions ?? 0;
-            endGame(foundRef.current, total);
+            endGame(foundRef.current, total, accumulatedScoreRef.current, survivalSolvedCountRef.current, currentSeed);
           }
           return 0;
         }
@@ -136,17 +163,17 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
       if (!p) return;
       setPuzzle(p);
       puzzleRef.current = p;
-      startTimer();
+      startTimer(initialSeed);
       setTimeout(() => inputRef.current?.focus(), 100);
     })();
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
-  const showError = (msg: string) => {
+  const showError = useCallback((msg: string) => {
     setErrorMsg(msg);
     setShake(true);
     setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-  };
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (validating || gameStatusRef.current !== "playing" || !puzzle) return;
@@ -188,21 +215,29 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
       setInput("");
       setValidating(false);
 
-      if (modeRef.current === "survival") {
-        setSurvivalSolvedCount(c => c + 1);
+      if (mode === "survival") {
+        const newAccumulated = accumulatedScoreRef.current + points;
+        accumulatedScoreRef.current = newAccumulated;
+        setAccumulatedScore(newAccumulated);
+        const newCount = survivalSolvedCountRef.current + 1;
+        survivalSolvedCountRef.current = newCount;
+        setSurvivalSolvedCount(newCount);
+
         if (timerRef.current) clearInterval(timerRef.current);
         const nextSeed = seed + 1;
         setSeed(nextSeed);
         foundRef.current = [];
         setFound([]);
         const nextPuzzle = await fetchPuzzle(nextSeed);
-        if (nextPuzzle) {
+        if (nextPuzzle && gameStatusRef.current === "playing") {
           setPuzzle(nextPuzzle);
           puzzleRef.current = nextPuzzle;
+          startTimer(nextSeed);
         }
-        startTimer();
-      } else if (newFound.length >= puzzle.totalSolutions) {
-        endGame(newFound, puzzle.totalSolutions);
+      } else {
+        if (newFound.length >= puzzle.totalSolutions) {
+          endGame(newFound, puzzle.totalSolutions, 0, 0, seed);
+        }
       }
 
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -210,7 +245,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
       showError("Validation failed, try again");
       setValidating(false);
     }
-  }, [input, puzzle, validating, seed, fetchPuzzle, startTimer, endGame]);
+  }, [input, puzzle, validating, seed, mode, fetchPuzzle, startTimer, endGame, showError]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
@@ -222,7 +257,8 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
 
   if (gameStatus === "ended") {
     const total = puzzle?.totalSolutions ?? 0;
-    const score = finalScore;
+    const foundWords = new Set(found.map(e => e.word));
+    const unfound = solutions ? solutions.filter(s => !foundWords.has(s)) : [];
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -234,7 +270,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             <Trophy className="h-14 w-14 mx-auto text-[hsl(262,70%,55%)]" />
             <div>
               <h3 className="text-2xl font-bold">
-                {mode === "survival" ? "Time's Up!" : found.length >= total ? "All Found!" : "Time's Up!"}
+                {mode === "classic" && found.length >= total ? "All Found!" : "Time's Up!"}
               </h3>
               <p className="text-muted-foreground mt-1">{completionMessage}</p>
             </div>
@@ -256,7 +292,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                 </div>
               )}
               <div className="rounded-lg bg-muted p-3">
-                <div className="text-2xl font-bold text-[hsl(262,70%,55%)]" data-testid="text-score">{score}</div>
+                <div className="text-2xl font-bold text-[hsl(262,70%,55%)]" data-testid="text-score">{finalScore}</div>
                 <div className="text-xs text-muted-foreground">total score</div>
               </div>
               <div className="rounded-lg bg-muted p-3">
@@ -265,12 +301,54 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
               </div>
             </div>
 
-            {mode === "classic" && found.length > 0 && (
-              <div className="text-left space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
-                  {found.map((e, i) => (
-                    <StretchedWordBadge key={i} entry={e} seed={puzzle?.word ?? ""} />
+            {mode === "classic" && (
+              <div className="text-left space-y-2">
+                {found.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-accent" />
+                      Found ({found.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                      {found.map((e, i) => (
+                        <StretchedWordBadge key={i} entry={e} seed={puzzle?.word ?? ""} data-testid={`found-word-${i}`} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {unfound.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <XCircle className="h-3 w-3 text-destructive" />
+                      Missed ({unfound.length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                      {unfound.map((w, i) => (
+                        <Badge key={i} variant="outline" className="font-mono text-muted-foreground" data-testid={`missed-word-${i}`}>
+                          {w}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {modeLeaderboard && modeLeaderboard.length > 0 && (
+              <div className="text-left space-y-2" data-testid="section-leaderboard">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                  <Medal className="h-3 w-3" />
+                  Top Scores ({mode === "survival" ? "Survival" : "Classic"})
+                </p>
+                <div className="space-y-1">
+                  {modeLeaderboard.slice(0, 5).map((entry, i) => (
+                    <div key={entry.id} className="flex items-center justify-between text-sm px-2 py-1 rounded bg-muted/50" data-testid={`leaderboard-row-${i}`}>
+                      <span className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground w-4">{i + 1}.</span>
+                        <span className="font-medium">{entry.playerName}</span>
+                      </span>
+                      <span className="font-mono font-bold text-[hsl(262,70%,55%)]">{entry.score}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -285,18 +363,21 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                   className="flex-1 gap-2 bg-[hsl(262,70%,55%)] hover:bg-[hsl(262,70%,45%)]"
                   onClick={() => {
                     foundRef.current = [];
+                    accumulatedScoreRef.current = 0;
+                    survivalSolvedCountRef.current = 0;
                     recordedRef.current = false;
                     gameStatusRef.current = "playing";
                     setFound([]);
                     setInput("");
                     setFinalScore(0);
+                    setAccumulatedScore(0);
                     setSurvivalSolvedCount(0);
                     setGameStatus("playing");
                     const newSeed = Math.floor(Math.random() * 100000);
                     setSeed(newSeed);
                     fetchPuzzle(newSeed).then(p => {
                       if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      startTimer();
+                      startTimer(newSeed);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     });
                   }}
@@ -316,7 +397,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
 
   const seedWord = puzzle?.word ?? "";
   const total = puzzle?.totalSolutions ?? 0;
-  const liveScore = calcScore(found, total);
+  const liveScore = mode === "survival" ? accumulatedScore : calcClassicScore(found, total);
 
   return (
     <div className="space-y-4">
@@ -326,7 +407,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
             {mode === "survival" ? "Survival" : "Classic"}
           </Badge>
-          {mode === "classic" && (
+          {mode === "classic" && puzzle && (
             <Badge variant="secondary" data-testid="badge-found-count">
               {found.length} / {total} found
             </Badge>
@@ -348,7 +429,15 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             {timeLeft}s
           </span>
           {!locked && (
-            <Button variant="outline" size="sm" onClick={() => { if (timerRef.current) clearInterval(timerRef.current); onExit(); }} data-testid="button-quit">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                onExit();
+              }}
+              data-testid="button-quit"
+            >
               Quit
             </Button>
           )}
@@ -400,7 +489,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                 />
                 <Button
                   onClick={handleSubmit}
-                  disabled={validating || input.length !== seedWord.length + 1}
+                  disabled={validating || !puzzle || input.length !== seedWord.length + 1}
                   className="bg-[hsl(262,70%,55%)] hover:bg-[hsl(262,70%,45%)]"
                   data-testid="button-submit"
                 >
@@ -456,19 +545,19 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   );
 }
 
-function StretchedWordBadge({ entry, seed }: { entry: FoundEntry; seed: string }) {
+function StretchedWordBadge({ entry, seed, "data-testid": testId }: { entry: FoundEntry; seed: string; "data-testid"?: string }) {
   const before = entry.word.slice(0, entry.insertPos);
   const inserted = entry.word[entry.insertPos];
   const after = entry.word.slice(entry.insertPos + 1);
   return (
-    <div className="inline-flex items-center gap-0.5">
-      <span className="font-mono text-sm px-2 py-0.5 rounded-l-md bg-muted border border-border">
+    <div className="inline-flex items-center gap-0" data-testid={testId}>
+      <span className="font-mono text-sm px-2 py-0.5 rounded-l-md bg-muted border border-border border-r-0">
         {before}
         <span className="text-[hsl(262,70%,55%)] font-bold">{inserted}</span>
         {after}
       </span>
       <Badge
-        className={`rounded-l-none text-xs ${entry.isMiddle ? "bg-[hsl(262,70%,55%)]" : "bg-secondary text-secondary-foreground"}`}
+        className={`rounded-l-none rounded-r-md text-xs ${entry.isMiddle ? "bg-[hsl(262,70%,55%)]" : "bg-secondary text-secondary-foreground"}`}
       >
         +{entry.points}
       </Badge>
@@ -493,7 +582,10 @@ export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchG
         key={playKey}
         mode={mode}
         initialSeed={initialSeed}
-        onExit={() => { if (!initialMode) setMode(null); }}
+        onExit={() => {
+          if (!initialMode) setMode(null);
+          setPlayKey(k => k + 1);
+        }}
         locked={locked}
       />
     );
@@ -560,7 +652,7 @@ export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchG
           </div>
           <div className="flex items-center gap-2">
             <Trophy className="h-3.5 w-3.5 text-[hsl(262,70%,55%)]" />
-            <span>Find all solutions: <strong>+25 bonus pts</strong></span>
+            <span>Find all solutions: <strong>+25 bonus pts</strong> (Classic only)</span>
           </div>
         </div>
       </div>

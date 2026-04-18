@@ -403,6 +403,12 @@ export class MemStorage implements IStorage {
     return { word: puzzle.word, totalSolutions: puzzle.solutions.length };
   }
 
+  async getWordStretchSolutions(seed: number): Promise<string[]> {
+    if (wordStretchPuzzles.length === 0) return [];
+    const idx = ((seed % wordStretchPuzzles.length) + wordStretchPuzzles.length) % wordStretchPuzzles.length;
+    return [...wordStretchPuzzles[idx].solutions];
+  }
+
   async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> {
     const upper = stretched.toUpperCase().trim();
     const upperSeed = seedWord.toUpperCase().trim();
