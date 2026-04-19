@@ -1,7 +1,7 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
-import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordDictSet } from "./game-data";
+import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
 
 export class MemStorage implements IStorage {
   private games: Game[];
@@ -417,6 +417,26 @@ export class MemStorage implements IStorage {
     for (let i = 0; i < upper.length; i++) {
       if (upper.slice(0, i) + upper.slice(i + 1) === upperSeed) {
         const isMiddle = i > 0 && i < upper.length - 1;
+        return { valid: true, isMiddle };
+      }
+    }
+    return { valid: false, isMiddle: false };
+  }
+
+  async getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }> {
+    if (wordBloomPuzzles.length === 0) throw new Error("No word bloom puzzles");
+    const idx = ((seed % wordBloomPuzzles.length) + wordBloomPuzzles.length) % wordBloomPuzzles.length;
+    return wordBloomPuzzles[idx];
+  }
+
+  async validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }> {
+    const upperNext = nextWord.toUpperCase().trim();
+    const upperCurrent = currentWord.toUpperCase().trim();
+    if (upperNext.length !== upperCurrent.length + 1) return { valid: false, isMiddle: false };
+    if (!wordDictSet.has(upperNext)) return { valid: false, isMiddle: false };
+    for (let i = 0; i < upperNext.length; i++) {
+      if (upperNext.slice(0, i) + upperNext.slice(i + 1) === upperCurrent) {
+        const isMiddle = i > 0 && i < upperNext.length - 1;
         return { valid: true, isMiddle };
       }
     }

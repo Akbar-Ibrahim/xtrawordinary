@@ -56,6 +56,8 @@ export interface IStorage {
   getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }>;
   validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
   getWordStretchSolutions(seed: number): Promise<string[]>;
+  getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }>;
+  validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;

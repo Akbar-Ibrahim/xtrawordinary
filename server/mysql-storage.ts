@@ -64,6 +64,10 @@ export class MySQLStorage implements IStorage {
       { label: "Classic", slug: "word-stretch" },
       { label: "Survival", slug: "word-stretch-survival" },
     ],
+    "word-bloom": [
+      { label: "Classic", slug: "word-bloom" },
+      { label: "Survival", slug: "word-bloom-survival" },
+    ],
   };
 
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
@@ -158,6 +162,8 @@ export class MySQLStorage implements IStorage {
   async getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }> { return this.gameData.getWordStretchPuzzle(seed); }
   async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordStretch(stretched, seedWord); }
   async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }
+  async getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }> { return this.gameData.getWordBloomPuzzle(seed); }
+  async validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordBloom(currentWord, nextWord); }
 
   private toUser(row: any): User {
     return {

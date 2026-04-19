@@ -546,6 +546,48 @@ export interface WordStretchPuzzle {
   solutions: string[];
 }
 
+interface WordBloomPuzzle {
+  seed: string;
+  maxDepth: number;
+}
+
+export const wordBloomPuzzles: WordBloomPuzzle[] = (() => {
+  // Build adjacency: word -> all words formed by inserting one letter
+  const nextWords = new Map<string, string[]>();
+  for (const word of _dictSet) {
+    const len = word.length;
+    if (len < 3 || len > 11) continue;
+    for (let i = 0; i < len; i++) {
+      const prev = word.slice(0, i) + word.slice(i + 1);
+      if (prev.length >= 2 && _dictSet.has(prev)) {
+        if (!nextWords.has(prev)) nextWords.set(prev, []);
+        nextWords.get(prev)!.push(word);
+      }
+    }
+  }
+  // Memoized DFS for max chain depth
+  const memo = new Map<string, number>();
+  function maxDepth(word: string): number {
+    if (memo.has(word)) return memo.get(word)!;
+    const children = nextWords.get(word) ?? [];
+    if (children.length === 0) { memo.set(word, 0); return 0; }
+    let best = 0;
+    for (const c of children) {
+      const d = 1 + maxDepth(c);
+      if (d > best) best = d;
+    }
+    memo.set(word, best);
+    return best;
+  }
+  const result: WordBloomPuzzle[] = [];
+  for (const word of _dictSet) {
+    if (word.length < 2 || word.length > 4) continue;
+    const depth = maxDepth(word);
+    if (depth >= 3) result.push({ seed: word, maxDepth: depth });
+  }
+  return result.sort((a, b) => b.maxDepth - a.maxDepth);
+})();
+
 export const wordStretchPuzzles: WordStretchPuzzle[] = (() => {
   const seedMap = new Map<string, Set<string>>();
   for (const stretched of _dictSet) {
@@ -1059,6 +1101,33 @@ export const gamesData: Game[] = [
       { label: "Wrapper Survival", slug: "deep-shell-words-wrapper-survival" },
       { label: "Crack", slug: "deep-shell-words-crack" },
       { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
+    ],
+  },
+  {
+    id: 24,
+    slug: "word-bloom",
+    name: "Word Bloom",
+    description: "Grow a short seed word into the longest chain you can — one letter at a time!",
+    longDescription: "Start with a short seed word and grow it step by step — insert one letter anywhere (without rearranging) to form a new valid word, then keep building from there. For example: BE → BET → BEST → BEAST → BREAST. Every step must be exactly one letter longer than the previous. How deep can your chain go?",
+    rules: [
+      "You are given a short seed word (2–3 letters)",
+      "Insert exactly one letter anywhere to form a new valid word (no rearranging)",
+      "Each step must be exactly one letter longer than the previous",
+      "Example: BE → BET → BEST → BEAST → BREAST",
+      "Edge insertion (start or end): 10 points per step",
+      "Middle insertion: 15 points per step",
+      "Classic: 2 minutes — grow the chain as deep as possible",
+      "Survival: 8 seconds per step — find any valid next word to reset the clock",
+      "The dictionary never leaves the server — all validation is server-side",
+    ],
+    difficulty: "hard",
+    estimatedTime: "2-3 min",
+    icon: "Sprout",
+    color: "hsl(142, 60%, 40%)",
+    playCount: 0,
+    modes: [
+      { label: "Classic", slug: "word-bloom" },
+      { label: "Survival", slug: "word-bloom-survival" },
     ],
   },
   {

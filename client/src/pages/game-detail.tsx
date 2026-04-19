@@ -43,6 +43,7 @@ import { LadderRushGame } from "@/components/games/ladder-rush";
 import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { WordStretchGame } from "@/components/games/word-stretch";
+import { WordBloomGame } from "@/components/games/word-bloom";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -77,6 +78,7 @@ const gameComponents: Record<string, React.ComponentType> = {
   "shell-words": ShellWordsGame,
   "deep-shell-words": DeepShellWordsGame,
   "word-stretch": WordStretchGame,
+  "word-bloom": WordBloomGame,
 };
 
 export default function GameDetail() {

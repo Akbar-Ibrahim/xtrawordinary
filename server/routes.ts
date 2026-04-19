@@ -217,6 +217,29 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-bloom/puzzle", async (req, res) => {
+    try {
+      const seed = parseInt(req.query.seed as string);
+      if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
+      const puzzle = await dataSource.getWordBloomPuzzle(seed);
+      res.json(puzzle);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word bloom puzzle" });
+    }
+  });
+
+  app.get("/api/games/word-bloom/validate", async (req, res) => {
+    try {
+      const currentWord = (req.query.current as string) || "";
+      const nextWord = (req.query.next as string) || "";
+      if (!currentWord || !nextWord) return res.status(400).json({ message: "current and next are required" });
+      const result = await dataSource.validateWordBloom(currentWord, nextWord);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word bloom step" });
+    }
+  });
+
   app.get("/api/games/deep-shell-words/crack-answer", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);
