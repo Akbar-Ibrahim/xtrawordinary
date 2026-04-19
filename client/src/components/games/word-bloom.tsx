@@ -356,8 +356,8 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
             {timeLeft}s
           </span>
           {!locked && (
-            <Button variant="outline" size="sm" onClick={() => { if (timerRef.current) clearInterval(timerRef.current); onExit(); }} data-testid="button-quit">
-              Quit
+            <Button variant="outline" size="sm" onClick={() => endGame()} data-testid="button-quit">
+              Give Up
             </Button>
           )}
         </div>
