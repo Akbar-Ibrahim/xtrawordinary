@@ -24,8 +24,8 @@ Shell word data: `shellWordSet` (O(1) lookup), `shellWordPuzzles` (≥3 wrappers
 - Crack Survival (`deep-shell-words-crack-survival`): 8s per boundary pair, correct → new pair
 Deep shell data: `deepShellWordSet`, `deepShellWordPuzzles` (≥3 wrappers), `deepCrackPuzzles` (2-char boundary pairs with ≥2 valid shells). APIs: `GET /api/games/deep-shell-words/validate?word=`, `GET /api/games/deep-shell-words/puzzle?seed=`, `GET /api/games/deep-shell-words/crack?seed=`. Daily challenge and group round integration deferred (out of scope).
 
-**Word Bloom** (id: 24, slug: `word-bloom`): Given a seed word (2–4 letters), insert exactly one letter anywhere (without rearranging) to grow it step by step into the longest chain possible. Example: AM → AIM → AIMS → CLAIMS. Two modes:
-- Classic (`word-bloom`, 2min): grow the chain as deep as possible; edge insertion = 10 pts, middle insertion = 15 pts
+**Word Bloom** (id: 24, slug: `word-bloom`): Given a seed word (2–4 letters), insert exactly one letter anywhere (without rearranging) to grow it step by step into the longest chain possible. Example: AM → AIM → AIMS → MAIMS. Two modes:
+- Classic (`word-bloom`, 2min): grow the chain as deep as possible; scoring: 10 pts base + 5 pts × (current word length − seed length)
 - Survival (`word-bloom-survival`): 8s per step, any correct insertion resets clock, chain keeps growing
 Precomputed data: `wordBloomPuzzles` (IIFE builds insertion adjacency graph, memoized DFS, seeds with maxDepth ≥ 3). APIs: `GET /api/games/word-bloom/puzzle?seed=N` → { seed, maxDepth }, `GET /api/games/word-bloom/validate?current=X&next=Y` → { valid, isMiddle }. Daily challenge and group round integration deferred (pending task #75).
 

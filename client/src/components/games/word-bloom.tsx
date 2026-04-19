@@ -22,8 +22,8 @@ import type { LeaderboardEntry } from "@shared/schema";
 
 const CLASSIC_TIME = 120;
 const SURVIVAL_TIME = 8;
-const POINTS_EDGE = 10;
-const POINTS_MIDDLE = 15;
+const POINTS_BASE = 10;
+const POINTS_GROWTH_BONUS = 5;
 const BLOOM_COLOR = "hsl(142, 60%, 40%)";
 
 type Mode = "classic" | "survival";
@@ -32,7 +32,6 @@ type GameStatus = "playing" | "ended";
 interface ChainEntry {
   word: string;
   insertPos: number;
-  isMiddle: boolean;
   points: number;
 }
 
@@ -82,6 +81,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
   const currentWordRef = useRef("");
   const chainRef = useRef<ChainEntry[]>([]);
   const scoreRef = useRef(0);
+  const seedLenRef = useRef(0);
 
   const { data: leaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
@@ -124,11 +124,12 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
         if (!r.ok) return;
         const p: PuzzleData = await r.json();
         setPuzzle(p);
-        const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, isMiddle: false, points: 0 };
+        const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
         setChain([seedEntry]);
         chainRef.current = [seedEntry];
         setCurrentWord(p.seed);
         currentWordRef.current = p.seed;
+        seedLenRef.current = p.seed.length;
         startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
         setTimeout(() => inputRef.current?.focus(), 100);
       } catch { /* silent */ }
@@ -169,10 +170,9 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
       }
 
       const insertPos = findInsertPos(cw, word);
-      const isMiddle = data.isMiddle as boolean;
-      const pts = isMiddle ? POINTS_MIDDLE : POINTS_EDGE;
+      const pts = POINTS_BASE + POINTS_GROWTH_BONUS * (word.length - seedLenRef.current);
 
-      const entry: ChainEntry = { word, insertPos, isMiddle, points: pts };
+      const entry: ChainEntry = { word, insertPos, points: pts };
       const newChain = [...chainRef.current, entry];
       chainRef.current = newChain;
       setChain(newChain);
@@ -306,11 +306,12 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                       if (!r.ok) return;
                       const p: PuzzleData = await r.json();
                       setPuzzle(p);
-                      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, isMiddle: false, points: 0 };
+                      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
                       setChain([seedEntry]);
                       chainRef.current = [seedEntry];
                       setCurrentWord(p.seed);
                       currentWordRef.current = p.seed;
+                      seedLenRef.current = p.seed.length;
                       startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     })();
@@ -571,11 +572,14 @@ export function WordBloomGame({ groupSeed, locked, initialMode }: WordBloomGameP
         <div className="space-y-1 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <ArrowUp className="h-3.5 w-3.5 text-[hsl(142,60%,40%)]" />
-            <span>Insert at start or end: <strong>10 pts</strong> per step</span>
+            <span>Each valid step: <strong>10 pts</strong> base</span>
           </div>
           <div className="flex items-center gap-2">
             <ArrowUp className="h-3.5 w-3.5 text-[hsl(142,60%,40%)]" />
-            <span>Insert in the middle: <strong>15 pts</strong> per step</span>
+            <span>+<strong>5 pts</strong> per letter beyond seed length</span>
+          </div>
+          <div className="text-xs text-muted-foreground/70 pl-5">
+            e.g. seed AM (2 letters) → AIM (3) = 10+5×1 = <strong>15 pts</strong>; AIM → AIMS (4) = 10+5×2 = <strong>20 pts</strong>
           </div>
         </div>
       </div>
