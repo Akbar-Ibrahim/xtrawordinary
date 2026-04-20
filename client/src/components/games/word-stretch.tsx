@@ -182,11 +182,13 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
 
     if (!isValidInsertion(word, puzzle.word)) {
       showError(`Must be ${puzzle.word.length + 1} letters with ${puzzle.word} inside`);
+      setTimeout(() => inputRef.current?.focus(), 50);
       return;
     }
 
     if (foundRef.current.some(e => e.word === word)) {
       showError("Already found!");
+      setTimeout(() => inputRef.current?.focus(), 50);
       return;
     }
 
@@ -201,7 +203,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
       if (!data.valid) {
         showError("Not a valid word");
         setValidating(false);
-        inputRef.current?.focus();
+        setTimeout(() => inputRef.current?.focus(), 50);
         return;
       }
 
@@ -244,6 +246,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
     } catch {
       showError("Validation failed, try again");
       setValidating(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [input, puzzle, validating, seed, mode, fetchPuzzle, startTimer, endGame, showError]);
 
