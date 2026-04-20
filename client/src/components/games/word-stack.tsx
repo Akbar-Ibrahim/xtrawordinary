@@ -381,6 +381,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
             )}
           </motion.div>
         </CardContent>
+        <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       </Card>
     );
   }

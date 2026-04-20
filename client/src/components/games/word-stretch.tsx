@@ -269,6 +269,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
     const foundWords = new Set(found.map(e => e.word));
     const unfound = solutions ? solutions.filter(s => !foundWords.has(s)) : [];
     return (
+      <>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -418,6 +419,8 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
           </CardContent>
         </Card>
       </motion.div>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      </>
     );
   }
 

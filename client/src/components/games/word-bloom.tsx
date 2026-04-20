@@ -216,6 +216,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
   if (gameStatus === "ended") {
     const steps = chain.length - 1;
     return (
+      <>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -352,6 +353,8 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
           </CardContent>
         </Card>
       </motion.div>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      </>
     );
   }
 

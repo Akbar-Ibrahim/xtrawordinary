@@ -264,6 +264,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
   if (gameStatus === "ended") {
     const endedWordsChained = chain.length - 1;
     return (
+      <>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -382,6 +383,8 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
           </CardContent>
         </Card>
       </motion.div>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      </>
     );
   }
 
