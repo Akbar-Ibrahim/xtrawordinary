@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2 } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, ArrowRight, Heart, Loader2, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { ScrambleWord } from "@shared/schema";
@@ -44,6 +46,8 @@ export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; lo
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrambleWord = (word: string, rng: () => number = Math.random): string => {
@@ -397,6 +401,15 @@ export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; lo
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
                     <Button onClick={initGame} data-testid="button-play-again">
@@ -410,6 +423,7 @@ export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; lo
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

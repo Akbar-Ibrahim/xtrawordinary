@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
@@ -367,6 +369,8 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeftRef = useRef<number>(12);
   const isPlayingRef = useRef<boolean>(false);
@@ -804,6 +808,15 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={true}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
             
             {!locked && (
               <div className="flex flex-col gap-3 max-w-xs mx-auto">
@@ -880,6 +893,15 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={false}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
             
             {!locked && (
               <div className="flex flex-col gap-3 max-w-xs mx-auto">
@@ -1086,6 +1108,7 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { ini
           </Card>
         </motion.div>
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

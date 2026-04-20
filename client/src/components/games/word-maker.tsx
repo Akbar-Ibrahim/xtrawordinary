@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2 } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, Sparkles, Loader2, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { MakerWord } from "@shared/schema";
@@ -39,6 +41,8 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
   const [streak, setStreak] = useState(0);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | "duplicate" | null>(null);
   const [usedBaseWords, setUsedBaseWords] = useState<Set<string>>(new Set());
   const [roundsCompleted, setRoundsCompleted] = useState(0);
@@ -397,6 +401,15 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                   wordsCompleted={roundsCompleted}
                   isWin={true}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
                     <Button onClick={initGame} data-testid="button-play-again">
@@ -444,6 +457,15 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                   wordsCompleted={roundsCompleted}
                   isWin={false}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
                     <Button onClick={initGame} data-testid="button-play-again">
@@ -457,6 +479,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

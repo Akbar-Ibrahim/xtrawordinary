@@ -16,9 +16,12 @@ import {
   Lightbulb,
   ArrowRight,
   RotateCcw,
+  LogIn,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { WordSplitPuzzle } from "@shared/schema";
@@ -117,6 +120,8 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid" | "doesnt-fit"; message: string } | null>(null);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectPuzzle = useCallback((puzzleList: WordSplitPuzzle[], used: Set<string>) => {
@@ -431,6 +436,15 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
                 isWin={allSolved}
               />
+              {!user && (
+                <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                  <LogIn className="h-4 w-4 shrink-0" />
+                  <span>
+                    <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                    to save your score to the leaderboard!
+                  </span>
+                </div>
+              )}
               {!locked && (
                 <div className="flex gap-2 justify-center flex-wrap">
                   <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
@@ -494,6 +508,15 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
                 isWin={false}
               />
+              {!user && (
+                <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                  <LogIn className="h-4 w-4 shrink-0" />
+                  <span>
+                    <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                    to save your score to the leaderboard!
+                  </span>
+                </div>
+              )}
               {!locked && (
                 <div className="flex gap-2 justify-center flex-wrap">
                   <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
@@ -761,6 +784,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
           </Card>
         </motion.div>
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

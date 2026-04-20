@@ -5,8 +5,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { WordStackPuzzle } from "@shared/schema";
@@ -64,6 +66,8 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isBuildUp = selectedChallenge === "build-up";
@@ -354,6 +358,15 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
               challengeName={selectedChallenge === "build-up" ? "Build Up" : "Break Down"}
               isWin={true}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
             {!locked && (
               <div className="flex gap-4 justify-center flex-wrap">
                 <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
@@ -768,6 +781,7 @@ function BreakDownPyramid({
           ))}
         </div>
       </motion.div>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

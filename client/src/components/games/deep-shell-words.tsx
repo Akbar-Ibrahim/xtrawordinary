@@ -866,6 +866,7 @@ export function DeepShellWordsGame({
                 <h3 className="text-xl font-bold">
                   {isSurvival ? "Time's Up!" : "Game Over!"}
                 </h3>
+                <p className="text-muted-foreground mt-1">{completionMessage}</p>
               </motion.div>
 
               <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
@@ -964,12 +965,6 @@ export function DeepShellWordsGame({
                   ))}
                 </div>
               ) : null}
-
-              {completionMessage && (
-                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">
-                  {completionMessage}
-                </p>
-              )}
 
               <ShareResults
                 gameName={`Deep Shell Words: ${VARIATION_LABELS[variation]} ${subMode === "survival" ? "Survival" : "Classic"}`}

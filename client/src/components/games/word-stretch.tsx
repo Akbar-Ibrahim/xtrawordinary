@@ -15,9 +15,12 @@ import {
   ChevronRight,
   Medal,
   XCircle,
+  LogIn,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { useGameResult } from "@/hooks/use-game-result";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
@@ -77,6 +80,8 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   const [validating, setValidating] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [survivalSolvedCount, setSurvivalSolvedCount] = useState(0);
   const [accumulatedScore, setAccumulatedScore] = useState(0);
   const [finalSeed, setFinalSeed] = useState(initialSeed);
@@ -365,6 +370,15 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
               wordsCompleted={mode === "survival" ? survivalSolvedCount : found.length}
               isWin={found.length > 0 || survivalSolvedCount > 0}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">
@@ -553,6 +567,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
           )}
         </CardContent>
       </Card>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

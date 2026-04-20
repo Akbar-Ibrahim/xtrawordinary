@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link, Flame } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Link, Flame, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
@@ -68,6 +70,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [chainHistory, setChainHistory] = useState<{ word: string; isPlayer: boolean }[]>([]);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
 
   const wordsPerLevel = 100;
   
@@ -611,6 +615,15 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
                     <Button onClick={() => setGameStatus("menu")} data-testid="button-play-again">
@@ -624,6 +637,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

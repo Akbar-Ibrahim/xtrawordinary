@@ -801,6 +801,7 @@ export function ShellWordsGame({
                 <h3 className="text-xl font-bold">
                   {isSurvival ? "Time's Up!" : "Game Over!"}
                 </h3>
+                <p className="text-muted-foreground mt-1">{completionMessage}</p>
               </motion.div>
 
               <div className="grid grid-cols-2 gap-4 max-w-xs mx-auto">
@@ -834,12 +835,6 @@ export function ShellWordsGame({
                     </div>
                   ))}
                 </div>
-              )}
-
-              {completionMessage && (
-                <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">
-                  {completionMessage}
-                </p>
               )}
 
               <ShareResults

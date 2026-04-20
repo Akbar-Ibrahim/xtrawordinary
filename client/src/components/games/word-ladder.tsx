@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Lightbulb, Trophy, X, XCircle, Loader2, ArrowUp, Minus } from "lucide-react";
+import { RotateCcw, Lightbulb, Trophy, X, XCircle, Loader2, ArrowUp, Minus, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
@@ -61,6 +63,8 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
   const [validating, setValidating] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [showPaths, setShowPaths] = useState(false);
   const [score, setScore] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -629,6 +633,15 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   isWin={true}
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap mt-2">
                     <Button onClick={() => initGame()} data-testid="button-play-again">
@@ -668,6 +681,15 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   score={score}
                   isWin={false}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap mt-2">
                     <Button onClick={() => initGame()} data-testid="button-play-again">
@@ -688,6 +710,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
           <span>Tip: Change one letter and rearrange to climb the ladder</span>
         </div>
       )}
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, RefreshCw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu, Flame } from "lucide-react";
+import { RotateCcw, RefreshCw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, MapPin, Menu, Flame, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import { apiRequest } from "@/lib/queryClient";
@@ -79,6 +81,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
   const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [constraint, setConstraint] = useState<PositionConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -558,6 +562,15 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {usedWords.size > 0 && (
                   <div className="text-left space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
@@ -641,6 +654,15 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {usedWords.size > 0 && (
                   <div className="text-left space-y-1">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Words found</p>
@@ -676,6 +698,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

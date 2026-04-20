@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, XCircle, Lightbulb, Heart, Loader2, Eye, EyeOff } from "lucide-react";
+import { RotateCcw, Trophy, XCircle, Lightbulb, Heart, Loader2, Eye, EyeOff, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { StreakIndicator } from "@/components/streak-indicator";
 import type { LetterPoolWord } from "@shared/schema";
@@ -51,6 +53,8 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPo
   const [showHint, setShowHint] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const gameAreaRef = useRef<HTMLDivElement>(null);
 
@@ -551,6 +555,15 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPo
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
                 />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-3 justify-center flex-wrap">
                     <Button onClick={restartGame} data-testid="button-play-again">
@@ -574,6 +587,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPo
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

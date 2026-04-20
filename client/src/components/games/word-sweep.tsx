@@ -6,9 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles, Check, Timer, Grid3X3, PackageOpen,
-  RotateCcw, Trophy, XCircle, Shuffle, Send, Undo2, Loader2,
+  RotateCcw, Trophy, XCircle, Shuffle, Send, Undo2, Loader2, LogIn,
 } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { AnimatedNumber } from "@/components/animated-number";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
@@ -54,6 +56,8 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   const [gameStatus, setGameStatus] = useState<"loading" | "playing" | "ended">("loading");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid" | "short"; message: string } | null>(null);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [totalLetters, setTotalLetters] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -412,6 +416,15 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                   </div>
                 )}
                 <ShareResults gameName="Word Sweep" gameSlug="word-sweep" score={score} wordsCompleted={wordsFound.length} isWin={wordsFound.length > 0} />
+                {!user && (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                    <LogIn className="h-4 w-4 shrink-0" />
+                    <span>
+                      <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                      to save your score to the leaderboard!
+                    </span>
+                  </div>
+                )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
                     <Button onClick={initGame} data-testid="button-play-again">Play Again</Button>
@@ -423,6 +436,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }
@@ -452,6 +466,8 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
   const [gameStatus, setGameStatus] = useState<"loading" | "playing" | "ended">("loading");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong"; message: string } | null>(null);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user: guidedUser } = useAuth();
+  const [guidedAuthOpen, setGuidedAuthOpen] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [penaltyFlash, setPenaltyFlash] = useState(false);
   const [gaveUp, setGaveUp] = useState(false);
@@ -692,6 +708,15 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
               </div>
             </div>
             <ShareResults gameName="Word Sweep (Guided)" gameSlug="word-unpack" score={score} wordsCompleted={wordsFound.length} isWin={isPerfectClear} />
+            {!guidedUser && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setGuidedAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
             {!locked && (
               <div className="flex gap-2 justify-center flex-wrap">
                 <Button onClick={initGame} className="gap-1.5" data-testid="button-play-again">
@@ -855,6 +880,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
           </div>
         </CardContent>
       </Card>
+      <AuthModal open={guidedAuthOpen} onOpenChange={setGuidedAuthOpen} />
     </div>
   );
 }

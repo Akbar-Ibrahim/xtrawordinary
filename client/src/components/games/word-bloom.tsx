@@ -14,9 +14,12 @@ import {
   ChevronRight,
   Medal,
   ArrowUp,
+  LogIn,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { useGameResult } from "@/hooks/use-game-result";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
@@ -74,6 +77,8 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
   const [validating, setValidating] = useState(false);
   const [score, setScore] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -292,6 +297,15 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
               wordsCompleted={steps}
               isWin={steps > 0}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">
@@ -477,6 +491,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
           )}
         </CardContent>
       </Card>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }

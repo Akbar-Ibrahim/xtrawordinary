@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal, Flame, Timer } from "lucide-react";
+import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal, Flame, Timer, LogIn } from "lucide-react";
 import { useSound } from "@/lib/sound-provider";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
 import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
@@ -76,6 +78,8 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
   const [validating, setValidating] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
+  const { user } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const chainEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -344,6 +348,15 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
               wordsCompleted={endedWordsChained}
               isWin={endedWordsChained > 0}
             />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span>
+                  <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
+                  to save your score to the leaderboard!
+                </span>
+              </div>
+            )}
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">
@@ -524,6 +537,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
           </motion.div>
         )}
       </AnimatePresence>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }
