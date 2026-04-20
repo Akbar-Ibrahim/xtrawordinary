@@ -151,6 +151,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
 
     if (!isStructurallyValid(cw, word)) {
       showError(`Must be ${cw.length + 1} letters with ${cw} inside (in order)`);
+      setTimeout(() => inputRef.current?.focus(), 50);
       return;
     }
 
@@ -165,7 +166,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
       if (!data.valid) {
         showError("Not a valid word");
         setValidating(false);
-        inputRef.current?.focus();
+        setTimeout(() => inputRef.current?.focus(), 50);
         return;
       }
 
@@ -194,6 +195,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
     } catch {
       showError("Validation failed, try again");
       setValidating(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [input, validating, mode, showError, startTimer]);
 
