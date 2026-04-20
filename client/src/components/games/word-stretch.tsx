@@ -17,6 +17,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { ShareResults } from "@/components/share-results";
 import { useGameResult } from "@/hooks/use-game-result";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
@@ -356,6 +357,14 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                 </div>
               </div>
             )}
+
+            <ShareResults
+              gameName="Word Stretch"
+              gameSlug={slug}
+              score={finalScore}
+              wordsCompleted={mode === "survival" ? survivalSolvedCount : found.length}
+              isWin={found.length > 0 || survivalSolvedCount > 0}
+            />
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">

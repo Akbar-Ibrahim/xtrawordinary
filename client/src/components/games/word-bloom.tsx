@@ -16,6 +16,7 @@ import {
   ArrowUp,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { ShareResults } from "@/components/share-results";
 import { useGameResult } from "@/hooks/use-game-result";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
@@ -283,6 +284,14 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                 </div>
               </div>
             )}
+
+            <ShareResults
+              gameName="Word Bloom"
+              gameSlug={slug}
+              score={score}
+              wordsCompleted={steps}
+              isWin={steps > 0}
+            />
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">

@@ -13,6 +13,7 @@ import { useGameResult } from "@/hooks/use-game-result";
 import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { ShareResults } from "@/components/share-results";
 
 const GAME_DURATION = 90;
 const SURVIVAL_TIME_PER_WORD = 8;
@@ -335,6 +336,14 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
                 </div>
               </div>
             )}
+
+            <ShareResults
+              gameName={doubleSwap ? "Ladder Rush: Double Swap" : "Ladder Rush"}
+              gameSlug={slug}
+              score={finalScore}
+              wordsCompleted={endedWordsChained}
+              isWin={endedWordsChained > 0}
+            />
 
             {!locked && (
               <div className="flex gap-3 pt-2 flex-wrap">
