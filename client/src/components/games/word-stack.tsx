@@ -560,6 +560,7 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
           )}
         </CardContent>
       </Card>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }
@@ -781,7 +782,6 @@ function BreakDownPyramid({
           ))}
         </div>
       </motion.div>
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
 }
