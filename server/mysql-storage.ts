@@ -614,7 +614,29 @@ export class MySQLStorage implements IStorage {
     const rows = await db.select().from(schema.friendChallenges)
       .where(or(eq(schema.friendChallenges.senderId, userId), eq(schema.friendChallenges.receiverId, userId)))
       .orderBy(desc(schema.friendChallenges.createdAt));
-    return rows.map((r: any) => this.toChallenge(r));
+
+    const challenges = rows.map((r: any) => this.toChallenge(r));
+
+    const userIds = new Set<number>();
+    for (const c of challenges) {
+      userIds.add(c.senderId);
+      userIds.add(c.receiverId);
+    }
+    if (userIds.size === 0) return challenges;
+
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users)
+      .where(inArray(schema.users.id, Array.from(userIds)));
+    const userMap = new Map<number, { name: string; avatarUrl: string | null }>();
+    for (const u of userRows) userMap.set(u.id, { name: u.name, avatarUrl: u.avatarUrl });
+
+    return challenges.map(c => ({
+      ...c,
+      senderName: userMap.get(c.senderId)?.name,
+      receiverName: userMap.get(c.receiverId)?.name,
+      senderAvatarUrl: userMap.get(c.senderId)?.avatarUrl ?? null,
+      receiverAvatarUrl: userMap.get(c.receiverId)?.avatarUrl ?? null,
+    }));
   }
 
   async getFriendChallenge(id: number): Promise<FriendChallenge | undefined> {

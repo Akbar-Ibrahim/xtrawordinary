@@ -301,10 +301,14 @@ export const friendChallengeSchema = z.object({
   seed: z.number().nullable(),
   senderViewed: z.boolean(),
   createdAt: z.string(),
+  senderName: z.string().optional(),
+  receiverName: z.string().optional(),
+  senderAvatarUrl: z.string().nullable().optional(),
+  receiverAvatarUrl: z.string().nullable().optional(),
 });
 export type FriendChallenge = z.infer<typeof friendChallengeSchema>;
 
-export const insertFriendChallengeSchema = friendChallengeSchema.omit({ id: true, createdAt: true });
+export const insertFriendChallengeSchema = friendChallengeSchema.omit({ id: true, createdAt: true, senderName: true, receiverName: true, senderAvatarUrl: true, receiverAvatarUrl: true });
 export type InsertFriendChallenge = z.infer<typeof insertFriendChallengeSchema>;
 
 // ==================== GROUPS ====================
