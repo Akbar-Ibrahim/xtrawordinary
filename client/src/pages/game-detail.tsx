@@ -148,6 +148,18 @@ export default function GameDetail() {
     enabled: !!challengeId && isAuthenticated,
   });
 
+  const opponentId = isReceiverMode ? receiverChallenge?.senderId : undefined;
+  const { data: opponentProfile } = useQuery<{ user: { name: string } }>({
+    queryKey: ["/api/users", opponentId, "profile"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${opponentId}/profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("Profile not found");
+      return res.json();
+    },
+    enabled: !!opponentId,
+  });
+  const opponentName = opponentProfile?.user?.name;
+
   const receiverGroupSeed = receiverChallenge?.seed ?? undefined;
   const effectiveGroupSeed = isSenderMode ? groupSeedForGame : receiverGroupSeed;
 
@@ -492,7 +504,9 @@ export default function GameDetail() {
                   <div className="flex items-center gap-3 mb-3">
                     <Trophy className={`h-6 w-6 ${challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
                     <p className="text-lg font-bold">
-                      {challengeResult.won ? "You won the challenge!" : "Your friend wins this one!"}
+                      {challengeResult.won
+                        ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
+                        : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
                     </p>
                   </div>
                   <div className="flex gap-6 text-sm">
@@ -501,7 +515,7 @@ export default function GameDetail() {
                       <p className="text-2xl font-bold">{challengeResult.myScore}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Their score</p>
+                      <p className="text-muted-foreground">{opponentName ? `${opponentName}'s score` : "Their score"}</p>
                       <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
                     </div>
                   </div>

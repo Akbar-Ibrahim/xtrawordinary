@@ -1157,10 +1157,18 @@ export async function registerRoutes(
     //   res.status(status).json({ error: message });
     // }
     // --- END REMOTE SERVER BLOCK ---
+    const SEEDED_GAME_SLUGS = new Set([
+      "anagram-solver", "deep-shell-words", "definition-match", "ladder-rush",
+      "letter-balance", "letter-frequency", "letter-hunt", "letter-pool",
+      "letter-position", "shell-words", "word-bloom", "word-ladder",
+      "word-length", "word-maker", "word-roots", "word-scramble",
+      "word-stretch", "word-sweep",
+    ]);
     try {
       const { friendId, gameSlug, score, message, seed } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
       if (!gameSlug || typeof gameSlug !== "string") return res.status(400).json({ error: "Valid gameSlug is required" });
+      if (!SEEDED_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support challenges" });
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
       if (message && typeof message === "string" && message.length > 200) return res.status(400).json({ error: "Message too long (max 200 chars)" });
       const friendship = await storage.getFriendship(req.user!.id, friendId);
