@@ -134,5 +134,171 @@ Suggested build phases
 
 
 ================================================================================
+  REAL-TIME 1-ON-1 DUELS
+================================================================================
+
+Overview
+--------
+- Paid-tier feature (strong social/competitive hook)
+- Synchronous play: both players online at the same time
+- Two duel formats depending on the game:
+    1. Turn-based alternating  — players swap turns with an 8-second clock
+    2. Simultaneous race       — same puzzle, both solve independently, first to
+                                 hit the target wins
+- Distinct from async friend challenges (this is live, not play-later)
+- Requires WebSockets infrastructure (not currently in platform — significant addition)
+
+Core mechanic — shared setup (both formats)
+-------------------------------------------
+1. Player A challenges Player B to a specific game (Friends page or game detail)
+2. Player B accepts — both enter the Waiting Room
+3. Waiting Room shows both avatars, names, Ready status
+4. Each player clicks "Ready"; countdown triggers only when both are ready (3-2-1)
+5. Game starts simultaneously for both players
+
+Turn-based format specifics
+----------------------------
+- 8-second survival clock per turn; timer bar visible to both players at all times
+- Submit a valid answer → turn passes to opponent, opponent's timer resets
+- Invalid submissions cost 0.5 seconds (anti-spam; does not end your turn)
+- Miss the 8-second window → lose a life (3 lives per player — not instant death)
+- Lose all 3 lives → lose the match
+- While it is the opponent's turn, your input is locked (can't submit)
+- Side-by-side word list updated in real time: Your Column | Opponent's Column
+
+Simultaneous race format specifics
+------------------------------------
+- Same puzzle / same constraints given to both players
+- Both solve independently and simultaneously (no turn locking)
+- First to reach the target (complete the puzzle, hit a score threshold, or
+  exhaust the solution space) wins
+- Real-time score/progress feed: both can see each other's running tally
+
+Connection handling (both formats)
+------------------------------------
+- If a player disconnects: 30-second grace period to reconnect
+- After 30 seconds → that player forfeits automatically
+- Prevents rage-quitting via connection drop
+
+Post-match summary (both formats)
+-----------------------------------
+- Full answer list from both players
+- Longest word per player
+- Total answers submitted per player
+- Match duration
+- Duel rating change (+/-)
+
+Duel rating (ELO)
+-----------------
+- Separate duel rating, distinct from main leaderboard scores
+- Winning increases duel rank; losing decreases it
+- Shown on user profile alongside main stats
+
+Spectator mode
+--------------
+- Players set a duel as Public (spectators allowed) or Private (no spectators)
+  when issuing the challenge; default is opt-in (private unless made public)
+- Spectators join the same real-time room in read-only mode
+- Spectators see the identical live feed: words appearing, timer bar, lives
+- Spectator emoji reactions (👀 🔥 😬) — briefly flash on screen for both players;
+  adds atmosphere without being distracting
+- Spectator count shown to both players (e.g. "👁 4 watching") — motivating
+- Entry point: a "Live Now" section on the Friends page or Duels lobby showing
+  ongoing public duels that friends are in
+
+--------------------------------------------------------------------------------
+Games with real-time 1-on-1 potential
+--------------------------------------------------------------------------------
+
+TURN-BASED ALTERNATING (Tier A — build first)
+
+  Word Chain
+    Most natural duel on the platform.
+    Each player chains from the last letter of the opponent's word.
+    Fail to find a valid chain in 8s → lose a life.
+    Shared "used words" list prevents repeating.
+
+  Letter Hunt
+    Alternate submitting words containing the target letter.
+    Shared used-word list prevents repeats.
+
+  Letter Balance
+    Alternate submitting balance-satisfying words.
+
+  Letter Frequency
+    Alternate submitting words with a high count of the target letter.
+    Shared used-word list.
+
+  Word Length
+    Alternate submitting words of the target length.
+    Shared used-word list prevents repeats.
+
+  Shell Words — Crack mode
+    Given the same boundary letters, alternate typing the inner word.
+    Shared used-word list.
+
+SIMULTANEOUS RACE (Tier B — build after Tier A)
+
+  Word Scramble
+    Same scrambled word shown to both players simultaneously.
+    Race to unscramble / submit valid words. Score or completion decides winner.
+
+  No Repeats
+    Same starting constraints. Both solve independently.
+    Whoever exhausts more valid words (or hits target) wins.
+
+  Anagram Solver
+    Same scrambled letters for both players.
+    Race to find the most valid anagrams within the time window.
+
+  Word Stack
+    Same stack puzzle. Race to build the tallest valid stack.
+
+  Letter Pool
+    Same letter pool. Race to claim the most / highest-scoring words.
+
+  Word Maker
+    Same base word. Race to find the most valid derivatives.
+
+  Word Split
+    Same compound word set. Race to split the most correctly.
+
+  Definition Match
+    Same definition cards. Simultaneous race to match them.
+    Rounds-based (best of 5 or 7).
+
+WEAKER FIT — skip for now
+  Progressive Reveal, Word Roots, Word Bloom, Word Stretch,
+  Word Sweep, Ladder Rush — don't adapt cleanly to live duel format.
+
+--------------------------------------------------------------------------------
+Suggested build phases
+--------------------------------------------------------------------------------
+
+  Phase 1 : WebSocket infrastructure (rooms, real-time state sync,
+            reconnect grace, disconnect forfeit logic)
+            Waiting Room UI (avatars, Ready buttons, 3-2-1 countdown)
+            Turn-based engine (timer bar, turn lock, 3-lives system)
+            Side-by-side word list UI
+            Launch with Turn-Based Tier A games
+
+  Phase 2 : Simultaneous race engine
+            Launch Tier B games
+            Post-match summary screen
+            Duel rating / ELO system
+            Duel notifications (invite, result)
+
+  Phase 3 : Spectator mode (public/private toggle, emoji reactions,
+            spectator count, Live Now lobby)
+            Duel history / match replay
+            Spectator chat (optional, scoped)
+
+  Note    : Game classifications (turn-based vs race) can be revisited
+            when each game is ready to build. The above reflects intent,
+            not final spec.
+
+
+
+================================================================================
   (Add future feature sections below this line)
 ================================================================================
