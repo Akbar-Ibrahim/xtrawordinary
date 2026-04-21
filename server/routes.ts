@@ -1158,7 +1158,7 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const { friendId, gameSlug, score, message } = req.body;
+      const { friendId, gameSlug, score, message, seed } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
       if (!gameSlug || typeof gameSlug !== "string") return res.status(400).json({ error: "Valid gameSlug is required" });
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
@@ -1173,6 +1173,8 @@ export async function registerRoutes(
         receiverScore: null,
         status: "pending",
         message: message || null,
+        seed: typeof seed === "number" ? seed : null,
+        senderViewed: false,
       });
       res.json(challenge);
     } catch (error) {
@@ -1196,6 +1198,21 @@ export async function registerRoutes(
       res.json(challenges);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch challenges" });
+    }
+  });
+
+  app.get("/api/challenges/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const challenge = await storage.getFriendChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.senderId !== req.user!.id && challenge.receiverId !== req.user!.id) {
+        return res.status(403).json({ error: "Not your challenge" });
+      }
+      res.json(challenge);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch challenge" });
     }
   });
 
@@ -1223,6 +1240,20 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to complete challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/viewed", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const challenge = await storage.getFriendChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.senderId !== req.user!.id) return res.status(403).json({ error: "Only the sender can mark as viewed" });
+      await storage.markChallengeViewed(id);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark challenge as viewed" });
     }
   });
 

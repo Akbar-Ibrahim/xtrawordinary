@@ -586,6 +586,8 @@ export class MySQLStorage implements IStorage {
       receiverScore: r.receiverScore ?? null,
       status: r.status as FriendChallenge["status"],
       message: r.message || null,
+      seed: r.seed ?? null,
+      senderViewed: Boolean(r.senderViewed),
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
   }
@@ -600,6 +602,8 @@ export class MySQLStorage implements IStorage {
       receiverScore: challenge.receiverScore,
       status: challenge.status,
       message: challenge.message,
+      seed: challenge.seed ?? null,
+      senderViewed: challenge.senderViewed ?? false,
     });
     const created = await this.getFriendChallenge(result[0].insertId);
     return created!;
@@ -621,8 +625,13 @@ export class MySQLStorage implements IStorage {
 
   async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
     const db = await this.getDb();
-    await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed" }).where(eq(schema.friendChallenges.id, id));
+    await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed", senderViewed: false }).where(eq(schema.friendChallenges.id, id));
     return this.getFriendChallenge(id);
+  }
+
+  async markChallengeViewed(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.friendChallenges).set({ senderViewed: true }).where(eq(schema.friendChallenges.id, id));
   }
 
   private toGroup(r: any): Group {

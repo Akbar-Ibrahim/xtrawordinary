@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useParams, Link, useSearch } from "wouter";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams, Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -14,10 +17,15 @@ import {
   X,
   CheckCircle,
   Swords,
+  Trophy,
+  User,
+  Loader2,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, FriendChallenge } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { CommentSection } from "@/components/comment-section";
 import { LikeButton } from "@/components/like-button";
 import { MiniLeaderboard } from "@/components/mini-leaderboard";
@@ -54,7 +62,7 @@ const difficultyColors = {
 const LadderRushDoubleGame = (props: { groupSeed?: number; locked?: boolean }) =>
   <LadderRushGame {...props} doubleSwap />;
 
-const gameComponents: Record<string, React.ComponentType> = {
+const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; locked?: boolean }>> = {
   "word-ladder": WordLadderGame,
   "anagram-solver": AnagramSolverGame,
   "word-scramble": WordScrambleGame,
@@ -81,27 +89,107 @@ const gameComponents: Record<string, React.ComponentType> = {
   "word-bloom": WordBloomGame,
 };
 
+interface ChallengeResult {
+  myScore: number;
+  opponentScore: number;
+  won: boolean;
+  isSender: boolean;
+}
+
 export default function GameDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
   const searchString = useSearch();
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
+
   const searchParams = new URLSearchParams(searchString);
   const challengeId = searchParams.get("challenge");
-  const { isAuthenticated } = useAuth();
+  const challengeNewFriendId = searchParams.get("challenge-new");
+  const challengeNewSeed = searchParams.get("seed");
+  const challengeNewMsg = searchParams.get("msg");
 
-  const { data: challenge } = useQuery<FriendChallenge>({
+  const isReceiverMode = !!challengeId;
+  const isSenderMode = !!challengeNewFriendId && !!challengeNewSeed;
+  const groupSeedForGame = isSenderMode
+    ? parseInt(challengeNewSeed!)
+    : undefined;
+
+  const { data: receiverChallenge } = useQuery<FriendChallenge>({
     queryKey: ["/api/challenges", challengeId],
     queryFn: async () => {
-      const res = await fetch(`/api/challenges`, { credentials: "include" });
-      const all = await res.json();
-      return all.find((c: FriendChallenge) => c.id === parseInt(challengeId!));
+      const res = await fetch(`/api/challenges/${challengeId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Challenge not found");
+      return res.json();
     },
     enabled: !!challengeId && isAuthenticated,
   });
 
+  const receiverGroupSeed = receiverChallenge?.seed ?? undefined;
+  const effectiveGroupSeed = isSenderMode ? groupSeedForGame : receiverGroupSeed;
+
   useEffect(() => {
-    if (challengeId) setIsPlaying(true);
-  }, [challengeId]);
+    if (challengeId || challengeNewFriendId) setIsPlaying(true);
+  }, [challengeId, challengeNewFriendId]);
+
+  const submitChallengeMutation = useMutation({
+    mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string }) =>
+      apiRequest("POST", "/api/challenges", payload),
+    onSuccess: () => {
+      toast({ title: "Challenge sent!", description: "Your friend will be notified." });
+      navigate(`/game/${slug}`, { replace: true });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not send challenge.", variant: "destructive" }),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async ({ id, score }: { id: number; score: number }) => {
+      const res = await apiRequest("POST", `/api/challenges/${id}/complete`, { score });
+      return res.json() as Promise<{ receiverScore: number; senderScore: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      if (data) {
+        const myScore = data.receiverScore ?? 0;
+        const opponentScore = data.senderScore ?? 0;
+        setChallengeResult({ myScore, opponentScore, won: myScore >= opponentScore, isSender: false });
+      }
+    },
+    onError: () => toast({ title: "Error", description: "Could not submit your score.", variant: "destructive" }),
+  });
+
+  const alreadySubmittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (!isSenderMode && !isReceiverMode) return;
+
+    const handleResult = (e: Event) => {
+      const { score } = (e as CustomEvent).detail;
+      if (alreadySubmittedRef.current) return;
+      alreadySubmittedRef.current = true;
+
+      if (isSenderMode && challengeNewFriendId && challengeNewSeed) {
+        submitChallengeMutation.mutate({
+          friendId: parseInt(challengeNewFriendId),
+          gameSlug: slug!,
+          score,
+          seed: parseInt(challengeNewSeed),
+          message: challengeNewMsg ? decodeURIComponent(challengeNewMsg) : undefined,
+        });
+      } else if (isReceiverMode && challengeId && receiverChallenge) {
+        if (receiverChallenge.status === "pending") {
+          completeMutation.mutate({ id: parseInt(challengeId), score });
+        }
+      }
+    };
+
+    window.addEventListener("wordplay-game-result", handleResult);
+    return () => window.removeEventListener("wordplay-game-result", handleResult);
+  }, [isPlaying, isSenderMode, isReceiverMode, receiverChallenge, challengeId, challengeNewFriendId, challengeNewSeed, challengeNewMsg, slug]);
 
   const { data: game, isLoading, error } = useQuery<Game>({
     queryKey: ["/api/games", slug],
@@ -116,6 +204,15 @@ export default function GameDetail() {
     },
     enabled: !!slug,
   });
+
+  const { data: friends = [] } = useQuery<Array<{ id: number; friendUser: { id: number; name: string; avatarUrl: string | null } }>>({
+    queryKey: ["/api/friends"],
+    enabled: isAuthenticated,
+  });
+
+  const [showChallengeDialog, setShowChallengeDialog] = useState(false);
+  const [selectedFriendId, setSelectedFriendId] = useState<string>("");
+  const [challengeMsg, setChallengeMsg] = useState("");
 
   if (isLoading) {
     return (
@@ -155,12 +252,22 @@ export default function GameDetail() {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const GameComponent = gameComponents[game.slug];
 
+  const handleStartChallenge = () => {
+    if (!selectedFriendId) return;
+    const seed = Math.floor(Math.random() * 1000000);
+    const msgParam = challengeMsg ? `&msg=${encodeURIComponent(challengeMsg)}` : "";
+    setShowChallengeDialog(false);
+    setSelectedFriendId("");
+    setChallengeMsg("");
+    navigate(`/game/${slug}?challenge-new=${selectedFriendId}&seed=${seed}${msgParam}`);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <Link href="/">
+      <Link href={challengeResult ? "/friends" : "/"}>
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
-          Back to Games
+          {challengeResult ? "Back to Friends" : "Back to Games"}
         </Button>
       </Link>
 
@@ -264,6 +371,17 @@ export default function GameDetail() {
                     <Play className="h-5 w-5" />
                     Play Now
                   </Button>
+                  {isAuthenticated && friends.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => setShowChallengeDialog(true)}
+                      data-testid="button-challenge-friend"
+                    >
+                      <Swords className="h-4 w-4" />
+                      Challenge a Friend
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <MiniLeaderboard game={game} />
@@ -291,7 +409,14 @@ export default function GameDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsPlaying(false)}
+                onClick={() => {
+                  setIsPlaying(false);
+                  setChallengeResult(null);
+                  alreadySubmittedRef.current = false;
+                  if (challengeId || challengeNewFriendId) {
+                    navigate(`/game/${slug}`, { replace: true });
+                  }
+                }}
                 className="gap-1.5"
                 data-testid="button-close-game"
               >
@@ -300,20 +425,76 @@ export default function GameDetail() {
               </Button>
             </div>
 
-            {challenge && challenge.status === "pending" && (
+            {isSenderMode && !challengeResult && (
               <Card className="mb-4 border-primary/30 bg-primary/5">
                 <CardContent className="py-3 px-4 flex items-center gap-3">
                   <Swords className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium text-sm">Friend Challenge</p>
-                    <p className="text-xs text-muted-foreground">Score to beat: <strong>{challenge.senderScore} pts</strong>{challenge.message && ` — "${challenge.message}"`}</p>
+                    <p className="font-medium text-sm">Challenge Mode</p>
+                    <p className="text-xs text-muted-foreground">
+                      Play your best — your score will be sent as a challenge when you finish!
+                      {challengeNewMsg && ` "${decodeURIComponent(challengeNewMsg)}"`}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
             )}
 
+            {isReceiverMode && receiverChallenge && receiverChallenge.status === "pending" && !challengeResult && (
+              <Card className="mb-4 border-primary/30 bg-primary/5">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <Swords className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-medium text-sm">Friend Challenge</p>
+                    <p className="text-xs text-muted-foreground">
+                      Score to beat: <strong>{receiverChallenge.senderScore} pts</strong>
+                      {receiverChallenge.message && ` — "${receiverChallenge.message}"`}
+                      {receiverChallenge.seed != null && " · Same puzzle as your friend"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {(completeMutation.isPending || submitChallengeMutation.isPending) && (
+              <Card className="mb-4 border-muted">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Submitting your score...</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {challengeResult && (
+              <Card className={`mb-6 border-2 ${challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
+                <CardContent className="py-5 px-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Trophy className={`h-6 w-6 ${challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
+                    <p className="text-lg font-bold">
+                      {challengeResult.won ? "You won the challenge!" : "Your friend wins this one!"}
+                    </p>
+                  </div>
+                  <div className="flex gap-6 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Your score</p>
+                      <p className="text-2xl font-bold">{challengeResult.myScore}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Their score</p>
+                      <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
+                    </div>
+                  </div>
+                  <Link href="/friends">
+                    <Button className="mt-4" size="sm" data-testid="button-back-to-friends">
+                      See all challenges
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
             {GameComponent ? (
-              <GameComponent />
+              <GameComponent groupSeed={effectiveGroupSeed} />
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -326,6 +507,58 @@ export default function GameDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={showChallengeDialog} onOpenChange={setShowChallengeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Challenge a Friend</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Pick a friend to challenge in <strong>{game.name}</strong>. You'll play first — your score is automatically sent to them when you finish.
+            </p>
+            <div>
+              <label className="text-sm font-medium">Friend</label>
+              <Select value={selectedFriendId} onValueChange={setSelectedFriendId}>
+                <SelectTrigger data-testid="select-challenge-friend">
+                  <SelectValue placeholder="Select a friend" />
+                </SelectTrigger>
+                <SelectContent>
+                  {friends.map((f) => (
+                    <SelectItem key={f.friendUser.id} value={String(f.friendUser.id)}>
+                      <span className="flex items-center gap-2">
+                        {f.friendUser.avatarUrl
+                          ? <img src={f.friendUser.avatarUrl} className="h-5 w-5 rounded-full" />
+                          : <User className="h-4 w-4" />}
+                        {f.friendUser.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Message (optional)</label>
+              <Input
+                value={challengeMsg}
+                onChange={(e) => setChallengeMsg(e.target.value)}
+                placeholder="Beat this!"
+                maxLength={200}
+                data-testid="input-challenge-message"
+              />
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={handleStartChallenge}
+              disabled={!selectedFriendId}
+              data-testid="button-start-challenge"
+            >
+              <Play className="h-4 w-4" />
+              Play &amp; Send Challenge
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

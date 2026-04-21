@@ -108,6 +108,7 @@ export interface IStorage {
   getFriendChallenges(userId: number): Promise<FriendChallenge[]>;
   getFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
   completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined>;
+  markChallengeViewed(id: number): Promise<void>;
 
   // Groups
   createGroup(group: InsertGroup): Promise<Group>;

@@ -298,6 +298,8 @@ export const friendChallengeSchema = z.object({
   receiverScore: z.number().nullable(),
   status: challengeStatusSchema,
   message: z.string().nullable(),
+  seed: z.number().nullable(),
+  senderViewed: z.boolean(),
   createdAt: z.string(),
 });
 export type FriendChallenge = z.infer<typeof friendChallengeSchema>;

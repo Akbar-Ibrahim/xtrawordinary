@@ -1,19 +1,40 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link, Redirect } from "wouter";
+import { Link, Redirect, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Trophy, Gamepad2, Clock, User, Loader2 } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, User, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
+
+const SEEDED_GAME_SLUGS = new Set([
+  "anagram-solver",
+  "deep-shell-words",
+  "definition-match",
+  "ladder-rush",
+  "letter-balance",
+  "letter-frequency",
+  "letter-hunt",
+  "letter-pool",
+  "letter-position",
+  "shell-words",
+  "word-bloom",
+  "word-ladder",
+  "word-length",
+  "word-maker",
+  "word-roots",
+  "word-scramble",
+  "word-stretch",
+  "word-sweep",
+]);
 
 interface FriendEntry {
   id: number;
@@ -35,13 +56,15 @@ interface SearchResult {
 export default function Friends() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const latestQueryRef = useRef("");
+  const [activeTab, setActiveTab] = useState("friends");
+
   const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
-  const [challengeScore, setChallengeScore] = useState("");
   const [challengeMessage, setChallengeMessage] = useState("");
 
   const { data: friends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
@@ -54,7 +77,7 @@ export default function Friends() {
     enabled: isAuthenticated,
   });
 
-  const { data: challenges = [] } = useQuery<FriendChallenge[]>({
+  const { data: challenges = [], refetch: refetchChallenges } = useQuery<FriendChallenge[]>({
     queryKey: ["/api/challenges"],
     enabled: isAuthenticated,
   });
@@ -114,23 +137,22 @@ export default function Friends() {
     },
   });
 
-  const createChallengeMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/challenges", {
-      friendId: challengeFriendId,
-      gameSlug: challengeGameSlug,
-      score: parseInt(challengeScore),
-      message: challengeMessage || undefined,
-    }),
+  const markViewedMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/challenges/${id}/viewed`, {}),
     onSuccess: () => {
-      toast({ title: "Challenge sent!" });
-      setChallengeDialogOpen(false);
-      setChallengeGameSlug("");
-      setChallengeScore("");
-      setChallengeMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const unseenCompleted = challenges.filter(
+    (c) => c.status === "completed" && c.senderId === user?.id && !c.senderViewed
+  );
+
+  useEffect(() => {
+    if (activeTab === "challenges" && unseenCompleted.length > 0) {
+      unseenCompleted.forEach((c) => markViewedMutation.mutate(c.id));
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     latestQueryRef.current = searchQuery;
@@ -148,7 +170,29 @@ export default function Friends() {
     return <Redirect to="/" />;
   }
 
-  const gameMap = new Map(games.map(g => [g.slug, g]));
+  const gameMap = new Map(games.map((g) => [g.slug, g]));
+  const seededGames = games.filter((g) => SEEDED_GAME_SLUGS.has(g.slug));
+
+  const pendingForMe = challenges.filter((c) => c.status === "pending" && c.receiverId === user?.id);
+  const challengeTabBadge = pendingForMe.length + unseenCompleted.length;
+
+  const handleStartChallenge = () => {
+    if (!challengeGameSlug || challengeFriendId == null) return;
+    const seed = Math.floor(Math.random() * 1000000);
+    const msgParam = challengeMessage ? `&msg=${encodeURIComponent(challengeMessage)}` : "";
+    setChallengeDialogOpen(false);
+    setChallengeGameSlug("");
+    setChallengeMessage("");
+    navigate(`/game/${challengeGameSlug}?challenge-new=${challengeFriendId}&seed=${seed}${msgParam}`);
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    } catch {
+      return iso;
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -216,7 +260,7 @@ export default function Friends() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="friends">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="friends" data-testid="tab-friends">
               Friends {friends.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{friends.length}</Badge>}
@@ -225,8 +269,8 @@ export default function Friends() {
               Requests {requests.length > 0 && <Badge variant="destructive" className="ml-1 text-xs">{requests.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="challenges" data-testid="tab-challenges">
-              Challenges {challenges.filter(c => c.status === "pending" && c.receiverId === user?.id).length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs">{challenges.filter(c => c.status === "pending" && c.receiverId === user?.id).length}</Badge>
+              Challenges {challengeTabBadge > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">{challengeTabBadge}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -252,7 +296,15 @@ export default function Friends() {
                           </span>
                         </Link>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => { setChallengeFriendId(f.friendUser.id); setChallengeDialogOpen(true); }} data-testid={`button-challenge-${f.friendUser.id}`}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setChallengeFriendId(f.friendUser.id);
+                              setChallengeDialogOpen(true);
+                            }}
+                            data-testid={`button-challenge-${f.friendUser.id}`}
+                          >
                             <Swords className="h-4 w-4 mr-1" /> Challenge
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => removeMutation.mutate(f.id)} data-testid={`button-remove-${f.friendUser.id}`}>
@@ -310,45 +362,86 @@ export default function Friends() {
                     <p>No challenges yet. Challenge a friend from the Friends tab!</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {challenges.map((c) => {
                       const game = gameMap.get(c.gameSlug);
                       const isSender = c.senderId === user?.id;
                       const isPending = c.status === "pending";
+                      const isCompleted = c.status === "completed";
+                      const isNew = isCompleted && isSender && !c.senderViewed;
+
+                      let myScore = isSender ? c.senderScore : (c.receiverScore ?? null);
+                      let theirScore = isSender ? (c.receiverScore ?? null) : c.senderScore;
+
+                      let won: boolean | null = null;
+                      if (isCompleted && c.receiverScore !== null) {
+                        won = (isSender && c.senderScore >= c.receiverScore) ||
+                              (!isSender && c.receiverScore >= c.senderScore);
+                      }
+
                       return (
-                        <div key={c.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-challenge-${c.id}`}>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Gamepad2 className="h-4 w-4 text-primary" />
-                              <span className="font-medium">{game?.name || c.gameSlug}</span>
-                              <Badge variant={isPending ? "secondary" : "default"} className="text-xs">
-                                {isPending ? "Pending" : "Completed"}
-                              </Badge>
+                        <div
+                          key={c.id}
+                          className={`rounded-lg border p-4 transition-colors ${isNew ? "border-primary/50 bg-primary/5" : "bg-muted/40 border-transparent"}`}
+                          data-testid={`row-challenge-${c.id}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Gamepad2 className="h-4 w-4 text-primary shrink-0" />
+                                <span className="font-medium">{game?.name || c.gameSlug}</span>
+                                {isNew && (
+                                  <Badge className="text-xs bg-primary text-primary-foreground">NEW</Badge>
+                                )}
+                                {isPending && (
+                                  <Badge variant="secondary" className="text-xs">Pending</Badge>
+                                )}
+                                {isCompleted && won !== null && (
+                                  <Badge
+                                    className={`text-xs ${won ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
+                                  >
+                                    {won ? "Won" : "Lost"}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {isSender ? "You challenged a friend" : "Challenged by a friend"}
+                                {c.message && ` — "${c.message}"`}
+                                {c.seed != null && " · Shared puzzle"}
+                                {" · "}{formatDate(c.createdAt)}
+                              </p>
+
+                              <div className="flex gap-4 mt-2">
+                                {myScore !== null && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Your score</p>
+                                    <p className="font-bold text-base">{myScore}</p>
+                                  </div>
+                                )}
+                                {theirScore !== null && isCompleted && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Their score</p>
+                                    <p className="font-bold text-base">{theirScore}</p>
+                                  </div>
+                                )}
+                                {isPending && isSender && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Waiting for response</p>
+                                    <p className="font-bold text-base">{c.senderScore} pts sent</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {isSender ? "You challenged" : "Challenged by"} a friend
-                              {c.message && ` — "${c.message}"`}
-                            </p>
-                            <div className="flex gap-3 mt-1 text-sm">
-                              <span>Sender: <strong>{c.senderScore} pts</strong></span>
-                              {c.receiverScore !== null && <span>Receiver: <strong>{c.receiverScore} pts</strong></span>}
-                              {c.status === "completed" && c.receiverScore !== null && (
-                                <Badge variant={
-                                  (isSender && c.senderScore >= c.receiverScore) || (!isSender && c.receiverScore >= c.senderScore)
-                                    ? "default" : "secondary"
-                                } className="text-xs">
-                                  {(isSender && c.senderScore >= c.receiverScore) || (!isSender && c.receiverScore >= c.senderScore) ? "Won" : "Lost"}
-                                </Badge>
-                              )}
-                            </div>
+
+                            {!isSender && isPending && (
+                              <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
+                                <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
+                                  <Gamepad2 className="h-4 w-4 mr-1" /> Play
+                                </Button>
+                              </Link>
+                            )}
                           </div>
-                          {!isSender && isPending && (
-                            <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
-                              <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
-                                <Gamepad2 className="h-4 w-4 mr-1" /> Play
-                              </Button>
-                            </Link>
-                          )}
                         </div>
                       );
                     })}
@@ -365,6 +458,9 @@ export default function Friends() {
               <DialogTitle>Send a Challenge</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Pick a game and optional message. You'll play first — your score is automatically sent when you finish.
+              </p>
               <div>
                 <label className="text-sm font-medium">Game</label>
                 <Select value={challengeGameSlug} onValueChange={setChallengeGameSlug}>
@@ -372,27 +468,29 @@ export default function Friends() {
                     <SelectValue placeholder="Select a game" />
                   </SelectTrigger>
                   <SelectContent>
-                    {games.map((g) => (
+                    {seededGames.map((g) => (
                       <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Your Score</label>
-                <Input type="number" value={challengeScore} onChange={(e) => setChallengeScore(e.target.value)} placeholder="Enter your score" data-testid="input-challenge-score" />
-              </div>
-              <div>
                 <label className="text-sm font-medium">Message (optional)</label>
-                <Input value={challengeMessage} onChange={(e) => setChallengeMessage(e.target.value)} placeholder="Beat this!" data-testid="input-challenge-message" />
+                <Input
+                  value={challengeMessage}
+                  onChange={(e) => setChallengeMessage(e.target.value)}
+                  placeholder="Beat this!"
+                  maxLength={200}
+                  data-testid="input-challenge-message"
+                />
               </div>
               <Button
-                className="w-full"
-                onClick={() => createChallengeMutation.mutate()}
-                disabled={!challengeGameSlug || !challengeScore || createChallengeMutation.isPending}
+                className="w-full gap-2"
+                onClick={handleStartChallenge}
+                disabled={!challengeGameSlug}
                 data-testid="button-send-challenge"
               >
-                <Swords className="h-4 w-4 mr-2" /> Send Challenge
+                <Swords className="h-4 w-4" /> Play &amp; Send Challenge
               </Button>
             </div>
           </DialogContent>

@@ -828,7 +828,7 @@ export class MemStorage implements IStorage {
   }
 
   async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> {
-    const fc: FriendChallenge = { ...challenge, id: this.fcIdCounter++, createdAt: new Date().toISOString() };
+    const fc: FriendChallenge = { ...challenge, seed: challenge.seed ?? null, senderViewed: challenge.senderViewed ?? false, id: this.fcIdCounter++, createdAt: new Date().toISOString() };
     this.friendChallengesStore.push(fc);
     return fc;
   }
@@ -845,8 +845,13 @@ export class MemStorage implements IStorage {
 
   async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
     const c = this.friendChallengesStore.find(ch => ch.id === id);
-    if (c) { c.receiverScore = score; c.status = "completed"; }
+    if (c) { c.receiverScore = score; c.status = "completed"; c.senderViewed = false; }
     return c;
+  }
+
+  async markChallengeViewed(id: number): Promise<void> {
+    const c = this.friendChallengesStore.find(ch => ch.id === id);
+    if (c) { c.senderViewed = true; }
   }
 
   async createGroup(group: InsertGroup): Promise<Group> {
