@@ -17,7 +17,7 @@ export function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const { data: unreadData } = useQuery<{ count: number }>({
+  const { data: unreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number }>({
     queryKey: ["/api/challenges/unread-count"],
     enabled: isAuthenticated,
     refetchInterval: 60000,
@@ -111,7 +111,7 @@ export function Navigation() {
                       <span
                         className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
                         data-testid="dot-challenge-notification"
-                        aria-label={`${unreadCount} unread challenge result${unreadCount !== 1 ? "s" : ""}`}
+                        aria-label={`${unreadCount} challenge notification${unreadCount !== 1 ? "s" : ""}`}
                       />
                     )}
                   </Button>

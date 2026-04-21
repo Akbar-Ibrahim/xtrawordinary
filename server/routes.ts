@@ -1207,10 +1207,13 @@ export async function registerRoutes(
   app.get("/api/challenges/unread-count", requireAuth, async (req, res) => {
     try {
       const challenges = await storage.getFriendChallenges(req.user!.id);
-      const count = challenges.filter(
+      const resultCount = challenges.filter(
         (c) => c.status === "completed" && c.senderId === req.user!.id && !c.senderViewed
       ).length;
-      res.json({ count });
+      const pendingCount = challenges.filter(
+        (c) => c.status === "pending" && c.receiverId === req.user!.id
+      ).length;
+      res.json({ count: resultCount + pendingCount, resultCount, pendingCount });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch unread count" });
     }
