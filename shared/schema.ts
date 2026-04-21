@@ -454,3 +454,26 @@ export type CommentReport = z.infer<typeof commentReportSchema>;
 
 export const likeTargetTypeSchema = z.enum(["game", "comment"]);
 export type LikeTargetType = z.infer<typeof likeTargetTypeSchema>;
+
+// ==================== CHALLENGES ====================
+
+export const SEEDED_GAME_SLUGS = new Set([
+  "anagram-solver",
+  "deep-shell-words",
+  "definition-match",
+  "ladder-rush",
+  "letter-balance",
+  "letter-frequency",
+  "letter-hunt",
+  "letter-pool",
+  "letter-position",
+  "shell-words",
+  "word-bloom",
+  "word-ladder",
+  "word-length",
+  "word-maker",
+  "word-roots",
+  "word-scramble",
+  "word-stretch",
+  "word-sweep",
+]);

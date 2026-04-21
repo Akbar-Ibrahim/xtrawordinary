@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
+import { SEEDED_GAME_SLUGS } from "@shared/schema";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -1157,13 +1158,6 @@ export async function registerRoutes(
     //   res.status(status).json({ error: message });
     // }
     // --- END REMOTE SERVER BLOCK ---
-    const SEEDED_GAME_SLUGS = new Set([
-      "anagram-solver", "deep-shell-words", "definition-match", "ladder-rush",
-      "letter-balance", "letter-frequency", "letter-hunt", "letter-pool",
-      "letter-position", "shell-words", "word-bloom", "word-ladder",
-      "word-length", "word-maker", "word-roots", "word-scramble",
-      "word-stretch", "word-sweep",
-    ]);
     try {
       const { friendId, gameSlug, score, message, seed } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });

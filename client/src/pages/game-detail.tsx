@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, FriendChallenge } from "@shared/schema";
+import { SEEDED_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -88,27 +89,6 @@ const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; l
   "word-stretch": WordStretchGame,
   "word-bloom": WordBloomGame,
 };
-
-const SEEDED_GAME_SLUGS = new Set([
-  "anagram-solver",
-  "deep-shell-words",
-  "definition-match",
-  "ladder-rush",
-  "letter-balance",
-  "letter-frequency",
-  "letter-hunt",
-  "letter-pool",
-  "letter-position",
-  "shell-words",
-  "word-bloom",
-  "word-ladder",
-  "word-length",
-  "word-maker",
-  "word-roots",
-  "word-scramble",
-  "word-stretch",
-  "word-sweep",
-]);
 
 interface ChallengeResult {
   myScore: number;

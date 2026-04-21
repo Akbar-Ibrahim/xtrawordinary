@@ -14,27 +14,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, User, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
+import { SEEDED_GAME_SLUGS } from "@shared/schema";
 
-const SEEDED_GAME_SLUGS = new Set([
-  "anagram-solver",
-  "deep-shell-words",
-  "definition-match",
-  "ladder-rush",
-  "letter-balance",
-  "letter-frequency",
-  "letter-hunt",
-  "letter-pool",
-  "letter-position",
-  "shell-words",
-  "word-bloom",
-  "word-ladder",
-  "word-length",
-  "word-maker",
-  "word-roots",
-  "word-scramble",
-  "word-stretch",
-  "word-sweep",
-]);
 
 interface FriendEntry {
   id: number;
