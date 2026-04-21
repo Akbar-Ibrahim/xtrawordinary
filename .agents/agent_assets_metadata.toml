@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "RnItuLM5DE3a509WejqZG"
+uri = "file://client/public/favicon.png"
+type = "image"
+title = "xtrawordinary favicon"
+
+[[generated]]
+id = "6XyUJ7SYX00xZ0ouF9xI2"
+uri = "file://attached_assets/og-image.png"
+type = "image"
+title = "xtrawordinary og image"

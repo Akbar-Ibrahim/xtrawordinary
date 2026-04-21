@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Gamepad2, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Navigation() {
@@ -38,8 +38,8 @@ export function Navigation() {
               className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md px-2 py-1"
               data-testid="link-home-logo"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Gamepad2 className="h-5 w-5" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden bg-primary">
+                <img src="/favicon.png" alt="xtrawordinary logo" className="h-9 w-9 object-cover" />
               </div>
               <span className="text-xl font-bold tracking-tight">xtrawordinary</span>
             </div>

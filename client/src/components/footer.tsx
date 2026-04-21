@@ -1,5 +1,4 @@
 import { Link } from "wouter";
-import { Gamepad2 } from "lucide-react";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -9,8 +8,8 @@ export function Footer() {
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground">
         <Link href="/">
           <div className="flex items-center gap-2 cursor-pointer hover:text-foreground transition-colors" data-testid="link-footer-logo">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Gamepad2 className="h-3.5 w-3.5" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-md overflow-hidden bg-primary">
+              <img src="/favicon.png" alt="xtrawordinary logo" className="h-6 w-6 object-cover" />
             </div>
             <span className="font-semibold text-foreground">xtrawordinary</span>
           </div>
