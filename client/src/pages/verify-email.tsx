@@ -54,7 +54,7 @@ export default function VerifyEmail() {
               <h2 className="text-xl font-bold" data-testid="text-verify-success">Email Verified!</h2>
               <p className="text-muted-foreground">{message}</p>
               <Link href="/">
-                <Button data-testid="button-go-home">Go to WordPlay</Button>
+                <Button data-testid="button-go-home">Go to xtrawordinary</Button>
               </Link>
             </>
           )}
@@ -64,7 +64,7 @@ export default function VerifyEmail() {
               <h2 className="text-xl font-bold" data-testid="text-verify-error">Verification Failed</h2>
               <p className="text-muted-foreground">{message}</p>
               <Link href="/">
-                <Button variant="outline" data-testid="button-go-home">Go to WordPlay</Button>
+                <Button variant="outline" data-testid="button-go-home">Go to xtrawordinary</Button>
               </Link>
             </>
           )}

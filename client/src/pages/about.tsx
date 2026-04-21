@@ -38,9 +38,9 @@ export default function About() {
         transition={{ duration: 0.5 }}
         className="max-w-3xl mx-auto text-center mb-12"
       >
-        <h1 className="text-4xl font-bold mb-4">About WordPlay</h1>
+        <h1 className="text-4xl font-bold mb-4">About xtrawordinary</h1>
         <p className="text-lg text-muted-foreground">
-          WordPlay is your destination for fun and challenging word games.
+          xtrawordinary is your destination for fun and challenging word games.
           We believe that learning vocabulary should be enjoyable, and our
           collection of games is designed to make every moment of play both
           entertaining and educational.
@@ -81,7 +81,7 @@ export default function About() {
           <CardContent className="p-8 text-center">
             <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
             <p className="text-muted-foreground leading-relaxed">
-              At WordPlay, we're passionate about words and the joy they bring.
+              At xtrawordinary, we're passionate about words and the joy they bring.
               Our mission is to create engaging word games that help players of
               all ages expand their vocabulary, improve their language skills,
               and most importantly, have fun while doing it. Whether you're

@@ -12,11 +12,11 @@ export function Footer() {
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Gamepad2 className="h-3.5 w-3.5" />
             </div>
-            <span className="font-semibold text-foreground">WordPlay</span>
+            <span className="font-semibold text-foreground">xtrawordinary</span>
           </div>
         </Link>
 
-        <p className="text-xs">© {year} WordPlay. All rights reserved.</p>
+        <p className="text-xs">© {year} xtrawordinary. All rights reserved.</p>
 
         <nav className="flex items-center gap-4">
           <Link href="/about">
