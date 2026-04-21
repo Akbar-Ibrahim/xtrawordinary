@@ -122,7 +122,7 @@ export default function GameDetail() {
     ? parseInt(challengeNewSeed!)
     : undefined;
 
-  const { data: receiverChallenge, isLoading: challengeLoading } = useQuery<FriendChallenge>({
+  const { data: receiverChallenge, isLoading: challengeLoading, isError: challengeError } = useQuery<FriendChallenge>({
     queryKey: ["/api/challenges", challengeId],
     queryFn: async () => {
       const res = await fetch(`/api/challenges/${challengeId}`, { credentials: "include" });
@@ -528,7 +528,17 @@ export default function GameDetail() {
               </Card>
             )}
 
-            {isReceiverMode && (challengeLoading || !urlCleaned) ? (
+            {isReceiverMode && challengeError ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="font-medium mb-2">Challenge not found</p>
+                  <p className="text-sm text-muted-foreground mb-4">This challenge may have expired or you may not have permission to view it.</p>
+                  <Link href="/friends">
+                    <Button size="sm" variant="outline">Back to Friends</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : isReceiverMode && (challengeLoading || !urlCleaned) ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
