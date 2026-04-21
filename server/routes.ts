@@ -1165,6 +1165,7 @@ export async function registerRoutes(
       if (!SEEDED_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support challenges" });
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
       if (message && typeof message === "string" && message.length > 200) return res.status(400).json({ error: "Message too long (max 200 chars)" });
+      if (seed !== undefined && (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > 2147483647)) return res.status(400).json({ error: "Seed must be a non-negative integer" });
       const friendship = await storage.getFriendship(req.user!.id, friendId);
       if (!friendship || friendship.status !== "accepted") return res.status(400).json({ error: "You can only challenge friends" });
       const challenge = await storage.createFriendChallenge({
@@ -1252,6 +1253,7 @@ export async function registerRoutes(
       const challenge = await storage.getFriendChallenge(id);
       if (!challenge) return res.status(404).json({ error: "Challenge not found" });
       if (challenge.senderId !== req.user!.id) return res.status(403).json({ error: "Only the sender can mark as viewed" });
+      if (challenge.status !== "completed") return res.status(400).json({ error: "Only completed challenges can be marked as viewed" });
       await storage.markChallengeViewed(id);
       res.json({ ok: true });
     } catch (error) {

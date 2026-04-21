@@ -131,7 +131,7 @@ export default function Friends() {
         )
       ).then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
-      });
+      }).catch(() => {});
     }
   }, [activeTab, unseenCompletedIds]);
 
