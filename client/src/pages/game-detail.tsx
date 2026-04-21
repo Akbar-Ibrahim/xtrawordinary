@@ -102,6 +102,7 @@ export default function GameDetail() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
   const [urlCleaned, setUrlCleaned] = useState(false);
+  const isTied = challengeResult ? challengeResult.myScore === challengeResult.opponentScore : false;
   const searchString = useSearch();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -185,7 +186,7 @@ export default function GameDetail() {
       if (data) {
         const myScore = data.receiverScore ?? 0;
         const opponentScore = data.senderScore ?? 0;
-        setChallengeResult({ myScore, opponentScore, won: myScore >= opponentScore, isSender: false });
+        setChallengeResult({ myScore, opponentScore, won: myScore > opponentScore, isSender: false });
       }
     },
     onError: () => toast({ title: "Error", description: "Could not submit your score.", variant: "destructive" }),
@@ -499,14 +500,16 @@ export default function GameDetail() {
             )}
 
             {challengeResult && (
-              <Card className={`mb-6 border-2 ${challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
+              <Card className={`mb-6 border-2 ${isTied ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
                 <CardContent className="py-5 px-6">
                   <div className="flex items-center gap-3 mb-3">
-                    <Trophy className={`h-6 w-6 ${challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
+                    <Trophy className={`h-6 w-6 ${isTied ? "text-blue-500" : challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
                     <p className="text-lg font-bold">
-                      {challengeResult.won
-                        ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
-                        : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
+                      {isTied
+                        ? "It's a tie!"
+                        : challengeResult.won
+                          ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
+                          : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
                     </p>
                   </div>
                   <div className="flex gap-6 text-sm">

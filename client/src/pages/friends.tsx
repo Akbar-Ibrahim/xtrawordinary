@@ -356,9 +356,11 @@ export default function Friends() {
                       let theirScore = isSender ? (c.receiverScore ?? null) : c.senderScore;
 
                       let won: boolean | null = null;
+                      let isTied = false;
                       if (isCompleted && c.receiverScore !== null) {
-                        won = (isSender && c.senderScore >= c.receiverScore) ||
-                              (!isSender && c.receiverScore >= c.senderScore);
+                        isTied = c.senderScore === c.receiverScore;
+                        won = isTied ? null : (isSender && c.senderScore > c.receiverScore) ||
+                              (!isSender && c.receiverScore > c.senderScore);
                       }
 
                       return (
@@ -378,11 +380,11 @@ export default function Friends() {
                                 {isPending && (
                                   <Badge variant="secondary" className="text-xs">Pending</Badge>
                                 )}
-                                {isCompleted && won !== null && (
+                                {isCompleted && (won !== null || isTied) && (
                                   <Badge
-                                    className={`text-xs ${won ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
+                                    className={`text-xs ${isTied ? "bg-blue-500 text-white" : won ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
                                   >
-                                    {won ? "Won" : "Lost"}
+                                    {isTied ? "Tied" : won ? "Won" : "Lost"}
                                   </Badge>
                                 )}
                               </div>
