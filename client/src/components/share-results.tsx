@@ -32,7 +32,7 @@ export function ShareResults({
   const resultText = isWin ? "completed" : "played";
 
   const shareText = customMessage || 
-    `I just ${resultText} ${gameName}${challengeName ? ` - ${challengeName}` : ""} on xtrawordinary!\n\n` +
+    `I just ${resultText} ${gameName}${challengeName ? ` - ${challengeName}` : ""} on xtraWordinary!\n\n` +
     `Score: ${score} points${wordsCompleted !== undefined ? `\nWords: ${wordsCompleted}` : ""}\n\n` +
     `Can you beat my score? Try it here:`;
 
@@ -75,7 +75,7 @@ export function ShareResults({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `xtrawordinary - ${gameName}`,
+          title: `xtraWordinary - ${gameName}`,
           text: shareText,
           url: gameUrl,
         });

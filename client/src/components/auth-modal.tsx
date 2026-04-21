@@ -122,7 +122,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Welcome to xtrawordinary</DialogTitle>
+          <DialogTitle>Welcome to xtraWordinary</DialogTitle>
         </DialogHeader>
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="grid w-full grid-cols-2">

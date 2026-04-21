@@ -23,7 +23,7 @@ export default function ResetPassword() {
             <h2 className="text-xl font-bold">Invalid Link</h2>
             <p className="text-muted-foreground">No reset token provided.</p>
             <Link href="/">
-              <Button variant="outline" data-testid="button-go-home">Go to xtrawordinary</Button>
+              <Button variant="outline" data-testid="button-go-home">Go to xtraWordinary</Button>
             </Link>
           </CardContent>
         </Card>
@@ -113,7 +113,7 @@ export default function ResetPassword() {
               <h2 className="text-xl font-bold" data-testid="text-reset-success">Password Reset!</h2>
               <p className="text-muted-foreground">{message}</p>
               <Link href="/">
-                <Button data-testid="button-go-home">Go to xtrawordinary</Button>
+                <Button data-testid="button-go-home">Go to xtraWordinary</Button>
               </Link>
             </div>
           )}

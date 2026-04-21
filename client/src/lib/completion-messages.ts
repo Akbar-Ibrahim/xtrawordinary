@@ -169,9 +169,9 @@ const WIN_MESSAGES: string[] = [
 
   // Airplane pilot / Mayday alert
   "Ladies and gentlemen, this is your captain speaking. We have reached PEAK PERFORMANCE. Smooth sailing ahead.",
-  "Tower, this is xtrawordinary One. Requesting permission for a victory flyby. Score is... outstanding.",
+  "Tower, this is xtraWordinary One. Requesting permission for a victory flyby. Score is... outstanding.",
   "All systems nominal. Performance metrics are off the charts. Prepare for a smooth landing into glory.",
-  "Flight xtrawordinary-747 reporting: all words cleared for landing. Zero turbulence. Textbook performance.",
+  "Flight xtraWordinary-747 reporting: all words cleared for landing. Zero turbulence. Textbook performance.",
   "Attention crew: we have achieved cruising altitude of ABSOLUTE BRILLIANCE. Seatbelt sign is off. Celebrate freely.",
   "Roger that, control. Confirming a perfect approach. All answers locked in. Touchdown successful.",
   "This is your pilot. I've been flying for 30 years, and I've never seen instruments read this good. Bravo.",
@@ -183,7 +183,7 @@ const WIN_MESSAGES: string[] = [
   "Attention all passengers: the score currently displayed on the board has been upgraded to First Class.",
   "This is a gate change announcement: your destination has been changed from 'Okay' to 'Absolutely Incredible.'",
   "Would the owner of an outstanding performance please report to the information desk? You left everyone speechless.",
-  "Attention all passengers: xtrawordinary Airlines would like to congratulate today's MVP. You know who you are.",
+  "Attention all passengers: xtraWordinary Airlines would like to congratulate today's MVP. You know who you are.",
   "Final boarding call for Flight Genius, departing from Gate Brilliant. One passenger confirmed. That's you.",
   "Attention: baggage claim for this round includes one trophy, three compliments, and unlimited respect.",
 
@@ -514,12 +514,12 @@ const LOSS_MESSAGES: string[] = [
   "The Jolly Roger flies at half-mast today. In memory of your vocabulary. Rest in pieces.",
 
   // Airplane pilot / Mayday alert
-  "Mayday, Mayday, Mayday! This is xtrawordinary One declaring an emergency! Score is critically low!",
+  "Mayday, Mayday, Mayday! This is xtraWordinary One declaring an emergency! Score is critically low!",
   "Ladies and gentlemen, this is your captain. We've experienced severe vocabulary turbulence. Brace for impact.",
   "Tower, requesting emergency landing. All word engines have failed. I repeat, ALL engines down.",
   "This is NOT a drill. We have lost cabin pressure, altitude, and apparently all knowledge of the English language.",
   "Black box recovered. Cause of crash: catastrophic failure of basic spelling skills. No survivors.",
-  "Control tower to xtrawordinary One: you are WAY off course. Like... not even on the radar anymore.",
+  "Control tower to xtraWordinary One: you are WAY off course. Like... not even on the radar anymore.",
   "Attention passengers: the pilot has turned on the 'We're In Trouble' sign. Please panic accordingly.",
   "Flight recorder shows: the descent began at Question 1 and never recovered. Thoughts and prayers.",
 

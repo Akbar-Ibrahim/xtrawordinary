@@ -3,7 +3,7 @@ import { Resend } from "resend";
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const FROM_EMAIL = process.env.FROM_EMAIL || "xtrawordinary <noreply@xtrawordinary.app>";
+const FROM_EMAIL = process.env.FROM_EMAIL || "xtraWordinary <noreply@xtrawordinary.app>";
 const APP_URL = process.env.APP_URL || "http://localhost:5000";
 
 export async function sendVerificationEmail(to: string, token: string): Promise<boolean> {
@@ -19,9 +19,9 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: "Verify your xtrawordinary email",
+      subject: "Verify your xtraWordinary email",
       html: `
-        <h2>Welcome to xtrawordinary!</h2>
+        <h2>Welcome to xtraWordinary!</h2>
         <p>Click the link below to verify your email address:</p>
         <p><a href="${verifyUrl}">Verify Email</a></p>
         <p>This link expires in 24 hours.</p>
@@ -48,7 +48,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
     await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: "Reset your xtrawordinary password",
+      subject: "Reset your xtraWordinary password",
       html: `
         <h2>Password Reset</h2>
         <p>Click the link below to reset your password:</p>

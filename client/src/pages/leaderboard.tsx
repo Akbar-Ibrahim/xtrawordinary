@@ -233,7 +233,7 @@ export default function Leaderboard() {
             <Trophy className="h-8 w-8 text-yellow-500" />
             <h1 className="text-3xl font-bold" data-testid="text-leaderboard-title">Leaderboard</h1>
           </div>
-          <p className="text-muted-foreground">Top players across all xtrawordinary games</p>
+          <p className="text-muted-foreground">Top players across all xtraWordinary games</p>
         </div>
 
         <div className="flex justify-center">

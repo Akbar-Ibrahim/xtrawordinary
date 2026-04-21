@@ -39,9 +39,9 @@ export function Navigation() {
               data-testid="link-home-logo"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden bg-primary">
-                <img src="/favicon.png" alt="xtrawordinary logo" className="h-9 w-9 object-cover" />
+                <img src="/favicon.png" alt="xtraWordinary logo" className="h-9 w-9 object-cover" />
               </div>
-              <span className="text-xl font-bold tracking-tight">xtrawordinary</span>
+              <span className="text-xl font-bold tracking-tight">xtraWordinary</span>
             </div>
           </Link>
 
