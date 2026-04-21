@@ -110,3 +110,78 @@ NOTES & CAUTIONS
   social proof and FOMO are more powerful than a hard gate
 - "Taste then gate" beats "cold wall" — let users experience premium features
   briefly before locking them, so they know exactly what they're paying for
+
+
+NAMED PLAN TIERS (CONSUMER)
+----------------------------
+
+Free
+- All games (subject to daily play limits)
+- Guest stats in local storage
+- Global leaderboard viewing
+- Daily challenge (always)
+
+Pro (~$4-6/month)
+- Unlimited plays
+- Stats synced to account permanently
+- Full achievement history & extended streak tracking
+- Appear on global leaderboard (with Pro badge)
+- Streak shields (2/month)
+- Ad-free
+- Full profile customization
+
+Challenger (~$8-10/month)
+- Everything in Pro
+- Unlimited friend challenges
+- Create unlimited private groups
+- Group round history
+- Early access to new games
+- Zen mode (no timers on Survival games)
+
+
+SCHOOL / TEACHER PLANS
+-----------------------
+
+Teacher Plan (~$10-15/month per teacher)
+- Create a "classroom" (private group) with a student join code
+- Assign specific games as homework (group rounds with a deadline)
+- Per-student performance dashboard
+- Track vocabulary progress over time
+- Lock game settings (e.g. force Guided mode, set difficulty)
+
+School License (~$500-2,000/year per school)
+- Covers all teachers and students at the school
+- School-level admin dashboard
+- Roster management (CSV import or Google Classroom)
+- Progress reports exportable for parents/admin
+- Custom branding (school name/logo)
+
+Why schools are a strong opportunity:
+- Platform already has groups, rounds, seeded puzzles, and leaderboards
+- One teacher brings an entire class (high acquisition leverage)
+- Students who enjoy it can convert to paying individual users later
+- closesAt column is already in the group_rounds schema (deadline UI just needs building)
+- Vocabulary improvement is a clear, defensible educational outcome
+
+Infrastructure already in place for classrooms:
+
+Feature                    | Already Built | Needs Addition
+---------------------------|---------------|--------------------------------
+Groups with rounds         | YES           | Classroom-specific UI
+Seeded/shared puzzles      | YES           | Homework deadline setting
+Leaderboard per group      | YES           | Per-student progress view
+Friend challenges          | YES           | -
+Daily challenges           | YES           | Teacher-assigned daily
+24 vocabulary games        | YES           | -
+
+
+IMPLEMENTATION ORDER (when ready to build)
+-------------------------------------------
+1. Stripe integration for subscription billing
+2. Deadline/close-date UI for group rounds (closesAt already in schema)
+3. Per-member stats within a group (rounds played, average score)
+4. Play limit enforcement for free users
+5. Leaderboard gating (hide free user entries)
+6. Streak shields
+7. Classroom/teacher mode UI
+8. School license & admin dashboard
