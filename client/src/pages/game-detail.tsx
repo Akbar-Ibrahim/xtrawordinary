@@ -544,8 +544,8 @@ export default function GameDetail() {
                       <div>
                         <p className="text-muted-foreground flex items-center gap-1.5">
                           {opponentAvatarUrl
-                            ? <img src={opponentAvatarUrl} alt={opponentName ?? "opponent"} className="h-5 w-5 rounded-full inline-block" data-testid="img-result-opponent-avatar" />
-                            : <User className="h-4 w-4 inline-block" data-testid="icon-result-opponent-avatar" />}
+                            ? <img src={opponentAvatarUrl} alt={opponentName ?? "opponent"} className="h-6 w-6 rounded-full inline-block" data-testid="img-result-opponent-avatar" />
+                            : <User className="h-5 w-5 inline-block" data-testid="icon-result-opponent-avatar" />}
                           {opponentName ? `${opponentName}'s score` : "Their score"}
                         </p>
                         <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
