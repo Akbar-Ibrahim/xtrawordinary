@@ -1,0 +1,138 @@
+================================================================================
+  xtraWordinary — FEATURE BANK
+  Add new feature ideas below under clearly labelled sections.
+  Reference files: features.txt, monetization.txt
+================================================================================
+
+
+================================================================================
+  QUIZ MASTER / CREATOR FEATURE
+================================================================================
+
+Overview
+--------
+- Paid-tier feature (Teacher / School plan priority)
+- Two sub-modes:
+    1. Self-play customisation
+         User tunes a game's parameters and plays it themselves.
+    2. Quiz Master (creator for others)
+         User configures a game session and shares it via a link/code.
+         Recipients play the same configured session.
+         Creator sees a results dashboard: who played, scores, completion.
+- Underlying infrastructure: a named, persistent "configured round" — reuses
+  the existing group/round plumbing but adds content-control knobs and a
+  simpler shareable-link UI (no group membership required).
+
+--------------------------------------------------------------------------------
+Tier 1 — Very high value, natural knobs  (build first — Phase 1)
+--------------------------------------------------------------------------------
+
+  Letter Hunt
+    Creator controls : which letter(s) to hunt for
+    Use case         : teacher targets S, T, R for a phonics lesson
+
+  Letter Frequency
+    Creator controls : which letter to count
+    Use case         : phonics / spelling pattern drills
+
+  Letter Position
+    Creator controls : which letter at which position
+    Use case         : "find words where the 3rd letter is E" — spelling practice
+
+  Letter Balance
+    Creator controls : letters assigned to each side
+    Use case         : tune consonant vs vowel balance, control difficulty
+
+  Letter Pool
+    Creator controls : the exact letter pool given to players
+    Use case         : control which words are even reachable
+
+  Word Length
+    Creator controls : min/max word length, or a fixed target length
+    Use case         : Easy (4-letter words only) vs Hard (8+)
+
+  Definition Match
+    Creator controls : word theme / category
+    Use case         : teacher targets specific vocab topics
+                       (science terms, SAT prep, body parts, etc.)
+
+  Word Roots
+    Creator controls : which root prefix/suffix to focus on
+    Use case         : "today's lesson: words with -RUPT"
+
+  Progressive Reveal
+    Creator controls : the target word(s) to reveal
+    Use case         : spelling-test mode — teacher picks the word,
+                       student guesses letter by letter
+
+--------------------------------------------------------------------------------
+Tier 2 — Good value, a few constraints  (build after Tier 1 — Phase 2)
+--------------------------------------------------------------------------------
+
+  Word Scramble
+    Creator picks specific words to scramble.
+    Natural spelling quiz; limit to a small curated list per session.
+
+  Word Ladder
+    Creator picks start + end words.
+    Themed transformations (CAT → DOG); works with existing par system.
+
+  Anagram Solver
+    Creator picks the anagram sets.
+    Good for themed vocabulary lists; backend filters by category.
+
+  Word Split
+    Creator picks the compound words.
+    Themed vocab (body parts, food, animals, etc.)
+
+  Word Stack
+    Creator filters by word category or length.
+    E.g. restrict to 5-letter words only.
+
+  No Repeats
+    Creator constrains which letters are allowed.
+    Force players to stay within a specific consonant/vowel set.
+
+  Word Maker
+    Creator picks the starting word.
+    Controls what words are derivable from it.
+
+  Word Chain
+    Creator picks the starting word (+ optional target ending).
+    Themed chains — e.g. start from OCEAN, see where players go.
+
+--------------------------------------------------------------------------------
+Tier 3 — Limited but useful  (extend later — Phase 3)
+--------------------------------------------------------------------------------
+
+  Word Sweep (Guided)
+    Already seeded; creator picks a seed that maps to a specific puzzle.
+
+  Ladder Rush / Double
+    Creator pins the word-length difficulty tier for the group.
+
+  Shell Words / Deep Shell Words
+    Limited — puzzles are pre-computed; possible to filter by theme.
+
+  Word Bloom
+    Creator picks the seed word the insertion chain starts from.
+
+  Word Stretch
+    Creator picks the seed word players must expand.
+
+--------------------------------------------------------------------------------
+Suggested build phases
+--------------------------------------------------------------------------------
+
+  Phase 1 : Quiz Master for the 9 Tier-1 games
+            + shared-link / results dashboard infrastructure
+
+  Phase 2 : Extend to Tier-2 games as platform matures
+
+  Phase 3 : Tier-3 games + self-play customisation panel
+
+
+
+================================================================================
+  (Add future feature sections above this line)
+================================================================================
