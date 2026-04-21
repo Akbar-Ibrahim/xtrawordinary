@@ -464,7 +464,12 @@ export default function GameDetail() {
                 <CardContent className="py-3 px-4 flex items-center gap-3">
                   <Swords className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium text-sm">Challenge Mode</p>
+                    <p className="font-medium text-sm" data-testid="text-challenge-mode-title">
+                      {(() => {
+                        const friend = friends.find(f => String(f.friendUser.id) === challengeNewFriendId);
+                        return friend ? `Challenging ${friend.friendUser.name}` : "Challenge Mode";
+                      })()}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Play your best — your score will be sent as a challenge when you finish!
                       {challengeNewMsg && ` "${challengeNewMsg}"`}
@@ -479,7 +484,11 @@ export default function GameDetail() {
                 <CardContent className="py-3 px-4 flex items-center gap-3">
                   <Swords className="h-5 w-5 text-primary" />
                   <div>
-                    <p className="font-medium text-sm">Friend Challenge</p>
+                    <p className="font-medium text-sm" data-testid="text-challenge-banner-title">
+                      {receiverChallenge.senderName
+                        ? `Challenged by ${receiverChallenge.senderName}`
+                        : "Friend Challenge"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Score to beat: <strong>{receiverChallenge.senderScore} pts</strong>
                       {receiverChallenge.message && ` — "${receiverChallenge.message}"`}
