@@ -34,14 +34,27 @@ interface SearchResult {
   avatarUrl: string | null;
 }
 
+const VALID_TABS = ["friends", "requests", "challenges"] as const;
+type TabValue = typeof VALID_TABS[number];
+
+function getTabFromSearch(): TabValue {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  return (VALID_TABS as readonly string[]).includes(tab ?? "") ? (tab as TabValue) : "friends";
+}
+
 export default function Friends() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const latestQueryRef = useRef("");
-  const [activeTab, setActiveTab] = useState("friends");
+  const [activeTab, setActiveTab] = useState<TabValue>(getTabFromSearch);
+
+  useEffect(() => {
+    setActiveTab(getTabFromSearch());
+  }, [location]);
 
   const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
@@ -131,8 +144,10 @@ export default function Friends() {
         )
       ).then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/challenges/unread-count"] });
       }).catch(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/challenges/unread-count"] });
       });
     }
   }, [activeTab, unseenCompletedIds]);

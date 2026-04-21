@@ -1204,6 +1204,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/challenges/unread-count", requireAuth, async (req, res) => {
+    try {
+      const challenges = await storage.getFriendChallenges(req.user!.id);
+      const count = challenges.filter(
+        (c) => c.status === "completed" && c.senderId === req.user!.id && !c.senderViewed
+      ).length;
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
   app.get("/api/challenges/:id", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 export function Navigation() {
   const [location] = useLocation();
@@ -15,6 +16,13 @@ export function Navigation() {
   const { soundEnabled, toggleSound } = useSound();
   const { user, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/challenges/unread-count"],
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+  const unreadCount = unreadData?.count ?? 0;
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
@@ -92,13 +100,20 @@ export function Navigation() {
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2" data-testid="button-user-menu">
+                  <Button variant="ghost" className="gap-2 relative" data-testid="button-user-menu">
                     {user.avatarUrl ? (
                       <img src={user.avatarUrl} alt={user.name} className="h-6 w-6 rounded-full" />
                     ) : (
                       <User className="h-4 w-4" />
                     )}
                     <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                    {unreadCount > 0 && (
+                      <span
+                        className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
+                        data-testid="dot-challenge-notification"
+                        aria-label={`${unreadCount} unread challenge result${unreadCount !== 1 ? "s" : ""}`}
+                      />
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -111,10 +126,13 @@ export function Navigation() {
                       My Profile
                     </DropdownMenuItem>
                   </Link>
-                  <Link href="/friends">
+                  <Link href={unreadCount > 0 ? "/friends?tab=challenges" : "/friends"}>
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
+                      {unreadCount > 0 && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
+                      )}
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/groups">
