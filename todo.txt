@@ -300,5 +300,118 @@ Suggested build phases
 
 
 ================================================================================
+  GROUP VS GROUP CHALLENGES
+================================================================================
+
+Overview
+--------
+- Extension of the Real-Time 1-on-1 Duels system to team play
+- Two groups challenge each other to a synchronous game session
+- Three play modes depending on context and game type (see below)
+- Builds on top of existing Groups infrastructure and the duel WebSocket layer
+- Strong party game / classroom / competitive clan use case
+
+Three play modes
+----------------
+
+  1. HUDDLE MODE (one typist per group, group decides together)
+     - One designated typist per group; the rest of the group shouts answers
+     - Both groups start at the same time (same mutual-Ready + countdown flow)
+     - Same puzzle / seed given to both groups
+     - Works for ALL games — turn-based and race alike
+     - Requires no extra infrastructure beyond standard 1v1 duel system
+     - Party game energy: same-room groups, classrooms, family game nights
+
+  2. TEAM RACE MODE (every member plays on their own device)
+     - Each group member joins independently on their own device
+     - Members play simultaneously; answers are pooled for the team (de-duplicated)
+     - Works for SIMULTANEOUS RACE games only (turn-based doesn't fit)
+     - Real-time team score feed: both groups see each other's aggregate tally
+     - Members coordinate externally (voice call, same room) — platform doesn't
+       need to provide a side-channel; lean on WhatsApp/Discord
+
+  3. RELAY MODE (future — teams rotate typists per round)
+     - Teams rotate which member is the active typist, round by round
+     - Each member gets a turn; passing the "keyboard" within the team
+     - Works for turn-based games
+     - Build after Huddle and Team Race are stable
+
+Key design problems to solve
+------------------------------
+
+  Unequal group sizes
+    A 6-member group vs a 2-member group is unfair in Team Race mode.
+    Options (decide at build time):
+      - Cap participation: each group nominates N players (e.g. max 5)
+      - Score normalisation: team score ÷ number of active members
+      - Minimum/maximum player count set by the challenge creator
+
+  Quorum — does everyone need to be ready?
+    Don't hold the match hostage if one member hasn't joined.
+    Suggestion: a minimum quorum (e.g. at least 2 members per group) must
+    click Ready before the countdown is allowed to trigger.
+    Challenge creator sets the quorum when issuing the challenge.
+
+  Spectators
+    Same spectator model as 1v1 duels: public/private toggle, read-only feed,
+    emoji reactions, spectator count visible to both groups.
+    Particularly compelling for group challenges — could draw a small crowd.
+
+--------------------------------------------------------------------------------
+Games with group vs group potential
+--------------------------------------------------------------------------------
+
+HUDDLE MODE — all games that support 1v1 duels work here
+  (Same list as Real-Time 1-on-1 Duels → Tier A and Tier B above)
+  No additional game work needed; it's the same game, different account type.
+
+TEAM RACE MODE — simultaneous race games only
+
+  Anagram Solver
+    Combined team pool of anagrams found (de-duplicated).
+    Teams coordinate to avoid overlap — each member claims different words.
+
+  No Repeats
+    Each member contributes words to the team pool.
+    Shared letter-exclusion constraint applies across ALL team members —
+    forces internal coordination (can't repeat a letter anyone on the team used).
+
+  Word Stack
+    Each member adds to the team's shared stack independently.
+
+  Letter Pool
+    Members claim words from a shared letter pool; team exhausts it faster.
+
+  Word Maker
+    Combined derivations from the same base word (de-duplicated).
+
+  Word Split
+    Combined compound words found (de-duplicated).
+
+  Word Scramble
+    Best individual time counts for the team, or average of top N members.
+
+--------------------------------------------------------------------------------
+Suggested build phases
+--------------------------------------------------------------------------------
+
+  Phase 1 : Huddle Mode
+            Extend the 1v1 duel challenge flow to accept a group as a challenger
+            or challengee. One account per group plays — no new game logic needed.
+            Group challenge entry point: Group detail page ("Challenge Another Group")
+
+  Phase 2 : Team Race Mode
+            Multi-device join flow (all members join the same team room)
+            Answer aggregation / de-duplication engine
+            Team score feed (real-time aggregate visible to both groups)
+            Fairness controls (player cap, score normalisation, quorum setting)
+
+  Phase 3 : Relay Mode
+            Spectator mode for group challenges
+            Group challenge history and leaderboard
+
+
+
+================================================================================
   (Add future feature sections below this line)
 ================================================================================
