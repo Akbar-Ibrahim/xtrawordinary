@@ -58,7 +58,7 @@ export default function Friends() {
     enabled: isAuthenticated,
   });
 
-  const { data: challenges = [], refetch: refetchChallenges } = useQuery<FriendChallenge[]>({
+  const { data: challenges = [] } = useQuery<FriendChallenge[]>({
     queryKey: ["/api/challenges"],
     enabled: isAuthenticated,
   });

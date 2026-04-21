@@ -101,6 +101,7 @@ export default function GameDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [isPlaying, setIsPlaying] = useState(false);
   const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
+  const [urlCleaned, setUrlCleaned] = useState(false);
   const searchString = useSearch();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -151,10 +152,15 @@ export default function GameDetail() {
   }, [challengeId, challengeNewFriendId]);
 
   useEffect(() => {
-    if (isReceiverMode && !challengeLoading && receiverChallenge) {
+    if (!isReceiverMode) {
+      setUrlCleaned(true);
+      return;
+    }
+    if (!challengeLoading && receiverChallenge) {
       const url = new URL(window.location.href);
       url.searchParams.delete("challenge");
       window.history.replaceState(null, "", url.toString());
+      setUrlCleaned(true);
     }
   }, [isReceiverMode, challengeLoading, receiverChallenge]);
 
@@ -522,7 +528,7 @@ export default function GameDetail() {
               </Card>
             )}
 
-            {isReceiverMode && challengeLoading ? (
+            {isReceiverMode && (challengeLoading || !urlCleaned) ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
