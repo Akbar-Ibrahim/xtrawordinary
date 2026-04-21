@@ -152,7 +152,7 @@ export default function Friends() {
     if (activeTab === "challenges" && unseenCompleted.length > 0) {
       unseenCompleted.forEach((c) => markViewedMutation.mutate(c.id));
     }
-  }, [activeTab]);
+  }, [activeTab, unseenCompleted.length]);
 
   useEffect(() => {
     latestQueryRef.current = searchQuery;

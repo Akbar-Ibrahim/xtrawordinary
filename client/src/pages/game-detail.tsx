@@ -89,6 +89,27 @@ const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; l
   "word-bloom": WordBloomGame,
 };
 
+const SEEDED_GAME_SLUGS = new Set([
+  "anagram-solver",
+  "deep-shell-words",
+  "definition-match",
+  "ladder-rush",
+  "letter-balance",
+  "letter-frequency",
+  "letter-hunt",
+  "letter-pool",
+  "letter-position",
+  "shell-words",
+  "word-bloom",
+  "word-ladder",
+  "word-length",
+  "word-maker",
+  "word-roots",
+  "word-scramble",
+  "word-stretch",
+  "word-sweep",
+]);
+
 interface ChallengeResult {
   myScore: number;
   opponentScore: number;
@@ -178,7 +199,7 @@ export default function GameDetail() {
           gameSlug: slug!,
           score,
           seed: parseInt(challengeNewSeed),
-          message: challengeNewMsg ? decodeURIComponent(challengeNewMsg) : undefined,
+          message: challengeNewMsg || undefined,
         });
       } else if (isReceiverMode && challengeId && receiverChallenge) {
         if (receiverChallenge.status === "pending") {
@@ -371,7 +392,7 @@ export default function GameDetail() {
                     <Play className="h-5 w-5" />
                     Play Now
                   </Button>
-                  {isAuthenticated && friends.length > 0 && (
+                  {isAuthenticated && friends.length > 0 && slug && SEEDED_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
@@ -433,7 +454,7 @@ export default function GameDetail() {
                     <p className="font-medium text-sm">Challenge Mode</p>
                     <p className="text-xs text-muted-foreground">
                       Play your best — your score will be sent as a challenge when you finish!
-                      {challengeNewMsg && ` "${decodeURIComponent(challengeNewMsg)}"`}
+                      {challengeNewMsg && ` "${challengeNewMsg}"`}
                     </p>
                   </div>
                 </CardContent>
