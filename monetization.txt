@@ -175,6 +175,37 @@ Daily challenges           | YES           | Teacher-assigned daily
 24 vocabulary games        | YES           | -
 
 
+FAMILY PLAN
+-----------
+
+Pricing: ~$6-10/month (covers one parent + up to 4 child profiles)
+
+What it includes:
+- Parent account is the sole account holder (children never create their own accounts)
+- Parent creates named child profiles (e.g. "Emma, age 9")
+- Each profile gets a simplified, age-appropriate game experience:
+    - Grade-level filtered word lists (e.g. Grade 1-3, 4-6)
+    - Timers off by default (optional for older kids)
+    - Encouraging, low-pressure feedback tone
+- No social features for child profiles:
+    - No friend system, no public leaderboard, no chat
+    - Friend challenges and groups are parent-only features
+- Parent dashboard: see each child's progress, games played, words learned
+- Unlimited plays for all profiles under the plan
+
+COPPA note:
+- Because the parent is the account holder (not the child), this avoids
+  the requirement for verifiable parental consent per child
+- No personal data is collected directly from children
+- If a child profile is under 13, social/public features are hidden entirely
+- This is the same model used by Duolingo for Schools and Khan Academy Kids
+
+How it relates to the Teacher Plan:
+- Complementary, not competing — teachers use it in schools, parents use it at home
+- A child could appear in both a classroom group (teacher's account) and a family plan
+- Word lists and progress could eventually sync between the two (future feature)
+
+
 IMPLEMENTATION ORDER (when ready to build)
 -------------------------------------------
 1. Stripe integration for subscription billing
@@ -183,5 +214,6 @@ IMPLEMENTATION ORDER (when ready to build)
 4. Play limit enforcement for free users
 5. Leaderboard gating (hide free user entries)
 6. Streak shields
-7. Classroom/teacher mode UI
-8. School license & admin dashboard
+7. Family plan: child profiles under parent account
+8. Classroom/teacher mode UI
+9. School license & admin dashboard
