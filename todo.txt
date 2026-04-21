@@ -134,5 +134,5 @@ Suggested build phases
 
 
 ================================================================================
-  (Add future feature sections above this line)
+  (Add future feature sections below this line)
 ================================================================================
