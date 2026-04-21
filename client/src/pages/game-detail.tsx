@@ -138,7 +138,7 @@ export default function GameDetail() {
     ? parseInt(challengeNewSeed!)
     : undefined;
 
-  const { data: receiverChallenge } = useQuery<FriendChallenge>({
+  const { data: receiverChallenge, isLoading: challengeLoading } = useQuery<FriendChallenge>({
     queryKey: ["/api/challenges", challengeId],
     queryFn: async () => {
       const res = await fetch(`/api/challenges/${challengeId}`, { credentials: "include" });
@@ -514,7 +514,14 @@ export default function GameDetail() {
               </Card>
             )}
 
-            {GameComponent ? (
+            {isReceiverMode && challengeLoading ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">Loading challenge...</p>
+                </CardContent>
+              </Card>
+            ) : GameComponent ? (
               <GameComponent groupSeed={effectiveGroupSeed} />
             ) : (
               <Card>
