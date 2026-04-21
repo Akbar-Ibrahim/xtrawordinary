@@ -462,12 +462,21 @@ export default function GameDetail() {
             {isSenderMode && !challengeResult && (
               <Card className="mb-4 border-primary/30 bg-primary/5">
                 <CardContent className="py-3 px-4 flex items-center gap-3">
-                  <Swords className="h-5 w-5 text-primary" />
+                  <Swords className="h-5 w-5 text-primary shrink-0" />
                   <div>
-                    <p className="font-medium text-sm" data-testid="text-challenge-mode-title">
+                    <p className="font-medium text-sm flex items-center gap-1.5" data-testid="text-challenge-mode-title">
                       {(() => {
                         const friend = friends.find(f => String(f.friendUser.id) === challengeNewFriendId);
-                        return friend ? `Challenging ${friend.friendUser.name}` : "Challenge Mode";
+                        if (!friend) return "Challenge Mode";
+                        return (
+                          <>
+                            Challenging{" "}
+                            {friend.friendUser.avatarUrl
+                              ? <img src={friend.friendUser.avatarUrl} alt={friend.friendUser.name} className="h-5 w-5 rounded-full inline-block" />
+                              : <User className="h-4 w-4 inline-block text-muted-foreground" />}
+                            {friend.friendUser.name}
+                          </>
+                        );
                       })()}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -482,12 +491,14 @@ export default function GameDetail() {
             {isReceiverMode && receiverChallenge && receiverChallenge.status === "pending" && !challengeResult && (
               <Card className="mb-4 border-primary/30 bg-primary/5">
                 <CardContent className="py-3 px-4 flex items-center gap-3">
-                  <Swords className="h-5 w-5 text-primary" />
+                  <Swords className="h-5 w-5 text-primary shrink-0" />
                   <div>
-                    <p className="font-medium text-sm" data-testid="text-challenge-banner-title">
-                      {receiverChallenge.senderName
-                        ? `Challenged by ${receiverChallenge.senderName}`
-                        : "Friend Challenge"}
+                    <p className="font-medium text-sm flex items-center gap-1.5" data-testid="text-challenge-banner-title">
+                      Challenged by{" "}
+                      {receiverChallenge.senderAvatarUrl
+                        ? <img src={receiverChallenge.senderAvatarUrl} alt={receiverChallenge.senderName ?? "challenger"} className="h-5 w-5 rounded-full inline-block" />
+                        : <User className="h-4 w-4 inline-block text-muted-foreground" />}
+                      {receiverChallenge.senderName ?? "a friend"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Score to beat: <strong>{receiverChallenge.senderScore} pts</strong>
