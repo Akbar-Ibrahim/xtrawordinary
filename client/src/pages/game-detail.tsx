@@ -127,7 +127,10 @@ export default function GameDetail() {
   const { user, isAuthenticated } = useAuth();
 
   const searchParams = new URLSearchParams(searchString);
-  const challengeId = searchParams.get("challenge");
+  const [challengeId] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("challenge");
+  });
   const challengeNewFriendId = searchParams.get("challenge-new");
   const challengeNewSeed = searchParams.get("seed");
   const challengeNewMsg = searchParams.get("msg");
@@ -166,6 +169,14 @@ export default function GameDetail() {
   useEffect(() => {
     if (challengeId || challengeNewFriendId) setIsPlaying(true);
   }, [challengeId, challengeNewFriendId]);
+
+  useEffect(() => {
+    if (isReceiverMode && !challengeLoading && receiverChallenge) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("challenge");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, [isReceiverMode, challengeLoading, receiverChallenge]);
 
   const submitChallengeMutation = useMutation({
     mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string }) =>
