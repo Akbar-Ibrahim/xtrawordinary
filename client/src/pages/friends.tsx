@@ -148,11 +148,12 @@ export default function Friends() {
     (c) => c.status === "completed" && c.senderId === user?.id && !c.senderViewed
   );
 
+  const unseenCompletedIds = unseenCompleted.map((c) => c.id).join(",");
   useEffect(() => {
     if (activeTab === "challenges" && unseenCompleted.length > 0) {
       unseenCompleted.forEach((c) => markViewedMutation.mutate(c.id));
     }
-  }, [activeTab, unseenCompleted.length]);
+  }, [activeTab, unseenCompletedIds]);
 
   useEffect(() => {
     latestQueryRef.current = searchQuery;
@@ -174,7 +175,6 @@ export default function Friends() {
   const seededGames = games.filter((g) => SEEDED_GAME_SLUGS.has(g.slug));
 
   const pendingForMe = challenges.filter((c) => c.status === "pending" && c.receiverId === user?.id);
-  const challengeTabBadge = pendingForMe.length + unseenCompleted.length;
 
   const handleStartChallenge = () => {
     if (!challengeGameSlug || challengeFriendId == null) return;
@@ -269,8 +269,10 @@ export default function Friends() {
               Requests {requests.length > 0 && <Badge variant="destructive" className="ml-1 text-xs">{requests.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="challenges" data-testid="tab-challenges">
-              Challenges {challengeTabBadge > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs">{challengeTabBadge}</Badge>
+              Challenges {pendingForMe.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">{pendingForMe.length}</Badge>
+              )}{unseenCompleted.length > 0 && (
+                <Badge className="ml-1 text-xs bg-primary text-primary-foreground">NEW</Badge>
               )}
             </TabsTrigger>
           </TabsList>
