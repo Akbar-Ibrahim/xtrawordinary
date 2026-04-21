@@ -1,0 +1,112 @@
+xtraWordinary — Monetization Guide
+=====================================
+
+GUIDING PRINCIPLE
+-----------------
+Free should be genuinely fun. Paid should be obviously better.
+Free users get just enough to get hooked. Paid users get everything.
+The daily challenge is always free — it's the core habit loop and must never be gated.
+
+
+FREE vs PAID TIER SPLIT
+-----------------------
+
+Feature                        | Free                        | Paid
+-------------------------------|-----------------------------|---------------------------
+All games                      | Limited daily plays (~10-15)| Unlimited
+Daily challenge                | Always free                 | Always free
+Leaderboard (view)             | Yes                         | Yes
+Appear on leaderboard          | No                          | Yes
+Basic stats                    | Yes                         | Yes
+Advanced stats & history       | No                          | Yes
+Groups (join)                  | Yes (max 1 group)           | Yes (unlimited)
+Groups (create)                | No                          | Yes
+Streak shields                 | No                          | Yes (e.g. 2/month)
+Hints                          | Limited daily budget        | Generous / unlimited
+Ads                            | Yes                         | No
+Profile customization          | Basic                       | Full (badges, themes, frames)
+Zen mode (no timers)           | No                          | Yes
+Early access to new games      | No (1 week delay)           | Yes
+Friend challenges              | Limited (e.g. 3/day)        | Unlimited
+
+
+FEATURE BREAKDOWN
+-----------------
+
+1. PLAY LIMITS (core gate)
+   - Free users get ~10-15 plays per day across all games
+   - Paid users get unlimited plays
+   - Survival modes are the best candidates for limits — they're addictive and replayable
+   - Don't fully block modes — give free users a taste (e.g. 3 Survival plays/day)
+     so they know what they're missing before hitting the gate
+
+2. LEADERBOARD
+   - Everyone can VIEW the leaderboard (free users need this for FOMO)
+   - Only paid users APPEAR on it
+   - Free users see the board, feel the pull, pay to get their name up there
+
+3. GROUPS
+   - Joining a group = always free (keeps communities active and valuable)
+   - Creating a group = paid feature
+   - Free users capped at 1 group membership; paid users in unlimited groups
+   - Group creators are the ones willing to invest — they're the right target for the gate
+
+4. ADVANCED STATS
+   - Free: basic totals (games played, wins, current streak)
+   - Paid: per-game breakdowns, score trends over time, word history,
+     best/worst sessions, full achievement progress
+   - All data is already tracked — this is mostly a display gate
+
+5. STREAK SHIELDS
+   - We already have a streak system with real emotional attachment
+   - Free users lose their streak if they miss a day
+   - Paid users get shields (e.g. 2/month) to protect against a missed day
+   - Reference: Duolingo makes enormous revenue from this mechanic alone
+
+6. ADS
+   - Free users see banner/interstitial ads between games
+   - Paid users get an ad-free experience
+   - Low friction upsell — many users will pay just to remove ads
+   - Doesn't require building new gameplay features
+
+7. HINTS
+   - Free users get a small daily hint budget (e.g. 5 total across all games)
+   - Paid users get generous or unlimited hints
+   - Soft gate — doesn't block play but makes paid feel noticeably better
+
+8. PROFILE & CUSTOMIZATION
+   - Paid users unlock: "Pro" badge, special titles, custom color themes, avatar frames
+   - Doubles as social signalling — Pro badges on the leaderboard create aspiration
+   - Low-effort to build, high perceived value
+
+9. WORD HISTORY / GAME REPLAY
+   - Paid users can review any past game: words found, words missed, score breakdown
+   - Free users only see their current session
+   - Appeals to the "I want to improve" player
+
+10. ZEN MODE
+    - Paid-only mode that removes time pressure from Survival games
+    - Same game mechanics, no countdown
+    - Appeals to players who find timers stressful but still want to play
+
+11. EARLY GAME ACCESS
+    - New games go to paid users first
+    - Free users get them one week later
+    - Low-effort to implement (a flag on the game record)
+    - Creates real incentive to subscribe ahead of new releases
+
+12. FRIEND CHALLENGES
+    - Free users: limited challenges per day (e.g. 3 send/receive)
+    - Paid users: unlimited
+    - Challenges are a viral mechanic — don't kill them entirely for free users
+
+
+NOTES & CAUTIONS
+----------------
+- Never hard-wall the daily challenge — it's the #1 retention driver
+- Don't make free so restrictive that users uninstall before getting hooked
+  The goal is: free users play enough to love the app, then hit a meaningful limit
+- The leaderboard should never be fully hidden from free users —
+  social proof and FOMO are more powerful than a hard gate
+- "Taste then gate" beats "cold wall" — let users experience premium features
+  briefly before locking them, so they know exactly what they're paying for
