@@ -206,11 +206,14 @@ export default function GameDetail() {
       alreadySubmittedRef.current = true;
 
       if (isSenderMode && challengeNewFriendId && challengeNewSeed) {
+        const parsedFriendId = parseInt(challengeNewFriendId);
+        const parsedSeed = parseInt(challengeNewSeed);
+        if (isNaN(parsedFriendId) || isNaN(parsedSeed)) return;
         submitChallengeMutation.mutate({
-          friendId: parseInt(challengeNewFriendId),
+          friendId: parsedFriendId,
           gameSlug: slug!,
           score,
-          seed: parseInt(challengeNewSeed),
+          seed: parsedSeed,
           message: challengeNewMsg || undefined,
         });
       } else if (isReceiverMode && challengeId && receiverChallenge) {

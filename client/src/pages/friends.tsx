@@ -137,13 +137,6 @@ export default function Friends() {
     },
   });
 
-  const markViewedMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("POST", `/api/challenges/${id}/viewed`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
-    },
-  });
-
   const unseenCompleted = challenges.filter(
     (c) => c.status === "completed" && c.senderId === user?.id && !c.senderViewed
   );
@@ -151,7 +144,13 @@ export default function Friends() {
   const unseenCompletedIds = unseenCompleted.map((c) => c.id).join(",");
   useEffect(() => {
     if (activeTab === "challenges" && unseenCompleted.length > 0) {
-      unseenCompleted.forEach((c) => markViewedMutation.mutate(c.id));
+      Promise.all(
+        unseenCompleted.map((c) =>
+          apiRequest("POST", `/api/challenges/${c.id}/viewed`, {})
+        )
+      ).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      });
     }
   }, [activeTab, unseenCompletedIds]);
 
