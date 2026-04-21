@@ -72,7 +72,9 @@ export default function Home() {
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
               Welcome to{" "}
-              <span className="text-primary">xtraWordinary</span>
+              <span className="font-extrabold italic bg-gradient-to-r from-primary via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
+                xtra<span className="not-italic font-black">W</span>ordinary
+              </span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground">
               Discover a collection of engaging word games designed to test your
