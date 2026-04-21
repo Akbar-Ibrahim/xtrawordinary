@@ -519,37 +519,47 @@ export default function GameDetail() {
               </Card>
             )}
 
-            {challengeResult && (
-              <Card className={`mb-6 border-2 ${isTied ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
-                <CardContent className="py-5 px-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Trophy className={`h-6 w-6 ${isTied ? "text-blue-500" : challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
-                    <p className="text-lg font-bold">
-                      {isTied
-                        ? "It's a tie!"
-                        : challengeResult.won
-                          ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
-                          : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
-                    </p>
-                  </div>
-                  <div className="flex gap-6 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Your score</p>
-                      <p className="text-2xl font-bold">{challengeResult.myScore}</p>
+            {challengeResult && (() => {
+              const opponentAvatarUrl = !challengeResult.isSender
+                ? (receiverChallenge?.senderAvatarUrl ?? null)
+                : (friends.find(f => String(f.friendUser.id) === challengeNewFriendId)?.friendUser.avatarUrl ?? null);
+              return (
+                <Card className={`mb-6 border-2 ${isTied ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
+                  <CardContent className="py-5 px-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Trophy className={`h-6 w-6 ${isTied ? "text-blue-500" : challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
+                      <p className="text-lg font-bold">
+                        {isTied
+                          ? "It's a tie!"
+                          : challengeResult.won
+                            ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
+                            : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">{opponentName ? `${opponentName}'s score` : "Their score"}</p>
-                      <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
+                    <div className="flex gap-6 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Your score</p>
+                        <p className="text-2xl font-bold">{challengeResult.myScore}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground flex items-center gap-1.5">
+                          {opponentAvatarUrl
+                            ? <img src={opponentAvatarUrl} alt={opponentName ?? "opponent"} className="h-5 w-5 rounded-full inline-block" data-testid="img-result-opponent-avatar" />
+                            : <User className="h-4 w-4 inline-block" data-testid="icon-result-opponent-avatar" />}
+                          {opponentName ? `${opponentName}'s score` : "Their score"}
+                        </p>
+                        <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
+                      </div>
                     </div>
-                  </div>
-                  <Link href="/friends">
-                    <Button className="mt-4" size="sm" data-testid="button-back-to-friends">
-                      See all challenges
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                    <Link href="/friends">
+                      <Button className="mt-4" size="sm" data-testid="button-back-to-friends">
+                        See all challenges
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {isReceiverMode && challengeError ? (
               <Card>
