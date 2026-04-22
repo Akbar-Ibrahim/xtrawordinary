@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarColor, getInitials } from "@/lib/avatar-utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -140,7 +141,7 @@ function RoundScoresPanel({ groupId, roundId, currentUserId }: { groupId: number
             </span>
             <Avatar className="h-7 w-7">
               <AvatarImage src={entry.user.avatarUrl || undefined} />
-              <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user.name)}`}>{getInitials(entry.user.name)}</AvatarFallback>
             </Avatar>
             <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -566,7 +567,7 @@ export default function GroupDetail() {
                       </span>
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={entry.avatarUrl || undefined} />
-                        <AvatarFallback>{entry.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className={`text-white ${getAvatarColor(entry.name)}`}>{getInitials(entry.name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{entry.name}</p>
@@ -590,7 +591,7 @@ export default function GroupDetail() {
                     <CardContent className="p-4 flex items-center gap-4">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={member.user.avatarUrl || undefined} />
-                        <AvatarFallback>{member.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className={`text-white ${getAvatarColor(member.user.name)}`}>{getInitials(member.user.name)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{member.user.name}</p>
@@ -649,7 +650,7 @@ export default function GroupDetail() {
                   <div key={entry.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/30 border border-border/40" data-testid={`activity-${entry.id}`}>
                     <Avatar className="h-8 w-8 shrink-0">
                       {entry.user?.avatarUrl && <AvatarImage src={entry.user.avatarUrl} />}
-                      <AvatarFallback className="text-xs">{entry.user?.name?.charAt(0)?.toUpperCase() || "?"}</AvatarFallback>
+                      <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user?.name ?? "")}`}>{getInitials(entry.user?.name ?? "?")}</AvatarFallback>
                     </Avatar>
                     <p className="text-sm flex-1">{activityLabel(entry.type, entry.metadata)}</p>
                     <span className="text-xs text-muted-foreground shrink-0">{timeAgo(entry.createdAt)}</span>

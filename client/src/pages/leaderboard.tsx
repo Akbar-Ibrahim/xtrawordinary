@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
+import { getAvatarColor, getInitials } from "@/lib/avatar-utils";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { motion } from "framer-motion";
@@ -84,6 +85,10 @@ function LeaderboardEntries({
                 ) : (
                   <span className="text-muted-foreground">{index + 1}</span>
                 )}
+              </div>
+              <div className={`w-7 h-7 rounded-full ${getAvatarColor(entry.playerName)} flex items-center justify-center shrink-0 text-[10px] font-bold text-white`}
+                data-testid={`avatar-player-${index}`}>
+                {getInitials(entry.playerName)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
