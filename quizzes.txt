@@ -190,3 +190,53 @@ Key value over the current game:
 - Essentially a spelling-test mode. Teacher picks the word, players guess it
   letter by letter. Highly specific and intentional — the closest thing to a
   traditional vocabulary quiz in the platform.
+
+================================
+LENGTH CHALLENGE (WORD LENGTH)
+================================
+
+Background on why all 5 variations have quiz value:
+- The game currently randomizes everything — length, letters, all of it. A
+  player who wants to practice 6-letter words is at the randomizer's mercy
+  and might not get that constraint after dozens of refreshes.
+- Even Variation 1 (length only) has real value: the creator guarantees a
+  specific length, removing the frustration of random variation selection.
+- Variations 2–5 add letter constraints on top of length, which the game
+  also randomizes. A creator pinning those letters makes the puzzle
+  deliberate and specific rather than arbitrary.
+
+Variations:
+  1. Length Only       — randomizes word length (3–8)
+  2. Starts With       — randomizes length + starting letter
+  3. Ends With         — randomizes length + ending letter
+  4. Starts & Contains — randomizes length + starting letter + interior letter
+  5. Ends & Contains   — randomizes length + ending letter + interior letter
+
+Quiz creation flow:
+- Creator picks a variation (1–5)
+- Based on variation, enters the relevant constraints:
+    Variation 1: word length only
+    Variation 2: word length + starting letter
+    Variation 3: word length + ending letter
+    Variation 4: word length + starting letter + interior letter
+    Variation 5: word length + ending letter + interior letter
+- Backend validates that enough words exist matching all specified constraints
+  (if 0 or too few, reject with a message)
+- Show the creator the word count as feedback before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- variation: which variation (1–5)
+- length: the target word length
+- startLetter: starting letter (Variations 2 and 4 only)
+- endLetter: ending letter (Variations 3 and 5 only)
+- containsLetter: interior letter (Variations 4 and 5 only)
+
+Game screen changes:
+- None — the game already knows how to apply all these constraints. We pass
+  params values instead of randomising them.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Removes the randomizer entirely. Creator guarantees the exact constraint
+  set, making the quiz reproducible and intentional for every player.
