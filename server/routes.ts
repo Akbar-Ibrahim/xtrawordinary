@@ -2233,6 +2233,18 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/quiz-sessions/:code", requireAuth, async (req: any, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      if (session.creatorId !== req.user.id) return res.status(403).json({ error: "Only the creator can delete this session" });
+      await storage.deleteQuizSession(session.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete quiz session" });
+    }
+  });
+
   app.get("/api/quiz-sessions/:code", async (req, res) => {
     try {
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());

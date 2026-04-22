@@ -1281,4 +1281,10 @@ export class MySQLStorage implements IStorage {
       completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
     };
   }
+
+  async deleteQuizSession(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.quizSessionScores).where(eq(schema.quizSessionScores.sessionId, id));
+    await db.delete(schema.quizSessions).where(eq(schema.quizSessions.id, id));
+  }
 }

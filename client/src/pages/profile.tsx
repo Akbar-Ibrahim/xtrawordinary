@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
@@ -93,6 +94,7 @@ export default function Profile() {
   });
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
 
   function copyQuizLink(shareCode: string) {
     navigator.clipboard.writeText(`${window.location.origin}/quiz/${shareCode}`);
@@ -100,6 +102,20 @@ export default function Profile() {
     setTimeout(() => setCopiedCode(null), 2000);
     toast({ title: "Play link copied!" });
   }
+
+  const deleteQuiz = useMutation({
+    mutationFn: (shareCode: string) =>
+      apiRequest("DELETE", `/api/quiz-sessions/${shareCode}`),
+    onSuccess: () => {
+      toast({ title: "Quiz deleted" });
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/my"] });
+      setDeleteQuizCode(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+      setDeleteQuizCode(null);
+    },
+  });
 
   function openEdit() {
     if (!profile) return;
@@ -314,6 +330,16 @@ export default function Profile() {
                               Results
                             </Button>
                           </Link>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteQuizCode(quiz.shareCode)}
+                            title="Delete quiz"
+                            data-testid={`button-delete-quiz-${quiz.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     );
@@ -410,6 +436,28 @@ export default function Profile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteQuizCode} onOpenChange={(open) => { if (!open) setDeleteQuizCode(null); }}>
+        <AlertDialogContent data-testid="dialog-delete-quiz">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the quiz and all submitted scores. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-quiz">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteQuizCode && deleteQuiz.mutate(deleteQuizCode)}
+              disabled={deleteQuiz.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-quiz"
+            >
+              {deleteQuiz.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

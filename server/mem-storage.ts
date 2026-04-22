@@ -1283,4 +1283,9 @@ export class MemStorage implements IStorage {
   async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> {
     return this.quizSessionScores.find(s => s.sessionId === sessionId && s.userId === userId);
   }
+
+  async deleteQuizSession(id: number): Promise<void> {
+    this.quizSessionScores = this.quizSessionScores.filter(s => s.sessionId !== id);
+    this.quizSessions = this.quizSessions.filter(s => s.id !== id);
+  }
 }
