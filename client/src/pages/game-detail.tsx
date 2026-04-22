@@ -708,6 +708,15 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Variation</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={quizParams.variation === undefined ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.variation; return n; })}
+                      data-testid="button-quiz-variation-auto"
+                    >
+                      Auto
+                    </Button>
                     {([1, 2, 3, 4, 5] as const).map(v => (
                       <Button
                         key={v}
@@ -721,13 +730,21 @@ export default function GameDetail() {
                       </Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
                 </div>
               )}
               {slug === "letter-hunt" && (
                 <div>
                   <label className="text-sm font-medium">Position</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={quizParams.position === undefined ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.position; return n; })}
+                      data-testid="button-quiz-position-auto"
+                    >
+                      Auto
+                    </Button>
                     {([1, 2, 3, 4, 5] as const).map(v => (
                       <Button
                         key={v}
@@ -741,13 +758,21 @@ export default function GameDetail() {
                       </Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
                 </div>
               )}
               {slug === "letter-frequency" && (
                 <div>
                   <label className="text-sm font-medium">Rank Level</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={quizParams.rank === undefined ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.rank; return n; })}
+                      data-testid="button-quiz-rank-auto"
+                    >
+                      Auto
+                    </Button>
                     {([1, 2, 3, 4] as const).map(v => (
                       <Button
                         key={v}
@@ -761,7 +786,6 @@ export default function GameDetail() {
                       </Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
                 </div>
               )}
               {slug === "letter-balance" && (

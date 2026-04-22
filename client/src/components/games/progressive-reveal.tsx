@@ -108,13 +108,13 @@ export function ProgressiveRevealGame({ groupSeed, locked }: { groupSeed?: numbe
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const firstWord = words[0];
+    const firstWord = seeded ? words[0] : words[Math.floor(Math.random() * words.length)];
     setCurrentWord(firstWord);
     setupWord(firstWord);
     const initialUsed = new Set([firstWord.word]);
     setUsedWords(initialUsed);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words, setupWord, resetRecorded]);
+  }, [words, seeded, setupWord, resetRecorded]);
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
