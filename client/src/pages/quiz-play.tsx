@@ -30,6 +30,7 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordRootsGame } from "@/components/games/word-roots";
+import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -42,36 +43,43 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-function renderQuizGame(slug: string, seed: number): React.ReactNode {
+function renderQuizGame(slug: string, seed: number, params?: Record<string, any>): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <WordLengthGame initialChallenge={wlOptions[seed % wlOptions.length]} groupSeed={seed} locked />;
+      const variation: 1 | 2 | 3 | 4 | 5 = params?.variation ?? wlOptions[seed % wlOptions.length];
+      return <WordLengthGame initialChallenge={variation} groupSeed={seed} locked />;
     }
-    case "letter-position":
-      return <LetterPositionGame initialChallenge={((seed % 2) + 1) as 1 | 2} groupSeed={seed} locked />;
+    case "letter-position": {
+      const mode: 1 | 2 = params?.mode ?? ((seed % 2) + 1) as 1 | 2;
+      return <LetterPositionGame initialChallenge={mode} groupSeed={seed} locked />;
+    }
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      return <LetterHuntGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
+      const position: 1 | 2 | 3 | 4 | 5 = params?.position ?? options[seed % options.length];
+      return <LetterHuntGame initialChallenge={position} groupSeed={seed} locked />;
     }
     case "letter-balance": {
-      const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
-      const levels = LETTER_BALANCE_LEVELS[cat];
-      const level = levels[(seed >> 4) % levels.length];
+      const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
+      const level = params?.level ?? levels[(seed >> 4) % levels.length];
       return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
-      return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
+      const rank: 1 | 2 | 3 | 4 = params?.rank ?? options[seed % options.length];
+      return <LetterFrequencyGame initialChallenge={rank} groupSeed={seed} locked />;
     }
     case "definition-match":
       return <DefinitionMatchGame groupSeed={seed} locked />;
     case "letter-pool": {
-      const v = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} locked />;
+      const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
+      return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked />;
     }
     case "word-roots":
       return <WordRootsGame groupSeed={seed} locked />;
+    case "progressive-reveal":
+      return <ProgressiveRevealGame groupSeed={seed} locked />;
     default:
       return null;
   }
@@ -179,7 +187,7 @@ export default function QuizPlay() {
   }
 
   const seed = session.id * 31 + 7;
-  const gameNode = renderQuizGame(session.gameSlug, seed);
+  const gameNode = renderQuizGame(session.gameSlug, seed, (session.params as Record<string, any>) ?? undefined);
   const scores = scoresData?.scores ?? [];
   const alreadySubmitted = submitted || !!scoresData?.myScore;
 

@@ -323,19 +323,28 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/progressive-reveal/words", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/progressive-reveal/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch progressive reveal words";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
+  app.get("/api/games/progressive-reveal/words", async (req, res) => {
     try {
       const words = await dataSource.getProgressiveRevealWords();
+      const rawSeed = req.query.seed;
+      if (rawSeed !== undefined) {
+        const seed = parseInt(rawSeed as string, 10);
+        if (!isNaN(seed)) {
+          const shuffled = [...words];
+          let s = seed >>> 0;
+          const rng = () => {
+            s = (s + 0x6d2b79f5) >>> 0;
+            let t = Math.imul(s ^ (s >>> 15), 1 | s);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          return res.json(shuffled);
+        }
+      }
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch progressive reveal words" });

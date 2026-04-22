@@ -256,12 +256,14 @@ export default function GameDetail() {
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
   const [quizLinkCopied, setQuizLinkCopied] = useState(false);
   const [quizClosesAt, setQuizClosesAt] = useState("");
+  const [quizParams, setQuizParams] = useState<Record<string, any>>({});
 
   const createQuizMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/quiz-sessions", {
       gameSlug: slug,
       title: quizTitle.trim(),
       closesAt: quizClosesAt ? new Date(quizClosesAt).toISOString() : null,
+      params: Object.keys(quizParams).length > 0 ? quizParams : null,
     }),
     onSuccess: async (res: any) => {
       const data: QuizSession = await res.json();
@@ -629,7 +631,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) setCreatedQuiz(null); }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -664,9 +666,131 @@ export default function GameDetail() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Leave empty to keep accepting submissions indefinitely.</p>
               </div>
-              <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-                Game settings for <strong>{game.name}</strong> will appear here in a future update.
-              </div>
+              {slug === "letter-pool" && (
+                <div>
+                  <label className="text-sm font-medium">Pool Mode</label>
+                  <div className="flex gap-2 mt-1">
+                    {(["with-pool", "without-pool"] as const).map(v => (
+                      <Button
+                        key={v}
+                        type="button"
+                        size="sm"
+                        variant={quizParams.variant === v ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, variant: v }))}
+                        data-testid={`button-quiz-pool-${v}`}
+                      >
+                        {v === "with-pool" ? "With Pool" : "Without Pool"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {slug === "letter-position" && (
+                <div>
+                  <label className="text-sm font-medium">Mode</label>
+                  <div className="flex gap-2 mt-1">
+                    {([{ value: 1, label: "Starts With" }, { value: 2, label: "Ends With" }] as const).map(({ value, label }) => (
+                      <Button
+                        key={value}
+                        type="button"
+                        size="sm"
+                        variant={quizParams.mode === value ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, mode: value }))}
+                        data-testid={`button-quiz-mode-${value}`}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {slug === "word-length" && (
+                <div>
+                  <label className="text-sm font-medium">Variation</label>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    {([1, 2, 3, 4, 5] as const).map(v => (
+                      <Button
+                        key={v}
+                        type="button"
+                        size="sm"
+                        variant={quizParams.variation === v ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, variation: v }))}
+                        data-testid={`button-quiz-variation-${v}`}
+                      >
+                        {v}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
+                </div>
+              )}
+              {slug === "letter-hunt" && (
+                <div>
+                  <label className="text-sm font-medium">Position</label>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    {([1, 2, 3, 4, 5] as const).map(v => (
+                      <Button
+                        key={v}
+                        type="button"
+                        size="sm"
+                        variant={quizParams.position === v ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, position: v }))}
+                        data-testid={`button-quiz-position-${v}`}
+                      >
+                        {v}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
+                </div>
+              )}
+              {slug === "letter-frequency" && (
+                <div>
+                  <label className="text-sm font-medium">Rank Level</label>
+                  <div className="flex gap-2 mt-1 flex-wrap">
+                    {([1, 2, 3, 4] as const).map(v => (
+                      <Button
+                        key={v}
+                        type="button"
+                        size="sm"
+                        variant={quizParams.rank === v ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, rank: v }))}
+                        data-testid={`button-quiz-rank-${v}`}
+                      >
+                        {v}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Leave blank to let the seed decide automatically.</p>
+                </div>
+              )}
+              {slug === "letter-balance" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Category</label>
+                  <Select
+                    value={quizParams.category ?? ""}
+                    onValueChange={(v) => setQuizParams(p => ({ ...p, category: v || undefined, level: undefined }))}
+                  >
+                    <SelectTrigger data-testid="select-quiz-category">
+                      <SelectValue placeholder="Auto (seed-derived)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        { value: "consonant_count", label: "Consonant Count" },
+                        { value: "vowel_count", label: "Vowel Count" },
+                        { value: "start_end_vowel", label: "Starts & Ends Vowel" },
+                        { value: "start_end_consonant", label: "Starts & Ends Consonant" },
+                        { value: "start_vowel_end_consonant", label: "Vowel Start, Consonant End" },
+                        { value: "start_consonant_end_vowel", label: "Consonant Start, Vowel End" },
+                        { value: "consonant_oblivion", label: "Consonant Oblivion" },
+                        { value: "vowel_oblivion", label: "Vowel Oblivion" },
+                      ].map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button
                 className="w-full gap-2"
                 onClick={() => createQuizMutation.mutate()}

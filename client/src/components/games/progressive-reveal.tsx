@@ -16,20 +16,31 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
-export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
+export function ProgressiveRevealGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal" });
   const personalBest = usePersonalBest("progressive-reveal");
+  const seeded = groupSeed !== undefined;
+
   const { data: words = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
-    queryKey: ["/api/games/progressive-reveal/words"],
-    refetchOnMount: "always",
-    gcTime: 0,
+    queryKey: seeded
+      ? ["/api/games/progressive-reveal/words", groupSeed]
+      : ["/api/games/progressive-reveal/words"],
+    queryFn: seeded
+      ? async () => {
+          const r = await fetch(`/api/games/progressive-reveal/words?seed=${groupSeed}`, { credentials: "include" });
+          return r.json();
+        }
+      : undefined,
+    refetchOnMount: seeded ? false : "always",
+    gcTime: seeded ? Infinity : 0,
   });
 
-  const [activeWords, setActiveWords] = useState<ProgressiveRevealWord[]>([]);
+  const wordIndexRef = useRef(0);
   const [currentWord, setCurrentWord] = useState<ProgressiveRevealWord | null>(null);
   const [revealed, setRevealed] = useState<boolean[]>([]);
   const [revealCount, setRevealCount] = useState(0);
@@ -55,25 +66,41 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
     setLastRevealedIndex(null);
   }, []);
 
-  const selectNewWord = useCallback(() => {
-    const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
-    if (availableWords.length === 0) {
-      playSound("win");
-      setGameStatus("won");
-      setCompletionMessage(getCompletionMessage(true));
-      return;
+  const selectNewWord = useCallback((currentUsed: Set<string>, allWords: ProgressiveRevealWord[]) => {
+    if (seeded) {
+      const idx = wordIndexRef.current;
+      if (idx >= allWords.length) {
+        playSound("win");
+        setGameStatus("won");
+        setCompletionMessage(getCompletionMessage(true));
+        return;
+      }
+      wordIndexRef.current = idx + 1;
+      const word = allWords[idx];
+      setCurrentWord(word);
+      setupWord(word);
+      setUsedWords(prev => new Set(Array.from(prev).concat(word.word)));
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } else {
+      const available = allWords.filter(w => !currentUsed.has(w.word));
+      if (available.length === 0) {
+        playSound("win");
+        setGameStatus("won");
+        setCompletionMessage(getCompletionMessage(true));
+        return;
+      }
+      const word = available[Math.floor(Math.random() * available.length)];
+      setCurrentWord(word);
+      setupWord(word);
+      setUsedWords(prev => new Set(Array.from(prev).concat(word.word)));
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
-    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-    setCurrentWord(randomWord);
-    setupWord(randomWord);
-    setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, activeWords, setupWord, playSound]);
+  }, [seeded, setupWord, playSound]);
 
   const initGame = useCallback(() => {
     if (words.length === 0) return;
     resetRecorded();
-    setActiveWords(words);
+    wordIndexRef.current = 1;
     setScore(0);
     setStreak(0);
     setLives(3);
@@ -81,10 +108,11 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const randomWord = words[Math.floor(Math.random() * words.length)];
-    setCurrentWord(randomWord);
-    setupWord(randomWord);
-    setUsedWords(new Set([randomWord.word]));
+    const firstWord = words[0];
+    setCurrentWord(firstWord);
+    setupWord(firstWord);
+    const initialUsed = new Set([firstWord.word]);
+    setUsedWords(initialUsed);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [words, setupWord, resetRecorded]);
 
@@ -102,9 +130,7 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
 
   const handleTileClick = useCallback((index: number) => {
     if (!currentWord || feedback || revealed[index]) return;
-
     playSound("click");
-
     const newRevealed = [...revealed];
     newRevealed[index] = true;
     setRevealed(newRevealed);
@@ -119,9 +145,7 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
 
   const handleGuess = useCallback(() => {
     if (!currentWord || feedback || !guess.trim()) return;
-
     const upperGuess = guess.trim().toUpperCase();
-
     if (upperGuess === currentWord.word) {
       playSound("correct");
       setFeedback("correct");
@@ -132,7 +156,10 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
       setWordsCompleted(prev => prev + 1);
       setTimeout(() => {
         setFeedback(null);
-        selectNewWord();
+        setUsedWords(prev => {
+          selectNewWord(prev, words);
+          return prev;
+        });
       }, 1500);
     } else {
       playSound("wrong");
@@ -155,12 +182,10 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
         setTimeout(() => inputRef.current?.focus(), 50);
       }, 1000);
     }
-  }, [currentWord, feedback, guess, revealCount, playSound, selectNewWord]);
+  }, [currentWord, feedback, guess, revealCount, playSound, selectNewWord, words]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleGuess();
-    }
+    if (e.key === "Enter") handleGuess();
   }, [handleGuess]);
 
   if (isLoading) {
@@ -186,9 +211,7 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
     );
   }
 
-  if (!currentWord) {
-    return null;
-  }
+  if (!currentWord) return null;
 
   const allRevealed = revealed.every(r => r);
 
@@ -308,9 +331,7 @@ export function ProgressiveRevealGame({ locked }: { locked?: boolean } = {}) {
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 text-sm">
                     <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">
-                      {revealCount} revealed
-                    </span>
+                    <span className="text-muted-foreground">{revealCount} revealed</span>
                     <span className="text-muted-foreground">—</span>
                     <span className={`font-semibold ${potentialPoints > 100 ? "text-accent" : potentialPoints > 50 ? "text-chart-3" : "text-destructive"}`}>
                       {potentialPoints} pts available
