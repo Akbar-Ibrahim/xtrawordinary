@@ -2220,13 +2220,25 @@ export async function registerRoutes(
       const { gameSlug, title, params, closesAt } = req.body;
       if (!gameSlug || !title) return res.status(400).json({ error: "gameSlug and title are required" });
       if (!QUIZ_MASTER_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support Quiz Master" });
+
+      let finalParams = params ?? {};
+      if (gameSlug === "letter-position") {
+        const letter = (typeof finalParams.letter === "string" ? finalParams.letter : "").toUpperCase().trim();
+        const position = Number(finalParams.position);
+        if (!letter || !/^[A-Z]$/.test(letter)) return res.status(400).json({ error: "letter must be a single A-Z character" });
+        if (!position || position < 1 || position > 8) return res.status(400).json({ error: "position must be between 1 and 8" });
+        const count = await dataSource.countLetterPositionWords(letter, position);
+        if (count < 10) return res.status(400).json({ error: `Only ${count} words match — need at least 10. Choose a different letter or position.` });
+        finalParams = { ...finalParams, letter, position, mode: 1 };
+      }
+
       const shareCode = generateShareCode();
       const session = await storage.createQuizSession({
         creatorId: req.user.id,
         gameSlug,
         title: title.trim().slice(0, 200),
         shareCode,
-        params: params ?? {},
+        params: finalParams,
         closesAt: closesAt ?? null,
       });
       res.json(session);
