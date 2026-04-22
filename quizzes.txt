@@ -1,0 +1,33 @@
+QUIZ MASTER — GAME-BY-GAME PLAN
+================================
+This file tracks what needs to be done to support creator-configured
+quizzes for each game. Each entry covers the creation flow, what gets
+stored in params, and any game screen changes required.
+
+================================
+POSITION MASTER
+================================
+
+Quiz creation flow:
+- Creator picks one letter (A–Z) and one position (1–N)
+- Before confirming, the backend validates that enough words exist
+  matching that constraint (if 0 or too few, reject with a message)
+- Show the creator the word count as feedback
+  ("47 words match this constraint") before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- letter: the chosen letter
+- position: the chosen position (1-indexed)
+
+Game screen changes:
+- None for Phase 1 — the game already knows how to apply a single
+  letter+position constraint. We just pass params.letter and
+  params.position instead of randomising.
+- locked prop hides mode switching as usual.
+
+Out of scope for now:
+- Multi-letter / multi-position constraints (requires new game screen
+  validation logic — separate task)
+- Mode 2 (dynamic constraints) is not supported in quiz creation;
+  quiz always uses Mode 1
