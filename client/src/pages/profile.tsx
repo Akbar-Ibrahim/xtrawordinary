@@ -285,7 +285,10 @@ export default function Profile() {
                               {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
                             </span>
                             <span className="font-mono tracking-widest">{quiz.shareCode}</span>
-                            <span>{new Date(quiz.createdAt).toLocaleDateString()}</span>
+                            <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
+                            {quiz.closesAt && (
+                              <span>{isClosed ? "Closed" : "Closes"}: {new Date(quiz.closesAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
