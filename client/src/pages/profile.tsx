@@ -1,15 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
-import { useMutation } from "@tanstack/react-query";
-import { User, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, Clock } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { UserAvatar } from "@/components/user-avatar";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game } from "@shared/schema";
 
@@ -25,6 +28,10 @@ export default function Profile() {
   const userId = parseInt(params?.id || "0");
   const { user: currentUser, isAuthenticated } = useAuth();
   const { toast } = useToast();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editAvatarUrl, setEditAvatarUrl] = useState("");
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -58,8 +65,46 @@ export default function Profile() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const updateProfile = useMutation({
+    mutationFn: (data: { name?: string; avatarUrl?: string | null }) =>
+      apiRequest("PATCH", "/api/users/me", data),
+    onSuccess: () => {
+      toast({ title: "Profile updated!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setEditOpen(false);
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
+
+  function openEdit() {
+    if (!profile) return;
+    setEditName(profile.user.name);
+    setEditAvatarUrl(profile.user.avatarUrl ?? "");
+    setEditOpen(true);
+  }
+
+  function handleSave() {
+    const data: { name?: string; avatarUrl?: string | null } = {};
+    if (editName.trim() && editName.trim() !== profile?.user.name) {
+      data.name = editName.trim();
+    }
+    const url = editAvatarUrl.trim() || null;
+    if (url !== (profile?.user.avatarUrl ?? null)) {
+      data.avatarUrl = url;
+    }
+    if (Object.keys(data).length === 0) {
+      setEditOpen(false);
+      return;
+    }
+    updateProfile.mutate(data);
+  }
+
+  const previewName = editName.trim() || (profile?.user.name ?? "");
+  const previewUrl = editAvatarUrl.trim() || null;
 
   if (isLoading) {
     return (
@@ -82,9 +127,6 @@ export default function Profile() {
   const totalGames = profile.stats.reduce((sum, s) => sum + s.gamesPlayed, 0);
   const totalWins = profile.stats.reduce((sum, s) => sum + s.gamesWon, 0);
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
-  const favoriteGame = profile.stats.length > 0
-    ? profile.stats.reduce((a, b) => a.gamesPlayed > b.gamesPlayed ? a : b)
-    : null;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -92,15 +134,25 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                {profile.user.avatarUrl ? (
-                  <img src={profile.user.avatarUrl} alt={profile.user.name} className="h-16 w-16 rounded-full" />
-                ) : (
-                  <User className="h-8 w-8 text-primary" />
-                )}
-              </div>
+              <UserAvatar
+                name={profile.user.name}
+                avatarUrl={profile.user.avatarUrl}
+                className="h-16 w-16 text-xl"
+              />
               <div className="flex-1">
-                <h1 className="text-2xl font-bold" data-testid="text-profile-name">{profile.user.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold" data-testid="text-profile-name">{profile.user.name}</h1>
+                  {isOwnProfile && (
+                    <button
+                      onClick={openEdit}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-edit-profile"
+                      aria-label="Edit profile"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   Joined {new Date(profile.user.createdAt).toLocaleDateString()}
@@ -212,6 +264,47 @@ export default function Profile() {
           </Card>
         )}
       </motion.div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-edit-profile">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="flex justify-center">
+              <UserAvatar name={previewName} avatarUrl={previewUrl} className="h-20 w-20 text-2xl" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Display name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                maxLength={50}
+                placeholder="Your name"
+                data-testid="input-edit-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-avatar">Avatar URL <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="edit-avatar"
+                value={editAvatarUrl}
+                onChange={e => setEditAvatarUrl(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+                data-testid="input-edit-avatar-url"
+              />
+              <p className="text-xs text-muted-foreground">Paste a link to your photo. Leave blank to use your initials.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} data-testid="button-cancel-edit">Cancel</Button>
+            <Button onClick={handleSave} disabled={updateProfile.isPending} data-testid="button-save-profile">
+              {updateProfile.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

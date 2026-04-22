@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, User, Loader2 } from "lucide-react";
+import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS } from "@shared/schema";
@@ -238,7 +239,7 @@ export default function Friends() {
                   <div key={u.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-search-result-${u.id}`}>
                     <Link href={`/profile/${u.id}`}>
                       <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
-                        {u.avatarUrl ? <img src={u.avatarUrl} className="h-6 w-6 rounded-full" /> : <User className="h-4 w-4" />}
+                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6 text-[9px]" />
                         {u.name}
                       </span>
                     </Link>
@@ -290,7 +291,7 @@ export default function Friends() {
                       <div key={f.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-friend-${f.friendUser.id}`}>
                         <Link href={`/profile/${f.friendUser.id}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
-                            {f.friendUser.avatarUrl ? <img src={f.friendUser.avatarUrl} className="h-8 w-8 rounded-full" /> : <User className="h-5 w-5 text-muted-foreground" />}
+                            <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-8 w-8 text-xs" />
                             {f.friendUser.name}
                           </span>
                         </Link>
@@ -332,7 +333,7 @@ export default function Friends() {
                       <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-request-${r.id}`}>
                         <Link href={`/profile/${r.requesterUser.id}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
-                            {r.requesterUser.avatarUrl ? <img src={r.requesterUser.avatarUrl} className="h-8 w-8 rounded-full" /> : <User className="h-5 w-5 text-muted-foreground" />}
+                            <UserAvatar name={r.requesterUser.name} avatarUrl={r.requesterUser.avatarUrl} className="h-8 w-8 text-xs" />
                             {r.requesterUser.name}
                           </span>
                         </Link>

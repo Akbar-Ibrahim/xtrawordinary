@@ -27,6 +27,7 @@ import { SEEDED_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { UserAvatar } from "@/components/user-avatar";
 import { CommentSection } from "@/components/comment-section";
 import { LikeButton } from "@/components/like-button";
 import { MiniLeaderboard } from "@/components/mini-leaderboard";
@@ -471,9 +472,7 @@ export default function GameDetail() {
                         return (
                           <>
                             Challenging{" "}
-                            {friend.friendUser.avatarUrl
-                              ? <img src={friend.friendUser.avatarUrl} alt={friend.friendUser.name} className="h-5 w-5 rounded-full inline-block" />
-                              : <User className="h-4 w-4 inline-block text-muted-foreground" />}
+                            <UserAvatar name={friend.friendUser.name} avatarUrl={friend.friendUser.avatarUrl} className="h-5 w-5 inline-block align-middle" />
                             {friend.friendUser.name}
                           </>
                         );
@@ -495,9 +494,7 @@ export default function GameDetail() {
                   <div>
                     <p className="font-medium text-sm flex items-center gap-1.5" data-testid="text-challenge-banner-title">
                       Challenged by{" "}
-                      {receiverChallenge.senderAvatarUrl
-                        ? <img src={receiverChallenge.senderAvatarUrl} alt={receiverChallenge.senderName ?? "challenger"} className="h-5 w-5 rounded-full inline-block" />
-                        : <User className="h-4 w-4 inline-block text-muted-foreground" />}
+                      <UserAvatar name={receiverChallenge.senderName ?? "Challenger"} avatarUrl={receiverChallenge.senderAvatarUrl} className="h-5 w-5 inline-block align-middle" />
                       {receiverChallenge.senderName ?? "a friend"}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -543,9 +540,7 @@ export default function GameDetail() {
                       </div>
                       <div>
                         <p className="text-muted-foreground flex items-center gap-1.5">
-                          {opponentAvatarUrl
-                            ? <img src={opponentAvatarUrl} alt={opponentName ?? "opponent"} className="h-6 w-6 rounded-full inline-block" data-testid="img-result-opponent-avatar" />
-                            : <User className="h-5 w-5 inline-block" data-testid="icon-result-opponent-avatar" />}
+                          <UserAvatar name={opponentName ?? "Opponent"} avatarUrl={opponentAvatarUrl} className="h-6 w-6 inline-block align-middle" data-testid="img-result-opponent-avatar" />
                           {opponentName ? `${opponentName}'s score` : "Their score"}
                         </p>
                         <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
@@ -612,9 +607,7 @@ export default function GameDetail() {
                   {friends.map((f) => (
                     <SelectItem key={f.friendUser.id} value={String(f.friendUser.id)}>
                       <span className="flex items-center gap-2">
-                        {f.friendUser.avatarUrl
-                          ? <img src={f.friendUser.avatarUrl} className="h-5 w-5 rounded-full" />
-                          : <User className="h-4 w-4" />}
+                        <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-5 w-5" />
                         {f.friendUser.name}
                       </span>
                     </SelectItem>

@@ -7,6 +7,7 @@ import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
+import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 
@@ -101,11 +102,7 @@ export function Navigation() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 relative" data-testid="button-user-menu">
-                    {user.avatarUrl ? (
-                      <img src={user.avatarUrl} alt={user.name} className="h-6 w-6 rounded-full" />
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
+                    <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="h-6 w-6 text-[10px]" />
                     <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
                     {unreadCount > 0 && (
                       <span

@@ -983,6 +983,27 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/users/me", requireAuth, async (req, res) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1).max(50).optional(),
+        avatarUrl: z.union([z.string().url(), z.null()]).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+      const { name, avatarUrl } = parsed.data;
+      const updates: Record<string, unknown> = {};
+      if (name !== undefined) updates.name = name;
+      if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+      if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No fields to update" });
+      const updated = await storage.updateUser(req.user!.id, updates as any);
+      if (!updated) return res.status(404).json({ error: "User not found" });
+      res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
   app.get("/api/users/:id/profile", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
