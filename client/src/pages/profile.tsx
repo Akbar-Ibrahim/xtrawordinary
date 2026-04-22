@@ -26,7 +26,7 @@ interface PublicProfile {
 export default function Profile() {
   const [, params] = useRoute("/profile/:id");
   const userId = parseInt(params?.id || "0");
-  const { user: currentUser, isAuthenticated } = useAuth();
+  const { user: currentUser, isAuthenticated, refreshUser } = useAuth();
   const { toast } = useToast();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -68,10 +68,10 @@ export default function Profile() {
   const updateProfile = useMutation({
     mutationFn: (data: { name?: string; avatarUrl?: string | null }) =>
       apiRequest("PATCH", "/api/users/me", data),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: "Profile updated!" });
+      await refreshUser();
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setEditOpen(false);
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
