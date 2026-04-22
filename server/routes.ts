@@ -2215,18 +2215,7 @@ export async function registerRoutes(
     return code;
   }
 
-  // TODO[RESTORE-AUTH]: remove this helper when auth is restored
-  function getGuestUserId(req: any): number {
-    if (req.user?.id) return req.user.id;
-    if (!(req.session as any).guestUserId) {
-      (req.session as any).guestUserId = -(Math.floor(Math.random() * 999_999) + 1);
-      req.session.save(() => {});
-    }
-    return (req.session as any).guestUserId;
-  }
-
-  // TODO[RESTORE-AUTH]: re-add requireAuth below when done testing
-  app.post("/api/quiz-sessions", /* requireAuth, */ async (req: any, res) => {
+  app.post("/api/quiz-sessions", requireAuth, async (req: any, res) => {
     try {
       const { gameSlug, title, params, closesAt } = req.body;
       if (!gameSlug || !title) return res.status(400).json({ error: "gameSlug and title are required" });
@@ -2245,7 +2234,7 @@ export async function registerRoutes(
 
       const shareCode = generateShareCode();
       const session = await storage.createQuizSession({
-        creatorId: getGuestUserId(req), // TODO[RESTORE-AUTH]: revert to req.user.id
+        creatorId: req.user.id,
         gameSlug,
         title: title.trim().slice(0, 200),
         shareCode,
@@ -2298,15 +2287,14 @@ export async function registerRoutes(
     }
   });
 
-  // TODO[RESTORE-AUTH]: re-add requireAuth below when done testing
-  app.post("/api/quiz-sessions/:code/scores", /* requireAuth, */ async (req: any, res) => {
+  app.post("/api/quiz-sessions/:code/scores", requireAuth, async (req: any, res) => {
     try {
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
       if (session.closesAt && new Date(session.closesAt) < new Date()) {
         return res.status(403).json({ error: "Quiz session is closed" });
       }
-      const userId = getGuestUserId(req); // TODO[RESTORE-AUTH]: revert to req.user.id
+      const userId = req.user.id;
       const existing = await storage.getQuizSessionScore(session.id, userId);
       if (existing) return res.status(409).json({ error: "Already submitted", score: existing });
       const { score } = req.body;

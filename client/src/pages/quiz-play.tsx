@@ -123,7 +123,7 @@ export default function QuizPlay() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !!code, // TODO[RESTORE-AUTH]: restore `&& isAuthenticated` when done testing
+    enabled: !!code && isAuthenticated,
     refetchInterval: submitted ? 5000 : false,
   });
 
@@ -152,7 +152,7 @@ export default function QuizPlay() {
   }, [scoresData]);
 
   useEffect(() => {
-    if (!isPlaying) return; // TODO[RESTORE-AUTH]: restore `|| !isAuthenticated` when done testing
+    if (!isPlaying || !isAuthenticated) return;
     const handleResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (!detail || hasSubmitted.current) return;
@@ -236,13 +236,12 @@ export default function QuizPlay() {
                   </div>
                 )}
 
-                {/* TODO[RESTORE-AUTH]: restore sign-in prompt below when auth is re-enabled
                 {!isAuthenticated && (
                   <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground flex items-center gap-2 justify-center">
                     <Lock className="h-4 w-4" />
                     Sign in to submit your score to the leaderboard.
                   </div>
-                )} */}
+                )}
 
                 {!alreadySubmitted && !session.isClosed && (
                   <Button
@@ -341,13 +340,12 @@ export default function QuizPlay() {
                   Score saved!
                 </div>
               )}
-              {/* TODO[RESTORE-AUTH]: restore "Not tracked" indicator below when auth is re-enabled
               {!isAuthenticated && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
                   Not tracked
                 </div>
-              )} */}
+              )}
             </div>
 
             {gameNode ?? (
