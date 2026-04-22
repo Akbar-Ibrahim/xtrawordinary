@@ -498,7 +498,6 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
   "word-length",
   "definition-match",
   "word-roots",
-  "progressive-reveal",
 ]);
 
 // ==================== CHALLENGES ====================

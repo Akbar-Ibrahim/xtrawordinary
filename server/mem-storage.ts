@@ -1267,7 +1267,17 @@ export class MemStorage implements IStorage {
   }
 
   async getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]> {
-    return this.quizSessionScores.filter(s => s.sessionId === sessionId).sort((a, b) => b.score - a.score);
+    return this.quizSessionScores
+      .filter(s => s.sessionId === sessionId)
+      .sort((a, b) => b.score - a.score)
+      .map(s => {
+        const user = this.users.get(s.userId);
+        return {
+          ...s,
+          playerName: user?.name ?? s.guestName ?? undefined,
+          playerAvatarUrl: user?.avatarUrl ?? null,
+        };
+      });
   }
 
   async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> {

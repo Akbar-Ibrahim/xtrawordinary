@@ -30,7 +30,6 @@ import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordRootsGame } from "@/components/games/word-roots";
-import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -73,8 +72,6 @@ function renderQuizGame(slug: string, seed: number): React.ReactNode {
     }
     case "word-roots":
       return <WordRootsGame groupSeed={seed} locked />;
-    case "progressive-reveal":
-      return <ProgressiveRevealGame />;
     default:
       return null;
   }
