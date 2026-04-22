@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1165,5 +1165,116 @@ export class MySQLStorage implements IStorage {
   async deleteCommentAdmin(id: number): Promise<void> {
     const db = await this.getDb();
     await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
+  }
+
+  private generateShareCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  private mapQuizSession(row: any): QuizSession {
+    return {
+      id: row.id,
+      creatorId: row.creatorId,
+      gameSlug: row.gameSlug,
+      title: row.title,
+      shareCode: row.shareCode,
+      params: typeof row.params === "string" ? JSON.parse(row.params) : (row.params ?? {}),
+      closesAt: row.closesAt instanceof Date ? row.closesAt.toISOString() : (row.closesAt ?? null),
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  async createQuizSession(session: InsertQuizSession): Promise<QuizSession> {
+    const db = await this.getDb();
+    let shareCode = session.shareCode || this.generateShareCode();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await db.select({ id: schema.quizSessions.id }).from(schema.quizSessions).where(eq(schema.quizSessions.shareCode, shareCode)).limit(1);
+      if (existing.length === 0) break;
+      shareCode = this.generateShareCode();
+      attempts++;
+    }
+    const result = await db.insert(schema.quizSessions).values({
+      creatorId: session.creatorId,
+      gameSlug: session.gameSlug,
+      title: session.title,
+      shareCode,
+      params: session.params ?? {},
+      closesAt: session.closesAt ? new Date(session.closesAt) : null,
+    });
+    const rows = await db.select().from(schema.quizSessions).where(eq(schema.quizSessions.id, result[0].insertId)).limit(1);
+    return this.mapQuizSession(rows[0]);
+  }
+
+  async getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.quizSessions).where(eq(schema.quizSessions.shareCode, shareCode)).limit(1);
+    if (!rows[0]) return undefined;
+    return this.mapQuizSession(rows[0]);
+  }
+
+  async getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.quizSessions).where(eq(schema.quizSessions.creatorId, creatorId)).orderBy(desc(schema.quizSessions.createdAt));
+    return rows.map(r => this.mapQuizSession(r));
+  }
+
+  async addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore> {
+    const db = await this.getDb();
+    const existing = await db.select().from(schema.quizSessionScores).where(and(eq(schema.quizSessionScores.sessionId, sessionId), eq(schema.quizSessionScores.userId, userId))).limit(1);
+    if (existing[0]) {
+      return {
+        id: existing[0].id,
+        sessionId: existing[0].sessionId,
+        userId: existing[0].userId,
+        score: existing[0].score,
+        completedAt: existing[0].completedAt instanceof Date ? existing[0].completedAt.toISOString() : String(existing[0].completedAt),
+      };
+    }
+    const result = await db.insert(schema.quizSessionScores).values({ sessionId, userId, score });
+    const rows = await db.select().from(schema.quizSessionScores).where(eq(schema.quizSessionScores.id, result[0].insertId)).limit(1);
+    const r = rows[0];
+    return {
+      id: r.id,
+      sessionId: r.sessionId,
+      userId: r.userId,
+      score: r.score,
+      completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
+    };
+  }
+
+  async getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.quizSessionScores).where(eq(schema.quizSessionScores.sessionId, sessionId)).orderBy(desc(schema.quizSessionScores.score));
+    if (rows.length === 0) return [];
+    const userIds = [...new Set(rows.map(r => r.userId))];
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+    const userMap = new Map(userRows.map(u => [u.id, u]));
+    return rows.map(r => ({
+      id: r.id,
+      sessionId: r.sessionId,
+      userId: r.userId,
+      score: r.score,
+      completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
+      playerName: userMap.get(r.userId)?.name,
+      playerAvatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
+    }));
+  }
+
+  async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.quizSessionScores).where(and(eq(schema.quizSessionScores.sessionId, sessionId), eq(schema.quizSessionScores.userId, userId))).limit(1);
+    if (!rows[0]) return undefined;
+    const r = rows[0];
+    return {
+      id: r.id,
+      sessionId: r.sessionId,
+      userId: r.userId,
+      score: r.score,
+      completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
+    };
   }
 }

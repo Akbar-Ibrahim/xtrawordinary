@@ -459,6 +459,47 @@ export type CommentReport = z.infer<typeof commentReportSchema>;
 export const likeTargetTypeSchema = z.enum(["game", "comment"]);
 export type LikeTargetType = z.infer<typeof likeTargetTypeSchema>;
 
+// ==================== QUIZ MASTER ====================
+
+export const quizSessionSchema = z.object({
+  id: z.number(),
+  creatorId: z.number(),
+  gameSlug: z.string(),
+  title: z.string(),
+  shareCode: z.string(),
+  params: z.record(z.any()),
+  closesAt: z.string().nullable(),
+  createdAt: z.string(),
+  creatorName: z.string().optional(),
+});
+export type QuizSession = z.infer<typeof quizSessionSchema>;
+
+export const insertQuizSessionSchema = quizSessionSchema.omit({ id: true, createdAt: true, creatorName: true });
+export type InsertQuizSession = z.infer<typeof insertQuizSessionSchema>;
+
+export const quizSessionScoreSchema = z.object({
+  id: z.number(),
+  sessionId: z.number(),
+  userId: z.number(),
+  score: z.number(),
+  completedAt: z.string(),
+  playerName: z.string().optional(),
+  playerAvatarUrl: z.string().nullable().optional(),
+});
+export type QuizSessionScore = z.infer<typeof quizSessionScoreSchema>;
+
+export const QUIZ_MASTER_GAME_SLUGS = new Set([
+  "letter-hunt",
+  "letter-frequency",
+  "letter-position",
+  "letter-balance",
+  "letter-pool",
+  "word-length",
+  "definition-match",
+  "word-roots",
+  "progressive-reveal",
+]);
+
 // ==================== CHALLENGES ====================
 
 export const SEEDED_GAME_SLUGS = new Set([

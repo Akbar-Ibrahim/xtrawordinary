@@ -1,10 +1,21 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
 
+function generateShareCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 export class MemStorage implements IStorage {
   private games: Game[];
+  private quizSessions: QuizSession[] = [];
+  private quizSessionScores: QuizSessionScore[] = [];
+  private quizIdCounter = 1;
+  private quizScoreIdCounter = 1;
 
   constructor() {
     this.games = gamesData;
@@ -1215,5 +1226,50 @@ export class MemStorage implements IStorage {
       c.isDeleted = true;
       c.content = "";
     }
+  }
+
+  async createQuizSession(session: InsertQuizSession): Promise<QuizSession> {
+    let shareCode = session.shareCode;
+    while (this.quizSessions.find(s => s.shareCode === shareCode)) {
+      shareCode = generateShareCode();
+    }
+    const newSession: QuizSession = {
+      ...session,
+      id: this.quizIdCounter++,
+      shareCode,
+      createdAt: new Date().toISOString(),
+    };
+    this.quizSessions.push(newSession);
+    return newSession;
+  }
+
+  async getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined> {
+    return this.quizSessions.find(s => s.shareCode === shareCode);
+  }
+
+  async getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]> {
+    return this.quizSessions.filter(s => s.creatorId === creatorId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore> {
+    const existing = this.quizSessionScores.find(s => s.sessionId === sessionId && s.userId === userId);
+    if (existing) return existing;
+    const entry: QuizSessionScore = {
+      id: this.quizScoreIdCounter++,
+      sessionId,
+      userId,
+      score,
+      completedAt: new Date().toISOString(),
+    };
+    this.quizSessionScores.push(entry);
+    return entry;
+  }
+
+  async getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]> {
+    return this.quizSessionScores.filter(s => s.sessionId === sessionId).sort((a, b) => b.score - a.score);
+  }
+
+  async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> {
+    return this.quizSessionScores.find(s => s.sessionId === sessionId && s.userId === userId);
   }
 }

@@ -271,3 +271,29 @@ export const likes = mysqlTable("likes", {
   uniqueIndex("likes_user_target_idx").on(table.userId, table.targetType, table.targetId),
   index("likes_target_idx").on(table.targetType, table.targetId),
 ]);
+
+export const quizSessions = mysqlTable("quiz_sessions", {
+  id: int("id").primaryKey().autoincrement(),
+  creatorId: int("creator_id").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  shareCode: varchar("share_code", { length: 8 }).notNull().unique(),
+  params: json("params").notNull().default({}),
+  closesAt: timestamp("closes_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("qs_share_code_idx").on(table.shareCode),
+  index("qs_creator_idx").on(table.creatorId),
+]);
+
+export const quizSessionScores = mysqlTable("quiz_session_scores", {
+  id: int("id").primaryKey().autoincrement(),
+  sessionId: int("session_id").notNull(),
+  userId: int("user_id").notNull(),
+  score: int("score").notNull(),
+  completedAt: timestamp("completed_at").notNull().defaultNow(),
+}, (table) => [
+  index("qss_session_idx").on(table.sessionId),
+  index("qss_user_idx").on(table.userId),
+  uniqueIndex("qss_session_user_idx").on(table.sessionId, table.userId),
+]);

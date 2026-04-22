@@ -8,7 +8,7 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
-import { SEEDED_GAME_SLUGS } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -2189,6 +2189,87 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Failed to delete comment" });
+    }
+  });
+
+  // ==================== QUIZ MASTER ====================
+
+  function generateShareCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+
+  app.post("/api/quiz-sessions", requireAuth, async (req: any, res) => {
+    try {
+      const { gameSlug, title, params, closesAt } = req.body;
+      if (!gameSlug || !title) return res.status(400).json({ error: "gameSlug and title are required" });
+      if (!QUIZ_MASTER_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support Quiz Master" });
+      const shareCode = generateShareCode();
+      const session = await storage.createQuizSession({
+        creatorId: req.user.id,
+        gameSlug,
+        title: title.trim().slice(0, 200),
+        shareCode,
+        params: params ?? {},
+        closesAt: closesAt ?? null,
+      });
+      res.json(session);
+    } catch {
+      res.status(500).json({ error: "Failed to create quiz session" });
+    }
+  });
+
+  app.get("/api/quiz-sessions/my", requireAuth, async (req: any, res) => {
+    try {
+      const sessions = await storage.getQuizSessionsByCreator(req.user.id);
+      res.json(sessions);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch quiz sessions" });
+    }
+  });
+
+  app.get("/api/quiz-sessions/:code", async (req, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      if (session.closesAt && new Date(session.closesAt) < new Date()) {
+        return res.json({ ...session, isClosed: true });
+      }
+      res.json({ ...session, isClosed: false });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch quiz session" });
+    }
+  });
+
+  app.post("/api/quiz-sessions/:code/scores", requireAuth, async (req: any, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      if (session.closesAt && new Date(session.closesAt) < new Date()) {
+        return res.status(403).json({ error: "Quiz session is closed" });
+      }
+      const existing = await storage.getQuizSessionScore(session.id, req.user.id);
+      if (existing) return res.status(409).json({ error: "Already submitted", score: existing });
+      const { score } = req.body;
+      if (typeof score !== "number") return res.status(400).json({ error: "score is required" });
+      const entry = await storage.addQuizSessionScore(session.id, req.user.id, score);
+      res.json(entry);
+    } catch {
+      res.status(500).json({ error: "Failed to submit score" });
+    }
+  });
+
+  app.get("/api/quiz-sessions/:code/scores", async (req: any, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      const scores = await storage.getQuizSessionScores(session.id);
+      const myScore = req.user ? scores.find(s => s.userId === req.user.id) : undefined;
+      res.json({ scores, myScore: myScore ?? null });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch scores" });
     }
   });
 

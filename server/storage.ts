@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -163,6 +163,14 @@ export interface IStorage {
   toggleLike(userId: number, targetType: LikeTargetType, targetId: string): Promise<{ liked: boolean; count: number }>;
   getLikeCounts(targetType: LikeTargetType, targetIds: string[]): Promise<Record<string, number>>;
   getUserLikes(userId: number, targetType: LikeTargetType, targetIds: string[]): Promise<Set<string>>;
+
+  // Quiz Master
+  createQuizSession(session: InsertQuizSession): Promise<QuizSession>;
+  getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined>;
+  getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]>;
+  addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore>;
+  getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]>;
+  getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined>;
 }
 
 export { MemStorage } from "./mem-storage";

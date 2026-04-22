@@ -24,6 +24,8 @@ import Groups from "@/pages/groups";
 import GroupsBrowse from "@/pages/groups-browse";
 import GroupDetail from "@/pages/group-detail";
 import GroupRoundPlay from "@/pages/group-round-play";
+import QuizPlay from "@/pages/quiz-play";
+import QuizResults from "@/pages/quiz-results";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -45,6 +47,8 @@ function Router() {
       <Route path="/groups/browse" component={GroupsBrowse} />
       <Route path="/groups/:id" component={GroupDetail} />
       <Route path="/groups/:id/rounds/:roundId/play" component={GroupRoundPlay} />
+      <Route path="/quiz/:code/results" component={QuizResults} />
+      <Route path="/quiz/:code" component={QuizPlay} />
       <Route component={NotFound} />
     </Switch>
   );

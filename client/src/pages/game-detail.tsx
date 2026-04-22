@@ -20,10 +20,13 @@ import {
   Trophy,
   User,
   Loader2,
+  GraduationCap,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { Game, FriendChallenge } from "@shared/schema";
-import { SEEDED_GAME_SLUGS } from "@shared/schema";
+import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -248,6 +251,28 @@ export default function GameDetail() {
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
   const [challengeMsg, setChallengeMsg] = useState("");
+  const [showQuizDialog, setShowQuizDialog] = useState(false);
+  const [quizTitle, setQuizTitle] = useState("");
+  const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
+  const [quizLinkCopied, setQuizLinkCopied] = useState(false);
+
+  const createQuizMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/quiz-sessions", { gameSlug: slug, title: quizTitle.trim() }),
+    onSuccess: async (res: any) => {
+      const data: QuizSession = await res.json();
+      setCreatedQuiz(data);
+      setQuizTitle("");
+    },
+    onError: () => toast({ title: "Error", description: "Could not create quiz session.", variant: "destructive" }),
+  });
+
+  const handleCopyQuizLink = () => {
+    if (!createdQuiz) return;
+    const link = `${window.location.origin}/quiz/${createdQuiz.shareCode}`;
+    navigator.clipboard.writeText(link);
+    setQuizLinkCopied(true);
+    setTimeout(() => setQuizLinkCopied(false), 2000);
+  };
 
   if (isLoading) {
     return (
@@ -415,6 +440,17 @@ export default function GameDetail() {
                     >
                       <Swords className="h-4 w-4" />
                       Challenge a Friend
+                    </Button>
+                  )}
+                  {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => { setCreatedQuiz(null); setShowQuizDialog(true); }}
+                      data-testid="button-create-quiz"
+                    >
+                      <GraduationCap className="h-4 w-4" />
+                      Create Quiz Session
                     </Button>
                   )}
                 </CardContent>
@@ -587,6 +623,80 @@ export default function GameDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) setCreatedQuiz(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5" />
+              Create Quiz Session
+            </DialogTitle>
+          </DialogHeader>
+          {!createdQuiz ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create a shareable quiz in <strong>{game.name}</strong>. Anyone with the link can play and submit their score.
+              </p>
+              <div>
+                <label className="text-sm font-medium">Session Title</label>
+                <Input
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                  placeholder="e.g. Friday Quiz Night"
+                  maxLength={200}
+                  data-testid="input-quiz-title"
+                  className="mt-1"
+                />
+              </div>
+              <Button
+                className="w-full gap-2"
+                onClick={() => createQuizMutation.mutate()}
+                disabled={!quizTitle.trim() || createQuizMutation.isPending}
+                data-testid="button-create-quiz-submit"
+              >
+                {createQuizMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
+                Create Session
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 text-center">
+                <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="font-semibold text-green-700 dark:text-green-300">Quiz session created!</p>
+                <p className="text-sm text-green-600 dark:text-green-400 mt-1">{createdQuiz.title}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Share Link</label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    readOnly
+                    value={`${window.location.origin}/quiz/${createdQuiz.shareCode}`}
+                    className="text-sm font-mono"
+                    data-testid="text-quiz-link"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyQuizLink}
+                    data-testid="button-copy-quiz-link"
+                  >
+                    {quizLinkCopied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => navigate(`/quiz/${createdQuiz!.shareCode}/results`)}
+                data-testid="button-view-quiz-results"
+              >
+                <Trophy className="h-4 w-4" />
+                View Results Dashboard
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showChallengeDialog} onOpenChange={setShowChallengeDialog}>
         <DialogContent>
