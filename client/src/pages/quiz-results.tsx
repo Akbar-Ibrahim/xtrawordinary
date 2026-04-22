@@ -13,44 +13,35 @@ import {
   CheckCheck,
   Users,
   ExternalLink,
+  Clock,
+  Hash,
 } from "lucide-react";
 import { useState } from "react";
 import type { QuizSession, QuizSessionScore } from "@shared/schema";
 import { UserAvatar } from "@/components/user-avatar";
 
-interface SessionResponse extends QuizSession {
-  isClosed: boolean;
-}
-
-interface ScoresResponse {
+interface ResultsResponse {
+  session: QuizSession & { isClosed: boolean };
   scores: QuizSessionScore[];
-  myScore: QuizSessionScore | null;
 }
 
 export default function QuizResults() {
   const { code } = useParams<{ code: string }>();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const { data: session, isLoading: sessionLoading } = useQuery<SessionResponse>({
-    queryKey: ["/api/quiz-sessions", code],
+  const { data, isLoading, error } = useQuery<ResultsResponse>({
+    queryKey: ["/api/quiz-sessions", code, "results"],
     queryFn: async () => {
-      const res = await fetch(`/api/quiz-sessions/${code}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Not found");
+      const res = await fetch(`/api/quiz-sessions/${code}/results`, { credentials: "include" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(body.error ?? "Failed"), { status: res.status });
+      }
       return res.json();
     },
-    enabled: !!code,
-  });
-
-  const { data: scoresData, isLoading: scoresLoading } = useQuery<ScoresResponse>({
-    queryKey: ["/api/quiz-sessions", code, "scores"],
-    queryFn: async () => {
-      const res = await fetch(`/api/quiz-sessions/${code}/scores`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    enabled: !!code,
+    enabled: !!code && isAuthenticated,
     refetchInterval: 10000,
   });
 
@@ -61,7 +52,18 @@ export default function QuizResults() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  if (sessionLoading) {
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
+        <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+        <h1 className="text-2xl font-bold mb-2">Results Dashboard</h1>
+        <p className="text-muted-foreground mb-6">Sign in to access the creator results dashboard.</p>
+        <Button onClick={() => navigate(`/quiz/${code}`)}>Go to Quiz</Button>
+      </div>
+    );
+  }
+
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Skeleton className="h-8 w-48 mb-4" />
@@ -70,7 +72,18 @@ export default function QuizResults() {
     );
   }
 
-  if (!session) {
+  if (error) {
+    const status = (error as any).status;
+    if (status === 403) {
+      return (
+        <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
+          <p className="text-muted-foreground mb-6">Only the quiz creator can view this dashboard.</p>
+          <Button onClick={() => navigate(`/quiz/${code}`)}>Go to Quiz</Button>
+        </div>
+      );
+    }
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
         <GraduationCap className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -81,18 +94,9 @@ export default function QuizResults() {
     );
   }
 
-  if (!isAuthenticated || user?.id !== session.creatorId) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl text-center">
-        <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-        <h1 className="text-2xl font-bold mb-2">Results Dashboard</h1>
-        <p className="text-muted-foreground mb-6">Only the quiz creator can view this dashboard.</p>
-        <Button onClick={() => navigate(`/quiz/${code}`)}>Go to Quiz</Button>
-      </div>
-    );
-  }
+  if (!data) return null;
 
-  const scores = scoresData?.scores ?? [];
+  const { session, scores } = data;
   const playLink = `${window.location.origin}/quiz/${code}`;
   const createdDate = new Date(session.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" });
 
@@ -124,6 +128,22 @@ export default function QuizResults() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Hash className="h-4 w-4 shrink-0" />
+            <span>Share code:</span>
+            <span className="font-mono font-bold text-foreground tracking-widest" data-testid="text-share-code">
+              {session.shareCode}
+            </span>
+          </div>
+          {session.closesAt && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4 shrink-0" />
+              <span>{session.isClosed ? "Closed" : "Closes"}:</span>
+              <span className="text-foreground" data-testid="text-closes-at">
+                {new Date(session.closesAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+              </span>
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="flex-1 font-mono text-sm bg-muted rounded px-3 py-2 truncate" data-testid="text-share-link">
               {playLink}
@@ -157,11 +177,7 @@ export default function QuizResults() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {scoresLoading ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : scores.length === 0 ? (
+          {scores.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Trophy className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p>No submissions yet. Share the link so people can play!</p>

@@ -255,9 +255,14 @@ export default function GameDetail() {
   const [quizTitle, setQuizTitle] = useState("");
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
   const [quizLinkCopied, setQuizLinkCopied] = useState(false);
+  const [quizClosesAt, setQuizClosesAt] = useState("");
 
   const createQuizMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/quiz-sessions", { gameSlug: slug, title: quizTitle.trim() }),
+    mutationFn: () => apiRequest("POST", "/api/quiz-sessions", {
+      gameSlug: slug,
+      title: quizTitle.trim(),
+      closesAt: quizClosesAt ? new Date(quizClosesAt).toISOString() : null,
+    }),
     onSuccess: async (res: any) => {
       const data: QuizSession = await res.json();
       setCreatedQuiz(data);
@@ -647,6 +652,20 @@ export default function GameDetail() {
                   data-testid="input-quiz-title"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Close Date (optional)</label>
+                <Input
+                  type="datetime-local"
+                  value={quizClosesAt}
+                  onChange={(e) => setQuizClosesAt(e.target.value)}
+                  data-testid="input-quiz-closes-at"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave empty to keep accepting submissions indefinitely.</p>
+              </div>
+              <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+                Game settings for <strong>{game.name}</strong> will appear here in a future update.
               </div>
               <Button
                 className="w-full gap-2"

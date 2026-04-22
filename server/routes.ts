@@ -2266,10 +2266,22 @@ export async function registerRoutes(
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
       const scores = await storage.getQuizSessionScores(session.id);
-      const myScore = req.user ? scores.find(s => s.userId === req.user.id) : undefined;
+      const myScore = req.user ? scores.find((s: any) => s.userId === req.user.id) : undefined;
       res.json({ scores, myScore: myScore ?? null });
     } catch {
       res.status(500).json({ error: "Failed to fetch scores" });
+    }
+  });
+
+  app.get("/api/quiz-sessions/:code/results", requireAuth, async (req: any, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      if (session.creatorId !== req.user.id) return res.status(403).json({ error: "Only the quiz creator can view results" });
+      const scores = await storage.getQuizSessionScores(session.id);
+      res.json({ session: { ...session, isClosed: !!(session.closesAt && new Date(session.closesAt) < new Date()) }, scores });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch results" });
     }
   });
 
