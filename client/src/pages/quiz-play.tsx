@@ -236,12 +236,13 @@ export default function QuizPlay() {
                   </div>
                 )}
 
+                {/* TODO[RESTORE-AUTH]: restore sign-in prompt below when auth is re-enabled
                 {!isAuthenticated && (
                   <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground flex items-center gap-2 justify-center">
                     <Lock className="h-4 w-4" />
                     Sign in to submit your score to the leaderboard.
                   </div>
-                )}
+                )} */}
 
                 {!alreadySubmitted && !session.isClosed && (
                   <Button
@@ -340,12 +341,13 @@ export default function QuizPlay() {
                   Score saved!
                 </div>
               )}
+              {/* TODO[RESTORE-AUTH]: restore "Not tracked" indicator below when auth is re-enabled
               {!isAuthenticated && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
                   Not tracked
                 </div>
-              )}
+              )} */}
             </div>
 
             {gameNode ?? (
