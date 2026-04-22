@@ -207,7 +207,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/games/letter-position/count", async (req, res) => {
+  app.get("/api/games/letter-position/validate", async (req, res) => {
     try {
       const letter = (req.query.letter as string || "").toUpperCase().trim();
       const position = parseInt(req.query.position as string);

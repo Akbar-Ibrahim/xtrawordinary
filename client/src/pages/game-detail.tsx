@@ -258,12 +258,13 @@ export default function GameDetail() {
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
 
+  const LP_QUIZ_MIN_WORDS = 10;
   const lpLetter = quizParams.letter as string | undefined;
   const lpPosition = quizParams.position as number | undefined;
   const { data: lpCountData, isFetching: lpCountFetching } = useQuery<{ count: number }>({
-    queryKey: ["/api/games/letter-position/count", lpLetter, lpPosition],
+    queryKey: ["/api/games/letter-position/validate", lpLetter, lpPosition],
     queryFn: async () => {
-      const res = await fetch(`/api/games/letter-position/count?letter=${lpLetter}&position=${lpPosition}`, { credentials: "include" });
+      const res = await fetch(`/api/games/letter-position/validate?letter=${lpLetter}&position=${lpPosition}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
@@ -276,7 +277,9 @@ export default function GameDetail() {
       gameSlug: slug,
       title: quizTitle.trim(),
       closesAt: quizClosesAt ? new Date(quizClosesAt).toISOString() : null,
-      params: Object.keys(quizParams).length > 0 ? quizParams : null,
+      params: slug === "letter-position"
+        ? { ...quizParams, mode: 1 }
+        : (Object.keys(quizParams).length > 0 ? quizParams : null),
     }),
     onSuccess: async (res: any) => {
       const data: QuizSession = await res.json();
@@ -734,12 +737,14 @@ export default function GameDetail() {
                     </div>
                   </div>
                   {lpLetter && lpPosition && (
-                    <p className={`text-xs ${lpCountFetching ? "text-muted-foreground" : lpCountData?.count === 0 ? "text-destructive" : "text-muted-foreground"}`} data-testid="text-lp-word-count">
+                    <p className={`text-xs ${lpCountFetching ? "text-muted-foreground" : (lpCountData?.count ?? LP_QUIZ_MIN_WORDS) < LP_QUIZ_MIN_WORDS ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-lp-word-count">
                       {lpCountFetching
                         ? "Checking…"
-                        : lpCountData?.count === 0
-                          ? "No words match this combination — try a different letter or position."
-                          : `${lpCountData?.count ?? "?"} words match`}
+                        : lpCountData === undefined
+                          ? ""
+                          : lpCountData.count < LP_QUIZ_MIN_WORDS
+                            ? `Only ${lpCountData.count} word${lpCountData.count !== 1 ? "s" : ""} match — need at least ${LP_QUIZ_MIN_WORDS}. Try a different letter or position.`
+                            : `${lpCountData.count} words match`}
                     </p>
                   )}
                 </div>
@@ -861,7 +866,12 @@ export default function GameDetail() {
                 disabled={
                   !quizTitle.trim() ||
                   createQuizMutation.isPending ||
-                  (slug === "letter-position" && (!lpLetter || !lpPosition || lpCountData?.count === 0))
+                  (slug === "letter-position" && (
+                    !lpLetter || !lpPosition ||
+                    lpCountFetching ||
+                    lpCountData === undefined ||
+                    lpCountData.count < LP_QUIZ_MIN_WORDS
+                  ))
                 }
                 data-testid="button-create-quiz-submit"
               >

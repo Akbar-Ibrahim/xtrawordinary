@@ -139,6 +139,16 @@ export class MySQLStorage implements IStorage {
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> { return this.gameData.getWordSplitPuzzles(); }
   async getWordDictionary(): Promise<string[]> { await this.getDb(); return Array.from(this.wordSet); }
   async validateWord(word: string): Promise<boolean> { await this.getDb(); return this.wordSet.has(word.toUpperCase()); }
+  async countLetterPositionWords(letter: string, position: number): Promise<number> {
+    await this.getDb();
+    const upper = letter.toUpperCase();
+    const idx = position - 1;
+    let count = 0;
+    for (const word of this.wordSet) {
+      if (word.length > idx && word[idx] === upper) count++;
+    }
+    return count;
+  }
   async getWordLengthConfig(): Promise<WordLengthConfig> { return this.gameData.getWordLengthConfig(); }
   async getLetterPositionConfig(): Promise<LetterPositionConfig> { return this.gameData.getLetterPositionConfig(); }
   async getLetterHuntConfig(): Promise<LetterHuntConfig> { return this.gameData.getLetterHuntConfig(); }
