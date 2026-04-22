@@ -240,3 +240,51 @@ Game screen changes:
 Key value over the current game:
 - Removes the randomizer entirely. Creator guarantees the exact constraint
   set, making the quiz reproducible and intentional for every player.
+
+================================
+LETTER BALANCE
+================================
+
+Variations:
+  Count-based:
+    - Consonant Count: words must have an exact number of consonants (levels 2–7)
+    - Vowel Count: words must have an exact number of vowels (levels 2–7)
+  Position-based:
+    - Start & End Vowels
+    - Start & End Consonants
+    - Start Vowel, End Consonant
+    - Start Consonant, End Vowel
+  Oblivion (hardest):
+    - Consonant Oblivion: exact consonant count + exact word length
+    - Vowel Oblivion: exact vowel count + exact word length
+  Advanced Mode:
+    - Constraint randomizes every word within the chosen variation
+
+Quiz creation flow:
+- Creator picks a variation from the list above
+- For count-based and oblivion variations, also picks a level (2–7)
+- Backend validates enough words exist matching the chosen constraint
+- Title and optional close date as usual
+
+What gets stored in params:
+- variation: the chosen variation slug
+- level: the chosen level (count-based and oblivion only; null for positional)
+
+Game screen changes:
+- None — we pass params.variation and params.level instead of letting the
+  player choose or the game randomize.
+- locked prop hides mode switching as usual.
+
+Key value — two distinct kinds:
+- Consistency: for count-based and positional variations, the quiz guarantees
+  every player faces the same level/rule rather than each picking their own.
+- Specificity: for Advanced Mode, using a seed ensures every player's
+  randomized constraint sequence is identical — without this, two players
+  in Advanced Mode could face completely different challenges.
+
+Future enhancement (separate task):
+- Allow the quiz creator to specify WHICH specific consonants or vowels must
+  appear (e.g. "exactly 3 consonants, and they must be B, R, T"). This
+  requires new validation logic in the game screen — it does not exist today.
+  Same situation as Position Master's multi-constraint idea. Both could be
+  built as quiz-exclusive modes that extend the base game.
