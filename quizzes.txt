@@ -31,3 +31,36 @@ Out of scope for now:
   validation logic — separate task)
 - Mode 2 (dynamic constraints) is not supported in quiz creation;
   quiz always uses Mode 1
+
+================================
+LETTER FREQUENCY
+================================
+
+Core distinction from Letter Hunt:
+- Letter Hunt = presence ("find words containing these letters")
+- Letter Frequency = count ("find words where a letter appears exactly N times")
+  These are genuinely different constraints and justify separate quiz support.
+
+Quiz creation flow:
+- Creator picks one letter (A–Z)
+- Optionally picks an exact frequency count (e.g. "appears exactly 2 times");
+  if omitted, any frequency is accepted
+- Backend validates that enough words exist matching that constraint
+  (if 0 or too few, reject with a message)
+- Show the creator the word count as feedback before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- letter: the chosen letter
+- count: the required frequency (optional; null means any frequency)
+
+Game screen changes:
+- None — the game already knows how to apply a letter frequency constraint.
+  We just pass params.letter (and optionally params.count) instead of
+  randomising the letter each round.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- The game today randomises the letter each round. A creator pinning a
+  specific letter makes the quiz themeable (e.g. a phonics lesson focused
+  entirely on the letter E). That specificity is the quiz's value.
