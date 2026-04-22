@@ -207,6 +207,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/letter-position/count", async (req, res) => {
+    try {
+      const letter = (req.query.letter as string || "").toUpperCase().trim();
+      const position = parseInt(req.query.position as string);
+      if (!letter || letter.length !== 1 || !/^[A-Z]$/.test(letter)) {
+        return res.status(400).json({ message: "letter must be a single A-Z character" });
+      }
+      if (isNaN(position) || position < 1 || position > 8) {
+        return res.status(400).json({ message: "position must be between 1 and 8" });
+      }
+      const count = await dataSource.countLetterPositionWords(letter, position);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to count matching words" });
+    }
+  });
+
   app.get("/api/games/word-stretch/solutions", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);

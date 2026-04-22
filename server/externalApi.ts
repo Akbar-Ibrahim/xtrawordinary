@@ -859,6 +859,12 @@ export class ExternalApiClient implements IExternalApi {
     return wordDictionary.includes(upperWord);
   }
 
+  async countLetterPositionWords(letter: string, position: number): Promise<number> {
+    const upper = letter.toUpperCase();
+    const idx = position - 1;
+    return wordDictionary.filter(w => w.length > idx && w[idx] === upper).length;
+  }
+
   async getWordLengthConfig(): Promise<WordLengthConfig> {
     return wordLengthConfig;
   }

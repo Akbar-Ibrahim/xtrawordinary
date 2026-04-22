@@ -258,6 +258,19 @@ export default function GameDetail() {
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
 
+  const lpLetter = quizParams.letter as string | undefined;
+  const lpPosition = quizParams.position as number | undefined;
+  const { data: lpCountData, isFetching: lpCountFetching } = useQuery<{ count: number }>({
+    queryKey: ["/api/games/letter-position/count", lpLetter, lpPosition],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/letter-position/count?letter=${lpLetter}&position=${lpPosition}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: slug === "letter-position" && !!lpLetter && !!lpPosition,
+    staleTime: Infinity,
+  });
+
   const createQuizMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/quiz-sessions", {
       gameSlug: slug,
@@ -686,22 +699,49 @@ export default function GameDetail() {
                 </div>
               )}
               {slug === "letter-position" && (
-                <div>
-                  <label className="text-sm font-medium">Mode</label>
-                  <div className="flex gap-2 mt-1">
-                    {([{ value: 1, label: "Starts With" }, { value: 2, label: "Ends With" }] as const).map(({ value, label }) => (
-                      <Button
-                        key={value}
-                        type="button"
-                        size="sm"
-                        variant={quizParams.mode === value ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, mode: value }))}
-                        data-testid={`button-quiz-mode-${value}`}
-                      >
-                        {label}
-                      </Button>
-                    ))}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Letter</label>
+                    <Select
+                      value={quizParams.letter ?? ""}
+                      onValueChange={(v) => setQuizParams(p => ({ ...p, letter: v || undefined }))}
+                    >
+                      <SelectTrigger className="mt-1" data-testid="select-quiz-lp-letter">
+                        <SelectValue placeholder="Pick a letter (A–Z)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
+                          <SelectItem key={l} value={l}>{l}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  <div>
+                    <label className="text-sm font-medium">Position (1 = first letter)</label>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(p => (
+                        <Button
+                          key={p}
+                          type="button"
+                          size="sm"
+                          variant={quizParams.position === p ? "default" : "outline"}
+                          onClick={() => setQuizParams(prev => ({ ...prev, position: p }))}
+                          data-testid={`button-quiz-lp-pos-${p}`}
+                        >
+                          {p}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  {lpLetter && lpPosition && (
+                    <p className={`text-xs ${lpCountFetching ? "text-muted-foreground" : lpCountData?.count === 0 ? "text-destructive" : "text-muted-foreground"}`} data-testid="text-lp-word-count">
+                      {lpCountFetching
+                        ? "Checking…"
+                        : lpCountData?.count === 0
+                          ? "No words match this combination — try a different letter or position."
+                          : `${lpCountData?.count ?? "?"} words match`}
+                    </p>
+                  )}
                 </div>
               )}
               {slug === "word-length" && (
@@ -818,7 +858,11 @@ export default function GameDetail() {
               <Button
                 className="w-full gap-2"
                 onClick={() => createQuizMutation.mutate()}
-                disabled={!quizTitle.trim() || createQuizMutation.isPending}
+                disabled={
+                  !quizTitle.trim() ||
+                  createQuizMutation.isPending ||
+                  (slug === "letter-position" && (!lpLetter || !lpPosition || lpCountData?.count === 0))
+                }
                 data-testid="button-create-quiz-submit"
               >
                 {createQuizMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}

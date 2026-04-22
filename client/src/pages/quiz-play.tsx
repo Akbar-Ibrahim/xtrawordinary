@@ -51,8 +51,10 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       return <WordLengthGame initialChallenge={variation} groupSeed={seed} locked />;
     }
     case "letter-position": {
-      const mode: 1 | 2 = params?.mode ?? ((seed % 2) + 1) as 1 | 2;
-      return <LetterPositionGame initialChallenge={mode} groupSeed={seed} locked />;
+      const initialLetter = params?.letter as string | undefined;
+      const initialPosition = params?.position as number | undefined;
+      const mode: 1 | 2 = params?.mode ?? (initialLetter && initialPosition ? 1 : ((seed % 2) + 1) as 1 | 2);
+      return <LetterPositionGame initialChallenge={mode} groupSeed={seed} locked initialLetter={initialLetter} initialPosition={initialPosition} />;
     }
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];

@@ -60,7 +60,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -149,11 +149,14 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked }: { in
       constraintRng = rng;
     }
 
-    setConstraint(generateRandomConstraint(constraintRng));
+    const fixedConstraint = (initialLetter && initialPosition)
+      ? { letter: initialLetter.toUpperCase(), position: initialPosition }
+      : null;
+    setConstraint(fixedConstraint ?? generateRandomConstraint(constraintRng));
     setGameStatus("playing");
     startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, resetRecorded]);
+  }, [startTimer, stopTimer, resetRecorded, initialLetter, initialPosition]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {

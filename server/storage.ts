@@ -33,6 +33,7 @@ export interface IStorage {
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
   getWordDictionary(): Promise<string[]>;
   validateWord(word: string): Promise<boolean>;
+  countLetterPositionWords(letter: string, position: number): Promise<number>;
   getWordLengthConfig(): Promise<WordLengthConfig>;
   getLetterPositionConfig(): Promise<LetterPositionConfig>;
   getLetterHuntConfig(): Promise<LetterHuntConfig>;
