@@ -123,7 +123,7 @@ export default function QuizPlay() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !!code && isAuthenticated,
+    enabled: !!code, // TODO[RESTORE-AUTH]: restore `&& isAuthenticated` when done testing
     refetchInterval: submitted ? 5000 : false,
   });
 
@@ -152,7 +152,7 @@ export default function QuizPlay() {
   }, [scoresData]);
 
   useEffect(() => {
-    if (!isPlaying || !isAuthenticated) return;
+    if (!isPlaying) return; // TODO[RESTORE-AUTH]: restore `|| !isAuthenticated` when done testing
     const handleResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (!detail || hasSubmitted.current) return;

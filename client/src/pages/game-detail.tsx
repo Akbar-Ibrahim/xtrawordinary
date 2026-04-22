@@ -465,7 +465,8 @@ export default function GameDetail() {
                       Challenge a Friend
                     </Button>
                   )}
-                  {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
+                  {/* TODO[RESTORE-AUTH]: restore `isAuthenticated &&` below when done testing */}
+                  {slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
