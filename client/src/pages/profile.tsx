@@ -82,7 +82,7 @@ export default function Profile() {
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
 
-  const { data: myQuizzes = [] } = useQuery<QuizSessionWithCount[]>({
+  const { data: myQuizzes = [], isLoading: quizzesLoading } = useQuery<QuizSessionWithCount[]>({
     queryKey: ["/api/quiz-sessions/my"],
     queryFn: async () => {
       const res = await fetch("/api/quiz-sessions/my", { credentials: "include" });
@@ -251,7 +251,12 @@ export default function Profile() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {myQuizzes.length === 0 ? (
+              {quizzesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                </div>
+              ) : myQuizzes.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
                   <p className="font-medium mb-1">No quizzes yet</p>
