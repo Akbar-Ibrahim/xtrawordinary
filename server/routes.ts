@@ -2215,6 +2215,16 @@ export async function registerRoutes(
     return code;
   }
 
+  // TODO[RESTORE-AUTH]: remove this helper when auth is restored
+  function getGuestUserId(req: any): number {
+    if (req.user?.id) return req.user.id;
+    if (!(req.session as any).guestUserId) {
+      (req.session as any).guestUserId = -(Math.floor(Math.random() * 999_999) + 1);
+      req.session.save(() => {});
+    }
+    return (req.session as any).guestUserId;
+  }
+
   // TODO[RESTORE-AUTH]: re-add requireAuth below when done testing
   app.post("/api/quiz-sessions", /* requireAuth, */ async (req: any, res) => {
     try {
@@ -2235,7 +2245,7 @@ export async function registerRoutes(
 
       const shareCode = generateShareCode();
       const session = await storage.createQuizSession({
-        creatorId: req.user?.id ?? -1, // TODO[RESTORE-AUTH]: revert to req.user.id
+        creatorId: getGuestUserId(req), // TODO[RESTORE-AUTH]: revert to req.user.id
         gameSlug,
         title: title.trim().slice(0, 200),
         shareCode,
@@ -2296,7 +2306,7 @@ export async function registerRoutes(
       if (session.closesAt && new Date(session.closesAt) < new Date()) {
         return res.status(403).json({ error: "Quiz session is closed" });
       }
-      const userId = req.user?.id ?? -1; // TODO[RESTORE-AUTH]: revert to req.user.id
+      const userId = getGuestUserId(req); // TODO[RESTORE-AUTH]: revert to req.user.id
       const existing = await storage.getQuizSessionScore(session.id, userId);
       if (existing) return res.status(409).json({ error: "Already submitted", score: existing });
       const { score } = req.body;
