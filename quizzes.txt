@@ -64,3 +64,129 @@ Key value over the current game:
 - The game today randomises the letter each round. A creator pinning a
   specific letter makes the quiz themeable (e.g. a phonics lesson focused
   entirely on the letter E). That specificity is the quiz's value.
+
+================================
+LETTER HUNT
+================================
+
+Quiz creation flow:
+- Creator enters one or more letters to hunt for (e.g. Q, or S + T + R)
+- Backend validates that enough words exist containing all specified letters
+  (if 0 or too few, reject with a message)
+- Show the creator the word count as feedback before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- letters: array of letters the player must find words containing
+
+Game screen changes:
+- None — the game already applies a letter-presence constraint. We pass
+  params.letters instead of randomising.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Creator targets specific letters intentionally (e.g. a phonics lesson on
+  S, T, R) rather than the game picking at random. Highly useful for
+  educational contexts.
+
+================================
+LETTER POOL
+================================
+
+Quiz creation flow:
+- Creator enters the exact set of letters that players will draw words from
+  (e.g. A, E, I, R, S, T, N, L)
+- Backend validates that enough valid words can be formed from that pool
+  (if too few, reject with a message)
+- Show the creator the reachable word count as feedback before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- pool: the exact letter pool (array or string of letters, including duplicates
+  if the creator wants a letter available more than once)
+
+Game screen changes:
+- None — the game already operates with a given letter pool. We pass
+  params.pool instead of generating one randomly.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Creator controls which words are even reachable. A carefully chosen pool
+  can target specific vocabulary (e.g. only letters from the word TRIANGLE
+  forces players into geometry-adjacent words).
+
+================================
+DEFINITION MATCH
+================================
+
+Quiz creation flow:
+- Creator picks a word theme or category (e.g. Science, SAT Prep, Animals,
+  Body Parts) from a predefined list we expose
+- Optionally picks difficulty level if the game supports it
+- Backend confirms that enough words exist in that category
+- Title and optional close date as usual
+
+What gets stored in params:
+- category: the chosen theme/category slug
+- difficulty: optional difficulty level
+
+Game screen changes:
+- None — the game already supports category filtering. We pass params.category
+  instead of picking randomly.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Creator targets specific vocabulary topics, making Definition Match genuinely
+  useful as a classroom quiz tool (e.g. "today's quiz: science vocabulary").
+
+================================
+WORD ROOTS
+================================
+
+Quiz creation flow:
+- Creator enters a parent (root) word (e.g. SPLENDID)
+- Backend validates: (1) the word exists in our makerWords dataset as a base
+  word, (2) it has enough pre-computed derivatives to make a fair puzzle
+- Show the creator a preview of the derivatives before they finalise
+- Title and optional close date as usual
+
+What gets stored in params:
+- baseWord: the creator's chosen parent word
+- derivatives: the pre-computed list of valid derivative words for that base
+
+Game screen changes:
+- Small addition — if params.baseWord + params.derivatives are present, use
+  them directly instead of fetching a random puzzle from the server.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Creator curates the exact puzzle. A teacher can pick a root word tied to
+  a lesson (e.g.RUPT for words like DISRUPT, CORRUPT, ERUPT). Far more
+  intentional than a seed-based random puzzle.
+
+Note:
+- Only words already in makerWords are accepted as valid base words. We do
+  not dynamically compute derivatives from arbitrary words.
+
+================================
+PROGRESSIVE REVEAL
+================================
+
+Quiz creation flow:
+- Creator enters the target word (e.g. CATHEDRAL)
+- Backend validates the word exists in the dictionary
+- Title and optional close date as usual
+  (no word count preview needed — the word itself is the puzzle)
+
+What gets stored in params:
+- word: the creator's chosen target word
+
+Game screen changes:
+- Small addition — if params.word is present, use it as the target instead
+  of fetching a random word from the server.
+- locked prop hides mode switching as usual.
+
+Key value over the current game:
+- Essentially a spelling-test mode. Teacher picks the word, players guess it
+  letter by letter. Highly specific and intentional — the closest thing to a
+  traditional vocabulary quiz in the platform.
