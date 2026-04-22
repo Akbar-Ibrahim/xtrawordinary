@@ -12,9 +12,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users } from "lucide-react";
 import { motion } from "framer-motion";
-import type { UserGameStats, UserAchievement, Game } from "@shared/schema";
+import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
+
+type QuizSessionWithCount = QuizSession & { playerCount: number };
 
 interface PublicProfile {
   user: { id: number; name: string; avatarUrl: string | null; createdAt: string };
@@ -79,6 +81,25 @@ export default function Profile() {
 
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
+
+  const { data: myQuizzes = [] } = useQuery<QuizSessionWithCount[]>({
+    queryKey: ["/api/quiz-sessions/my"],
+    queryFn: async () => {
+      const res = await fetch("/api/quiz-sessions/my", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch quizzes");
+      return res.json();
+    },
+    enabled: isOwnProfile && isAuthenticated,
+  });
+
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  function copyQuizLink(shareCode: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/quiz/${shareCode}`);
+    setCopiedCode(shareCode);
+    setTimeout(() => setCopiedCode(null), 2000);
+    toast({ title: "Play link copied!" });
+  }
 
   function openEdit() {
     if (!profile) return;
@@ -215,6 +236,82 @@ export default function Profile() {
                   );
                 })}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isOwnProfile && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" /> My Quizzes
+                {myQuizzes.length > 0 && (
+                  <Badge variant="secondary" className="ml-auto">{myQuizzes.length}</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {myQuizzes.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium mb-1">No quizzes yet</p>
+                  <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
+                  <Link href="/game/definition-match">
+                    <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {myQuizzes.map((quiz) => {
+                    const game = gameMap.get(quiz.gameSlug);
+                    const isClosed = quiz.closesAt ? new Date(quiz.closesAt) < new Date() : false;
+                    return (
+                      <div
+                        key={quiz.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        data-testid={`row-quiz-${quiz.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link href={`/quiz/${quiz.shareCode}/results`}>
+                              <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
+                            </Link>
+                            {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                            <span>{game?.name ?? quiz.gameSlug.replace(/-/g, " ")}</span>
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
+                            </span>
+                            <span className="font-mono tracking-widest">{quiz.shareCode}</span>
+                            <span>{new Date(quiz.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => copyQuizLink(quiz.shareCode)}
+                            title="Copy play link"
+                            data-testid={`button-copy-quiz-${quiz.id}`}
+                          >
+                            {copiedCode === quiz.shareCode
+                              ? <CheckCheck className="h-4 w-4 text-green-500" />
+                              : <Copy className="h-4 w-4" />}
+                          </Button>
+                          <Link href={`/quiz/${quiz.shareCode}/results`}>
+                            <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
+                              Results
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

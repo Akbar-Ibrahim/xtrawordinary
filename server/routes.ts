@@ -2221,7 +2221,13 @@ export async function registerRoutes(
   app.get("/api/quiz-sessions/my", requireAuth, async (req: any, res) => {
     try {
       const sessions = await storage.getQuizSessionsByCreator(req.user.id);
-      res.json(sessions);
+      const enriched = await Promise.all(
+        sessions.map(async (s) => {
+          const scores = await storage.getQuizSessionScores(s.id);
+          return { ...s, playerCount: scores.length };
+        })
+      );
+      res.json(enriched);
     } catch {
       res.status(500).json({ error: "Failed to fetch quiz sessions" });
     }
