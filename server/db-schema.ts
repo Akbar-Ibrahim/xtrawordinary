@@ -290,6 +290,7 @@ export const quizSessionScores = mysqlTable("quiz_session_scores", {
   id: int("id").primaryKey().autoincrement(),
   sessionId: int("session_id").notNull(),
   userId: int("user_id").notNull(),
+  guestName: varchar("guest_name", { length: 100 }),
   score: int("score").notNull(),
   completedAt: timestamp("completed_at").notNull().defaultNow(),
 }, (table) => [

@@ -1251,13 +1251,14 @@ export class MemStorage implements IStorage {
     return this.quizSessions.filter(s => s.creatorId === creatorId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore> {
+  async addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore> {
     const existing = this.quizSessionScores.find(s => s.sessionId === sessionId && s.userId === userId);
     if (existing) return existing;
     const entry: QuizSessionScore = {
       id: this.quizScoreIdCounter++,
       sessionId,
       userId,
+      guestName: guestName ?? null,
       score,
       completedAt: new Date().toISOString(),
     };

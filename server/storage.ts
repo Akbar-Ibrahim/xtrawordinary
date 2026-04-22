@@ -168,7 +168,7 @@ export interface IStorage {
   createQuizSession(session: InsertQuizSession): Promise<QuizSession>;
   getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined>;
   getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]>;
-  addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore>;
+  addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore>;
   getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]>;
   getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined>;
 }

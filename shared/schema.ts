@@ -481,6 +481,7 @@ export const quizSessionScoreSchema = z.object({
   id: z.number(),
   sessionId: z.number(),
   userId: z.number(),
+  guestName: z.string().nullable(),
   score: z.number(),
   completedAt: z.string(),
   playerName: z.string().optional(),

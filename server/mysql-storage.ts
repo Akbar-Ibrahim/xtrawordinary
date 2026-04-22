@@ -1222,7 +1222,7 @@ export class MySQLStorage implements IStorage {
     return rows.map(r => this.mapQuizSession(r));
   }
 
-  async addQuizSessionScore(sessionId: number, userId: number, score: number): Promise<QuizSessionScore> {
+  async addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore> {
     const db = await this.getDb();
     const existing = await db.select().from(schema.quizSessionScores).where(and(eq(schema.quizSessionScores.sessionId, sessionId), eq(schema.quizSessionScores.userId, userId))).limit(1);
     if (existing[0]) {
@@ -1230,17 +1230,19 @@ export class MySQLStorage implements IStorage {
         id: existing[0].id,
         sessionId: existing[0].sessionId,
         userId: existing[0].userId,
+        guestName: existing[0].guestName ?? null,
         score: existing[0].score,
         completedAt: existing[0].completedAt instanceof Date ? existing[0].completedAt.toISOString() : String(existing[0].completedAt),
       };
     }
-    const result = await db.insert(schema.quizSessionScores).values({ sessionId, userId, score });
+    const result = await db.insert(schema.quizSessionScores).values({ sessionId, userId, guestName: guestName ?? null, score });
     const rows = await db.select().from(schema.quizSessionScores).where(eq(schema.quizSessionScores.id, result[0].insertId)).limit(1);
     const r = rows[0];
     return {
       id: r.id,
       sessionId: r.sessionId,
       userId: r.userId,
+      guestName: r.guestName ?? null,
       score: r.score,
       completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
     };
@@ -1257,6 +1259,7 @@ export class MySQLStorage implements IStorage {
       id: r.id,
       sessionId: r.sessionId,
       userId: r.userId,
+      guestName: r.guestName ?? null,
       score: r.score,
       completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
       playerName: userMap.get(r.userId)?.name,
@@ -1273,6 +1276,7 @@ export class MySQLStorage implements IStorage {
       id: r.id,
       sessionId: r.sessionId,
       userId: r.userId,
+      guestName: r.guestName ?? null,
       score: r.score,
       completedAt: r.completedAt instanceof Date ? r.completedAt.toISOString() : String(r.completedAt),
     };
