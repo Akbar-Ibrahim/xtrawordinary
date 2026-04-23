@@ -55,11 +55,18 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; m
   "multi": { name: "Multi-Letter", description: "Each letter must appear at least 2 times", minCount: 2, maxCount: 2, changesPerWord: false },
 };
 
-function getLettersForCount(count: number): string[] {
+export function getLettersForCount(count: number): string[] {
   return Object.entries(LETTER_MAX_FREQUENCIES)
     .filter(([_, maxFreq]) => maxFreq >= count)
     .map(([letter]) => letter);
 }
+
+export const LETTER_FREQUENCY_CHALLENGE_COUNTS: Record<1 | 2 | 3 | 4, number> = {
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5,
+};
 
 function generateConstraint(challenge: Challenge, rng: () => number = Math.random, overrideLetter?: string): FrequencyConstraint {
   const config = CHALLENGE_CONFIG[challenge];

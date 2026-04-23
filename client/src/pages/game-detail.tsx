@@ -46,7 +46,7 @@ import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { WordChainGame } from "@/components/games/word-chain";
 import { LetterBalanceGame, VariationCategory } from "@/components/games/letter-balance";
-import { LetterFrequencyGame } from "@/components/games/letter-frequency";
+import { LetterFrequencyGame, getLettersForCount, LETTER_FREQUENCY_CHALLENGE_COUNTS } from "@/components/games/letter-frequency";
 import { WordStackGame } from "@/components/games/word-stack";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { WordSplitGame } from "@/components/games/word-split";
@@ -1102,7 +1102,19 @@ export default function GameDetail() {
                   </label>
                   <Select
                     value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, challenge: v === "advanced" || v === "random" || v === "multi" ? v : Number(v) }))}
+                    onValueChange={(v) => {
+                      const c = v === "advanced" || v === "multi" ? v : Number(v);
+                      setCustomPlayParams(p => {
+                        let newLetter = p.letter;
+                        if (c === "multi") {
+                          newLetter = undefined;
+                        } else if (slug === "letter-frequency" && typeof c === "number" && c >= 1 && c <= 4 && p.letter) {
+                          const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
+                          if (!validLetters.includes(p.letter)) newLetter = undefined;
+                        }
+                        return { ...p, challenge: c, letter: newLetter };
+                      });
+                    }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
                       <SelectValue placeholder="Select challenge" />
@@ -1127,23 +1139,33 @@ export default function GameDetail() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Specific Letter (optional)</label>
-                  <Select
-                    value={customPlayParams.letter ?? "any"}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
-                  >
-                    <SelectTrigger className="mt-1" data-testid="select-custom-lh-letter">
-                      <SelectValue placeholder="Any letter" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any letter</SelectItem>
-                      {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
-                        <SelectItem key={l} value={l}>{l}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {customPlayParams.challenge !== "multi" && (
+                  <div>
+                    <label className="text-sm font-medium">Specific Letter (optional)</label>
+                    {(() => {
+                      const c = customPlayParams.challenge;
+                      const validLetters = (typeof c === "number" && c >= 1 && c <= 4)
+                        ? getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4])
+                        : "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+                      return (
+                        <Select
+                          value={customPlayParams.letter ?? "any"}
+                          onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
+                        >
+                          <SelectTrigger className="mt-1" data-testid="select-custom-lh-letter">
+                            <SelectValue placeholder="Any compatible letter" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any compatible letter</SelectItem>
+                            {validLetters.map(l => (
+                              <SelectItem key={l} value={l}>{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+                  </div>
+                )}
               </>
             )}
 
