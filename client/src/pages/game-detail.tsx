@@ -739,10 +739,10 @@ export default function GameDetail() {
             ) : isCustomPlay && slug === "letter-hunt" ? (
               <LetterHuntGame
                 initialChallenge={(() => {
-                  const c = customPlayParams.challenge ?? 1;
+                  const c = customPlayParams.challenge;
+                  if (c === undefined) return (Math.floor(Math.random() * 5) + 1) as 1 | 2 | 3 | 4 | 5;
                   if (c === "advanced") return "advanced" as const;
-                  const n = Math.min(5, Math.max(1, Number(c) || 1));
-                  return n as 1 | 2 | 3 | 4 | 5;
+                  return Math.min(5, Math.max(1, Number(c) || 1)) as 1 | 2 | 3 | 4 | 5;
                 })()}
                 initialLetters={customPlayParams.letters as string[] | undefined}
                 initialSurvival={customPlayParams.survival === true}
@@ -1263,7 +1263,7 @@ export default function GameDetail() {
             {slug === "letter-hunt" && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Letter Count (Challenge)</label>
+                  <label className="text-sm font-medium">Letter Count</label>
                   <Select
                     value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : "auto"}
                     onValueChange={(v) => {
