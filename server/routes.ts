@@ -2255,6 +2255,7 @@ export async function registerRoutes(
 
   app.post("/api/quiz-sessions", requireAuth, async (req: any, res) => {
     try {
+      if (!req.user.isPremium) return res.status(403).json({ error: "Quiz Master requires a Premium account." });
       const { gameSlug, title, params, closesAt } = req.body;
       if (!gameSlug || !title) return res.status(400).json({ error: "gameSlug and title are required" });
       if (!QUIZ_MASTER_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support Quiz Master" });
