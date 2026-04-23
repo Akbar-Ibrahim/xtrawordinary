@@ -877,14 +877,14 @@ export default function GameDetail() {
               )}
               {slug === "letter-hunt" && (
                 <div>
-                  <label className="text-sm font-medium">Position</label>
+                  <label className="text-sm font-medium">Challenge Level (letter count)</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     <Button
                       type="button"
                       size="sm"
-                      variant={quizParams.position === undefined ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.position; return n; })}
-                      data-testid="button-quiz-position-auto"
+                      variant={quizParams.challenge === undefined ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.challenge; return n; })}
+                      data-testid="button-quiz-hunt-challenge-auto"
                     >
                       Auto
                     </Button>
@@ -893,9 +893,9 @@ export default function GameDetail() {
                         key={v}
                         type="button"
                         size="sm"
-                        variant={quizParams.position === v ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, position: v }))}
-                        data-testid={`button-quiz-position-${v}`}
+                        variant={quizParams.challenge === v ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => ({ ...p, challenge: v }))}
+                        data-testid={`button-quiz-hunt-challenge-${v}`}
                       >
                         {v}
                       </Button>

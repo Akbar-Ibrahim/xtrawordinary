@@ -72,7 +72,7 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     }
     case "letter-hunt": {
       const countMap: Record<string | number, string> = { 1: "2 letters", 2: "3 letters", 3: "4 letters", 4: "5 letters", 5: "6 letters", advanced: "Advanced (random)" };
-      const challenge = p.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
+      const challenge = p.challenge ?? p.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
       const letter = p.letter ? ` · Letter ${p.letter}` : "";
       return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letter}${survival}`;
     }
@@ -119,8 +119,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     }
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
-      const position: 1 | 2 | 3 | 4 | 5 = params?.position ?? options[seed % options.length];
-      return <LetterHuntGame initialChallenge={position} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      const challenge: 1 | 2 | 3 | 4 | 5 = params?.challenge ?? params?.position ?? options[seed % options.length];
+      return <LetterHuntGame initialChallenge={challenge} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "letter-balance": {
       const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
@@ -131,7 +131,7 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       const rank: 1 | 2 | 3 | 4 = params?.rank ?? options[seed % options.length];
-      return <LetterFrequencyGame initialChallenge={rank} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "definition-match":
       return <DefinitionMatchGame groupSeed={seed} locked quizMode />;
