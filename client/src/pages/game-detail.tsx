@@ -1026,16 +1026,17 @@ export default function GameDetail() {
                   <div>
                     <label className="text-sm font-medium">Frequency Challenge</label>
                     <Select
-                      value={quizParams.challenge !== undefined ? String(quizParams.challenge) : ""}
+                      value={quizParams.challenge !== undefined ? String(quizParams.challenge) : "0"}
                       onValueChange={(v) => {
                         const c = v === "multi" ? "multi" : Number(v);
                         setQuizParams(p => ({ ...p, challenge: c === 0 ? undefined : c, letter: c === "multi" ? undefined : p.letter }));
                       }}
                     >
                       <SelectTrigger className="mt-1" data-testid="select-quiz-freq-challenge">
-                        <SelectValue placeholder="Auto" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="0">Auto</SelectItem>
                         <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
                         <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
                         <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
@@ -1323,7 +1324,7 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Frequency Challenge</label>
                   <Select
-                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : "0"}
                     onValueChange={(v) => {
                       const c = v === "multi" ? "multi" : Number(v);
                       setCustomPlayParams(p => {
@@ -1334,14 +1335,15 @@ export default function GameDetail() {
                           const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
                           if (!validLetters.includes(p.letter)) newLetter = undefined;
                         }
-                        return { ...p, challenge: c, letter: newLetter };
+                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter };
                       });
                     }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                      <SelectValue placeholder="Auto" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="0">Auto</SelectItem>
                       <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
                       <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
                       <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
