@@ -1,0 +1,47 @@
+KNOWN BUGS
+==========
+
+BUG #1 — dataSource routing (architectural flaw)
+-------------------------------------------------
+File: server/routes.ts, line 20
+
+  const dataSource = isLocalMode ? storage : externalApi;
+
+When DEV_MODE is not "LOCAL" (i.e. in production / normal dev), dataSource
+points to externalApi instead of storage. externalApi.ts holds its own
+separate, out-of-sync copy of all game data (gamesData array). This means:
+
+  - Word validation goes through externalApi (O(n) array scan) instead of
+    MySQLStorage's pre-loaded Set (O(1)).
+  - Any improvements made to game-data.ts (new fields, new games, updated
+    metadata) are silently ignored — externalApi.ts never picks them up.
+
+Fix: change line 20 to:
+  const dataSource = storage;
+
+Both MySQLStorage and MemStorage implement the full IStorage interface and
+read from game-data.ts, so all routes continue to work correctly.
+
+
+BUG #2 — Ladder Rush leaderboard tabs missing (consequence of Bug #1)
+----------------------------------------------------------------------
+Files: server/externalApi.ts (gamesData), client/src/pages/leaderboard.tsx
+
+Ladder Rush and Ladder Rush: Double Swap each have three scoring modes
+(Easy/4L, Medium/5L, Hard/6L) defined in server/game-data.ts via the
+`modes` array field. The leaderboard page renders sub-tabs for these modes
+when selectedGameObj.modes is present.
+
+Because /api/games calls dataSource.getGames() and dataSource = externalApi,
+the frontend receives game objects from externalApi.ts's gamesData, which has
+NO `modes` or `hasSurvival` fields for any game. So hasModes = false, the
+tabs never render, and users cannot view per-difficulty leaderboard entries
+for Ladder Rush or Ladder Rush: Double Swap.
+
+Scores are saved correctly per mode (e.g. "ladder-rush-4", "ladder-rush-5",
+"ladder-rush-6") — the data exists in the DB — but it is unreachable through
+the UI until the tabs are shown.
+
+Fix: fixing Bug #1 (dataSource = storage) resolves this automatically,
+because storage.getGames() reads from game-data.ts which has the correct
+`modes` and `hasSurvival` fields.
