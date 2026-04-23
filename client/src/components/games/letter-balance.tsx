@@ -1023,7 +1023,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             <AnimatedNumber value={score} /> pts
           </Badge>
           <StreakIndicator streak={streak} />
-          {selectedLevel !== "advanced" && (
+          {selectedLevel !== null && selectedLevel !== "advanced" && (
             <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
               <Zap className="h-3.5 w-3.5" />
               Level {selectedLevel}
@@ -1033,6 +1033,12 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             <Badge className="bg-gradient-to-r from-primary to-accent text-white gap-1.5" data-testid="badge-level">
               <Sparkles className="h-3.5 w-3.5" />
               Advanced
+            </Badge>
+          )}
+          {selectedLevel === null && (
+            <Badge variant="outline" className="gap-1.5" data-testid="badge-custom">
+              <Sparkles className="h-3.5 w-3.5" />
+              Custom
             </Badge>
           )}
         </div>
