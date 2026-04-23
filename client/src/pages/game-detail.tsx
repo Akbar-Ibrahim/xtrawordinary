@@ -1031,7 +1031,7 @@ export default function GameDetail() {
                       }}
                     >
                       <SelectTrigger className="mt-1" data-testid="select-quiz-freq-challenge">
-                        <SelectValue placeholder="Auto (seed-derived)" />
+                        <SelectValue placeholder="Auto" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
@@ -1335,7 +1335,7 @@ export default function GameDetail() {
                     }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                      <SelectValue placeholder="Select challenge" />
+                      <SelectValue placeholder="Auto" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
