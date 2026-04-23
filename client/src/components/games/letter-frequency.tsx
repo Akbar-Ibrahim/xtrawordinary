@@ -61,13 +61,14 @@ function getLettersForCount(count: number): string[] {
     .map(([letter]) => letter);
 }
 
-function generateConstraint(challenge: Challenge, rng: () => number = Math.random): FrequencyConstraint {
+function generateConstraint(challenge: Challenge, rng: () => number = Math.random, overrideLetter?: string): FrequencyConstraint {
   const config = CHALLENGE_CONFIG[challenge];
   const countRange = config.maxCount - config.minCount + 1;
   const count = Math.floor(rng() * countRange) + config.minCount;
   
   const validLetters = getLettersForCount(count);
-  const letter = validLetters[Math.floor(rng() * validLetters.length)];
+  const upper = overrideLetter?.toUpperCase();
+  const letter = (upper && validLetters.includes(upper)) ? upper : validLetters[Math.floor(rng() * validLetters.length)];
   
   return { letter, count };
 }
@@ -111,7 +112,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -147,6 +148,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked, quizM
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
+  const initialLetterRef = useRef<string | undefined>(initialLetter);
 
   const wordsPerChallenge = 20;
   const timePerChallenge = 120;
@@ -193,7 +195,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked, quizM
       setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
     } else {
       setMultiConstraint(null);
-      setConstraint(generateConstraint(c, seedRngRef.current));
+      setConstraint(generateConstraint(c, seedRngRef.current, initialLetterRef.current));
     }
     setGameStatus("playing");
     startTimer(survival);
@@ -285,7 +287,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked, quizM
           if (challenge === "multi") {
             setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
           } else {
-            setConstraint(generateConstraint(challenge, seedRngRef.current));
+            setConstraint(generateConstraint(challenge, seedRngRef.current, initialLetterRef.current));
           }
         }
         if (isSurvivalRef.current) {

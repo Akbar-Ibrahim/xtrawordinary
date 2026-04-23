@@ -690,27 +690,42 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-hunt" ? (
               <LetterHuntGame
-                initialChallenge={(customPlayParams.challenge ?? 1) as any}
+                initialChallenge={(() => {
+                  const c = customPlayParams.challenge ?? 1;
+                  if (c === "advanced") return "advanced" as const;
+                  const n = Math.min(5, Math.max(1, Number(c) || 1));
+                  return n as 1 | 2 | 3 | 4 | 5;
+                })()}
+                initialLetter={customPlayParams.letter || undefined}
                 initialSurvival={customPlayParams.survival === true}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-frequency" ? (
               <LetterFrequencyGame
-                initialChallenge={(customPlayParams.challenge ?? 1) as any}
+                initialChallenge={(() => {
+                  const c = customPlayParams.challenge ?? 1;
+                  if (c === "multi") return "multi" as const;
+                  const n = Math.min(4, Math.max(1, Number(c) || 1));
+                  return n as 1 | 2 | 3 | 4;
+                })()}
+                initialLetter={customPlayParams.letter || undefined}
                 initialSurvival={customPlayParams.survival === true}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
-                initialChallenge={customPlayParams.category ? { category: customPlayParams.category as any, level: customPlayParams.level ?? 2 } : undefined}
+                initialChallenge={customPlayParams.category ? {
+                  category: customPlayParams.category as "vowel_consonant" | "vowel_oblivion" | "consonant_oblivion",
+                  level: customPlayParams.level ?? 2
+                } : undefined}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "word-length" ? (
               <WordLengthGame
-                initialChallenge={customPlayParams.variation ?? 1}
+                initialVariation={Math.min(5, Math.max(1, Number(customPlayParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5}
                 initialSurvival={customPlayParams.survival === true}
                 locked
                 quizMode
@@ -1080,38 +1095,57 @@ export default function GameDetail() {
             )}
 
             {(slug === "letter-hunt" || slug === "letter-frequency") && (
-              <div>
-                <label className="text-sm font-medium">
-                  {slug === "letter-hunt" ? "Letter Count" : "Frequency Challenge"}
-                </label>
-                <Select
-                  value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
-                  onValueChange={(v) => setCustomPlayParams(p => ({ ...p, challenge: v === "advanced" || v === "random" || v === "multi" ? v : Number(v) }))}
-                >
-                  <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                    <SelectValue placeholder="Select challenge" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {slug === "letter-hunt" ? (
-                      <>
-                        {[1, 2, 3, 4, 5].map(n => (
-                          <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
-                        ))}
-                        <SelectItem value="advanced">Advanced (random count)</SelectItem>
-                      </>
-                    ) : (
-                      <>
-                        <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
-                        <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
-                        <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
-                        <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
-                        <SelectItem value="random">Random (changes per word)</SelectItem>
-                        <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div>
+                  <label className="text-sm font-medium">
+                    {slug === "letter-hunt" ? "Letter Count" : "Frequency Challenge"}
+                  </label>
+                  <Select
+                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, challenge: v === "advanced" || v === "random" || v === "multi" ? v : Number(v) }))}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
+                      <SelectValue placeholder="Select challenge" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {slug === "letter-hunt" ? (
+                        <>
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
+                          ))}
+                          <SelectItem value="advanced">Advanced (random count)</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
+                          <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
+                          <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
+                          <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
+                          <SelectItem value="random">Random (changes per word)</SelectItem>
+                          <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Specific Letter (optional)</label>
+                  <Select
+                    value={customPlayParams.letter ?? ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v || undefined }))}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-lh-letter">
+                      <SelectValue placeholder="Any letter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any letter</SelectItem>
+                      {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
 
             {slug === "letter-balance" && (

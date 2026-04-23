@@ -103,7 +103,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -174,8 +174,12 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked, quizMode, 
   const generateLettersForChallenge = useCallback((c: Challenge, rng?: () => number): string[] => {
     const config = CHALLENGE_CONFIG[c];
     const count = config.letterCount === "random" ? getRandomLetterCount(rng) : config.letterCount;
-    return generateRandomLetters(count, rng);
-  }, []);
+    const letters = generateRandomLetters(count, rng);
+    if (initialLetter) {
+      letters[0] = initialLetter.toUpperCase();
+    }
+    return letters;
+  }, [initialLetter]);
 
   const selectChallenge = useCallback((c: Challenge) => {
     setPendingChallenge(c);

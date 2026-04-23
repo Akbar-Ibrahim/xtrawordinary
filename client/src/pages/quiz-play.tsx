@@ -55,41 +55,49 @@ const LETTER_BALANCE_CATEGORY_NAMES: Record<string, string> = {
 };
 
 function getVariantSummary(slug: string, seed: number, params?: Record<string, any>): string | null {
-  if (!params || Object.keys(params).length === 0) return null;
-  const survival = params.survival === true ? " · Survival" : "";
+  const p = params ?? {};
+  const survival = p.survival === true ? " · Survival" : "";
   switch (slug) {
     case "word-length": {
       const lengthMap: Record<number, string> = { 1: "≤4 letters", 2: "≤6 letters", 3: "≤8 letters", 4: "10 letters", 5: "12 letters" };
-      const variation = params.variation ?? [1, 2, 3, 4, 5][seed % 5];
+      const variation = p.variation ?? [1, 2, 3, 4, 5][seed % 5];
       return `Word length: ${lengthMap[variation] ?? `Variation ${variation}`}${survival}`;
     }
     case "letter-position": {
-      const letter = params.letter;
-      const position = params.position;
+      const letter = p.letter;
+      const position = p.position;
       if (letter && position) return `Letter ${letter} at position ${position}${survival}`;
       if (letter) return `Letter: ${letter}${survival}`;
       return `Letter Position${survival}`;
     }
     case "letter-hunt": {
       const countMap: Record<string | number, string> = { 1: "2 letters", 2: "3 letters", 3: "4 letters", 4: "5 letters", 5: "6 letters", advanced: "Advanced (random)" };
-      const challenge = params.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
-      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${survival}`;
+      const challenge = p.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
+      const letter = p.letter ? ` · Letter ${p.letter}` : "";
+      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letter}${survival}`;
     }
     case "letter-frequency": {
       const freqMap: Record<number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more" };
-      const rank = params.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
-      return `Frequency: ${freqMap[rank] ?? `Challenge ${rank}`}${survival}`;
+      const rank = p.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
+      const letter = p.letter ? ` · Letter ${p.letter}` : "";
+      return `Frequency: ${freqMap[rank] ?? `Challenge ${rank}`}${letter}${survival}`;
     }
     case "letter-balance": {
-      const cat = params.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
-      const level = params.level;
+      const cat = p.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      const level = p.level;
       const catName = LETTER_BALANCE_CATEGORY_NAMES[cat] ?? cat;
       return level !== undefined ? `${catName} · Level ${level}` : catName;
     }
     case "letter-pool": {
-      const v = params.variant;
-      return v === "with-pool" ? "With Pool" : v === "without-pool" ? "Without Pool" : null;
+      const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
+      return v === "with-pool" ? "With Pool" : "Without Pool";
     }
+    case "definition-match":
+      return "Random definitions";
+    case "word-roots":
+      return "Word roots & etymology";
+    case "progressive-reveal":
+      return "Progressive letter reveal";
     default:
       return null;
   }
