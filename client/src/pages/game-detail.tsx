@@ -1109,12 +1109,12 @@ export default function GameDetail() {
                     <div>
                       <label className="text-xs font-medium">Length (opt.)</label>
                       <Input
-                        type="number" min={3} max={12} placeholder="Any"
+                        type="number" min={3} max={15} placeholder="Any"
                         className="mt-1 h-8 text-sm"
                         data-testid="input-quiz-lb-length"
                         value={quizParams.length ?? ""}
                         onChange={(e) => {
-                          const v = e.target.value === "" ? undefined : Math.min(12, Math.max(3, parseInt(e.target.value) || 3));
+                          const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
                           setQuizParams(p => ({ ...p, length: e.target.value === "" ? undefined : v }));
                         }}
                       />
@@ -1417,12 +1417,12 @@ export default function GameDetail() {
                   <div>
                     <label className="text-xs font-medium">Length (opt.)</label>
                     <Input
-                      type="number" min={3} max={12} placeholder="Any"
+                      type="number" min={3} max={15} placeholder="Any"
                       className="mt-1 h-8 text-sm"
                       data-testid="input-custom-lb-length"
                       value={customPlayParams.length ?? ""}
                       onChange={(e) => {
-                        setCustomPlayParams(p => ({ ...p, length: e.target.value === "" ? undefined : Math.min(12, Math.max(3, parseInt(e.target.value) || 3)) }));
+                        setCustomPlayParams(p => ({ ...p, length: e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3)) }));
                       }}
                     />
                   </div>
