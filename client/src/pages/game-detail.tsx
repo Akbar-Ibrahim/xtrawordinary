@@ -1082,42 +1082,42 @@ export default function GameDetail() {
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="text-xs font-medium">Vowels</label>
-                      <Select
-                        value={quizParams.vowels !== undefined ? String(quizParams.vowels) : "any"}
-                        onValueChange={(v) => setQuizParams(p => ({ ...p, vowels: v === "any" ? undefined : Number(v) }))}
-                      >
-                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-vowels"><SelectValue placeholder="Any" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        type="number" min={1} max={7} placeholder="Any"
+                        className="mt-1 h-8 text-sm"
+                        data-testid="input-quiz-lb-vowels"
+                        value={quizParams.vowels ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                          setQuizParams(p => ({ ...p, vowels: e.target.value === "" ? undefined : v }));
+                        }}
+                      />
                     </div>
                     <div>
                       <label className="text-xs font-medium">Consonants</label>
-                      <Select
-                        value={quizParams.consonants !== undefined ? String(quizParams.consonants) : "any"}
-                        onValueChange={(v) => setQuizParams(p => ({ ...p, consonants: v === "any" ? undefined : Number(v) }))}
-                      >
-                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        type="number" min={1} max={7} placeholder="Any"
+                        className="mt-1 h-8 text-sm"
+                        data-testid="input-quiz-lb-consonants"
+                        value={quizParams.consonants ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                          setQuizParams(p => ({ ...p, consonants: e.target.value === "" ? undefined : v }));
+                        }}
+                      />
                     </div>
                     <div>
-                      <label className="text-xs font-medium">Length</label>
-                      <Select
-                        value={quizParams.length !== undefined ? String(quizParams.length) : "any"}
-                        onValueChange={(v) => setQuizParams(p => ({ ...p, length: v === "any" ? undefined : Number(v) }))}
-                      >
-                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <label className="text-xs font-medium">Length (opt.)</label>
+                      <Input
+                        type="number" min={3} max={12} placeholder="Any"
+                        className="mt-1 h-8 text-sm"
+                        data-testid="input-quiz-lb-length"
+                        value={quizParams.length ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value === "" ? undefined : Math.min(12, Math.max(3, parseInt(e.target.value) || 3));
+                          setQuizParams(p => ({ ...p, length: e.target.value === "" ? undefined : v }));
+                        }}
+                      />
                     </div>
                   </div>
                   {quizParams.vowels === undefined && quizParams.consonants === undefined && (
@@ -1392,42 +1392,39 @@ export default function GameDetail() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-xs font-medium">Vowels</label>
-                    <Select
-                      value={customPlayParams.vowels !== undefined ? String(customPlayParams.vowels) : "any"}
-                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, vowels: v === "any" ? undefined : Number(v) }))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-vowels"><SelectValue placeholder="Any" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
-                        {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number" min={1} max={7} placeholder="Any"
+                      className="mt-1 h-8 text-sm"
+                      data-testid="input-custom-lb-vowels"
+                      value={customPlayParams.vowels ?? ""}
+                      onChange={(e) => {
+                        setCustomPlayParams(p => ({ ...p, vowels: e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1)) }));
+                      }}
+                    />
                   </div>
                   <div>
                     <label className="text-xs font-medium">Consonants</label>
-                    <Select
-                      value={customPlayParams.consonants !== undefined ? String(customPlayParams.consonants) : "any"}
-                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, consonants: v === "any" ? undefined : Number(v) }))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
-                        {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      type="number" min={1} max={7} placeholder="Any"
+                      className="mt-1 h-8 text-sm"
+                      data-testid="input-custom-lb-consonants"
+                      value={customPlayParams.consonants ?? ""}
+                      onChange={(e) => {
+                        setCustomPlayParams(p => ({ ...p, consonants: e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1)) }));
+                      }}
+                    />
                   </div>
                   <div>
-                    <label className="text-xs font-medium">Length</label>
-                    <Select
-                      value={customPlayParams.length !== undefined ? String(customPlayParams.length) : "any"}
-                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, length: v === "any" ? undefined : Number(v) }))}
-                    >
-                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
-                        {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-xs font-medium">Length (opt.)</label>
+                    <Input
+                      type="number" min={3} max={12} placeholder="Any"
+                      className="mt-1 h-8 text-sm"
+                      data-testid="input-custom-lb-length"
+                      value={customPlayParams.length ?? ""}
+                      onChange={(e) => {
+                        setCustomPlayParams(p => ({ ...p, length: e.target.value === "" ? undefined : Math.min(12, Math.max(3, parseInt(e.target.value) || 3)) }));
+                      }}
+                    />
                   </div>
                 </div>
                 {customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && (
