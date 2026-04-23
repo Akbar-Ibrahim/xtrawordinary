@@ -135,12 +135,13 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: number; groupSeed?: number; locked?: boolean } = {}) {
+export function WordLengthGame({ initialChallenge, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: number; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "word-length-survival" : "word-length",
+    quizMode,
   });
   const personalBest = usePersonalBest(isSurvival ? "word-length-survival" : "word-length");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -218,7 +219,7 @@ export function WordLengthGame({ initialChallenge, groupSeed, locked }: { initia
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge, false);
+      startGame(initialChallenge, initialSurvival ?? false);
     }
   }, []);
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 interface GameResultOptions {
   slug: string;
   challengeId?: number;
+  quizMode?: boolean;
 }
 
 async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number) {
@@ -47,10 +48,11 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
   } catch {}
 }
 
-export function useGameResult({ slug, challengeId: explicitChallengeId }: GameResultOptions) {
+export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
   const { isAuthenticated } = useAuth();
+  const quizModeRef = useRef(quizMode);
 
   const challengeIdRef = useRef<number | undefined | null>(null);
   if (challengeIdRef.current === null) {
@@ -113,7 +115,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId }: GameRe
         }
       }
 
-      if (isAuthenticatedRef.current) {
+      if (isAuthenticatedRef.current && !quizModeRef.current) {
         syncToBackend(currentSlug, score, won, wordsFound);
         const challengeId = challengeIdRef.current;
         if (challengeId) {

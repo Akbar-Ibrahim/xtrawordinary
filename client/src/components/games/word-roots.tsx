@@ -46,9 +46,9 @@ function letterMultisetCheck(word: string, derivative: string): boolean {
 type GameStatus = "playing" | "won" | "lost";
 type RoundResult = { word: string; canonical: boolean; points: number };
 
-export function WordRootsGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
+export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { user } = useAuth();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots", quizMode });
   const seeded = groupSeed !== undefined;
   const [authOpen, setAuthOpen] = useState(false);
 

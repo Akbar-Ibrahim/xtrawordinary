@@ -20,9 +20,9 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
-export function ProgressiveRevealGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
+export function ProgressiveRevealGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal", quizMode });
   const personalBest = usePersonalBest("progressive-reveal");
   const seeded = groupSeed !== undefined;
 

@@ -860,6 +860,31 @@ export default function GameDetail() {
                   </Select>
                 </div>
               )}
+              {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency") && (
+                <div>
+                  <label className="text-sm font-medium">Mode</label>
+                  <div className="flex gap-2 mt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={!quizParams.survival ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.survival; return n; })}
+                      data-testid="button-quiz-mode-classic"
+                    >
+                      Classic
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={quizParams.survival ? "default" : "outline"}
+                      onClick={() => setQuizParams(p => ({ ...p, survival: true }))}
+                      data-testid="button-quiz-mode-survival"
+                    >
+                      Survival (8s/word)
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button
                 className="w-full gap-2"
                 onClick={() => createQuizMutation.mutate()}

@@ -337,9 +337,9 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number; locked?: boolean } = {}) {
+export function LetterBalanceGame({ initialChallenge, groupSeed, locked, quizMode }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance", quizMode });
   const personalBest = usePersonalBest("letter-balance");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined

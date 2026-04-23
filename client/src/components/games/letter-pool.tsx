@@ -22,11 +22,12 @@ interface LetterPoolGameProps {
   initialChallenge?: Variation;
   groupSeed?: number;
   locked?: boolean;
+  quizMode?: boolean;
 }
 
-export function LetterPoolGame({ initialChallenge, groupSeed, locked }: LetterPoolGameProps) {
+export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode }: LetterPoolGameProps) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool", quizMode });
   const personalBest = usePersonalBest("letter-pool");
   const seeded = groupSeed !== undefined;
   const { data: words = [], isLoading, error } = useQuery<LetterPoolWord[]>({

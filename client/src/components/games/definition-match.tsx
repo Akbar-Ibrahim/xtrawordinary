@@ -18,9 +18,9 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
-export function DefinitionMatchGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
+export function DefinitionMatchGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match", quizMode });
   const personalBest = usePersonalBest("definition-match");
   const seeded = groupSeed !== undefined;
   const seedRngRef = useRef<(() => number) | undefined>(

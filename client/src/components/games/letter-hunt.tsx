@@ -103,12 +103,13 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
+export function LetterHuntGame({ initialChallenge, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-hunt-survival" : "letter-hunt",
+    quizMode,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-hunt-survival" : "letter-hunt");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -213,7 +214,11 @@ export function LetterHuntGame({ initialChallenge, groupSeed, locked }: { initia
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      selectChallenge(initialChallenge);
+      if (initialSurvival !== undefined) {
+        startGame(initialChallenge, false);
+      } else {
+        selectChallenge(initialChallenge);
+      }
     }
   }, []);
 

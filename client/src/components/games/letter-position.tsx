@@ -60,12 +60,13 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-position-survival" : "letter-position",
+    quizMode,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-position-survival" : "letter-position");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -160,7 +161,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge, false);
+      startGame(initialChallenge, initialSurvival ?? false);
     }
   }, []);
 

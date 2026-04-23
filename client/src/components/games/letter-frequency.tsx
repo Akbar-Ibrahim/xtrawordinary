@@ -111,12 +111,13 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean } = {}) {
+export function LetterFrequencyGame({ initialChallenge, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-frequency-survival" : "letter-frequency",
+    quizMode,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-frequency-survival" : "letter-frequency");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -201,7 +202,7 @@ export function LetterFrequencyGame({ initialChallenge, groupSeed, locked }: { i
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge, false);
+      startGame(initialChallenge, initialSurvival ?? false);
     }
   }, []);
 
