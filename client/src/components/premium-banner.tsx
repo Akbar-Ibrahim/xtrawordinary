@@ -49,7 +49,6 @@ export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
 
   async function handleUpgrade() {
     if (!isAuthenticated) {
-      setModalOpen(false);
       setAuthOpen(true);
       return;
     }
