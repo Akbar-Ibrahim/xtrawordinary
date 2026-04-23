@@ -1265,9 +1265,9 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Letter Count</label>
                   <Select
-                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : "random"}
                     onValueChange={(v) => {
-                      if (!v) {
+                      if (v === "random") {
                         setCustomPlayParams(p => { const n = { ...p }; delete n.challenge; delete n.letters; return n; });
                       } else {
                         const c = Number(v);
@@ -1276,9 +1276,10 @@ export default function GameDetail() {
                     }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                      <SelectValue placeholder="Select letter count (optional)" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="random">Random (no preference)</SelectItem>
                       {[1, 2, 3, 4, 5].map(n => (
                         <SelectItem key={n} value={String(n)}>{n + 1} letters</SelectItem>
                       ))}
