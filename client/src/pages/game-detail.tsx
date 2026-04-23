@@ -1011,7 +1011,7 @@ export default function GameDetail() {
                             <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="any">Any</SelectItem>
-                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !["J","Q","V","X","Z"].includes(l)).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         ))}
@@ -1149,7 +1149,7 @@ export default function GameDetail() {
                     lpCountData === undefined ||
                     lpCountData.count < LP_QUIZ_MIN_WORDS
                   )) ||
-                  (slug === "word-length" && !!(wlQuizLength && (wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok))) ||
+                  (slug === "word-length" && (!wlQuizLength || wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok)) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined)
                 }
                 data-testid="button-create-quiz-submit"
@@ -1212,18 +1212,17 @@ export default function GameDetail() {
             </p>
 
             {slug === "letter-position" && (
-              <>
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Letter (optional)</label>
+                  <label className="text-sm font-medium">Letter</label>
                   <Select
-                    value={customPlayParams.letter ?? "any"}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
+                    value={customPlayParams.letter ?? ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v || undefined }))}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-lp-letter">
-                      <SelectValue placeholder="Any letter" />
+                      <SelectValue placeholder="Pick a letter (A–Z)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
                       {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
                         <SelectItem key={l} value={l}>{l}</SelectItem>
                       ))}
@@ -1231,28 +1230,28 @@ export default function GameDetail() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Position (optional)</label>
-                  <Select
-                    value={customPlayParams.position !== undefined ? String(customPlayParams.position) : "any"}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, position: v === "any" ? undefined : Number(v) }))}
-                  >
-                    <SelectTrigger className="mt-1" data-testid="select-custom-lp-position">
-                      <SelectValue placeholder="Any position" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any</SelectItem>
-                      {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
-                        <SelectItem key={n} value={String(n)}>Position {n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium">Position (1 = first letter)</label>
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {([1, 2, 3, 4, 5, 6, 7, 8] as const).map(pos => (
+                      <Button
+                        key={pos}
+                        type="button"
+                        size="sm"
+                        variant={customPlayParams.position === pos ? "default" : "outline"}
+                        onClick={() => setCustomPlayParams(prev => ({ ...prev, position: pos }))}
+                        data-testid={`button-custom-lp-pos-${pos}`}
+                      >
+                        {pos}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
                 {customLpLetter && customLpPosition && (
                   <p className={`text-xs ${customLpCountFetching ? "text-muted-foreground" : !customLpCountData ? "" : customLpCountData.count < LP_QUIZ_MIN_WORDS ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-custom-lp-word-count">
                     {customLpCountFetching ? "Checking…" : !customLpCountData ? "" : customLpCountData.count < LP_QUIZ_MIN_WORDS ? `Only ${customLpCountData.count} words match — try different settings.` : `${customLpCountData.count} words match ✓`}
                   </p>
                 )}
-              </>
+              </div>
             )}
 
             {slug === "letter-hunt" && (
@@ -1294,7 +1293,7 @@ export default function GameDetail() {
                           <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="any">Any</SelectItem>
-                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !["J","Q","V","X","Z"].includes(l)).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       ))}
@@ -1522,8 +1521,8 @@ export default function GameDetail() {
               }}
               disabled={
                 (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined) ||
-                (slug === "word-length" && !!(wlCustomLength && (wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok))) ||
-                (slug === "letter-position" && !!customLpLetter && !!customLpPosition && (customLpCountFetching || !customLpCountData || customLpCountData.count < LP_QUIZ_MIN_WORDS))
+                (slug === "word-length" && (!wlCustomLength || wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok)) ||
+                (slug === "letter-position" && (!customLpLetter || !customLpPosition || customLpCountFetching || !customLpCountData || customLpCountData.count < LP_QUIZ_MIN_WORDS))
               }
               data-testid="button-start-custom-play"
             >
