@@ -1060,14 +1060,14 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Letter (optional)</label>
                   <Select
-                    value={customPlayParams.letter ?? ""}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v || undefined }))}
+                    value={customPlayParams.letter ?? "any"}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-lp-letter">
                       <SelectValue placeholder="Any letter" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
                         <SelectItem key={l} value={l}>{l}</SelectItem>
                       ))}
@@ -1077,14 +1077,14 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Position (optional)</label>
                   <Select
-                    value={customPlayParams.position !== undefined ? String(customPlayParams.position) : ""}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, position: v ? Number(v) : undefined }))}
+                    value={customPlayParams.position !== undefined ? String(customPlayParams.position) : "any"}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, position: v === "any" ? undefined : Number(v) }))}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-lp-position">
                       <SelectValue placeholder="Any position" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any</SelectItem>
+                      <SelectItem value="any">Any</SelectItem>
                       {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
                         <SelectItem key={n} value={String(n)}>Position {n}</SelectItem>
                       ))}
@@ -1130,14 +1130,14 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Specific Letter (optional)</label>
                   <Select
-                    value={customPlayParams.letter ?? ""}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v || undefined }))}
+                    value={customPlayParams.letter ?? "any"}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-lh-letter">
                       <SelectValue placeholder="Any letter" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any letter</SelectItem>
+                      <SelectItem value="any">Any letter</SelectItem>
                       {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
                         <SelectItem key={l} value={l}>{l}</SelectItem>
                       ))}
