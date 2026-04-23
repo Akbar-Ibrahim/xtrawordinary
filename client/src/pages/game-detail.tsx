@@ -752,7 +752,11 @@ export default function GameDetail() {
             ) : isCustomPlay && slug === "letter-frequency" ? (
               <LetterFrequencyGame
                 initialChallenge={(() => {
-                  const c = customPlayParams.challenge ?? 1;
+                  const c = customPlayParams.challenge;
+                  if (c === undefined) {
+                    const auto = ([1, 2, 3, 4] as const)[Math.floor(Math.random() * 4)];
+                    return auto;
+                  }
                   if (c === "multi") return "multi" as const;
                   const n = Math.min(4, Math.max(1, Number(c) || 1));
                   return n as 1 | 2 | 3 | 4;
