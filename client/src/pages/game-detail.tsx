@@ -969,30 +969,28 @@ export default function GameDetail() {
               {slug === "letter-hunt" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium">Challenge Level (letter count)</label>
-                    <div className="flex gap-2 mt-1 flex-wrap">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={quizParams.challenge === undefined ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => { const n = { ...p }; delete n.challenge; delete n.letters; return n; })}
-                        data-testid="button-quiz-hunt-challenge-auto"
-                      >
-                        Auto
-                      </Button>
-                      {([1, 2, 3, 4, 5] as const).map(v => (
-                        <Button
-                          key={v}
-                          type="button"
-                          size="sm"
-                          variant={quizParams.challenge === v ? "default" : "outline"}
-                          onClick={() => setQuizParams(p => ({ ...p, challenge: v, letters: Array(v + 1).fill("any") }))}
-                          data-testid={`button-quiz-hunt-challenge-${v}`}
-                        >
-                          {v + 1} letters
-                        </Button>
-                      ))}
-                    </div>
+                    <label className="text-sm font-medium">Letter Count</label>
+                    <Select
+                      value={quizParams.challenge !== undefined ? String(quizParams.challenge) : "auto"}
+                      onValueChange={(v) => {
+                        if (v === "auto") {
+                          setQuizParams(p => { const n = { ...p }; delete n.challenge; delete n.letters; return n; });
+                        } else {
+                          const c = Number(v);
+                          setQuizParams(p => ({ ...p, challenge: c, letters: Array(c + 1).fill("any") }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="mt-1" data-testid="select-quiz-hunt-challenge">
+                        <SelectValue placeholder="Auto (seed-derived)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (seed-derived)</SelectItem>
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <SelectItem key={n} value={String(n)} data-testid={`select-quiz-hunt-challenge-${n}`}>{n + 1} letters</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {typeof quizParams.challenge === "number" && (
                     <div>
@@ -1047,18 +1045,26 @@ export default function GameDetail() {
                   {quizParams.challenge && quizParams.challenge !== "multi" && (
                     <div>
                       <label className="text-sm font-medium">Specific Letter (optional)</label>
-                      <Select
-                        value={quizParams.letter ?? "any"}
-                        onValueChange={(v) => setQuizParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
-                      >
-                        <SelectTrigger className="mt-1" data-testid="select-quiz-freq-letter">
-                          <SelectValue placeholder="Any letter" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      {(() => {
+                        const c = quizParams.challenge;
+                        const validLetters = (typeof c === "number" && c >= 1 && c <= 4)
+                          ? getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4])
+                          : "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+                        return (
+                          <Select
+                            value={quizParams.letter ?? "any"}
+                            onValueChange={(v) => setQuizParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
+                          >
+                            <SelectTrigger className="mt-1" data-testid="select-quiz-freq-letter">
+                              <SelectValue placeholder="Any compatible letter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any compatible letter</SelectItem>
+                              {validLetters.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1259,17 +1265,21 @@ export default function GameDetail() {
                 <div>
                   <label className="text-sm font-medium">Letter Count (Challenge)</label>
                   <Select
-                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : "auto"}
                     onValueChange={(v) => {
-                      const c = Number(v);
-                      const slotCount = c + 1;
-                      setCustomPlayParams(p => ({ ...p, challenge: c, letters: Array(slotCount).fill("any") }));
+                      if (v === "auto") {
+                        setCustomPlayParams(p => { const n = { ...p }; delete n.challenge; delete n.letters; return n; });
+                      } else {
+                        const c = Number(v);
+                        setCustomPlayParams(p => ({ ...p, challenge: c, letters: Array(c + 1).fill("any") }));
+                      }
                     }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                      <SelectValue placeholder="Select letter count" />
+                      <SelectValue placeholder="Auto (seed-derived)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="auto">Auto (seed-derived)</SelectItem>
                       {[1, 2, 3, 4, 5].map(n => (
                         <SelectItem key={n} value={String(n)}>{n + 1} letters</SelectItem>
                       ))}
