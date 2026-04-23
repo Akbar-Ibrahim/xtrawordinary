@@ -1408,6 +1408,28 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/users/me/upgrade-premium", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateUser(req.user!.id, { isPremium: true });
+      if (!updated) return res.status(500).json({ error: "Failed to upgrade" });
+      const { passwordHash, ...rest } = updated;
+      res.json(rest);
+    } catch {
+      res.status(500).json({ error: "Failed to upgrade" });
+    }
+  });
+
+  app.post("/api/users/me/downgrade-premium", requireAuth, async (req, res) => {
+    try {
+      const updated = await storage.updateUser(req.user!.id, { isPremium: false });
+      if (!updated) return res.status(500).json({ error: "Failed to downgrade" });
+      const { passwordHash, ...rest } = updated;
+      res.json(rest);
+    } catch {
+      res.status(500).json({ error: "Failed to downgrade" });
+    }
+  });
+
   app.patch("/api/admin/users/:id/premium", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

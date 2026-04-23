@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import { PremiumBanner } from "@/components/premium-banner";
 import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
@@ -512,6 +513,7 @@ export default function GameDetail() {
                   )}
                 </CardContent>
               </Card>
+              <PremiumBanner />
               <MiniLeaderboard game={game} />
             </div>
           </motion.div>

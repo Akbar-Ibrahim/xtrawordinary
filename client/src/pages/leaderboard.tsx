@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
+import { PremiumBanner } from "@/components/premium-banner";
 import { getAvatarColor, getInitials } from "@/lib/avatar-utils";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -240,6 +241,8 @@ export default function Leaderboard() {
           </div>
           <p className="text-muted-foreground">Top players across all xtraWordinary games</p>
         </div>
+
+        <PremiumBanner />
 
         <div className="flex justify-center">
           <Select value={selectedGame} onValueChange={handleGameChange}>

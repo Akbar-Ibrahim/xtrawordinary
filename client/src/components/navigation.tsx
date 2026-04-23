@@ -6,10 +6,11 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { PremiumBanner } from "@/components/premium-banner";
 
 export function Navigation() {
   const [location] = useLocation();
@@ -98,12 +99,17 @@ export function Navigation() {
               )}
             </Button>
 
+            <PremiumBanner variant="nav" />
+
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 relative" data-testid="button-user-menu">
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="h-6 w-6 text-[10px]" />
                     <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                    {user.isPremium && (
+                      <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" data-testid="icon-premium-crown-nav" />
+                    )}
                     {unreadCount > 0 && (
                       <span
                         className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"

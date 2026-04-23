@@ -18,6 +18,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { loadStats, loadStreak, getTotalWordsFound, getUniqueGamesPlayed } from "@/lib/game-stats";
+import { PremiumBanner } from "@/components/premium-banner";
 import type { Game } from "@shared/schema";
 
 export default function Stats() {
@@ -73,9 +74,13 @@ export default function Stats() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3 mb-4">
           <BarChart3 className="h-7 w-7 text-primary" />
           <h1 className="text-3xl font-bold" data-testid="text-stats-title">Your Statistics</h1>
+        </div>
+
+        <div className="mb-8">
+          <PremiumBanner />
         </div>
 
         {!hasAnyData ? (

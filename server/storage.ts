@@ -94,7 +94,7 @@ export interface IStorage {
   getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
 
   searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>>;
-  getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
+  getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
 
   getFriendshipById(id: number): Promise<Friendship | undefined>;
   sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship>;

@@ -13,14 +13,14 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2 } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
 type QuizSessionWithCount = QuizSession & { playerCount: number };
 
 interface PublicProfile {
-  user: { id: number; name: string; avatarUrl: string | null; createdAt: string };
+  user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean };
   stats: UserGameStats[];
   achievements: UserAchievement[];
   leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }>;
@@ -64,6 +64,16 @@ export default function Profile() {
     onSuccess: () => {
       toast({ title: "Friend request sent!" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/check", userId] });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const downgradePremium = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/users/me/downgrade-premium"),
+    onSuccess: async () => {
+      toast({ title: "Premium removed" });
+      await refreshUser();
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -177,8 +187,14 @@ export default function Profile() {
                 className="h-16 w-16 text-xl"
               />
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold" data-testid="text-profile-name">{profile.user.name}</h1>
+                  {profile.user.isPremium && (
+                    <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white border-0" data-testid="badge-premium-profile">
+                      <Crown className="h-3 w-3" />
+                      Premium
+                    </Badge>
+                  )}
                   {isOwnProfile && (
                     <button
                       onClick={openEdit}
@@ -190,6 +206,18 @@ export default function Profile() {
                     </button>
                   )}
                 </div>
+                {isOwnProfile && profile.user.isPremium && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-1 h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={() => downgradePremium.mutate()}
+                    disabled={downgradePremium.isPending}
+                    data-testid="button-downgrade-premium"
+                  >
+                    Remove Premium (testing)
+                  </Button>
+                )}
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   Joined {new Date(profile.user.createdAt).toLocaleDateString()}

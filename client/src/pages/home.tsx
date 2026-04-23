@@ -10,6 +10,7 @@ import { Gamepad2, Sparkles, Flame, Trophy, Calendar, ArrowRight, CheckCircle, S
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
+import { PremiumBanner } from "@/components/premium-banner";
 
 interface DailyChallengeResponse {
   date: string;
@@ -128,6 +129,10 @@ export default function Home() {
               </Link>
             </motion.div>
           )}
+
+          <div className="mb-6">
+            <PremiumBanner />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
             {dailyChallenge && (

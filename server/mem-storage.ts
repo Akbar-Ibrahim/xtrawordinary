@@ -789,7 +789,7 @@ export class MemStorage implements IStorage {
       const rank = sorted.findIndex(([uid]) => uid === userId) + 1;
       leaderboardRankings.push({ gameSlug: slug, rank, score });
     }
-    return { user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt }, stats, achievements, leaderboardRankings };
+    return { user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt, isPremium: user.isPremium ?? false }, stats, achievements, leaderboardRankings };
   }
 
   async getFriendshipById(id: number): Promise<Friendship | undefined> {

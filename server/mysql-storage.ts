@@ -461,7 +461,7 @@ export class MySQLStorage implements IStorage {
     const userRows = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!userRows[0]) return null;
     const u = userRows[0];
-    const user = { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt) };
+    const user = { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt), isPremium: u.isPremium ?? false };
 
     const stats = await this.getAllUserGameStats(userId);
     const achievements = await this.getUserAchievements(userId);
