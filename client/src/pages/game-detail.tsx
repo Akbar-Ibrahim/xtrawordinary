@@ -46,7 +46,7 @@ import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { WordChainGame } from "@/components/games/word-chain";
-import { LetterBalanceGame, VariationCategory } from "@/components/games/letter-balance";
+import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame, getLettersForCount, LETTER_FREQUENCY_CHALLENGE_COUNTS } from "@/components/games/letter-frequency";
 import { WordStackGame } from "@/components/games/word-stack";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
