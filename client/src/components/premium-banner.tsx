@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crown, Sparkles, Zap } from "lucide-react";
+import { Crown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -72,8 +72,8 @@ export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
           className="shrink-0 gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
           data-testid="button-go-premium-banner"
         >
-          <Zap className="h-3.5 w-3.5" />
-          {upgrading ? "Upgrading…" : "Upgrade"}
+          <Crown className="h-3.5 w-3.5" />
+          {upgrading ? "Upgrading…" : "Go Premium"}
         </Button>
       </div>
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />

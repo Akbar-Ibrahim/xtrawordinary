@@ -108,7 +108,10 @@ export function Navigation() {
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="h-6 w-6 text-[10px]" />
                     <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
                     {user.isPremium && (
-                      <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" data-testid="icon-premium-crown-nav" />
+                      <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-amber-500 shrink-0" data-testid="badge-premium-nav">
+                        <Crown className="h-3 w-3" />
+                        Premium
+                      </span>
                     )}
                     {unreadCount > 0 && (
                       <span
