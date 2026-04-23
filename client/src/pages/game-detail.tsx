@@ -995,23 +995,25 @@ export default function GameDetail() {
                   {typeof quizParams.challenge === "number" && (
                     <div>
                       <label className="text-sm font-medium">Pin Letters (optional)</label>
-                      <div className="flex gap-1 mt-1 flex-wrap">
+                      <div className="flex gap-2 mt-1 flex-wrap">
                         {Array.from({ length: quizParams.challenge + 1 }).map((_, i) => (
-                          <Select
-                            key={i}
-                            value={(quizParams.letters?.[i]) || "any"}
-                            onValueChange={(v) => setQuizParams(p => {
-                              const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
-                              letters[i] = v;
-                              return { ...p, letters };
-                            })}
-                          >
-                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="any">Any</SelectItem>
-                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div key={i} className="flex flex-col items-center gap-0.5">
+                            <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                            <Select
+                              value={(quizParams.letters?.[i]) || "any"}
+                              onValueChange={(v) => setQuizParams(p => {
+                                const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
+                                letters[i] = v;
+                                return { ...p, letters };
+                              })}
+                            >
+                              <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">Any</SelectItem>
+                                {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
@@ -1289,23 +1291,25 @@ export default function GameDetail() {
                 {typeof customPlayParams.challenge === "number" && (
                   <div>
                     <label className="text-sm font-medium">Pin Letters (optional)</label>
-                    <div className="flex gap-1 mt-1 flex-wrap">
+                    <div className="flex gap-2 mt-1 flex-wrap">
                       {Array.from({ length: customPlayParams.challenge + 1 }).map((_, i) => (
-                        <Select
-                          key={i}
-                          value={(customPlayParams.letters?.[i]) || "any"}
-                          onValueChange={(v) => setCustomPlayParams(p => {
-                            const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
-                            letters[i] = v;
-                            return { ...p, letters };
-                          })}
-                        >
-                          <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="any">Any</SelectItem>
-                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <div key={i} className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                          <Select
+                            value={(customPlayParams.letters?.[i]) || "any"}
+                            onValueChange={(v) => setCustomPlayParams(p => {
+                              const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
+                              letters[i] = v;
+                              return { ...p, letters };
+                            })}
+                          >
+                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
