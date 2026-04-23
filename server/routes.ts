@@ -224,6 +224,26 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/word-length/validate", async (req, res) => {
+    try {
+      const length = parseInt(req.query.length as string);
+      const startsWith = (req.query.startsWith as string || "").toUpperCase().trim() || undefined;
+      const endsWith = (req.query.endsWith as string || "").toUpperCase().trim() || undefined;
+      const contains = (req.query.contains as string || "").toUpperCase().trim() || undefined;
+      if (isNaN(length) || length < 3 || length > 12) {
+        return res.status(400).json({ message: "length must be between 3 and 12" });
+      }
+      const singleLetter = /^[A-Z]$/;
+      if (startsWith && !singleLetter.test(startsWith)) return res.status(400).json({ message: "startsWith must be a single A-Z letter" });
+      if (endsWith && !singleLetter.test(endsWith)) return res.status(400).json({ message: "endsWith must be a single A-Z letter" });
+      if (contains && !singleLetter.test(contains)) return res.status(400).json({ message: "contains must be a single A-Z letter" });
+      const count = await dataSource.countWordLengthWords(length, startsWith, endsWith, contains);
+      res.json({ count, ok: count >= 10 });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to count matching words" });
+    }
+  });
+
   app.get("/api/games/word-stretch/solutions", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);

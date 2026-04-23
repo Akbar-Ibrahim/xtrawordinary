@@ -283,6 +283,7 @@ export default function GameDetail() {
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
 
   const LP_QUIZ_MIN_WORDS = 10;
+  const WL_MIN_WORDS = 10;
   const lpLetter = quizParams.letter as string | undefined;
   const lpPosition = quizParams.position as number | undefined;
   const { data: lpCountData, isFetching: lpCountFetching } = useQuery<{ count: number }>({
@@ -293,6 +294,51 @@ export default function GameDetail() {
       return res.json();
     },
     enabled: slug === "letter-position" && !!lpLetter && !!lpPosition,
+    staleTime: Infinity,
+  });
+
+  const customLpLetter = (customPlayParams.letter as string | undefined)?.toUpperCase() || undefined;
+  const customLpPosition = customPlayParams.position ? Number(customPlayParams.position) : undefined;
+  const { data: customLpCountData, isFetching: customLpCountFetching } = useQuery<{ count: number }>({
+    queryKey: ["/api/games/letter-position/validate", customLpLetter, customLpPosition],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/letter-position/validate?letter=${customLpLetter}&position=${customLpPosition}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: slug === "letter-position" && !!customLpLetter && !!customLpPosition,
+    staleTime: Infinity,
+  });
+
+  const wlQuizLength = quizParams.length as number | undefined;
+  const wlQuizStartsWith = quizParams.startsWith as string | undefined;
+  const wlQuizEndsWith = quizParams.endsWith as string | undefined;
+  const wlQuizContains = quizParams.contains as string | undefined;
+  const wlQuizQs = new URLSearchParams({ ...(wlQuizLength ? { length: String(wlQuizLength) } : {}), ...(wlQuizStartsWith ? { startsWith: wlQuizStartsWith } : {}), ...(wlQuizEndsWith ? { endsWith: wlQuizEndsWith } : {}), ...(wlQuizContains ? { contains: wlQuizContains } : {}) });
+  const { data: wlQuizCountData, isFetching: wlQuizCountFetching } = useQuery<{ count: number; ok: boolean }>({
+    queryKey: ["/api/games/word-length/validate", wlQuizLength, wlQuizStartsWith, wlQuizEndsWith, wlQuizContains],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/word-length/validate?${wlQuizQs}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: slug === "word-length" && !!wlQuizLength,
+    staleTime: Infinity,
+  });
+
+  const wlCustomLength = customPlayParams.length as number | undefined;
+  const wlCustomStartsWith = customPlayParams.startsWith as string | undefined;
+  const wlCustomEndsWith = customPlayParams.endsWith as string | undefined;
+  const wlCustomContains = customPlayParams.contains as string | undefined;
+  const wlCustomQs = new URLSearchParams({ ...(wlCustomLength ? { length: String(wlCustomLength) } : {}), ...(wlCustomStartsWith ? { startsWith: wlCustomStartsWith } : {}), ...(wlCustomEndsWith ? { endsWith: wlCustomEndsWith } : {}), ...(wlCustomContains ? { contains: wlCustomContains } : {}) });
+  const { data: wlCustomCountData, isFetching: wlCustomCountFetching } = useQuery<{ count: number; ok: boolean }>({
+    queryKey: ["/api/games/word-length/validate", wlCustomLength, wlCustomStartsWith, wlCustomEndsWith, wlCustomContains],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/word-length/validate?${wlCustomQs}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: slug === "word-length" && !!wlCustomLength,
     staleTime: Infinity,
   });
 
@@ -698,7 +744,7 @@ export default function GameDetail() {
                   const n = Math.min(5, Math.max(1, Number(c) || 1));
                   return n as 1 | 2 | 3 | 4 | 5;
                 })()}
-                initialLetter={customPlayParams.letter || undefined}
+                initialLetters={customPlayParams.letters as string[] | undefined}
                 initialSurvival={customPlayParams.survival === true}
                 locked
                 quizMode
@@ -718,16 +764,18 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
-                initialChallenge={customPlayParams.category ? {
-                  category: customPlayParams.category as VariationCategory,
-                  level: customPlayParams.level ?? 2
-                } : undefined}
+                customConstraint={
+                  customPlayParams.vowels !== undefined || customPlayParams.consonants !== undefined
+                    ? { vowels: customPlayParams.vowels, consonants: customPlayParams.consonants, length: customPlayParams.length }
+                    : undefined
+                }
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "word-length" ? (
               <WordLengthGame
-                initialVariation={Math.min(5, Math.max(1, Number(customPlayParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5}
+                customConstraint={wlCustomLength ? { length: wlCustomLength, startsWith: wlCustomStartsWith, endsWith: wlCustomEndsWith, contains: wlCustomContains } : undefined}
+                initialVariation={wlCustomLength ? undefined : (Math.min(5, Math.max(1, Number(customPlayParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5)}
                 initialSurvival={customPlayParams.survival === true}
                 locked
                 quizMode
@@ -850,114 +898,218 @@ export default function GameDetail() {
                 </div>
               )}
               {slug === "word-length" && (
-                <div>
-                  <label className="text-sm font-medium">Variation</label>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={quizParams.variation === undefined ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.variation; return n; })}
-                      data-testid="button-quiz-variation-auto"
-                    >
-                      Auto
-                    </Button>
-                    {([1, 2, 3, 4, 5] as const).map(v => (
-                      <Button
-                        key={v}
-                        type="button"
-                        size="sm"
-                        variant={quizParams.variation === v ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, variation: v }))}
-                        data-testid={`button-quiz-variation-${v}`}
-                      >
-                        {v}
-                      </Button>
-                    ))}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Exact Word Length (3–12)</label>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {Array.from({ length: 10 }, (_, i) => i + 3).map(n => (
+                        <Button
+                          key={n}
+                          type="button"
+                          size="sm"
+                          variant={quizParams.length === n ? "default" : "outline"}
+                          onClick={() => setQuizParams(p => ({ ...p, length: n }))}
+                          data-testid={`button-quiz-wl-length-${n}`}
+                        >
+                          {n}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
+                  {quizParams.length && (
+                    <>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs font-medium">Starts with</label>
+                          <Select
+                            value={quizParams.startsWith ?? "any"}
+                            onValueChange={(v) => setQuizParams(p => ({ ...p, startsWith: v === "any" ? undefined : v }))}
+                          >
+                            <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-wl-starts"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">Ends with</label>
+                          <Select
+                            value={quizParams.endsWith ?? "any"}
+                            onValueChange={(v) => setQuizParams(p => ({ ...p, endsWith: v === "any" ? undefined : v }))}
+                          >
+                            <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-wl-ends"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">Contains</label>
+                          <Select
+                            value={quizParams.contains ?? "any"}
+                            onValueChange={(v) => setQuizParams(p => ({ ...p, contains: v === "any" ? undefined : v }))}
+                          >
+                            <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-wl-contains"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className={`text-xs ${wlQuizCountFetching ? "text-muted-foreground" : !wlQuizCountData ? "" : !wlQuizCountData.ok ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-wl-quiz-word-count">
+                        {wlQuizCountFetching ? "Checking…" : !wlQuizCountData ? "" : !wlQuizCountData.ok ? `Only ${wlQuizCountData.count} matching words — need at least ${WL_MIN_WORDS}. Adjust filters.` : `${wlQuizCountData.count} words match ✓`}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
               {slug === "letter-hunt" && (
-                <div>
-                  <label className="text-sm font-medium">Challenge Level (letter count)</label>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={quizParams.challenge === undefined ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.challenge; return n; })}
-                      data-testid="button-quiz-hunt-challenge-auto"
-                    >
-                      Auto
-                    </Button>
-                    {([1, 2, 3, 4, 5] as const).map(v => (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Challenge Level (letter count)</label>
+                    <div className="flex gap-2 mt-1 flex-wrap">
                       <Button
-                        key={v}
                         type="button"
                         size="sm"
-                        variant={quizParams.challenge === v ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, challenge: v }))}
-                        data-testid={`button-quiz-hunt-challenge-${v}`}
+                        variant={quizParams.challenge === undefined ? "default" : "outline"}
+                        onClick={() => setQuizParams(p => { const n = { ...p }; delete n.challenge; delete n.letters; return n; })}
+                        data-testid="button-quiz-hunt-challenge-auto"
                       >
-                        {v}
+                        Auto
                       </Button>
-                    ))}
+                      {([1, 2, 3, 4, 5] as const).map(v => (
+                        <Button
+                          key={v}
+                          type="button"
+                          size="sm"
+                          variant={quizParams.challenge === v ? "default" : "outline"}
+                          onClick={() => setQuizParams(p => ({ ...p, challenge: v, letters: Array(v + 1).fill("any") }))}
+                          data-testid={`button-quiz-hunt-challenge-${v}`}
+                        >
+                          {v}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
+                  {typeof quizParams.challenge === "number" && (
+                    <div>
+                      <label className="text-sm font-medium">Pin Letters (optional)</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {Array.from({ length: quizParams.challenge + 1 }).map((_, i) => (
+                          <Select
+                            key={i}
+                            value={(quizParams.letters?.[i]) || "any"}
+                            onValueChange={(v) => setQuizParams(p => {
+                              const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
+                              letters[i] = v;
+                              return { ...p, letters };
+                            })}
+                          >
+                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !["J","Q","V","X","Z"].includes(l)).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                    </div>
+                  )}
                 </div>
               )}
               {slug === "letter-frequency" && (
-                <div>
-                  <label className="text-sm font-medium">Rank Level</label>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={quizParams.rank === undefined ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n = { ...p }; delete n.rank; return n; })}
-                      data-testid="button-quiz-rank-auto"
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Frequency Challenge</label>
+                    <Select
+                      value={quizParams.challenge !== undefined ? String(quizParams.challenge) : ""}
+                      onValueChange={(v) => {
+                        const c = v === "multi" ? "multi" : Number(v);
+                        setQuizParams(p => ({ ...p, challenge: c === 0 ? undefined : c, letter: c === "multi" ? undefined : p.letter }));
+                      }}
                     >
-                      Auto
-                    </Button>
-                    {([1, 2, 3, 4] as const).map(v => (
-                      <Button
-                        key={v}
-                        type="button"
-                        size="sm"
-                        variant={quizParams.rank === v ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, rank: v }))}
-                        data-testid={`button-quiz-rank-${v}`}
-                      >
-                        {v}
-                      </Button>
-                    ))}
+                      <SelectTrigger className="mt-1" data-testid="select-quiz-freq-challenge">
+                        <SelectValue placeholder="Auto (seed-derived)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
+                        <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
+                        <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
+                        <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
+                        <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {quizParams.challenge && quizParams.challenge !== "multi" && (
+                    <div>
+                      <label className="text-sm font-medium">Specific Letter (optional)</label>
+                      <Select
+                        value={quizParams.letter ?? "any"}
+                        onValueChange={(v) => setQuizParams(p => ({ ...p, letter: v === "any" ? undefined : v }))}
+                      >
+                        <SelectTrigger className="mt-1" data-testid="select-quiz-freq-letter">
+                          <SelectValue placeholder="Any letter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               )}
               {slug === "letter-balance" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
-                  <Select
-                    value={quizParams.category ?? ""}
-                    onValueChange={(v) => setQuizParams(p => ({ ...p, category: v || undefined, level: undefined }))}
-                  >
-                    <SelectTrigger data-testid="select-quiz-category">
-                      <SelectValue placeholder="Auto (seed-derived)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[
-                        { value: "consonant_count", label: "Consonant Count" },
-                        { value: "vowel_count", label: "Vowel Count" },
-                        { value: "start_end_vowel", label: "Starts & Ends Vowel" },
-                        { value: "start_end_consonant", label: "Starts & Ends Consonant" },
-                        { value: "start_vowel_end_consonant", label: "Vowel Start, Consonant End" },
-                        { value: "start_consonant_end_vowel", label: "Consonant Start, Vowel End" },
-                        { value: "consonant_oblivion", label: "Consonant Oblivion" },
-                        { value: "vowel_oblivion", label: "Vowel Oblivion" },
-                      ].map(({ value, label }) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs font-medium">Vowels</label>
+                      <Select
+                        value={quizParams.vowels !== undefined ? String(quizParams.vowels) : "any"}
+                        onValueChange={(v) => setQuizParams(p => ({ ...p, vowels: v === "any" ? undefined : Number(v) }))}
+                      >
+                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-vowels"><SelectValue placeholder="Any" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Consonants</label>
+                      <Select
+                        value={quizParams.consonants !== undefined ? String(quizParams.consonants) : "any"}
+                        onValueChange={(v) => setQuizParams(p => ({ ...p, consonants: v === "any" ? undefined : Number(v) }))}
+                      >
+                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          {[1,2,3,4,5,6,7,8].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Length</label>
+                      <Select
+                        value={quizParams.length !== undefined ? String(quizParams.length) : "any"}
+                        onValueChange={(v) => setQuizParams(p => ({ ...p, length: v === "any" ? undefined : Number(v) }))}
+                      >
+                        <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {quizParams.vowels === undefined && quizParams.consonants === undefined && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to configure this quiz.</p>
+                  )}
                 </div>
               )}
               {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency") && (
@@ -996,7 +1148,9 @@ export default function GameDetail() {
                     lpCountFetching ||
                     lpCountData === undefined ||
                     lpCountData.count < LP_QUIZ_MIN_WORDS
-                  ))
+                  )) ||
+                  (slug === "word-length" && !!(wlQuizLength && (wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok))) ||
+                  (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined)
                 }
                 data-testid="button-create-quiz-submit"
               >
@@ -1093,24 +1247,78 @@ export default function GameDetail() {
                     </SelectContent>
                   </Select>
                 </div>
+                {customLpLetter && customLpPosition && (
+                  <p className={`text-xs ${customLpCountFetching ? "text-muted-foreground" : !customLpCountData ? "" : customLpCountData.count < LP_QUIZ_MIN_WORDS ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-custom-lp-word-count">
+                    {customLpCountFetching ? "Checking…" : !customLpCountData ? "" : customLpCountData.count < LP_QUIZ_MIN_WORDS ? `Only ${customLpCountData.count} words match — try different settings.` : `${customLpCountData.count} words match ✓`}
+                  </p>
+                )}
               </>
             )}
 
-            {(slug === "letter-hunt" || slug === "letter-frequency") && (
-              <>
+            {slug === "letter-hunt" && (
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">
-                    {slug === "letter-hunt" ? "Letter Count" : "Frequency Challenge"}
-                  </label>
+                  <label className="text-sm font-medium">Letter Count (Challenge)</label>
                   <Select
                     value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
                     onValueChange={(v) => {
-                      const c = v === "advanced" || v === "multi" ? v : Number(v);
+                      const c = v === "advanced" ? "advanced" : Number(v);
+                      const slotCount = typeof c === "number" ? c + 1 : 0;
+                      setCustomPlayParams(p => ({ ...p, challenge: c, letters: slotCount > 0 ? Array(slotCount).fill("any") : undefined }));
+                    }}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
+                      <SelectValue placeholder="Select challenge" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
+                      ))}
+                      <SelectItem value="advanced">Advanced (random count)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {typeof customPlayParams.challenge === "number" && (
+                  <div>
+                    <label className="text-sm font-medium">Pin Letters (optional)</label>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {Array.from({ length: customPlayParams.challenge + 1 }).map((_, i) => (
+                        <Select
+                          key={i}
+                          value={(customPlayParams.letters?.[i]) || "any"}
+                          onValueChange={(v) => setCustomPlayParams(p => {
+                            const letters = [...(p.letters ?? Array(p.challenge + 1).fill("any"))];
+                            letters[i] = v;
+                            return { ...p, letters };
+                          })}
+                        >
+                          <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-hunt-letter-${i}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any</SelectItem>
+                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !["J","Q","V","X","Z"].includes(l)).map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {slug === "letter-frequency" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Frequency Challenge</label>
+                  <Select
+                    value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                    onValueChange={(v) => {
+                      const c = v === "multi" ? "multi" : Number(v);
                       setCustomPlayParams(p => {
                         let newLetter = p.letter;
                         if (c === "multi") {
                           newLetter = undefined;
-                        } else if (slug === "letter-frequency" && typeof c === "number" && c >= 1 && c <= 4 && p.letter) {
+                        } else if (typeof c === "number" && c >= 1 && c <= 4 && p.letter) {
                           const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
                           if (!validLetters.includes(p.letter)) newLetter = undefined;
                         }
@@ -1122,26 +1330,15 @@ export default function GameDetail() {
                       <SelectValue placeholder="Select challenge" />
                     </SelectTrigger>
                     <SelectContent>
-                      {slug === "letter-hunt" ? (
-                        <>
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
-                          ))}
-                          <SelectItem value="advanced">Advanced (random count)</SelectItem>
-                        </>
-                      ) : (
-                        <>
-                          <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
-                          <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
-                          <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
-                          <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
-                          <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
-                        </>
-                      )}
+                      <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
+                      <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
+                      <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
+                      <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
+                      <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                {customPlayParams.challenge !== "multi" && (
+                {customPlayParams.challenge !== "multi" && customPlayParams.challenge !== undefined && (
                   <div>
                     <label className="text-sm font-medium">Specific Letter (optional)</label>
                     {(() => {
@@ -1172,67 +1369,122 @@ export default function GameDetail() {
             )}
 
             {slug === "letter-balance" && (
-              <>
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <Select
-                    value={customPlayParams.category ?? ""}
-                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, category: v || undefined, level: undefined }))}
-                  >
-                    <SelectTrigger className="mt-1" data-testid="select-custom-lb-category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LETTER_BALANCE_CATEGORIES_DETAIL.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-xs font-medium">Vowels</label>
+                    <Select
+                      value={customPlayParams.vowels !== undefined ? String(customPlayParams.vowels) : "any"}
+                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, vowels: v === "any" ? undefined : Number(v) }))}
+                    >
+                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-vowels"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Consonants</label>
+                    <Select
+                      value={customPlayParams.consonants !== undefined ? String(customPlayParams.consonants) : "any"}
+                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, consonants: v === "any" ? undefined : Number(v) }))}
+                    >
+                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {[1,2,3,4,5,6,7,8].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">Length</label>
+                    <Select
+                      value={customPlayParams.length !== undefined ? String(customPlayParams.length) : "any"}
+                      onValueChange={(v) => setCustomPlayParams(p => ({ ...p, length: v === "any" ? undefined : Number(v) }))}
+                    >
+                      <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any</SelectItem>
+                        {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                {customPlayParams.category && (() => {
-                  const cat = LETTER_BALANCE_CATEGORIES_DETAIL.find(c => c.id === customPlayParams.category);
-                  if (!cat) return null;
-                  return (
-                    <div>
-                      <label className="text-sm font-medium">{cat.levelType === "count" ? "Count" : "Word Length"}</label>
-                      <Select
-                        value={customPlayParams.level !== undefined ? String(customPlayParams.level) : ""}
-                        onValueChange={(v) => setCustomPlayParams(p => ({ ...p, level: v === "advanced" ? "advanced" : Number(v) }))}
-                      >
-                        <SelectTrigger className="mt-1" data-testid="select-custom-lb-level">
-                          <SelectValue placeholder={`Select ${cat.levelType === "count" ? "count" : "length"}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cat.levels.map(l => (
-                            <SelectItem key={l} value={String(l)}>{cat.levelType === "count" ? `${l} ${l === 1 ? "count" : "counts"}` : `${l} letters`}</SelectItem>
-                          ))}
-                          <SelectItem value="advanced">Advanced (random)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  );
-                })()}
-              </>
+                {customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to start playing.</p>
+                )}
+              </div>
             )}
 
             {slug === "word-length" && (
-              <div>
-                <label className="text-sm font-medium">Word Length Target</label>
-                <Select
-                  value={customPlayParams.variation !== undefined ? String(customPlayParams.variation) : ""}
-                  onValueChange={(v) => setCustomPlayParams(p => ({ ...p, variation: Number(v) }))}
-                >
-                  <SelectTrigger className="mt-1" data-testid="select-custom-wl-variation">
-                    <SelectValue placeholder="Select target" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Up to 4 letters</SelectItem>
-                    <SelectItem value="2">Up to 6 letters</SelectItem>
-                    <SelectItem value="3">Up to 8 letters</SelectItem>
-                    <SelectItem value="4">10-letter words</SelectItem>
-                    <SelectItem value="5">12-letter words</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Exact Word Length (3–12)</label>
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {Array.from({ length: 10 }, (_, i) => i + 3).map(n => (
+                      <Button
+                        key={n}
+                        type="button"
+                        size="sm"
+                        variant={customPlayParams.length === n ? "default" : "outline"}
+                        onClick={() => setCustomPlayParams(p => ({ ...p, length: n }))}
+                        data-testid={`button-custom-wl-length-${n}`}
+                      >
+                        {n}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                {customPlayParams.length && (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs font-medium">Starts with</label>
+                        <Select
+                          value={customPlayParams.startsWith ?? "any"}
+                          onValueChange={(v) => setCustomPlayParams(p => ({ ...p, startsWith: v === "any" ? undefined : v }))}
+                        >
+                          <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-wl-starts"><SelectValue placeholder="Any" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any</SelectItem>
+                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Ends with</label>
+                        <Select
+                          value={customPlayParams.endsWith ?? "any"}
+                          onValueChange={(v) => setCustomPlayParams(p => ({ ...p, endsWith: v === "any" ? undefined : v }))}
+                        >
+                          <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-wl-ends"><SelectValue placeholder="Any" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any</SelectItem>
+                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Contains</label>
+                        <Select
+                          value={customPlayParams.contains ?? "any"}
+                          onValueChange={(v) => setCustomPlayParams(p => ({ ...p, contains: v === "any" ? undefined : v }))}
+                        >
+                          <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-wl-contains"><SelectValue placeholder="Any" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="any">Any</SelectItem>
+                            {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className={`text-xs ${wlCustomCountFetching ? "text-muted-foreground" : !wlCustomCountData ? "" : !wlCustomCountData.ok ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-wl-custom-word-count">
+                      {wlCustomCountFetching ? "Checking…" : !wlCustomCountData ? "" : !wlCustomCountData.ok ? `Only ${wlCustomCountData.count} matching words — need at least ${WL_MIN_WORDS}. Adjust filters.` : `${wlCustomCountData.count} words match ✓`}
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
@@ -1269,6 +1521,10 @@ export default function GameDetail() {
                 setIsCustomPlay(true);
                 setIsPlaying(true);
               }}
+              disabled={
+                (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined) ||
+                (slug === "word-length" && !!(wlCustomLength && (wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok)))
+              }
               data-testid="button-start-custom-play"
             >
               <Play className="h-4 w-4" />

@@ -34,6 +34,7 @@ export interface IStorage {
   getWordDictionary(): Promise<string[]>;
   validateWord(word: string): Promise<boolean>;
   countLetterPositionWords(letter: string, position: number): Promise<number>;
+  countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number>;
   getWordLengthConfig(): Promise<WordLengthConfig>;
   getLetterPositionConfig(): Promise<LetterPositionConfig>;
   getLetterHuntConfig(): Promise<LetterHuntConfig>;

@@ -95,6 +95,16 @@ export class MemStorage implements IStorage {
     return wordDictionary.filter(w => w.length > idx && w[idx] === upper).length;
   }
 
+  async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
+    return wordDictionary.filter(w => {
+      if (w.length !== length) return false;
+      if (startsWith && !w.startsWith(startsWith.toUpperCase())) return false;
+      if (endsWith && !w.endsWith(endsWith.toUpperCase())) return false;
+      if (contains && !w.includes(contains.toUpperCase())) return false;
+      return true;
+    }).length;
+  }
+
   async getWordLengthConfig(): Promise<WordLengthConfig> {
     return wordLengthConfig;
   }

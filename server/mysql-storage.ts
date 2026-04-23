@@ -149,6 +149,22 @@ export class MySQLStorage implements IStorage {
     }
     return count;
   }
+
+  async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
+    await this.getDb();
+    let count = 0;
+    const sw = startsWith?.toUpperCase();
+    const ew = endsWith?.toUpperCase();
+    const ct = contains?.toUpperCase();
+    for (const word of this.wordSet) {
+      if (word.length !== length) continue;
+      if (sw && !word.startsWith(sw)) continue;
+      if (ew && !word.endsWith(ew)) continue;
+      if (ct && !word.includes(ct)) continue;
+      count++;
+    }
+    return count;
+  }
   async getWordLengthConfig(): Promise<WordLengthConfig> { return this.gameData.getWordLengthConfig(); }
   async getLetterPositionConfig(): Promise<LetterPositionConfig> { return this.gameData.getLetterPositionConfig(); }
   async getLetterHuntConfig(): Promise<LetterHuntConfig> { return this.gameData.getLetterHuntConfig(); }

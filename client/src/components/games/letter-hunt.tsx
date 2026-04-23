@@ -103,7 +103,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -175,11 +175,18 @@ export function LetterHuntGame({ initialChallenge, initialLetter, groupSeed, loc
     const config = CHALLENGE_CONFIG[c];
     const count = config.letterCount === "random" ? getRandomLetterCount(rng) : config.letterCount;
     const letters = generateRandomLetters(count, rng);
-    if (initialLetter) {
+    if (initialLetters && initialLetters.length > 0) {
+      for (let i = 0; i < letters.length && i < initialLetters.length; i++) {
+        const pinned = initialLetters[i];
+        if (pinned && pinned !== "any") {
+          letters[i] = pinned.toUpperCase();
+        }
+      }
+    } else if (initialLetter) {
       letters[0] = initialLetter.toUpperCase();
     }
     return letters;
-  }, [initialLetter]);
+  }, [initialLetter, initialLetters]);
 
   const selectChallenge = useCallback((c: Challenge) => {
     setPendingChallenge(c);

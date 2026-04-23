@@ -329,6 +329,37 @@ function generateConstraint(
   }
 }
 
+type CustomLbConstraint = { vowels?: number; consonants?: number; length?: number };
+
+function generateCustomLbConstraint(cc: CustomLbConstraint): GameConstraint {
+  const parts: string[] = [];
+  if (cc.vowels !== undefined) parts.push(`exactly ${cc.vowels} vowel${cc.vowels !== 1 ? "s" : ""}`);
+  if (cc.consonants !== undefined) parts.push(`exactly ${cc.consonants} consonant${cc.consonants !== 1 ? "s" : ""}`);
+  if (cc.length !== undefined) parts.push(`${cc.length} letters long`);
+  return {
+    description: parts.length > 0 ? `Words with ${parts.join(", ")}` : "Any word",
+    validate: (word: string) => {
+      const upper = word.toUpperCase();
+      if (cc.length !== undefined && upper.length !== cc.length) {
+        return { valid: false, message: `Word must be exactly ${cc.length} letters` };
+      }
+      if (cc.vowels !== undefined) {
+        const actual = countVowels(upper);
+        if (actual !== cc.vowels) {
+          return { valid: false, message: `Word must have exactly ${cc.vowels} vowel${cc.vowels !== 1 ? "s" : ""} (found ${actual})` };
+        }
+      }
+      if (cc.consonants !== undefined) {
+        const actual = countConsonants(upper);
+        if (actual !== cc.consonants) {
+          return { valid: false, message: `Word must have exactly ${cc.consonants} consonant${cc.consonants !== 1 ? "s" : ""} (found ${actual})` };
+        }
+      }
+      return { valid: true, message: "" };
+    },
+  };
+}
+
 // Game states
 type GameState = 
   | "category_menu"  // Choosing a variation category
@@ -337,7 +368,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, groupSeed, locked, quizMode }: { initialChallenge?: { category: VariationCategory; level: LevelType }; groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance", quizMode });
   const personalBest = usePersonalBest("letter-balance");
@@ -473,7 +504,20 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked, quizMod
   }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
 
   useEffect(() => {
-    if (initialChallenge && selectedCategory) {
+    if (customConstraint && (customConstraint.vowels !== undefined || customConstraint.consonants !== undefined || customConstraint.length !== undefined)) {
+      const synth = generateCustomLbConstraint(customConstraint);
+      resetRecorded();
+      clearTimer();
+      setScore(0);
+      setStreak(0);
+      setWordsCompleted(0);
+      setUsedWords(new Set());
+      setUserInput("");
+      setFeedback(null);
+      setCurrentConstraint(synth);
+      setGameState("playing");
+      startTimer();
+    } else if (initialChallenge && selectedCategory) {
       startGame(initialChallenge.level);
     }
   }, []);
@@ -752,6 +796,41 @@ export function LetterBalanceGame({ initialChallenge, groupSeed, locked, quizMod
                 </motion.div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Level Complete Screen (custom constraint mode — no category navigation)
+  if (gameState === "level_complete" && !selectedCategory) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-8 text-center space-y-6">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}>
+              <Trophy className="h-16 w-16 mx-auto text-accent" />
+            </motion.div>
+            <div>
+              <h3 className="text-2xl font-bold text-accent">Level Complete!</h3>
+              <p className="text-muted-foreground mt-2">You completed {wordsCompleted} words!</p>
+              <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+            </div>
+            <Badge variant="outline" className="text-lg px-4 py-2 gap-2">
+              <Trophy className="h-4 w-4" />
+              <AnimatedNumber value={score} /> points
+            </Badge>
+            {personalBest > 0 && (
+              <p className="text-sm text-muted-foreground" data-testid="text-personal-best">Personal Best: {personalBest} pts</p>
+            )}
+            <ShareResults gameName="Letter Balance" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} />
+            {!user && (
+              <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
+                <LogIn className="h-4 w-4 shrink-0" />
+                <span><button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}to save your score!</span>
+              </div>
+            )}
+            <TryAnotherGameButton currentSlug="letter-balance" />
           </CardContent>
         </Card>
       </div>

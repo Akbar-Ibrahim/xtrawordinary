@@ -59,6 +59,13 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
   const survival = p.survival === true ? " · Survival" : "";
   switch (slug) {
     case "word-length": {
+      if (p.length) {
+        const parts: string[] = [`${p.length}-letter words`];
+        if (p.startsWith) parts.push(`starts '${p.startsWith}'`);
+        if (p.endsWith) parts.push(`ends '${p.endsWith}'`);
+        if (p.contains) parts.push(`contains '${p.contains}'`);
+        return `Word Length: ${parts.join(", ")}${survival}`;
+      }
       const lengthMap: Record<number, string> = { 1: "≤4 letters", 2: "≤6 letters", 3: "≤8 letters", 4: "10 letters", 5: "12 letters" };
       const variation = p.variation ?? [1, 2, 3, 4, 5][seed % 5];
       return `Word length: ${lengthMap[variation] ?? `Variation ${variation}`}${survival}`;
@@ -73,16 +80,24 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     case "letter-hunt": {
       const countMap: Record<string | number, string> = { 1: "2 letters", 2: "3 letters", 3: "4 letters", 4: "5 letters", 5: "6 letters", advanced: "Advanced (random)" };
       const challenge = p.challenge ?? p.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
-      const letter = p.letter ? ` · Letter ${p.letter}` : "";
-      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letter}${survival}`;
+      const pinnedLetters = Array.isArray(p.letters) ? p.letters.filter((l: string) => l && l !== "any") : [];
+      const letterInfo = pinnedLetters.length > 0 ? ` · Pinned: ${pinnedLetters.join(",")}` : (p.letter ? ` · Letter ${p.letter}` : "");
+      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letterInfo}${survival}`;
     }
     case "letter-frequency": {
-      const freqMap: Record<number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more" };
-      const rank = p.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
+      const freqMap: Record<string | number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more", multi: "Multi-Letter" };
+      const challenge = p.challenge ?? p.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
       const letter = p.letter ? ` · Letter ${p.letter}` : "";
-      return `Frequency: ${freqMap[rank] ?? `Challenge ${rank}`}${letter}${survival}`;
+      return `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}${survival}`;
     }
     case "letter-balance": {
+      if (p.vowels !== undefined || p.consonants !== undefined) {
+        const parts: string[] = [];
+        if (p.vowels !== undefined) parts.push(`${p.vowels} vowel${p.vowels !== 1 ? "s" : ""}`);
+        if (p.consonants !== undefined) parts.push(`${p.consonants} consonant${p.consonants !== 1 ? "s" : ""}`);
+        if (p.length !== undefined) parts.push(`${p.length} letters`);
+        return `Letter Balance: ${parts.join(", ")}`;
+      }
       const cat = p.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const level = p.level;
       const catName = LETTER_BALANCE_CATEGORY_NAMES[cat] ?? cat;
@@ -107,6 +122,10 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
   const survival = params?.survival === true;
   switch (slug) {
     case "word-length": {
+      if (params?.length) {
+        const cc = { length: params.length as number, startsWith: params.startsWith as string | undefined, endsWith: params.endsWith as string | undefined, contains: params.contains as string | undefined };
+        return <WordLengthGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      }
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const variation: 1 | 2 | 3 | 4 | 5 = params?.variation ?? wlOptions[seed % wlOptions.length];
       return <WordLengthGame initialChallenge={variation} groupSeed={seed} locked quizMode initialSurvival={survival} />;
@@ -120,9 +139,14 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const challenge: 1 | 2 | 3 | 4 | 5 = params?.challenge ?? params?.position ?? options[seed % options.length];
-      return <LetterHuntGame initialChallenge={challenge} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      const initialLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
+      return <LetterHuntGame initialChallenge={challenge} initialLetters={initialLetters} initialLetter={initialLetters ? undefined : params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "letter-balance": {
+      if (params?.vowels !== undefined || params?.consonants !== undefined) {
+        const cc = { vowels: params?.vowels as number | undefined, consonants: params?.consonants as number | undefined, length: params?.length as number | undefined };
+        return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode />;
+      }
       const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
       const level = params?.level ?? levels[(seed >> 4) % levels.length];
@@ -130,7 +154,11 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
-      const rank: 1 | 2 | 3 | 4 = params?.rank ?? options[seed % options.length];
+      const challenge = params?.challenge ?? params?.rank;
+      if (challenge === "multi") {
+        return <LetterFrequencyGame initialChallenge="multi" groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      }
+      const rank: 1 | 2 | 3 | 4 = (typeof challenge === "number" ? challenge : null) ?? options[seed % options.length];
       return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "definition-match":

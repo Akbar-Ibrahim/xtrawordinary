@@ -107,6 +107,14 @@ function formatConstraint(variation: number, constraint: LevelConstraint): strin
   return desc;
 }
 
+function formatCustomConstraint(constraint: LevelConstraint): string {
+  const parts: string[] = [`${constraint.length}-letter words`];
+  if (constraint.startsWith) parts.push(`starting with '${constraint.startsWith}'`);
+  if (constraint.endsWith) parts.push(`ending with '${constraint.endsWith}'`);
+  if (constraint.contains) parts.push(`containing '${constraint.contains}'`);
+  return parts.join(", ");
+}
+
 function validateConstraint(word: string, constraint: LevelConstraint, variation: number): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   
@@ -135,7 +143,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, initialVariation, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
   const resolvedInitialChallenge = initialVariation ?? initialChallenge;
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
@@ -200,7 +208,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, groupSeed, 
     }, 1000);
   }, [stopTimer, timePerVariation, survivalTime]);
 
-  const startGame = useCallback((varId: number, survival: boolean) => {
+  const startGame = useCallback((varId: number, survival: boolean, pinnedConstraint?: LevelConstraint) => {
     resetRecorded();
     stopTimer();
     isSurvivalRef.current = survival;
@@ -212,14 +220,16 @@ export function WordLengthGame({ initialChallenge, initialVariation, groupSeed, 
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(generateConstraint(varId, seedRngRef.current));
+    setConstraint(pinnedConstraint ?? generateConstraint(varId, seedRngRef.current));
     setGameStatus("playing");
     startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [stopTimer, startTimer, resetRecorded]);
 
   useEffect(() => {
-    if (resolvedInitialChallenge !== undefined) {
+    if (customConstraint) {
+      startGame(1, initialSurvival ?? false, customConstraint);
+    } else if (resolvedInitialChallenge !== undefined) {
       startGame(resolvedInitialChallenge, initialSurvival ?? false);
     }
   }, []);
@@ -453,7 +463,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, groupSeed, 
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-2">
                   <Badge variant="secondary" className="text-sm" data-testid="badge-constraint">
-                    {constraint && formatConstraint(variation, constraint)}
+                    {constraint && (customConstraint ? formatCustomConstraint(constraint) : formatConstraint(variation, constraint))}
                   </Badge>
                   <Progress value={(wordsCompleted / wordsPerVariation) * 100} className="h-2" />
                   <p className="text-sm text-muted-foreground">
