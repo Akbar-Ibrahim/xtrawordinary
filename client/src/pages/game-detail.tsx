@@ -45,7 +45,7 @@ import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { WordChainGame } from "@/components/games/word-chain";
-import { LetterBalanceGame } from "@/components/games/letter-balance";
+import { LetterBalanceGame, VariationCategory } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { WordStackGame } from "@/components/games/word-stack";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
@@ -717,7 +717,7 @@ export default function GameDetail() {
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
                 initialChallenge={customPlayParams.category ? {
-                  category: customPlayParams.category as "vowel_consonant" | "vowel_oblivion" | "consonant_oblivion",
+                  category: customPlayParams.category as VariationCategory,
                   level: customPlayParams.level ?? 2
                 } : undefined}
                 locked

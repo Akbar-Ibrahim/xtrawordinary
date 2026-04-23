@@ -39,7 +39,7 @@ function isConsonant(char: string): boolean {
 }
 
 // Variation category types
-type VariationCategory = 
+export type VariationCategory = 
   | "consonant_count"
   | "vowel_count"
   | "start_end_vowel"
