@@ -411,7 +411,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
           <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-variation">
             <Zap className="h-3.5 w-3.5" />
-            Variation {variation}
+            {customConstraint ? "Custom" : `Variation ${variation}`}
           </Badge>
           {isSurvival && (
             <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
@@ -583,7 +583,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                 )}
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
-                    ? `You completed Variation ${variation}!`
+                    ? (customConstraint ? "You completed the custom challenge!" : `You completed Variation ${variation}!`)
                     : `You completed ${wordsCompleted} words`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
