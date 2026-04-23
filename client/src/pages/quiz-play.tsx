@@ -158,7 +158,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       if (challenge === "multi") {
         return <LetterFrequencyGame initialChallenge="multi" groupSeed={seed} locked quizMode initialSurvival={survival} />;
       }
-      const rank: 1 | 2 | 3 | 4 = (typeof challenge === "number" ? challenge : null) ?? options[seed % options.length];
+      const rankNum = typeof challenge === "number" ? Math.min(4, Math.max(1, Math.round(challenge))) : options[seed % options.length];
+      const rank = rankNum as 1 | 2 | 3 | 4;
       return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "definition-match":
