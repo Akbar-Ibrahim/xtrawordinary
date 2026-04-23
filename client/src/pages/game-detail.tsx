@@ -989,7 +989,7 @@ export default function GameDetail() {
                           onClick={() => setQuizParams(p => ({ ...p, challenge: v, letters: Array(v + 1).fill("any") }))}
                           data-testid={`button-quiz-hunt-challenge-${v}`}
                         >
-                          {v}
+                          {v + 1} letters
                         </Button>
                       ))}
                     </div>
@@ -1089,7 +1089,7 @@ export default function GameDetail() {
                         <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="any">Any</SelectItem>
-                          {[1,2,3,4,5,6,7,8].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                          {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1262,19 +1262,18 @@ export default function GameDetail() {
                   <Select
                     value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
                     onValueChange={(v) => {
-                      const c = v === "advanced" ? "advanced" : Number(v);
-                      const slotCount = typeof c === "number" ? c + 1 : 0;
-                      setCustomPlayParams(p => ({ ...p, challenge: c, letters: slotCount > 0 ? Array(slotCount).fill("any") : undefined }));
+                      const c = Number(v);
+                      const slotCount = c + 1;
+                      setCustomPlayParams(p => ({ ...p, challenge: c, letters: Array(slotCount).fill("any") }));
                     }}
                   >
                     <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
-                      <SelectValue placeholder="Select challenge" />
+                      <SelectValue placeholder="Select letter count" />
                     </SelectTrigger>
                     <SelectContent>
                       {[1, 2, 3, 4, 5].map(n => (
-                        <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
+                        <SelectItem key={n} value={String(n)}>{n + 1} letters</SelectItem>
                       ))}
-                      <SelectItem value="advanced">Advanced (random count)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1394,7 +1393,7 @@ export default function GameDetail() {
                       <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-consonants"><SelectValue placeholder="Any" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="any">Any</SelectItem>
-                        {[1,2,3,4,5,6,7,8].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                        {[1,2,3,4,5,6,7].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1523,7 +1522,8 @@ export default function GameDetail() {
               }}
               disabled={
                 (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined) ||
-                (slug === "word-length" && !!(wlCustomLength && (wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok)))
+                (slug === "word-length" && !!(wlCustomLength && (wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok))) ||
+                (slug === "letter-position" && !!customLpLetter && !!customLpPosition && (customLpCountFetching || !customLpCountData || customLpCountData.count < LP_QUIZ_MIN_WORDS))
               }
               data-testid="button-start-custom-play"
             >
