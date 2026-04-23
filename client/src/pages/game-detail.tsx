@@ -982,10 +982,10 @@ export default function GameDetail() {
                       }}
                     >
                       <SelectTrigger className="mt-1" data-testid="select-quiz-hunt-challenge">
-                        <SelectValue placeholder="Auto (seed-derived)" />
+                        <SelectValue placeholder="Auto" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">Auto (seed-derived)</SelectItem>
+                        <SelectItem value="auto">Auto</SelectItem>
                         {[1, 2, 3, 4, 5].map(n => (
                           <SelectItem key={n} value={String(n)} data-testid={`select-quiz-hunt-challenge-${n}`}>{n + 1} letters</SelectItem>
                         ))}
@@ -1279,7 +1279,7 @@ export default function GameDetail() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="random">Random (no preference)</SelectItem>
+                      <SelectItem value="random">Auto</SelectItem>
                       {[1, 2, 3, 4, 5].map(n => (
                         <SelectItem key={n} value={String(n)}>{n + 1} letters</SelectItem>
                       ))}
