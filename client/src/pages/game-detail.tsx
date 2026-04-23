@@ -900,9 +900,9 @@ export default function GameDetail() {
               {slug === "word-length" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium">Exact Word Length (3–12)</label>
+                    <label className="text-sm font-medium">Exact Word Length (3–15)</label>
                     <div className="flex gap-1 mt-1 flex-wrap">
-                      {Array.from({ length: 10 }, (_, i) => i + 3).map(n => (
+                      {Array.from({ length: 13 }, (_, i) => i + 3).map(n => (
                         <Button
                           key={n}
                           type="button"
@@ -1110,7 +1110,7 @@ export default function GameDetail() {
                         <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-quiz-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="any">Any</SelectItem>
-                          {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                          {Array.from({ length: 13 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1419,7 +1419,7 @@ export default function GameDetail() {
                       <SelectTrigger className="mt-1 h-8 text-sm" data-testid="select-custom-lb-length"><SelectValue placeholder="Any" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="any">Any</SelectItem>
-                        {Array.from({ length: 10 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                        {Array.from({ length: 13 }, (_, i) => i + 3).map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1433,9 +1433,9 @@ export default function GameDetail() {
             {slug === "word-length" && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-medium">Exact Word Length (3–12)</label>
+                  <label className="text-sm font-medium">Exact Word Length (3–15)</label>
                   <div className="flex gap-1 mt-1 flex-wrap">
-                    {Array.from({ length: 10 }, (_, i) => i + 3).map(n => (
+                    {Array.from({ length: 13 }, (_, i) => i + 3).map(n => (
                       <Button
                         key={n}
                         type="button"
