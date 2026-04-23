@@ -132,6 +132,40 @@ Suggested build phases
   Phase 3 : Tier-3 games + self-play customisation panel
 
 
+--------------------------------------------------------------------------------
+NEAR-TERM: Quiz Mode polish (pending)
+--------------------------------------------------------------------------------
+
+  [ ] Quiz lobby variant summary
+        Show a human-readable summary of the session config in the play lobby
+        before participants click Play.
+        Examples: "Letter M · Position 3 · Survival" (Position Master),
+                  "Letter F · Classic" (Letter Hunt)
+        Covers all 9 supported quiz games. Params already stored in
+        quiz_sessions.params JSON — just needs display logic in quiz-play.tsx.
+
+  [ ] Premium / Self-play Custom Mode
+        Allow premium users to configure game params and play solo —
+        same controls as quiz creator, no quiz session created, no global
+        leaderboard submission (scores stay local).
+        Quiz infrastructure already handles this at the component level
+        (initialLetter, initialPosition, initialSurvival props all exist).
+        Main new pieces: isPremium flag on user model, "Custom Play" panel
+        on game-detail pages for premium users, pass chosen params into game.
+
+        Games where this intuitively applies:
+          Position Master  → Letter, Position, Classic/Survival
+          Letter Hunt      → Letter, Classic/Survival
+          Letter Frequency → Letter, Classic/Survival
+          Letter Balance   → Difficulty level
+          Definition Match → Possibly difficulty
+          Word Length      → Classic/Survival
+
+        Open questions:
+          a) Distinct isPremium field, or reuse isAdmin for now?
+          b) One task or split: (1) quiz lobby summary, (2) premium custom play?
+
+
 
 ================================================================================
   REAL-TIME 1-ON-1 DUELS
