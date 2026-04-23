@@ -1121,7 +1121,6 @@ export default function GameDetail() {
                           <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
                           <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
                           <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
-                          <SelectItem value="random">Random (changes per word)</SelectItem>
                           <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
                         </>
                       )}
