@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crown, Sparkles, Check, Gamepad2, Sliders, Star, ChevronRight } from "lucide-react";
+import { Crown, Sparkles, Gamepad2, Sliders, Star, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth-context";
