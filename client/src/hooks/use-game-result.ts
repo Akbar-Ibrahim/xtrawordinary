@@ -103,7 +103,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
           }, result.isNewBest ? 2000 : 0);
         }
 
-        if (isAuthenticatedRef.current) {
+        if (isAuthenticatedRef.current && !quizModeRef.current) {
           for (const achievement of result.newAchievements) {
             fetch("/api/user/achievements", {
               method: "POST",
