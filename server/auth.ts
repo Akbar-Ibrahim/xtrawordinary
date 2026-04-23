@@ -19,6 +19,7 @@ declare global {
       avatarUrl: string | null;
       isAdmin: boolean;
       isBanned: boolean;
+      isPremium: boolean;
       createdAt: string;
     }
   }
