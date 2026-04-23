@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -255,154 +256,165 @@ export default function Profile() {
           ))}
         </div>
 
-        {profile.stats.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Gamepad2 className="h-5 w-5" /> Game Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {profile.stats.map((stat) => {
-                  const game = gameMap.get(stat.gameSlug);
-                  return (
-                    <div key={stat.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-game-stat-${stat.gameSlug}`}>
-                      <div>
-                        <p className="font-medium">{game?.name || stat.gameSlug}</p>
-                        <p className="text-xs text-muted-foreground">{stat.gamesPlayed} played, {stat.gamesWon} won</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">{stat.bestScore.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">Best Score</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {isOwnProfile && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" /> My Quizzes
-                {myQuizzes.length > 0 && (
-                  <Badge variant="secondary" className="ml-auto">{myQuizzes.length}</Badge>
+        <Card>
+          <CardContent className="pt-4">
+            <Tabs defaultValue="stats">
+              <TabsList className={`w-full ${isOwnProfile ? "grid grid-cols-3" : "grid grid-cols-2"}`} data-testid="tabs-profile-sections">
+                <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
+                  <Gamepad2 className="h-4 w-4" /> Game Stats
+                </TabsTrigger>
+                {isOwnProfile && (
+                  <TabsTrigger value="quizzes" className="flex items-center gap-1.5" data-testid="tab-my-quizzes">
+                    <GraduationCap className="h-4 w-4" /> My Quizzes
+                    {myQuizzes.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">{myQuizzes.length}</Badge>
+                    )}
+                  </TabsTrigger>
                 )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {quizzesLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-14 w-full rounded-lg" />
-                  <Skeleton className="h-14 w-full rounded-lg" />
-                </div>
-              ) : myQuizzes.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium mb-1">No quizzes yet</p>
-                  <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
-                  <Link href="/game/definition-match">
-                    <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {myQuizzes.map((quiz) => {
-                    const game = gameMap.get(quiz.gameSlug);
-                    const isClosed = quiz.closesAt ? new Date(quiz.closesAt) < new Date() : false;
-                    return (
-                      <div
-                        key={quiz.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                        data-testid={`row-quiz-${quiz.id}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link href={`/quiz/${quiz.shareCode}/results`}>
-                              <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
-                            </Link>
-                            {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                            <span>{game?.name ?? quiz.gameSlug.replace(/-/g, " ")}</span>
-                            <span className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
-                            </span>
-                            <span className="font-mono tracking-widest">{quiz.shareCode}</span>
-                            <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
-                            {quiz.closesAt && (
-                              <span>{isClosed ? "Closed" : "Closes"}: {new Date(quiz.closesAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => copyQuizLink(quiz.shareCode)}
-                            title="Copy play link"
-                            data-testid={`button-copy-quiz-${quiz.id}`}
-                          >
-                            {copiedCode === quiz.shareCode
-                              ? <CheckCheck className="h-4 w-4 text-green-500" />
-                              : <Copy className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/quiz/${quiz.shareCode}/results`}>
-                            <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
-                              Results
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeleteQuizCode(quiz.shareCode)}
-                            title="Delete quiz"
-                            data-testid={`button-delete-quiz-${quiz.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                <TabsTrigger value="rankings" className="flex items-center gap-1.5" data-testid="tab-rankings">
+                  <Trophy className="h-4 w-4" /> Rankings
+                </TabsTrigger>
+              </TabsList>
 
-        {profile.leaderboardRankings.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="h-5 w-5" /> Leaderboard Rankings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {profile.leaderboardRankings.map((r) => {
-                  const game = gameMap.get(r.gameSlug);
-                  return (
-                    <div key={r.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-ranking-${r.gameSlug}`}>
-                      <span className="font-medium">{game?.name || r.gameSlug}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">{r.score.toLocaleString()} pts</span>
-                        <Badge variant={r.rank <= 3 ? "default" : "secondary"}>#{r.rank}</Badge>
-                      </div>
+              <TabsContent value="stats" className="mt-4">
+                {profile.stats.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Gamepad2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">No games played yet</p>
+                    <p className="text-sm">Play some games to see stats here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {profile.stats.map((stat) => {
+                      const game = gameMap.get(stat.gameSlug);
+                      return (
+                        <div key={stat.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-game-stat-${stat.gameSlug}`}>
+                          <div>
+                            <p className="font-medium">{game?.name || stat.gameSlug}</p>
+                            <p className="text-xs text-muted-foreground">{stat.gamesPlayed} played, {stat.gamesWon} won</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">{stat.bestScore.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">Best Score</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              {isOwnProfile && (
+                <TabsContent value="quizzes" className="mt-4">
+                  {quizzesLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-14 w-full rounded-lg" />
+                      <Skeleton className="h-14 w-full rounded-lg" />
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ) : myQuizzes.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p className="font-medium mb-1">No quizzes yet</p>
+                      <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
+                      <Link href="/game/definition-match">
+                        <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {myQuizzes.map((quiz) => {
+                        const game = gameMap.get(quiz.gameSlug);
+                        const isClosed = quiz.closesAt ? new Date(quiz.closesAt) < new Date() : false;
+                        return (
+                          <div
+                            key={quiz.id}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                            data-testid={`row-quiz-${quiz.id}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Link href={`/quiz/${quiz.shareCode}/results`}>
+                                  <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
+                                </Link>
+                                {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                                <span>{game?.name ?? quiz.gameSlug.replace(/-/g, " ")}</span>
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-3 w-3" />
+                                  {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
+                                </span>
+                                <span className="font-mono tracking-widest">{quiz.shareCode}</span>
+                                <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
+                                {quiz.closesAt && (
+                                  <span>{isClosed ? "Closed" : "Closes"}: {new Date(quiz.closesAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => copyQuizLink(quiz.shareCode)}
+                                title="Copy play link"
+                                data-testid={`button-copy-quiz-${quiz.id}`}
+                              >
+                                {copiedCode === quiz.shareCode
+                                  ? <CheckCheck className="h-4 w-4 text-green-500" />
+                                  : <Copy className="h-4 w-4" />}
+                              </Button>
+                              <Link href={`/quiz/${quiz.shareCode}/results`}>
+                                <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
+                                  Results
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => setDeleteQuizCode(quiz.shareCode)}
+                                title="Delete quiz"
+                                data-testid={`button-delete-quiz-${quiz.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+              )}
+
+              <TabsContent value="rankings" className="mt-4">
+                {profile.leaderboardRankings.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Trophy className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">No rankings yet</p>
+                    <p className="text-sm">Submit scores to appear on the leaderboard.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {profile.leaderboardRankings.map((r) => {
+                      const game = gameMap.get(r.gameSlug);
+                      return (
+                        <div key={r.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-ranking-${r.gameSlug}`}>
+                          <span className="font-medium">{game?.name || r.gameSlug}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground">{r.score.toLocaleString()} pts</span>
+                            <Badge variant={r.rank <= 3 ? "default" : "secondary"}>#{r.rank}</Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
 
         {profile.achievements.length > 0 && (
           <Card>
