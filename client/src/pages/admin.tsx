@@ -126,6 +126,12 @@ function UsersTab() {
     onError: () => toast({ title: "Failed to update user", variant: "destructive" }),
   });
 
+  const premiumMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/admin/users/${id}/premium`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }); toast({ title: "User updated" }); },
+    onError: () => toast({ title: "Failed to update user", variant: "destructive" }),
+  });
+
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
@@ -153,10 +159,11 @@ function UsersTab() {
                     <td className="py-3 px-2 text-muted-foreground">{u.email}</td>
                     <td className="py-3 px-2 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString()}</td>
                     <td className="py-3 px-2">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         {u.isAdmin && <Badge variant="default" data-testid={`badge-admin-${u.id}`}>Admin</Badge>}
+                        {u.isPremium && <Badge className="bg-amber-500 text-white" data-testid={`badge-premium-${u.id}`}>Premium</Badge>}
                         {u.isBanned && <Badge variant="destructive" data-testid={`badge-banned-${u.id}`}>Banned</Badge>}
-                        {!u.isAdmin && !u.isBanned && <Badge variant="secondary">User</Badge>}
+                        {!u.isAdmin && !u.isPremium && !u.isBanned && <Badge variant="secondary">User</Badge>}
                       </div>
                     </td>
                     <td className="py-3 px-2 text-right">
@@ -180,6 +187,16 @@ function UsersTab() {
                         >
                           <ShieldCheck className="h-3 w-3 mr-1" />
                           {u.isAdmin ? "Remove Admin" : "Make Admin"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={u.isPremium ? "outline" : "secondary"}
+                          onClick={() => premiumMutation.mutate(u.id)}
+                          disabled={premiumMutation.isPending}
+                          data-testid={`button-premium-${u.id}`}
+                        >
+                          <Star className="h-3 w-3 mr-1" />
+                          {u.isPremium ? "Remove Premium" : "Make Premium"}
                         </Button>
                       </div>
                     </td>

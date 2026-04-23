@@ -23,6 +23,7 @@ import {
   GraduationCap,
   Copy,
   CheckCheck,
+  Sparkles,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
@@ -93,6 +94,25 @@ const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; l
   "word-stretch": WordStretchGame,
   "word-bloom": WordBloomGame,
 };
+
+const CUSTOM_PLAY_SLUGS = new Set([
+  "letter-position",
+  "letter-hunt",
+  "letter-frequency",
+  "letter-balance",
+  "word-length",
+]);
+
+const LETTER_BALANCE_CATEGORIES_DETAIL = [
+  { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
+  { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
+  { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
+  { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2, 3, 4, 5] },
+  { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2, 3, 4, 5] },
+] as const;
 
 interface ChallengeResult {
   myScore: number;
@@ -251,6 +271,9 @@ export default function GameDetail() {
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
   const [challengeMsg, setChallengeMsg] = useState("");
+  const [showCustomPlayDialog, setShowCustomPlayDialog] = useState(false);
+  const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
+  const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
@@ -476,6 +499,17 @@ export default function GameDetail() {
                       Create Quiz Session
                     </Button>
                   )}
+                  {isAuthenticated && user?.isPremium && slug && CUSTOM_PLAY_SLUGS.has(slug) && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                      onClick={() => { setCustomPlayParams({}); setShowCustomPlayDialog(true); }}
+                      data-testid="button-custom-play"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Custom Play
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <MiniLeaderboard game={game} />
@@ -505,6 +539,7 @@ export default function GameDetail() {
                 size="sm"
                 onClick={() => {
                   setIsPlaying(false);
+                  setIsCustomPlay(false);
                   setChallengeResult(null);
                   alreadySubmittedRef.current = false;
                   if (challengeId || challengeNewFriendId) {
@@ -561,6 +596,18 @@ export default function GameDetail() {
                       {receiverChallenge.message && ` — "${receiverChallenge.message}"`}
                       {receiverChallenge.seed != null && " · Same puzzle as your friend"}
                     </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isCustomPlay && (
+              <Card className="mb-4 border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/10">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <Sparkles className="h-5 w-5 text-amber-500 shrink-0" />
+                  <div>
+                    <p className="font-medium text-sm text-amber-700 dark:text-amber-400">Custom Play Mode</p>
+                    <p className="text-xs text-muted-foreground">Scores are not saved to the leaderboard in custom play.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -632,6 +679,42 @@ export default function GameDetail() {
                   <p className="text-muted-foreground">Loading challenge...</p>
                 </CardContent>
               </Card>
+            ) : isCustomPlay && slug === "letter-position" ? (
+              <LetterPositionGame
+                initialChallenge={(customPlayParams.letter && customPlayParams.position ? 1 : 2) as 1 | 2}
+                initialLetter={customPlayParams.letter as string | undefined}
+                initialPosition={customPlayParams.position ? Number(customPlayParams.position) : undefined}
+                initialSurvival={customPlayParams.survival === true}
+                locked
+                quizMode
+              />
+            ) : isCustomPlay && slug === "letter-hunt" ? (
+              <LetterHuntGame
+                initialChallenge={(customPlayParams.challenge ?? 1) as any}
+                initialSurvival={customPlayParams.survival === true}
+                locked
+                quizMode
+              />
+            ) : isCustomPlay && slug === "letter-frequency" ? (
+              <LetterFrequencyGame
+                initialChallenge={(customPlayParams.challenge ?? 1) as any}
+                initialSurvival={customPlayParams.survival === true}
+                locked
+                quizMode
+              />
+            ) : isCustomPlay && slug === "letter-balance" ? (
+              <LetterBalanceGame
+                initialChallenge={customPlayParams.category ? { category: customPlayParams.category as any, level: customPlayParams.level ?? 2 } : undefined}
+                locked
+                quizMode
+              />
+            ) : isCustomPlay && slug === "word-length" ? (
+              <WordLengthGame
+                initialChallenge={customPlayParams.variation ?? 1}
+                initialSurvival={customPlayParams.survival === true}
+                locked
+                quizMode
+              />
             ) : GameComponent ? (
               <GameComponent groupSeed={effectiveGroupSeed} />
             ) : (
@@ -941,6 +1024,200 @@ export default function GameDetail() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCustomPlayDialog} onOpenChange={(open) => { setShowCustomPlayDialog(open); if (!open) setCustomPlayParams({}); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              Custom Play
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Configure a custom game variant for <strong>{game.name}</strong>. Scores won't be saved to the leaderboard.
+            </p>
+
+            {slug === "letter-position" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Letter (optional)</label>
+                  <Select
+                    value={customPlayParams.letter ?? ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, letter: v || undefined }))}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-lp-letter">
+                      <SelectValue placeholder="Any letter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Position (optional)</label>
+                  <Select
+                    value={customPlayParams.position !== undefined ? String(customPlayParams.position) : ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, position: v ? Number(v) : undefined }))}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-lp-position">
+                      <SelectValue placeholder="Any position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any</SelectItem>
+                      {Array.from({ length: 15 }, (_, i) => i + 1).map(n => (
+                        <SelectItem key={n} value={String(n)}>Position {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {(slug === "letter-hunt" || slug === "letter-frequency") && (
+              <div>
+                <label className="text-sm font-medium">
+                  {slug === "letter-hunt" ? "Letter Count" : "Frequency Challenge"}
+                </label>
+                <Select
+                  value={customPlayParams.challenge !== undefined ? String(customPlayParams.challenge) : ""}
+                  onValueChange={(v) => setCustomPlayParams(p => ({ ...p, challenge: v === "advanced" || v === "random" || v === "multi" ? v : Number(v) }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-custom-challenge">
+                    <SelectValue placeholder="Select challenge" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {slug === "letter-hunt" ? (
+                      <>
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <SelectItem key={n} value={String(n)}>Challenge {n} ({n + 1} letters)</SelectItem>
+                        ))}
+                        <SelectItem value="advanced">Advanced (random count)</SelectItem>
+                      </>
+                    ) : (
+                      <>
+                        <SelectItem value="1">Challenge 1 (exactly 2×)</SelectItem>
+                        <SelectItem value="2">Challenge 2 (exactly 3×)</SelectItem>
+                        <SelectItem value="3">Challenge 3 (exactly 4×)</SelectItem>
+                        <SelectItem value="4">Challenge 4 (5× or more)</SelectItem>
+                        <SelectItem value="random">Random (changes per word)</SelectItem>
+                        <SelectItem value="multi">Multi-Letter (2+ letters)</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {slug === "letter-balance" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Category</label>
+                  <Select
+                    value={customPlayParams.category ?? ""}
+                    onValueChange={(v) => setCustomPlayParams(p => ({ ...p, category: v || undefined, level: undefined }))}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-lb-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LETTER_BALANCE_CATEGORIES_DETAIL.map(cat => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {customPlayParams.category && (() => {
+                  const cat = LETTER_BALANCE_CATEGORIES_DETAIL.find(c => c.id === customPlayParams.category);
+                  if (!cat) return null;
+                  return (
+                    <div>
+                      <label className="text-sm font-medium">{cat.levelType === "count" ? "Count" : "Word Length"}</label>
+                      <Select
+                        value={customPlayParams.level !== undefined ? String(customPlayParams.level) : ""}
+                        onValueChange={(v) => setCustomPlayParams(p => ({ ...p, level: v === "advanced" ? "advanced" : Number(v) }))}
+                      >
+                        <SelectTrigger className="mt-1" data-testid="select-custom-lb-level">
+                          <SelectValue placeholder={`Select ${cat.levelType === "count" ? "count" : "length"}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cat.levels.map(l => (
+                            <SelectItem key={l} value={String(l)}>{cat.levelType === "count" ? `${l} ${l === 1 ? "count" : "counts"}` : `${l} letters`}</SelectItem>
+                          ))}
+                          <SelectItem value="advanced">Advanced (random)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+
+            {slug === "word-length" && (
+              <div>
+                <label className="text-sm font-medium">Word Length Target</label>
+                <Select
+                  value={customPlayParams.variation !== undefined ? String(customPlayParams.variation) : ""}
+                  onValueChange={(v) => setCustomPlayParams(p => ({ ...p, variation: Number(v) }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-custom-wl-variation">
+                    <SelectValue placeholder="Select target" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Up to 4 letters</SelectItem>
+                    <SelectItem value="2">Up to 6 letters</SelectItem>
+                    <SelectItem value="3">Up to 8 letters</SelectItem>
+                    <SelectItem value="4">10-letter words</SelectItem>
+                    <SelectItem value="5">12-letter words</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {slug !== "letter-balance" && (
+              <div>
+                <label className="text-sm font-medium">Mode</label>
+                <div className="flex gap-2 mt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={!customPlayParams.survival ? "default" : "outline"}
+                    onClick={() => setCustomPlayParams(p => { const n = { ...p }; delete n.survival; return n; })}
+                    data-testid="button-custom-mode-classic"
+                  >
+                    Classic
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={customPlayParams.survival ? "default" : "outline"}
+                    onClick={() => setCustomPlayParams(p => ({ ...p, survival: true }))}
+                    data-testid="button-custom-mode-survival"
+                  >
+                    Survival (8s/word)
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <Button
+              className="w-full gap-2"
+              onClick={() => {
+                setShowCustomPlayDialog(false);
+                setIsCustomPlay(true);
+                setIsPlaying(true);
+              }}
+              data-testid="button-start-custom-play"
+            >
+              <Play className="h-4 w-4" />
+              Play Custom Game
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

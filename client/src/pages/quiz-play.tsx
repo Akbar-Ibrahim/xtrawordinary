@@ -43,6 +43,58 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
+const LETTER_BALANCE_CATEGORY_NAMES: Record<string, string> = {
+  consonant_count: "Consonant Count",
+  vowel_count: "Vowel Count",
+  start_end_vowel: "Start & End Vowels",
+  start_end_consonant: "Start & End Consonants",
+  start_vowel_end_consonant: "Start Vowel, End Consonant",
+  start_consonant_end_vowel: "Start Consonant, End Vowel",
+  consonant_oblivion: "Consonant Oblivion",
+  vowel_oblivion: "Vowel Oblivion",
+};
+
+function getVariantSummary(slug: string, seed: number, params?: Record<string, any>): string | null {
+  if (!params || Object.keys(params).length === 0) return null;
+  const survival = params.survival === true ? " · Survival" : "";
+  switch (slug) {
+    case "word-length": {
+      const lengthMap: Record<number, string> = { 1: "≤4 letters", 2: "≤6 letters", 3: "≤8 letters", 4: "10 letters", 5: "12 letters" };
+      const variation = params.variation ?? [1, 2, 3, 4, 5][seed % 5];
+      return `Word length: ${lengthMap[variation] ?? `Variation ${variation}`}${survival}`;
+    }
+    case "letter-position": {
+      const letter = params.letter;
+      const position = params.position;
+      if (letter && position) return `Letter ${letter} at position ${position}${survival}`;
+      if (letter) return `Letter: ${letter}${survival}`;
+      return `Letter Position${survival}`;
+    }
+    case "letter-hunt": {
+      const countMap: Record<string | number, string> = { 1: "2 letters", 2: "3 letters", 3: "4 letters", 4: "5 letters", 5: "6 letters", advanced: "Advanced (random)" };
+      const challenge = params.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
+      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${survival}`;
+    }
+    case "letter-frequency": {
+      const freqMap: Record<number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more" };
+      const rank = params.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
+      return `Frequency: ${freqMap[rank] ?? `Challenge ${rank}`}${survival}`;
+    }
+    case "letter-balance": {
+      const cat = params.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      const level = params.level;
+      const catName = LETTER_BALANCE_CATEGORY_NAMES[cat] ?? cat;
+      return level !== undefined ? `${catName} · Level ${level}` : catName;
+    }
+    case "letter-pool": {
+      const v = params.variant;
+      return v === "with-pool" ? "With Pool" : v === "without-pool" ? "Without Pool" : null;
+    }
+    default:
+      return null;
+  }
+}
+
 function renderQuizGame(slug: string, seed: number, params?: Record<string, any>): React.ReactNode {
   const survival = params?.survival === true;
   switch (slug) {
@@ -220,6 +272,12 @@ export default function QuizPlay() {
                 </div>
                 <CardTitle className="text-2xl" data-testid="text-quiz-title">{session.title}</CardTitle>
                 <p className="text-muted-foreground text-sm mt-1 capitalize">{session.gameSlug.replace(/-/g, " ")}</p>
+                {(() => {
+                  const summary = getVariantSummary(session.gameSlug, seed, (session.params as Record<string, any>) ?? undefined);
+                  return summary ? (
+                    <p className="text-xs text-primary font-medium mt-0.5" data-testid="text-quiz-variant-summary">{summary}</p>
+                  ) : null;
+                })()}
               </CardHeader>
               <CardContent className="space-y-4">
                 {session.isClosed && (

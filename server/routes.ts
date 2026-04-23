@@ -624,6 +624,7 @@ export async function registerRoutes(
         avatarUrl: null,
         isAdmin: false,
         isBanned: false,
+        isPremium: false,
       });
       const token = crypto.randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -1404,6 +1405,21 @@ export async function registerRoutes(
       res.json(rest);
     } catch (error) {
       res.status(500).json({ error: "Failed to toggle admin" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/premium", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
+      const user = await storage.getUserById(id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      const updated = await storage.updateUser(id, { isPremium: !user.isPremium });
+      if (!updated) return res.status(500).json({ error: "Failed to update user" });
+      const { passwordHash, ...rest } = updated;
+      res.json(rest);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to toggle premium" });
     }
   });
 

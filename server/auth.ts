@@ -164,6 +164,7 @@ export function setupAuth(app: Express) {
               avatarUrl: profile.photos?.[0]?.value || null,
               isAdmin: false,
               isBanned: false,
+              isPremium: false,
             });
             return done(null, user);
           } catch (err) {

@@ -186,6 +186,7 @@ export class MySQLStorage implements IStorage {
       avatarUrl: row.avatarUrl || null,
       isAdmin: !!row.isAdmin,
       isBanned: !!row.isBanned,
+      isPremium: !!row.isPremium,
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     };
   }
@@ -201,6 +202,7 @@ export class MySQLStorage implements IStorage {
       avatarUrl: user.avatarUrl,
       isAdmin: user.isAdmin ?? false,
       isBanned: user.isBanned ?? false,
+      isPremium: user.isPremium ?? false,
     });
     const id = result[0].insertId;
     const created = await this.getUserById(id);
@@ -236,6 +238,7 @@ export class MySQLStorage implements IStorage {
     if (updates.avatarUrl !== undefined) dbUpdates.avatarUrl = updates.avatarUrl;
     if (updates.isAdmin !== undefined) dbUpdates.isAdmin = updates.isAdmin;
     if (updates.isBanned !== undefined) dbUpdates.isBanned = updates.isBanned;
+    if (updates.isPremium !== undefined) dbUpdates.isPremium = updates.isPremium;
     await db.update(schema.users).set(dbUpdates).where(eq(schema.users.id, id));
     return this.getUserById(id);
   }
