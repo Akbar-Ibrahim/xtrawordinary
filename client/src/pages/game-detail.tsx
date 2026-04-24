@@ -817,7 +817,7 @@ export default function GameDetail() {
                 Create a shareable quiz in <strong>{game.name}</strong>. Anyone with the link can play and submit their score.
               </p>
               <div>
-                <label className="text-sm font-medium">Session Title</label>
+                <label className="text-sm font-medium">Quiz title or name</label>
                 <Input
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}

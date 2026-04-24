@@ -394,8 +394,12 @@ export default function QuizPlay() {
                           <span className="font-bold text-sm w-6 text-center text-muted-foreground">
                             {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                           </span>
-                          <UserAvatar name={s.playerName ?? "?"} avatarUrl={s.playerAvatarUrl ?? null} className="h-7 w-7" />
-                          <span className="flex-1 text-sm font-medium">{s.playerName ?? "Player"}</span>
+                          <Link href={`/profile/${s.userId}`}>
+                            <UserAvatar name={s.playerName ?? "?"} avatarUrl={s.playerAvatarUrl ?? null} className="h-7 w-7 cursor-pointer" />
+                          </Link>
+                          <Link href={`/profile/${s.userId}`} className="flex-1">
+                            <span className="text-sm font-medium hover:underline cursor-pointer">{s.playerName ?? "Player"}</span>
+                          </Link>
                           <span className="font-bold text-primary" data-testid={`text-score-${s.id}`}>{s.score}</span>
                         </div>
                       ))}

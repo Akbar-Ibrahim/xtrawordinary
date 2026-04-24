@@ -201,9 +201,13 @@ export default function QuizResults() {
                   <span className="font-bold text-base w-8 text-center">
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                   </span>
-                  <UserAvatar name={s.playerName ?? "?"} avatarUrl={s.playerAvatarUrl ?? null} className="h-8 w-8" />
+                  <Link href={`/profile/${s.userId}`}>
+                    <UserAvatar name={s.playerName ?? "?"} avatarUrl={s.playerAvatarUrl ?? null} className="h-8 w-8 cursor-pointer" />
+                  </Link>
                   <div className="flex-1">
-                    <p className="font-medium" data-testid={`text-player-${s.id}`}>{s.playerName ?? "Player"}</p>
+                    <Link href={`/profile/${s.userId}`}>
+                      <p className="font-medium hover:underline cursor-pointer" data-testid={`text-player-${s.id}`}>{s.playerName ?? "Player"}</p>
+                    </Link>
                     <p className="text-xs text-muted-foreground">
                       {new Date(s.completedAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
                     </p>

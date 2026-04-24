@@ -409,16 +409,25 @@ export default function Friends() {
 
                               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                 {(() => {
+                                  const opponentId = isSender ? c.receiverId : c.senderId;
                                   const opponentAvatar = isSender ? c.receiverAvatarUrl : c.senderAvatarUrl;
                                   const opponentName = isSender ? c.receiverName : c.senderName;
-                                  return opponentAvatar
-                                    ? <img src={opponentAvatar} className="h-4 w-4 rounded-full shrink-0" alt={opponentName ?? "opponent"} />
-                                    : <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />;
+                                  return (
+                                    <Link href={`/profile/${opponentId}`}>
+                                      {opponentAvatar
+                                        ? <img src={opponentAvatar} className="h-4 w-4 rounded-full shrink-0 cursor-pointer" alt={opponentName ?? "opponent"} />
+                                        : <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                    </Link>
+                                  );
                                 })()}
                                 <p className="text-xs text-muted-foreground">
-                                  {isSender
-                                    ? `You challenged ${c.receiverName ?? "a friend"}`
-                                    : `${c.senderName ?? "A friend"} challenged you`}
+                                  {isSender ? "You challenged " : ""}
+                                  <Link href={`/profile/${isSender ? c.receiverId : c.senderId}`}>
+                                    <span className="font-medium text-foreground hover:underline cursor-pointer">
+                                      {isSender ? (c.receiverName ?? "a friend") : (c.senderName ?? "A friend")}
+                                    </span>
+                                  </Link>
+                                  {!isSender ? " challenged you" : ""}
                                   {c.message && ` — "${c.message}"`}
                                   {c.seed != null && " · Shared puzzle"}
                                   {" · "}{formatDate(c.createdAt)}

@@ -313,11 +313,15 @@ export default function GroupRoundPlay() {
                               <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                                 {i + 1}
                               </span>
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={entry.user.avatarUrl || undefined} />
-                                <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+                              <Link href={`/profile/${entry.user.id}`}>
+                                <Avatar className="h-7 w-7 cursor-pointer">
+                                  <AvatarImage src={entry.user.avatarUrl || undefined} />
+                                  <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                              </Link>
+                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              </Link>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
                                 {entry.durationMs != null
@@ -369,11 +373,15 @@ export default function GroupRoundPlay() {
                               <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                                 {i + 1}
                               </span>
-                              <Avatar className="h-7 w-7">
-                                <AvatarImage src={entry.user.avatarUrl || undefined} />
-                                <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+                              <Link href={`/profile/${entry.user.id}`}>
+                                <Avatar className="h-7 w-7 cursor-pointer">
+                                  <AvatarImage src={entry.user.avatarUrl || undefined} />
+                                  <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                              </Link>
+                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              </Link>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
                                 {entry.durationMs != null

@@ -87,10 +87,12 @@ function LeaderboardEntries({
                   <span className="text-muted-foreground">{index + 1}</span>
                 )}
               </div>
-              <div className={`w-7 h-7 rounded-full ${getAvatarColor(entry.playerName)} flex items-center justify-center shrink-0 text-[10px] font-bold text-white`}
-                data-testid={`avatar-player-${index}`}>
-                {getInitials(entry.playerName)}
-              </div>
+              <Link href={`/profile/${entry.userId}`}>
+                <div className={`w-7 h-7 rounded-full ${getAvatarColor(entry.playerName)} flex items-center justify-center shrink-0 text-[10px] font-bold text-white cursor-pointer`}
+                  data-testid={`avatar-player-${index}`}>
+                  {getInitials(entry.playerName)}
+                </div>
+              </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <Link href={`/profile/${entry.userId}`}>

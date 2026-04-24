@@ -139,11 +139,15 @@ function RoundScoresPanel({ groupId, roundId, currentUserId }: { groupId: number
             <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
               {i + 1}
             </span>
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={entry.user.avatarUrl || undefined} />
-              <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user.name)}`}>{getInitials(entry.user.name)}</AvatarFallback>
-            </Avatar>
-            <span className="flex-1 text-sm font-medium truncate">{entry.user.name}</span>
+            <Link href={`/profile/${entry.userId}`}>
+              <Avatar className="h-7 w-7 cursor-pointer">
+                <AvatarImage src={entry.user.avatarUrl || undefined} />
+                <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user.name)}`}>{getInitials(entry.user.name)}</AvatarFallback>
+              </Avatar>
+            </Link>
+            <Link href={`/profile/${entry.userId}`} className="flex-1 min-w-0">
+              <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+            </Link>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               {entry.durationMs != null
@@ -565,12 +569,16 @@ export default function GroupDetail() {
                       <span className={`text-xl font-bold w-8 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                         {i + 1}
                       </span>
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={entry.avatarUrl || undefined} />
-                        <AvatarFallback className={`text-white ${getAvatarColor(entry.name)}`}>{getInitials(entry.name)}</AvatarFallback>
-                      </Avatar>
+                      <Link href={`/profile/${entry.userId}`}>
+                        <Avatar className="h-9 w-9 cursor-pointer">
+                          <AvatarImage src={entry.avatarUrl || undefined} />
+                          <AvatarFallback className={`text-white ${getAvatarColor(entry.name)}`}>{getInitials(entry.name)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{entry.name}</p>
+                        <Link href={`/profile/${entry.userId}`}>
+                          <p className="font-semibold truncate hover:underline cursor-pointer">{entry.name}</p>
+                        </Link>
                         <p className="text-xs text-muted-foreground">{entry.roundsPlayed} round{entry.roundsPlayed !== 1 ? "s" : ""} played</p>
                       </div>
                       <p className="font-bold text-lg">{entry.totalScore.toLocaleString()}</p>
@@ -589,12 +597,16 @@ export default function GroupDetail() {
                 {members?.map(member => (
                   <Card key={member.id} data-testid={`card-member-${member.userId}`}>
                     <CardContent className="p-4 flex items-center gap-4">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={member.user.avatarUrl || undefined} />
-                        <AvatarFallback className={`text-white ${getAvatarColor(member.user.name)}`}>{getInitials(member.user.name)}</AvatarFallback>
-                      </Avatar>
+                      <Link href={`/profile/${member.userId}`}>
+                        <Avatar className="h-9 w-9 cursor-pointer">
+                          <AvatarImage src={member.user.avatarUrl || undefined} />
+                          <AvatarFallback className={`text-white ${getAvatarColor(member.user.name)}`}>{getInitials(member.user.name)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{member.user.name}</p>
+                        <Link href={`/profile/${member.userId}`}>
+                          <p className="font-semibold truncate hover:underline cursor-pointer">{member.user.name}</p>
+                        </Link>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {member.role === "owner" && <Crown className="h-3.5 w-3.5 text-yellow-500" />}
                           {member.role === "admin" && <Shield className="h-3.5 w-3.5 text-blue-500" />}
@@ -648,10 +660,19 @@ export default function GroupDetail() {
               <div className="space-y-2">
                 {activity.map(entry => (
                   <div key={entry.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/30 border border-border/40" data-testid={`activity-${entry.id}`}>
-                    <Avatar className="h-8 w-8 shrink-0">
-                      {entry.user?.avatarUrl && <AvatarImage src={entry.user.avatarUrl} />}
-                      <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user?.name ?? "")}`}>{getInitials(entry.user?.name ?? "?")}</AvatarFallback>
-                    </Avatar>
+                    {entry.user?.id ? (
+                      <Link href={`/profile/${entry.user.id}`}>
+                        <Avatar className="h-8 w-8 shrink-0 cursor-pointer">
+                          {entry.user?.avatarUrl && <AvatarImage src={entry.user.avatarUrl} />}
+                          <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user?.name ?? "")}`}>{getInitials(entry.user?.name ?? "?")}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                    ) : (
+                      <Avatar className="h-8 w-8 shrink-0">
+                        {entry.user?.avatarUrl && <AvatarImage src={entry.user.avatarUrl} />}
+                        <AvatarFallback className={`text-xs text-white ${getAvatarColor(entry.user?.name ?? "")}`}>{getInitials(entry.user?.name ?? "?")}</AvatarFallback>
+                      </Avatar>
+                    )}
                     <p className="text-sm flex-1">{activityLabel(entry.type, entry.metadata)}</p>
                     <span className="text-xs text-muted-foreground shrink-0">{timeAgo(entry.createdAt)}</span>
                   </div>
