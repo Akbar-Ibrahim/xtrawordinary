@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
@@ -364,6 +364,11 @@ export default function Profile() {
                                   ? <CheckCheck className="h-4 w-4 text-green-500" />
                                   : <Copy className="h-4 w-4" />}
                               </Button>
+                              <Link href={`/quiz/${quiz.shareCode}`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Play quiz" data-testid={`button-play-quiz-${quiz.id}`}>
+                                  <Play className="h-4 w-4" />
+                                </Button>
+                              </Link>
                               <Link href={`/quiz/${quiz.shareCode}/results`}>
                                 <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
                                   Results
