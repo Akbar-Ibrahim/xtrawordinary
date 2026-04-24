@@ -136,8 +136,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const rawLength = toNum(params?.length);
       if (rawLength) {
         const cc = { length: rawLength, startsWith: params?.startsWith as string | undefined, endsWith: params?.endsWith as string | undefined, contains: params?.contains as string | undefined };
-        const wc = toNum(params?.wordCount);
-        const tl = toNum(params?.timeLimit);
+        const wc = !survival ? toNum(params?.wordCount) : undefined;
+        const tl = !survival ? toNum(params?.timeLimit) : undefined;
         return <WordLengthGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={wc ?? undefined} initialTimeLimit={tl ?? undefined} />;
       }
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];

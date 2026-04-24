@@ -1202,7 +1202,7 @@ export default function GameDetail() {
                       type="button"
                       size="sm"
                       variant={quizParams.survival ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => ({ ...p, survival: true }))}
+                      onClick={() => setQuizParams(p => { const n = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
                       data-testid="button-quiz-mode-survival"
                     >
                       Survival (8s/word)
