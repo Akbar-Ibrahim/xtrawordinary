@@ -1215,6 +1215,14 @@ export default function GameDetail() {
                 </div>
               </div>
               <Button
+                className="w-full gap-2"
+                onClick={() => { setShowQuizDialog(false); navigate(`/quiz/${createdQuiz!.shareCode}`); }}
+                data-testid="button-play-quiz"
+              >
+                <Play className="h-4 w-4" />
+                Play Quiz
+              </Button>
+              <Button
                 variant="outline"
                 className="w-full gap-2"
                 onClick={() => navigate(`/quiz/${createdQuiz!.shareCode}/results`)}
