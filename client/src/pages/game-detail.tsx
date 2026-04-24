@@ -1316,6 +1316,7 @@ export default function GameDetail() {
                   )) ||
                   (slug === "word-length" && (!wlQuizLength || wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok)) ||
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
+                  (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined)
                 }
                 data-testid="button-create-quiz-submit"
@@ -1750,11 +1751,11 @@ export default function GameDetail() {
                     <div>
                       <label className="text-sm font-medium">Words to find</label>
                       <Input
-                        type="number" min={1} max={50} placeholder="20"
+                        type="number" min={1} max={wlCustomCountData?.count ?? 50} placeholder="20"
                         className="mt-1 h-8 text-sm w-24"
                         data-testid="input-custom-wl-word-count"
                         value={customPlayParams.wordCount ?? ""}
-                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(wlCustomCountData?.count ?? 50, Math.max(1, parseInt(e.target.value) || 1)) }))}
                       />
                     </div>
                     <div>
