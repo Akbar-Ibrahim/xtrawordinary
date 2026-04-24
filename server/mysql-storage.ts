@@ -29,46 +29,6 @@ export class MySQLStorage implements IStorage {
     return this.dbPromise;
   }
 
-  private static readonly GAME_MODES: Record<string, GameMode[]> = {
-    "word-sweep": [
-      { label: "Classic", slug: "word-sweep" },
-      { label: "Guided", slug: "word-unpack" },
-    ],
-    "ladder-rush": [
-      { label: "Easy (4L)", slug: "ladder-rush-4" },
-      { label: "Medium (5L)", slug: "ladder-rush-5" },
-      { label: "Hard (6L)", slug: "ladder-rush-6" },
-    ],
-    "ladder-rush-double": [
-      { label: "Easy (4L)", slug: "ladder-rush-double-4" },
-      { label: "Medium (5L)", slug: "ladder-rush-double-5" },
-      { label: "Hard (6L)", slug: "ladder-rush-double-6" },
-    ],
-    "shell-words": [
-      { label: "Blitz", slug: "shell-words" },
-      { label: "Blitz Survival", slug: "shell-words-blitz-survival" },
-      { label: "Wrapper", slug: "shell-words-guided" },
-      { label: "Wrapper Survival", slug: "shell-words-wrapper-survival" },
-      { label: "Crack", slug: "shell-words-crack" },
-      { label: "Crack Survival", slug: "shell-words-crack-survival" },
-    ],
-    "deep-shell-words": [
-      { label: "Blitz", slug: "deep-shell-words" },
-      { label: "Blitz Survival", slug: "deep-shell-words-blitz-survival" },
-      { label: "Wrapper", slug: "deep-shell-words-guided" },
-      { label: "Wrapper Survival", slug: "deep-shell-words-wrapper-survival" },
-      { label: "Crack", slug: "deep-shell-words-crack" },
-      { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
-    ],
-    "word-stretch": [
-      { label: "Classic", slug: "word-stretch" },
-      { label: "Survival", slug: "word-stretch-survival" },
-    ],
-    "word-bloom": [
-      { label: "Classic", slug: "word-bloom" },
-      { label: "Survival", slug: "word-bloom-survival" },
-    ],
-  };
 
   private mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
     let rules: string[];
@@ -85,7 +45,6 @@ export class MySQLStorage implements IStorage {
       ? (row.difficulty as Game["difficulty"])
       : "medium";
 
-    const modes = MySQLStorage.GAME_MODES[row.slug];
     return {
       id: row.id,
       slug: row.slug,
@@ -100,7 +59,7 @@ export class MySQLStorage implements IStorage {
       playCount: row.playCount,
       isActive: row.isActive,
       hasSurvival: row.hasSurvival,
-      ...(modes ? { modes } : {}),
+      ...(row.modes && row.modes.length > 0 ? { modes: row.modes } : {}),
     };
   }
 

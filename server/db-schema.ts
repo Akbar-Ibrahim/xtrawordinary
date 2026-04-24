@@ -226,6 +226,7 @@ export const games = mysqlTable("games", {
   playCount: int("play_count").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   hasSurvival: boolean("has_survival").notNull().default(false),
+  modes: json("modes").$type<import("@shared/schema").GameMode[]>(),
 });
 
 export const wordCategories = mysqlTable("word_categories", {
