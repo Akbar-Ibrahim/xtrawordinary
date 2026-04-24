@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion, AnimatePresence } from "framer-motion";
@@ -314,10 +314,7 @@ export default function GroupRoundPlay() {
                                 {i + 1}
                               </span>
                               <Link href={`/profile/${entry.user.id}`}>
-                                <Avatar className="h-7 w-7 cursor-pointer">
-                                  <AvatarImage src={entry.user.avatarUrl || undefined} />
-                                  <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
+                                <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
                               </Link>
                               <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
                                 <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
@@ -374,10 +371,7 @@ export default function GroupRoundPlay() {
                                 {i + 1}
                               </span>
                               <Link href={`/profile/${entry.user.id}`}>
-                                <Avatar className="h-7 w-7 cursor-pointer">
-                                  <AvatarImage src={entry.user.avatarUrl || undefined} />
-                                  <AvatarFallback className="text-xs">{entry.user.name.charAt(0).toUpperCase()}</AvatarFallback>
-                                </Avatar>
+                                <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
                               </Link>
                               <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
                                 <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
