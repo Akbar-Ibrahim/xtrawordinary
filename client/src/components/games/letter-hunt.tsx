@@ -103,7 +103,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -143,8 +143,8 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const lastGameSeedRef = useRef<number | null>(null);
   const constraintRngRef = useRef<(() => number) | null>(null);
 
-  const wordsToComplete = 20;
-  const timePerChallenge = 120;
+  const wordsToComplete = initialWordCount ?? 20;
+  const timePerChallenge = initialTimeLimit ?? 120;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

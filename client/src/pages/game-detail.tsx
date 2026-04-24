@@ -737,6 +737,8 @@ export default function GameDetail() {
                 initialLetter={customPlayParams.letter as string | undefined}
                 initialPosition={customPlayParams.position ? Number(customPlayParams.position) : undefined}
                 initialSurvival={customPlayParams.survival === true}
+                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
+                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
                 locked
                 quizMode
               />
@@ -750,6 +752,8 @@ export default function GameDetail() {
                 })()}
                 initialLetters={customPlayParams.letters as string[] | undefined}
                 initialSurvival={customPlayParams.survival === true}
+                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
+                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
                 locked
                 quizMode
               />
@@ -767,6 +771,8 @@ export default function GameDetail() {
                 })()}
                 initialLetter={customPlayParams.letter || undefined}
                 initialSurvival={customPlayParams.survival === true}
+                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
+                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
                 locked
                 quizMode
               />
@@ -785,6 +791,8 @@ export default function GameDetail() {
                 customConstraint={wlCustomLength ? { length: wlCustomLength, startsWith: wlCustomStartsWith, endsWith: wlCustomEndsWith, contains: wlCustomContains } : undefined}
                 initialVariation={wlCustomLength ? undefined : (Math.min(5, Math.max(1, Number(customPlayParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5)}
                 initialSurvival={customPlayParams.survival === true}
+                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
+                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
                 locked
                 quizMode
               />
@@ -915,6 +923,34 @@ export default function GameDetail() {
                             ? `Only ${lpCountData.count} word${lpCountData.count !== 1 ? "s" : ""} match — need at least ${LP_QUIZ_MIN_WORDS}. Try a different letter or position.`
                             : `${lpCountData.count} words match`}
                     </p>
+                  )}
+                  {!quizParams.survival && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Words to find</label>
+                        <Input
+                          type="number" min={1} max={50} placeholder="20"
+                          className="mt-1 h-8 text-sm w-24"
+                          data-testid="input-quiz-lp-word-count"
+                          value={quizParams.wordCount ?? ""}
+                          onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time limit</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[60, 90, 120, 180, 300].map(t => (
+                            <Button key={t} type="button" size="sm"
+                              variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                              onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                              data-testid={`button-quiz-lp-time-${t}`}
+                            >
+                              {t < 60 ? `${t}s` : `${t / 60}min`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -1083,6 +1119,34 @@ export default function GameDetail() {
                       <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
                     </div>
                   )}
+                  {!quizParams.survival && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Words to find</label>
+                        <Input
+                          type="number" min={1} max={50} placeholder="20"
+                          className="mt-1 h-8 text-sm w-24"
+                          data-testid="input-quiz-hunt-word-count"
+                          value={quizParams.wordCount ?? ""}
+                          onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time limit</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[60, 90, 120, 180, 300].map(t => (
+                            <Button key={t} type="button" size="sm"
+                              variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                              onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                              data-testid={`button-quiz-hunt-time-${t}`}
+                            >
+                              {t < 60 ? `${t}s` : `${t / 60}min`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               {slug === "letter-frequency" && (
@@ -1133,6 +1197,34 @@ export default function GameDetail() {
                         );
                       })()}
                     </div>
+                  )}
+                  {!quizParams.survival && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Words to find</label>
+                        <Input
+                          type="number" min={1} max={50} placeholder="20"
+                          className="mt-1 h-8 text-sm w-24"
+                          data-testid="input-quiz-freq-word-count"
+                          value={quizParams.wordCount ?? ""}
+                          onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time limit</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[60, 90, 120, 180, 300].map(t => (
+                            <Button key={t} type="button" size="sm"
+                              variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                              onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                              data-testid={`button-quiz-freq-time-${t}`}
+                            >
+                              {t < 60 ? `${t}s` : `${t / 60}min`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -1333,6 +1425,34 @@ export default function GameDetail() {
                     {customLpCountFetching ? "Checking…" : !customLpCountData ? "" : customLpCountData.count < LP_QUIZ_MIN_WORDS ? `Only ${customLpCountData.count} words match — try different settings.` : `${customLpCountData.count} words match ✓`}
                   </p>
                 )}
+                {!customPlayParams.survival && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Words to find</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-custom-lp-word-count"
+                        value={customPlayParams.wordCount ?? ""}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                            onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-custom-lp-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1388,6 +1508,34 @@ export default function GameDetail() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
                   </div>
+                )}
+                {!customPlayParams.survival && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Words to find</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-custom-hunt-word-count"
+                        value={customPlayParams.wordCount ?? ""}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                            onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-custom-hunt-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -1451,6 +1599,34 @@ export default function GameDetail() {
                       );
                     })()}
                   </div>
+                )}
+                {!customPlayParams.survival && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Words to find</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-custom-freq-word-count"
+                        value={customPlayParams.wordCount ?? ""}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                            onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-custom-freq-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             )}
@@ -1569,6 +1745,34 @@ export default function GameDetail() {
                     </p>
                   </>
                 )}
+                {!customPlayParams.survival && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Words to find</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-custom-wl-word-count"
+                        value={customPlayParams.wordCount ?? ""}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                            onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-custom-wl-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1589,7 +1793,7 @@ export default function GameDetail() {
                     type="button"
                     size="sm"
                     variant={customPlayParams.survival ? "default" : "outline"}
-                    onClick={() => setCustomPlayParams(p => ({ ...p, survival: true }))}
+                    onClick={() => setCustomPlayParams(p => { const n = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
                     data-testid="button-custom-mode-survival"
                   >
                     Survival (8s/word)

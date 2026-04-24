@@ -78,22 +78,41 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     case "letter-position": {
       const letter = p.letter;
       const position = p.position;
-      if (letter && position) return `Letter ${letter} at position ${position}${survival}`;
-      if (letter) return `Letter: ${letter}${survival}`;
-      return `Letter Position${survival}`;
+      const parts: string[] = [];
+      if (letter && position) parts.push(`Letter ${letter} at position ${position}`);
+      else if (letter) parts.push(`Letter: ${letter}`);
+      else parts.push("Letter Position");
+      if (!p.survival) {
+        const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        parts.push(wc, tl);
+      }
+      return parts.join(" · ") + survival;
     }
     case "letter-hunt": {
       const countMap: Record<string | number, string> = { 1: "2 letters", 2: "3 letters", 3: "4 letters", 4: "5 letters", 5: "6 letters", advanced: "Advanced (random)" };
       const challenge = p.challenge ?? p.position ?? ([1, 2, 3, 4, 5] as const)[seed % 5];
       const pinnedLetters = Array.isArray(p.letters) ? p.letters.filter((l: string) => l && l !== "any") : [];
       const letterInfo = pinnedLetters.length > 0 ? ` · Pinned: ${pinnedLetters.join(",")}` : (p.letter ? ` · Letter ${p.letter}` : "");
-      return `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letterInfo}${survival}`;
+      const huntBase = `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letterInfo}`;
+      if (!p.survival) {
+        const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        return `${huntBase} · ${wc} · ${tl}${survival}`;
+      }
+      return `${huntBase}${survival}`;
     }
     case "letter-frequency": {
       const freqMap: Record<string | number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more", multi: "Multi-Letter" };
       const challenge = p.challenge ?? p.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
       const letter = p.letter ? ` · Letter ${p.letter}` : "";
-      return `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}${survival}`;
+      const freqBase = `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}`;
+      if (!p.survival) {
+        const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        return `${freqBase} · ${wc} · ${tl}${survival}`;
+      }
+      return `${freqBase}${survival}`;
     }
     case "letter-balance": {
       if (p.vowels !== undefined || p.consonants !== undefined) {
@@ -149,7 +168,9 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const initialLetter = params?.letter as string | undefined;
       const initialPosition = toNum(params?.position);
       const mode: 1 | 2 = params?.mode !== undefined ? (toNum(params.mode) as 1 | 2 ?? 1) : (initialLetter && initialPosition ? 1 : ((seed % 2) + 1) as 1 | 2);
-      return <LetterPositionGame initialChallenge={mode} groupSeed={seed} locked quizMode initialLetter={initialLetter} initialPosition={initialPosition} initialSurvival={survival} />;
+      const lpWc = !survival ? toNum(params?.wordCount) : undefined;
+      const lpTl = !survival ? toNum(params?.timeLimit) : undefined;
+      return <LetterPositionGame initialChallenge={mode} groupSeed={seed} locked quizMode initialLetter={initialLetter} initialPosition={initialPosition} initialSurvival={survival} initialWordCount={lpWc} initialTimeLimit={lpTl} />;
     }
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
@@ -157,7 +178,9 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const challengeNum = toNum(rawChallenge);
       const challenge: 1 | 2 | 3 | 4 | 5 = (challengeNum && challengeNum >= 1 && challengeNum <= 5 ? Math.round(challengeNum) as 1|2|3|4|5 : null) ?? options[seed % options.length];
       const initialLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
-      return <LetterHuntGame initialChallenge={challenge} initialLetters={initialLetters} initialLetter={initialLetters ? undefined : params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      const lhWc = !survival ? toNum(params?.wordCount) : undefined;
+      const lhTl = !survival ? toNum(params?.timeLimit) : undefined;
+      return <LetterHuntGame initialChallenge={challenge} initialLetters={initialLetters} initialLetter={initialLetters ? undefined : params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lhWc} initialTimeLimit={lhTl} />;
     }
     case "letter-balance": {
       if (params?.vowels !== undefined || params?.consonants !== undefined) {
@@ -172,13 +195,15 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       const rawChallenge = params?.challenge ?? params?.rank;
+      const lfWc = !survival ? toNum(params?.wordCount) : undefined;
+      const lfTl = !survival ? toNum(params?.timeLimit) : undefined;
       if (rawChallenge === "multi") {
-        return <LetterFrequencyGame initialChallenge="multi" groupSeed={seed} locked quizMode initialSurvival={survival} />;
+        return <LetterFrequencyGame initialChallenge="multi" groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
       }
       const challengeNum = toNum(rawChallenge);
       const rankNum = challengeNum && challengeNum >= 1 && challengeNum <= 4 ? Math.round(challengeNum) : null;
       const rank = (rankNum ?? options[seed % options.length]) as 1 | 2 | 3 | 4;
-      return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
     }
     case "definition-match":
       return <DefinitionMatchGame groupSeed={seed} locked quizMode />;

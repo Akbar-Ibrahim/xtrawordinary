@@ -119,7 +119,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -157,8 +157,8 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed
   const isSurvivalRef = useRef(false);
   const initialLetterRef = useRef<string | undefined>(initialLetter);
 
-  const wordsPerChallenge = 20;
-  const timePerChallenge = 120;
+  const wordsPerChallenge = initialWordCount ?? 20;
+  const timePerChallenge = initialTimeLimit ?? 120;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

@@ -60,7 +60,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -98,8 +98,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const lastGameSeedRef = useRef<number | null>(null);
   const constraintRngRef = useRef<(() => number) | null>(null);
 
-  const wordsPerChallenge = 20;
-  const timePerChallenge = 120;
+  const wordsPerChallenge = initialWordCount ?? 20;
+  const timePerChallenge = initialTimeLimit ?? 120;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
