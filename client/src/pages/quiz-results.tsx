@@ -118,6 +118,9 @@ export default function QuizResults() {
                 <Badge variant="outline">Results Dashboard</Badge>
               </div>
               <CardTitle className="text-xl" data-testid="text-quiz-title">{session.title}</CardTitle>
+              {session.description && (
+                <p className="text-sm text-muted-foreground mt-1" data-testid="text-quiz-description">{session.description}</p>
+              )}
               <p className="text-sm text-muted-foreground mt-1 capitalize">
                 {session.gameSlug.replace(/-/g, " ")} · Created {createdDate}
               </p>

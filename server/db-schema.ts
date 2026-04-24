@@ -278,6 +278,7 @@ export const quizSessions = mysqlTable("quiz_sessions", {
   creatorId: int("creator_id").notNull(),
   gameSlug: varchar("game_slug", { length: 100 }).notNull(),
   title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
   shareCode: varchar("share_code", { length: 8 }).notNull().unique(),
   params: json("params").notNull().default({}),
   closesAt: timestamp("closes_at"),

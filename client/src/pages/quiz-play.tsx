@@ -319,6 +319,9 @@ export default function QuizPlay() {
                   <Badge variant="secondary">Quiz Session</Badge>
                 </div>
                 <CardTitle className="text-2xl" data-testid="text-quiz-title">{session.title}</CardTitle>
+                {session.description && (
+                  <p className="text-sm text-muted-foreground mt-1" data-testid="text-quiz-description">{session.description}</p>
+                )}
                 <p className="text-muted-foreground text-sm mt-1 capitalize">{session.gameSlug.replace(/-/g, " ")}</p>
                 {(() => {
                   const summary = getVariantSummary(session.gameSlug, seed, (session.params as Record<string, any>) ?? undefined);

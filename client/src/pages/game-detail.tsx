@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -277,6 +278,7 @@ export default function GameDetail() {
   const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
+  const [quizDescription, setQuizDescription] = useState("");
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
   const [quizLinkCopied, setQuizLinkCopied] = useState(false);
   const [quizClosesAt, setQuizClosesAt] = useState("");
@@ -346,6 +348,7 @@ export default function GameDetail() {
     mutationFn: () => apiRequest("POST", "/api/quiz-sessions", {
       gameSlug: slug,
       title: quizTitle.trim(),
+      description: quizDescription.trim() || null,
       closesAt: quizClosesAt ? new Date(quizClosesAt).toISOString() : null,
       params: slug === "letter-position"
         ? { ...quizParams, mode: 1 }
@@ -355,6 +358,7 @@ export default function GameDetail() {
       const data: QuizSession = await res.json();
       setCreatedQuiz(data);
       setQuizTitle("");
+      setQuizDescription("");
     },
     onError: () => toast({ title: "Error", description: "Could not create quiz session.", variant: "destructive" }),
   });
@@ -799,7 +803,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -822,6 +826,19 @@ export default function GameDetail() {
                   data-testid="input-quiz-title"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <Textarea
+                  value={quizDescription}
+                  onChange={(e) => setQuizDescription(e.target.value)}
+                  placeholder="Add any instructions or context for players…"
+                  maxLength={500}
+                  rows={3}
+                  data-testid="input-quiz-description"
+                  className="mt-1 resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">{quizDescription.length}/500</p>
               </div>
               <div>
                 <label className="text-sm font-medium">Close Date (optional)</label>

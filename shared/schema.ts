@@ -467,6 +467,7 @@ export const quizSessionSchema = z.object({
   creatorId: z.number(),
   gameSlug: z.string(),
   title: z.string(),
+  description: z.string().nullable().optional(),
   shareCode: z.string(),
   params: z.record(z.any()),
   closesAt: z.string().nullable(),
