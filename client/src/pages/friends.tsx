@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, User, Loader2 } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge } from "@shared/schema";
@@ -414,9 +414,7 @@ export default function Friends() {
                                   const opponentName = isSender ? c.receiverName : c.senderName;
                                   return (
                                     <Link href={`/profile/${opponentId}`}>
-                                      {opponentAvatar
-                                        ? <img src={opponentAvatar} className="h-4 w-4 rounded-full shrink-0 cursor-pointer" alt={opponentName ?? "opponent"} />
-                                        : <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                      <UserAvatar name={opponentName ?? "?"} avatarUrl={opponentAvatar ?? null} className="h-4 w-4 text-[8px] cursor-pointer" />
                                     </Link>
                                   );
                                 })()}
