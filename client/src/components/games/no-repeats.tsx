@@ -291,7 +291,7 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-3">
           {([3, 4, 5, 6, 7, 8, 9] as Challenge[]).map((c) => {
             const config = CHALLENGE_CONFIG[c];
             return (
