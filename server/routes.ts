@@ -2322,6 +2322,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/users/:userId/quiz-sessions", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" });
+      const sessions = await storage.getQuizSessionsByCreator(userId);
+      const enriched = await Promise.all(
+        sessions.map(async (s) => {
+          const scores = await storage.getQuizSessionScores(s.id);
+          return { ...s, playerCount: scores.length };
+        })
+      );
+      res.json(enriched);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch quiz sessions" });
+    }
+  });
+
   app.delete("/api/quiz-sessions/:code", requireAuth, async (req: any, res) => {
     try {
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());

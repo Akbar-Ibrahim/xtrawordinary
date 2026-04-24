@@ -94,7 +94,7 @@ export default function Profile() {
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
 
-  const { data: myQuizzes = [], isLoading: quizzesLoading } = useQuery<QuizSessionWithCount[]>({
+  const { data: myQuizzes = [], isLoading: myQuizzesLoading } = useQuery<QuizSessionWithCount[]>({
     queryKey: ["/api/quiz-sessions/my"],
     queryFn: async () => {
       const res = await fetch("/api/quiz-sessions/my", { credentials: "include" });
@@ -103,6 +103,19 @@ export default function Profile() {
     },
     enabled: isOwnProfile && isAuthenticated,
   });
+
+  const { data: otherQuizzes = [], isLoading: otherQuizzesLoading } = useQuery<QuizSessionWithCount[]>({
+    queryKey: ["/api/users", userId, "quiz-sessions"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/quiz-sessions`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch quizzes");
+      return res.json();
+    },
+    enabled: !isOwnProfile,
+  });
+
+  const quizzes = isOwnProfile ? myQuizzes : otherQuizzes;
+  const quizzesLoading = isOwnProfile ? myQuizzesLoading : otherQuizzesLoading;
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
@@ -259,18 +272,16 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-4">
             <Tabs defaultValue="stats">
-              <TabsList className={`w-full ${isOwnProfile ? "grid grid-cols-3" : "grid grid-cols-2"}`} data-testid="tabs-profile-sections">
+              <TabsList className="w-full grid grid-cols-3" data-testid="tabs-profile-sections">
                 <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
                   <Gamepad2 className="h-4 w-4" /> Game Stats
                 </TabsTrigger>
-                {isOwnProfile && (
-                  <TabsTrigger value="quizzes" className="flex items-center gap-1.5" data-testid="tab-my-quizzes">
-                    <GraduationCap className="h-4 w-4" /> My Quizzes
-                    {myQuizzes.length > 0 && (
-                      <Badge variant="secondary" className="ml-1 text-xs">{myQuizzes.length}</Badge>
-                    )}
-                  </TabsTrigger>
-                )}
+                <TabsTrigger value="quizzes" className="flex items-center gap-1.5" data-testid="tab-my-quizzes">
+                  <GraduationCap className="h-4 w-4" /> {isOwnProfile ? "My Quizzes" : "Quizzes"}
+                  {quizzes.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-xs">{quizzes.length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="rankings" className="flex items-center gap-1.5" data-testid="tab-rankings">
                   <Trophy className="h-4 w-4" /> Rankings
                 </TabsTrigger>
@@ -304,54 +315,60 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              {isOwnProfile && (
-                <TabsContent value="quizzes" className="mt-4">
-                  {quizzesLoading ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-14 w-full rounded-lg" />
-                      <Skeleton className="h-14 w-full rounded-lg" />
-                    </div>
-                  ) : myQuizzes.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                      <p className="font-medium mb-1">No quizzes yet</p>
-                      <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
-                      <Link href="/game/definition-match">
-                        <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {myQuizzes.map((quiz) => {
-                        const game = gameMap.get(quiz.gameSlug);
-                        const isClosed = quiz.closesAt ? new Date(quiz.closesAt) < new Date() : false;
-                        return (
-                          <div
-                            key={quiz.id}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                            data-testid={`row-quiz-${quiz.id}`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Link href={`/quiz/${quiz.shareCode}/results`}>
-                                  <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
-                                </Link>
-                                {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
-                              </div>
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                                <span>{game?.name ?? quiz.gameSlug.replace(/-/g, " ")}</span>
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
-                                </span>
-                                <span className="font-mono tracking-widest">{quiz.shareCode}</span>
-                                <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
-                                {quiz.closesAt && (
-                                  <span>{isClosed ? "Closed" : "Closes"}: {new Date(quiz.closesAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
-                                )}
-                              </div>
+              <TabsContent value="quizzes" className="mt-4">
+                {quizzesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                  </div>
+                ) : quizzes.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <GraduationCap className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">No quizzes yet</p>
+                    {isOwnProfile ? (
+                      <>
+                        <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
+                        <Link href="/game/definition-match">
+                          <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
+                        </Link>
+                      </>
+                    ) : (
+                      <p className="text-sm">This user hasn't created any quiz sessions yet.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {quizzes.map((quiz) => {
+                      const game = gameMap.get(quiz.gameSlug);
+                      const isClosed = quiz.closesAt ? new Date(quiz.closesAt) < new Date() : false;
+                      return (
+                        <div
+                          key={quiz.id}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                          data-testid={`row-quiz-${quiz.id}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link href={`/quiz/${quiz.shareCode}/results`}>
+                                <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
+                              </Link>
+                              {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                              <span>{game?.name ?? quiz.gameSlug.replace(/-/g, " ")}</span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {quiz.playerCount} {quiz.playerCount === 1 ? "player" : "players"}
+                              </span>
+                              {isOwnProfile && <span className="font-mono tracking-widest">{quiz.shareCode}</span>}
+                              <span>Created {new Date(quiz.createdAt).toLocaleDateString()}</span>
+                              {quiz.closesAt && (
+                                <span>{isClosed ? "Closed" : "Closes"}: {new Date(quiz.closesAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isOwnProfile && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -364,16 +381,18 @@ export default function Profile() {
                                   ? <CheckCheck className="h-4 w-4 text-green-500" />
                                   : <Copy className="h-4 w-4" />}
                               </Button>
-                              <Link href={`/quiz/${quiz.shareCode}`}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Play quiz" data-testid={`button-play-quiz-${quiz.id}`}>
-                                  <Play className="h-4 w-4" />
-                                </Button>
-                              </Link>
-                              <Link href={`/quiz/${quiz.shareCode}/results`}>
-                                <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
-                                  Results
-                                </Button>
-                              </Link>
+                            )}
+                            <Link href={`/quiz/${quiz.shareCode}`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Play quiz" data-testid={`button-play-quiz-${quiz.id}`}>
+                                <Play className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Link href={`/quiz/${quiz.shareCode}/results`}>
+                              <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`button-results-quiz-${quiz.id}`}>
+                                Results
+                              </Button>
+                            </Link>
+                            {isOwnProfile && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -384,14 +403,14 @@ export default function Profile() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </div>
+                            )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </TabsContent>
-              )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
 
               <TabsContent value="rankings" className="mt-4">
                 {profile.leaderboardRankings.length === 0 ? (
