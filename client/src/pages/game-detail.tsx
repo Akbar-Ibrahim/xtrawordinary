@@ -983,6 +983,49 @@ export default function GameDetail() {
                       <p className={`text-xs ${wlQuizCountFetching ? "text-muted-foreground" : !wlQuizCountData ? "" : !wlQuizCountData.ok ? "text-destructive" : "text-green-600 dark:text-green-400"}`} data-testid="text-wl-quiz-word-count">
                         {wlQuizCountFetching ? "Checking…" : !wlQuizCountData ? "" : !wlQuizCountData.ok ? `Only ${wlQuizCountData.count} matching words — need at least ${WL_MIN_WORDS}. Adjust filters.` : `${wlQuizCountData.count} words match ✓`}
                       </p>
+                      {!quizParams.survival && (
+                        <>
+                          <div>
+                            <label className="text-xs font-medium">Words to find (Classic)</label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="number"
+                                min={1}
+                                max={wlQuizCountData?.count ?? undefined}
+                                value={quizParams.wordCount ?? 20}
+                                onChange={(e) => {
+                                  const v = Math.max(1, parseInt(e.target.value) || 1);
+                                  setQuizParams(p => ({ ...p, wordCount: v }));
+                                }}
+                                className="w-24 h-8 rounded-md border border-input bg-background px-2 text-sm"
+                                data-testid="input-quiz-wl-word-count"
+                              />
+                              {wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count && (
+                                <p className="text-xs text-destructive" data-testid="text-wl-word-count-error">
+                                  Max {wlQuizCountData.count} for this filter
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">Time limit (Classic)</label>
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {[60, 90, 120, 180, 300].map(t => (
+                                <Button
+                                  key={t}
+                                  type="button"
+                                  size="sm"
+                                  variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                                  onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                                  data-testid={`button-quiz-wl-time-${t}`}
+                                >
+                                  {t < 60 ? `${t}s` : `${t / 60}min`}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -1180,6 +1223,7 @@ export default function GameDetail() {
                     lpCountData.count < LP_QUIZ_MIN_WORDS
                   )) ||
                   (slug === "word-length" && (!wlQuizLength || wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok)) ||
+                  (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined)
                 }
                 data-testid="button-create-quiz-submit"

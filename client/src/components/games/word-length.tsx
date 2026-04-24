@@ -143,7 +143,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean } = {}) {
+export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
   const resolvedInitialChallenge = initialVariation ?? initialChallenge;
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
@@ -180,8 +180,8 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
 
-  const wordsPerVariation = 20;
-  const timePerVariation = 120;
+  const wordsPerVariation = initialWordCount ?? 20;
+  const timePerVariation = initialTimeLimit ?? 120;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

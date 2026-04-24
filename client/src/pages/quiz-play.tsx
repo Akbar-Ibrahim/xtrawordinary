@@ -64,7 +64,12 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
         if (p.startsWith) parts.push(`starts '${p.startsWith}'`);
         if (p.endsWith) parts.push(`ends '${p.endsWith}'`);
         if (p.contains) parts.push(`contains '${p.contains}'`);
-        return `Word Length: ${parts.join(", ")}${survival}`;
+        if (!p.survival) {
+          const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
+          const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+          parts.push(wc, tl);
+        }
+        return `Word Length: ${parts.join(" · ")}${survival}`;
       }
       const lengthMap: Record<number, string> = { 1: "≤4 letters", 2: "≤6 letters", 3: "≤8 letters", 4: "10 letters", 5: "12 letters" };
       const variation = p.variation ?? [1, 2, 3, 4, 5][seed % 5];
@@ -131,7 +136,9 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const rawLength = toNum(params?.length);
       if (rawLength) {
         const cc = { length: rawLength, startsWith: params?.startsWith as string | undefined, endsWith: params?.endsWith as string | undefined, contains: params?.contains as string | undefined };
-        return <WordLengthGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+        const wc = toNum(params?.wordCount);
+        const tl = toNum(params?.timeLimit);
+        return <WordLengthGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={wc ?? undefined} initialTimeLimit={tl ?? undefined} />;
       }
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const rawVar = toNum(params?.variation);
