@@ -349,7 +349,7 @@ export default function Profile() {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Link href={`/quiz/${quiz.shareCode}/results`}>
+                              <Link href={isOwnProfile ? `/quiz/${quiz.shareCode}/results` : `/quiz/${quiz.shareCode}`}>
                                 <span className="font-medium hover:underline cursor-pointer" data-testid={`text-quiz-title-${quiz.id}`}>{quiz.title}</span>
                               </Link>
                               {isClosed && <Badge variant="destructive" className="text-xs">Closed</Badge>}
