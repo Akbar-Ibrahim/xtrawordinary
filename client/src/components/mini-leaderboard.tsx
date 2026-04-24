@@ -4,8 +4,8 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Crown, Medal, Award, ArrowRight } from "lucide-react";
-import { getAvatarColor, getInitials } from "@/lib/avatar-utils";
 import { motion } from "framer-motion";
+import { UserAvatar } from "@/components/user-avatar";
 import type { Game, LeaderboardEntry } from "@shared/schema";
 
 const RANK_ICONS = [Crown, Medal, Award];
@@ -48,9 +48,6 @@ function RankBadge({ index }: { index: number }) {
 }
 
 function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) {
-  const initials = getInitials(entry.playerName);
-  const color = getAvatarColor(entry.playerName);
-
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
@@ -62,9 +59,12 @@ function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) 
       <div className="w-5 flex items-center justify-center shrink-0">
         <RankBadge index={index} />
       </div>
-      <div className={`w-6 h-6 rounded-full ${color} flex items-center justify-center shrink-0 text-[10px] font-bold text-white`}>
-        {initials}
-      </div>
+      <UserAvatar
+        name={entry.playerName}
+        avatarUrl={entry.playerAvatarUrl}
+        className="w-6 h-6 text-[10px]"
+        data-testid={`mini-avatar-${index}`}
+      />
       <Link href={`/profile/${entry.userId}`}>
         <span
           className="flex-1 text-xs font-medium truncate hover:underline cursor-pointer max-w-[100px]"

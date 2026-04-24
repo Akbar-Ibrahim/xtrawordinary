@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
-import { getAvatarColor, getInitials } from "@/lib/avatar-utils";
 import { useAuth } from "@/lib/auth-context";
+import { UserAvatar } from "@/components/user-avatar";
 import { AuthModal } from "@/components/auth-modal";
 import { motion } from "framer-motion";
 import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
@@ -88,10 +88,12 @@ function LeaderboardEntries({
                 )}
               </div>
               <Link href={`/profile/${entry.userId}`}>
-                <div className={`w-7 h-7 rounded-full ${getAvatarColor(entry.playerName)} flex items-center justify-center shrink-0 text-[10px] font-bold text-white cursor-pointer`}
-                  data-testid={`avatar-player-${index}`}>
-                  {getInitials(entry.playerName)}
-                </div>
+                <UserAvatar
+                  name={entry.playerName}
+                  avatarUrl={entry.playerAvatarUrl}
+                  className="w-7 h-7 text-[10px] cursor-pointer"
+                  data-testid={`avatar-player-${index}`}
+                />
               </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
