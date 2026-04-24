@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import type { Comment, CommentTargetType } from "@shared/schema";
@@ -270,12 +270,11 @@ function CommentItem({
   return (
     <div className={`${isReply ? "ml-8 mt-2" : ""}`} data-testid={`comment-${comment.id}`}>
       <div className="flex gap-3">
-        <Avatar className="h-8 w-8 shrink-0 mt-0.5">
-          <AvatarImage src={comment.user?.avatarUrl || undefined} />
-          <AvatarFallback className="text-xs">
-            {comment.user?.name?.charAt(0).toUpperCase() ?? "?"}
-          </AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          name={comment.user?.name ?? "?"}
+          avatarUrl={comment.user?.avatarUrl}
+          className="h-8 w-8 mt-0.5"
+        />
 
         <div className="flex-1 min-w-0">
           <div className="bg-muted/40 rounded-lg px-3 py-2">
