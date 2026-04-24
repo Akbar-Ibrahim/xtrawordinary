@@ -2355,10 +2355,14 @@ export async function registerRoutes(
     try {
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
-      if (session.closesAt && new Date(session.closesAt) < new Date()) {
-        return res.json({ ...session, isClosed: true });
-      }
-      res.json({ ...session, isClosed: false });
+      const creator = session.creatorId ? await storage.getUserById(session.creatorId) : undefined;
+      const enriched = {
+        ...session,
+        creatorName: creator?.name ?? session.creatorName,
+        creatorAvatarUrl: creator?.avatarUrl ?? null,
+        isClosed: !!(session.closesAt && new Date(session.closesAt) < new Date()),
+      };
+      res.json(enriched);
     } catch {
       res.status(500).json({ error: "Failed to fetch quiz session" });
     }
@@ -2400,8 +2404,19 @@ export async function registerRoutes(
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
       if (session.creatorId !== req.user.id) return res.status(403).json({ error: "Only the quiz creator can view results" });
-      const scores = await storage.getQuizSessionScores(session.id);
-      res.json({ session: { ...session, isClosed: !!(session.closesAt && new Date(session.closesAt) < new Date()) }, scores });
+      const [scores, creator] = await Promise.all([
+        storage.getQuizSessionScores(session.id),
+        session.creatorId ? storage.getUserById(session.creatorId) : Promise.resolve(undefined),
+      ]);
+      res.json({
+        session: {
+          ...session,
+          creatorName: creator?.name ?? session.creatorName,
+          creatorAvatarUrl: creator?.avatarUrl ?? null,
+          isClosed: !!(session.closesAt && new Date(session.closesAt) < new Date()),
+        },
+        scores,
+      });
     } catch {
       res.status(500).json({ error: "Failed to fetch results" });
     }

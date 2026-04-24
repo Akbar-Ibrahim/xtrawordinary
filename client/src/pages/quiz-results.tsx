@@ -124,6 +124,15 @@ export default function QuizResults() {
               <p className="text-sm text-muted-foreground mt-1 capitalize">
                 {session.gameSlug.replace(/-/g, " ")} · Created {createdDate}
               </p>
+              {session.creatorName && (
+                <div className="flex items-center gap-1.5 mt-1" data-testid="text-quiz-creator">
+                  <span className="text-xs text-muted-foreground">Created by</span>
+                  <Link href={`/profile/${session.creatorId}`} className="flex items-center gap-1 hover:underline">
+                    <UserAvatar name={session.creatorName} avatarUrl={session.creatorAvatarUrl ?? null} className="h-5 w-5" />
+                    <span className="text-xs font-medium">{session.creatorName}</span>
+                  </Link>
+                </div>
+              )}
             </div>
             {session.isClosed && (
               <Badge variant="destructive">Closed</Badge>

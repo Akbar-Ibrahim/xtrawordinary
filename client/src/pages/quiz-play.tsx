@@ -329,6 +329,15 @@ export default function QuizPlay() {
                     <p className="text-xs text-primary font-medium mt-0.5" data-testid="text-quiz-variant-summary">{summary}</p>
                   ) : null;
                 })()}
+                {session.creatorName && (
+                  <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-quiz-creator">
+                    <span className="text-xs text-muted-foreground">Created by</span>
+                    <Link href={`/profile/${session.creatorId}`} className="flex items-center gap-1 hover:underline">
+                      <UserAvatar name={session.creatorName} avatarUrl={session.creatorAvatarUrl ?? null} className="h-5 w-5" />
+                      <span className="text-xs font-medium">{session.creatorName}</span>
+                    </Link>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {session.isClosed && (

@@ -473,10 +473,11 @@ export const quizSessionSchema = z.object({
   closesAt: z.string().nullable(),
   createdAt: z.string(),
   creatorName: z.string().optional(),
+  creatorAvatarUrl: z.string().nullable().optional(),
 });
 export type QuizSession = z.infer<typeof quizSessionSchema>;
 
-export const insertQuizSessionSchema = quizSessionSchema.omit({ id: true, createdAt: true, creatorName: true });
+export const insertQuizSessionSchema = quizSessionSchema.omit({ id: true, createdAt: true, creatorName: true, creatorAvatarUrl: true });
 export type InsertQuizSession = z.infer<typeof insertQuizSessionSchema>;
 
 export const quizSessionScoreSchema = z.object({
