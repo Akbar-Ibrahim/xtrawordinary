@@ -11,7 +11,7 @@ const PERKS = [
   {
     icon: Gamepad2,
     label: "Custom Play on 5 games",
-    description: "Practice Letter Hunt, Letter Frequency, Letter Position, Letter Balance, and Word Length with your own settings.",
+    description: "Practice Letter Hunt, Letter Frequency, Position Master, Letter Balance, and Length Challenge with your own settings.",
   },
   {
     icon: Sliders,

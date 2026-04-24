@@ -69,11 +69,11 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
           const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
           parts.push(wc, tl);
         }
-        return `Word Length: ${parts.join(" · ")}${survival}`;
+        return `Length Challenge: ${parts.join(" · ")}${survival}`;
       }
       const lengthMap: Record<number, string> = { 1: "≤4 letters", 2: "≤6 letters", 3: "≤8 letters", 4: "10 letters", 5: "12 letters" };
       const variation = p.variation ?? [1, 2, 3, 4, 5][seed % 5];
-      return `Word length: ${lengthMap[variation] ?? `Variation ${variation}`}${survival}`;
+      return `Length Challenge: ${lengthMap[variation] ?? `Variation ${variation}`}${survival}`;
     }
     case "letter-position": {
       const letter = p.letter;
@@ -81,7 +81,7 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const parts: string[] = [];
       if (letter && position) parts.push(`Letter ${letter} at position ${position}`);
       else if (letter) parts.push(`Letter: ${letter}`);
-      else parts.push("Letter Position");
+      else parts.push("Position Master");
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
         const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
