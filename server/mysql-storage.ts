@@ -358,7 +358,25 @@ export class MySQLStorage implements IStorage {
       .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
       .orderBy(desc(schema.leaderboardEntries.score))
       .limit(limit);
-    return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: r.playerName, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt) }));
+    if (rows.length === 0) return [];
+    const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))];
+    const userRows = userIds.length > 0
+      ? await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+          .from(schema.users).where(inArray(schema.users.id, userIds))
+      : [];
+    const userMap = new Map(userRows.map(u => [u.id, u]));
+    return rows.map((r: any) => {
+      const user = userMap.get(r.userId);
+      return {
+        id: r.id,
+        userId: r.userId,
+        gameSlug: r.gameSlug,
+        score: r.score,
+        playerName: user?.name ?? r.playerName,
+        playerAvatarUrl: user?.avatarUrl ?? null,
+        playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt),
+      };
+    });
   }
 
   async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
@@ -373,13 +391,14 @@ export class MySQLStorage implements IStorage {
       .limit(limit);
     if (totals.length === 0) return [];
     const userIds = totals.map(t => t.userId);
-    const userRows = await db.select({ id: schema.users.id, name: schema.users.name })
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
       .from(schema.users).where(inArray(schema.users.id, userIds));
-    const nameMap = new Map(userRows.map(u => [u.id, u.name]));
+    const userMap = new Map(userRows.map(u => [u.id, u]));
     return totals.map((r: any, i: number) => ({
       id: i + 1,
       userId: r.userId,
-      playerName: nameMap.get(r.userId) || "Unknown",
+      playerName: userMap.get(r.userId)?.name || "Unknown",
+      playerAvatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
       score: Number(r.totalScore),
       playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
       gameSlug: "overall",

@@ -698,7 +698,15 @@ export class MemStorage implements IStorage {
     return this.leaderboardEntries
       .filter(e => e.gameSlug === gameSlug)
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map(e => {
+        const user = this.users.get(e.userId);
+        return {
+          ...e,
+          playerName: user?.name ?? e.playerName,
+          playerAvatarUrl: user?.avatarUrl ?? null,
+        };
+      });
   }
 
   async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
