@@ -111,7 +111,7 @@ export default function Profile() {
       if (!res.ok) throw new Error("Failed to fetch quizzes");
       return res.json();
     },
-    enabled: !isOwnProfile,
+    enabled: !isOwnProfile && userId > 0,
   });
 
   const quizzes = isOwnProfile ? myQuizzes : otherQuizzes;
