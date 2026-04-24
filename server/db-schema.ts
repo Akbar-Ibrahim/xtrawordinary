@@ -1,4 +1,5 @@
 import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex } from "drizzle-orm/mysql-core";
+import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
@@ -226,7 +227,7 @@ export const games = mysqlTable("games", {
   playCount: int("play_count").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   hasSurvival: boolean("has_survival").notNull().default(false),
-  modes: json("modes").$type<import("@shared/schema").GameMode[]>(),
+  modes: json("modes").$type<GameMode[]>(),
 });
 
 export const wordCategories = mysqlTable("word_categories", {

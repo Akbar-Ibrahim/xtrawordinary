@@ -45,6 +45,13 @@ export class MySQLStorage implements IStorage {
       ? (row.difficulty as Game["difficulty"])
       : "medium";
 
+    let modes: GameMode[] | undefined;
+    if (typeof row.modes === "string") {
+      modes = JSON.parse(row.modes);
+    } else if (Array.isArray(row.modes)) {
+      modes = row.modes;
+    }
+
     return {
       id: row.id,
       slug: row.slug,
@@ -59,7 +66,7 @@ export class MySQLStorage implements IStorage {
       playCount: row.playCount,
       isActive: row.isActive,
       hasSurvival: row.hasSurvival,
-      ...(row.modes && row.modes.length > 0 ? { modes: row.modes } : {}),
+      ...(modes && modes.length > 0 ? { modes } : {}),
     };
   }
 
