@@ -295,7 +295,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                         className={`aspect-square flex items-center justify-center text-lg sm:text-xl font-bold rounded-md transition-colors ${
                           isCleared ? "invisible" : isSelected
                             ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-1"
-                            : "bg-primary/15 text-foreground hover-elevate cursor-pointer"
+                            : "bg-primary/15 border border-primary/20 text-foreground hover-elevate cursor-pointer"
                         }`}
                         data-testid={`grid-cell-${cell.id}`}
                       >
@@ -574,6 +574,26 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
     playSound("click");
   }, [gameStatus, playSound]);
 
+  const applyGravity = useCallback((cells: GridCell[]): GridCell[] => {
+    const result = [...cells];
+    for (let col = 0; col < GRID_SIZE; col++) {
+      const columnCells: GridCell[] = [];
+      for (let row = 0; row < GRID_SIZE; row++) columnCells.push(result[row * GRID_SIZE + col]);
+      const activeCells = columnCells.filter(c => !c.cleared);
+      const clearedCount = GRID_SIZE - activeCells.length;
+      for (let row = 0; row < GRID_SIZE; row++) {
+        const idx = row * GRID_SIZE + col;
+        if (row < clearedCount) {
+          result[idx] = { ...result[idx], cleared: true, selected: false, selectionOrder: 0 };
+        } else {
+          const sourceCell = activeCells[row - clearedCount];
+          result[idx] = { ...result[idx], letter: sourceCell.letter, cleared: false, selected: false, selectionOrder: 0 };
+        }
+      }
+    }
+    return result;
+  }, [GRID_SIZE]);
+
   const clearSelectionOnly = useCallback(() => {
     setGrid(prev => prev.map(c => ({ ...c, selected: false, selectionOrder: 0 })));
   }, []);
@@ -591,7 +611,10 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
       const newWordsFound = [...wordsFound, matchedWord];
       setWordsFound(newWordsFound);
       setFeedback({ type: "correct", message: `Found: ${matchedWord}!` });
-      setGrid(prev => prev.map(c => c.selected ? { ...c, cleared: true, selected: false, selectionOrder: 0 } : c));
+      setGrid(prev => {
+        const afterClear = prev.map(c => c.selected ? { ...c, cleared: true, selected: false, selectionOrder: 0 } : c);
+        return applyGravity(afterClear);
+      });
       if (newWordsFound.length === puzzleWords.length) {
         setTimeout(() => {
           stopTimer();
@@ -616,7 +639,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
       clearSelectionOnly();
     }
     setTimeout(() => setFeedback(null), 1800);
-  }, [currentWord, remainingWords, wordsFound, puzzleWords.length, wrongAttempts, playSound, clearSelectionOnly, stopTimer]);
+  }, [currentWord, remainingWords, wordsFound, puzzleWords.length, wrongAttempts, playSound, clearSelectionOnly, stopTimer, applyGravity]);
 
   const handleGiveUp = useCallback(() => {
     stopTimer();
@@ -798,7 +821,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
                   className={`relative aspect-square flex items-center justify-center text-base sm:text-lg font-bold rounded-md transition-colors ${
                     isCleared ? "invisible pointer-events-none" : isSelected
                       ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-1"
-                      : "bg-primary/15 text-foreground hover-elevate cursor-pointer"
+                      : "bg-primary/15 border border-primary/20 text-foreground hover-elevate cursor-pointer"
                   }`}
                   data-testid={`grid-cell-${cell.id}`}
                 >
