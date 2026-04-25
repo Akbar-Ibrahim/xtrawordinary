@@ -812,6 +812,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
               return (
                 <motion.button
                   key={cell.id}
+                  layout
                   onClick={() => handleCellClick(cell.id)}
                   disabled={isCleared}
                   initial={{ opacity: 0, scale: 0.8 }}
