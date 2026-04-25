@@ -169,7 +169,7 @@ export default function Profile() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-3xl space-y-6">
+      <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
         <Skeleton className="h-32 w-full rounded-lg" />
         <Skeleton className="h-48 w-full rounded-lg" />
       </div>
@@ -178,7 +178,7 @@ export default function Profile() {
 
   if (!profile) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-3xl text-center">
+      <div className="container mx-auto px-4 py-8 max-w-5xl text-center">
         <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-bold">Profile not found</h1>
       </div>
@@ -190,7 +190,7 @@ export default function Profile() {
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <Card>
           <CardContent className="pt-6">
@@ -272,7 +272,7 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-4">
             <Tabs defaultValue="stats">
-              <TabsList className="w-full grid grid-cols-3" data-testid="tabs-profile-sections">
+              <TabsList className="w-full grid grid-cols-4" data-testid="tabs-profile-sections">
                 <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
                   <Gamepad2 className="h-4 w-4" /> Game Stats
                 </TabsTrigger>
@@ -284,6 +284,12 @@ export default function Profile() {
                 </TabsTrigger>
                 <TabsTrigger value="rankings" className="flex items-center gap-1.5" data-testid="tab-rankings">
                   <Trophy className="h-4 w-4" /> Rankings
+                </TabsTrigger>
+                <TabsTrigger value="achievements" className="flex items-center gap-1.5" data-testid="tab-achievements">
+                  <Award className="h-4 w-4" /> Achievements
+                  {profile.achievements.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-xs">{profile.achievements.length}</Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -436,28 +442,27 @@ export default function Profile() {
                   </div>
                 )}
               </TabsContent>
+
+              <TabsContent value="achievements" className="mt-4">
+                {profile.achievements.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Award className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">No achievements yet</p>
+                    <p className="text-sm">Play games and complete milestones to earn achievements.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.achievements.map((a) => (
+                      <Badge key={a.achievementId} variant="secondary" data-testid={`badge-achievement-${a.achievementId}`}>
+                        {a.achievementId.replace(/_/g, " ")}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-
-        {profile.achievements.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Award className="h-5 w-5" /> Achievements ({profile.achievements.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {profile.achievements.map((a) => (
-                  <Badge key={a.achievementId} variant="secondary" data-testid={`badge-achievement-${a.achievementId}`}>
-                    {a.achievementId.replace(/_/g, " ")}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </motion.div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
