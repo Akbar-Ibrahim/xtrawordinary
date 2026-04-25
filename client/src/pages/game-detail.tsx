@@ -1243,8 +1243,13 @@ export default function GameDetail() {
                           const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
                           setQuizParams(p => {
                             const consonants = p.consonants;
-                            const autoLen = v !== undefined && consonants !== undefined ? v + consonants : undefined;
-                            return { ...p, vowels: v, length: autoLen };
+                            if (v !== undefined && consonants !== undefined) {
+                              return { ...p, vowels: v, length: v + consonants };
+                            }
+                            if (v === undefined) {
+                              return { ...p, vowels: v, length: undefined };
+                            }
+                            return { ...p, vowels: v };
                           });
                         }}
                       />
@@ -1260,8 +1265,13 @@ export default function GameDetail() {
                           const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
                           setQuizParams(p => {
                             const vowels = p.vowels;
-                            const autoLen = v !== undefined && vowels !== undefined ? vowels + v : undefined;
-                            return { ...p, consonants: v, length: autoLen };
+                            if (v !== undefined && vowels !== undefined) {
+                              return { ...p, consonants: v, length: vowels + v };
+                            }
+                            if (v === undefined) {
+                              return { ...p, consonants: v, length: undefined };
+                            }
+                            return { ...p, consonants: v };
                           });
                         }}
                       />
@@ -1658,8 +1668,13 @@ export default function GameDetail() {
                         const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
                         setCustomPlayParams(p => {
                           const consonants = p.consonants;
-                          const autoLen = v !== undefined && consonants !== undefined ? v + consonants : undefined;
-                          return { ...p, vowels: v, length: autoLen };
+                          if (v !== undefined && consonants !== undefined) {
+                            return { ...p, vowels: v, length: v + consonants };
+                          }
+                          if (v === undefined) {
+                            return { ...p, vowels: v, length: undefined };
+                          }
+                          return { ...p, vowels: v };
                         });
                       }}
                     />
@@ -1675,8 +1690,13 @@ export default function GameDetail() {
                         const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
                         setCustomPlayParams(p => {
                           const vowels = p.vowels;
-                          const autoLen = v !== undefined && vowels !== undefined ? vowels + v : undefined;
-                          return { ...p, consonants: v, length: autoLen };
+                          if (v !== undefined && vowels !== undefined) {
+                            return { ...p, consonants: v, length: vowels + v };
+                          }
+                          if (v === undefined) {
+                            return { ...p, consonants: v, length: undefined };
+                          }
+                          return { ...p, consonants: v };
                         });
                       }}
                     />
