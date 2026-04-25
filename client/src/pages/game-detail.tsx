@@ -1241,7 +1241,11 @@ export default function GameDetail() {
                         value={quizParams.vowels ?? ""}
                         onChange={(e) => {
                           const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                          setQuizParams(p => ({ ...p, vowels: e.target.value === "" ? undefined : v }));
+                          setQuizParams(p => {
+                            const consonants = p.consonants;
+                            const autoLen = v !== undefined && consonants !== undefined ? v + consonants : undefined;
+                            return { ...p, vowels: v, length: autoLen };
+                          });
                         }}
                       />
                     </div>
@@ -1254,20 +1258,27 @@ export default function GameDetail() {
                         value={quizParams.consonants ?? ""}
                         onChange={(e) => {
                           const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                          setQuizParams(p => ({ ...p, consonants: e.target.value === "" ? undefined : v }));
+                          setQuizParams(p => {
+                            const vowels = p.vowels;
+                            const autoLen = v !== undefined && vowels !== undefined ? vowels + v : undefined;
+                            return { ...p, consonants: v, length: autoLen };
+                          });
                         }}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium">Length (opt.)</label>
+                      <label className="text-xs font-medium">
+                        {quizParams.vowels !== undefined && quizParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
+                      </label>
                       <Input
                         type="number" min={3} max={15} placeholder="Any"
                         className="mt-1 h-8 text-sm"
                         data-testid="input-quiz-lb-length"
+                        disabled={quizParams.vowels !== undefined && quizParams.consonants !== undefined}
                         value={quizParams.length ?? ""}
                         onChange={(e) => {
                           const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
-                          setQuizParams(p => ({ ...p, length: e.target.value === "" ? undefined : v }));
+                          setQuizParams(p => ({ ...p, length: v }));
                         }}
                       />
                     </div>
@@ -1644,7 +1655,12 @@ export default function GameDetail() {
                       data-testid="input-custom-lb-vowels"
                       value={customPlayParams.vowels ?? ""}
                       onChange={(e) => {
-                        setCustomPlayParams(p => ({ ...p, vowels: e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1)) }));
+                        const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                        setCustomPlayParams(p => {
+                          const consonants = p.consonants;
+                          const autoLen = v !== undefined && consonants !== undefined ? v + consonants : undefined;
+                          return { ...p, vowels: v, length: autoLen };
+                        });
                       }}
                     />
                   </div>
@@ -1656,19 +1672,28 @@ export default function GameDetail() {
                       data-testid="input-custom-lb-consonants"
                       value={customPlayParams.consonants ?? ""}
                       onChange={(e) => {
-                        setCustomPlayParams(p => ({ ...p, consonants: e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1)) }));
+                        const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                        setCustomPlayParams(p => {
+                          const vowels = p.vowels;
+                          const autoLen = v !== undefined && vowels !== undefined ? vowels + v : undefined;
+                          return { ...p, consonants: v, length: autoLen };
+                        });
                       }}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium">Length (opt.)</label>
+                    <label className="text-xs font-medium">
+                      {customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
+                    </label>
                     <Input
                       type="number" min={3} max={15} placeholder="Any"
                       className="mt-1 h-8 text-sm"
                       data-testid="input-custom-lb-length"
+                      disabled={customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined}
                       value={customPlayParams.length ?? ""}
                       onChange={(e) => {
-                        setCustomPlayParams(p => ({ ...p, length: e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3)) }));
+                        const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
+                        setCustomPlayParams(p => ({ ...p, length: v }));
                       }}
                     />
                   </div>
