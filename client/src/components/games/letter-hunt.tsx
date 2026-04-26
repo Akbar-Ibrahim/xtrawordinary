@@ -82,15 +82,11 @@ function validateLetterHunt(word: string, requiredLetters: string[]): { valid: b
   
   for (const [letter, requiredCount] of Object.entries(requiredCounts)) {
     const wordCount = wordCounts[letter] || 0;
-    if (wordCount !== requiredCount) {
-      if (wordCount < requiredCount) {
-        if (requiredCount === 1) {
-          return { valid: false, message: `Word must contain the letter "${letter}"` };
-        } else {
-          return { valid: false, message: `Word must contain "${letter}" exactly ${requiredCount} times (has ${wordCount})` };
-        }
+    if (wordCount < requiredCount) {
+      if (requiredCount === 1) {
+        return { valid: false, message: `Word must contain the letter "${letter}"` };
       } else {
-        return { valid: false, message: `Word has too many "${letter}"s (need ${requiredCount}, has ${wordCount})` };
+        return { valid: false, message: `Word must contain "${letter}" at least ${requiredCount} times (has ${wordCount})` };
       }
     }
   }
