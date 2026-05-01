@@ -54,7 +54,7 @@ export const leaderboardEntries = mysqlTable("leaderboard_entries", {
   playerName: varchar("player_name", { length: 255 }).notNull(),
   playedAt: timestamp("played_at").notNull().defaultNow(),
 }, (table) => [
-  index("lb_user_id_idx").on(table.userId),
+  uniqueIndex("lb_user_game_idx").on(table.userId, table.gameSlug),
   index("lb_game_score_idx").on(table.gameSlug, table.score),
   index("lb_played_at_idx").on(table.playedAt),
 ]);

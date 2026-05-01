@@ -689,15 +689,32 @@ export class MemStorage implements IStorage {
   }
 
   async saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry> {
+    const existing = this.leaderboardEntries.find(
+      e => e.userId === entry.userId && e.gameSlug === entry.gameSlug
+    );
+    if (existing) {
+      if (entry.score > existing.score) {
+        existing.score = entry.score;
+        existing.playerName = entry.playerName;
+        existing.playedAt = entry.playedAt;
+      }
+      return { ...existing };
+    }
     const newEntry: LeaderboardEntry = { ...entry, id: this.lbIdCounter++ };
     this.leaderboardEntries.push(newEntry);
     return newEntry;
   }
 
   async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
+    const seen = new Set<number>();
     return this.leaderboardEntries
       .filter(e => e.gameSlug === gameSlug)
       .sort((a, b) => b.score - a.score)
+      .filter(e => {
+        if (seen.has(e.userId)) return false;
+        seen.add(e.userId);
+        return true;
+      })
       .slice(0, limit)
       .map(e => {
         const user = this.users.get(e.userId);
