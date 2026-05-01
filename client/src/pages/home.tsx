@@ -4,7 +4,6 @@ import { Link, useLocation } from "wouter";
 import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Gamepad2, Sparkles, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
@@ -130,11 +129,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          <div className="mb-6">
-            <PremiumBanner />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
             {dailyChallenge && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -143,37 +138,29 @@ export default function Home() {
                 className="flex flex-col"
               >
                 <Link href="/daily" className="flex-1 flex flex-col">
-                  <Card className="hover-elevate cursor-pointer border-primary/20 flex-1 flex flex-col">
-                    <CardContent className="p-4 flex-1 flex flex-col">
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: dailyChallenge.game.color }}
-                        >
-                          {(() => {
-                            const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
-                            return <Icon className="h-6 w-6 text-white" />;
-                          })()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="font-semibold">Daily Challenge</span>
-                            {getDailyChallengeRecord(dailyChallenge.date) && (
-                              <CheckCircle className="h-4 w-4 text-accent" />
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            Today: {dailyChallenge.game.name}
-                          </p>
-                        </div>
+                  <Card className="hover-elevate cursor-pointer border-primary/20 h-full" data-testid="card-daily-challenge">
+                    <CardContent className="p-4 flex items-center gap-3 h-full">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: dailyChallenge.game.color }}
+                      >
+                        {(() => {
+                          const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
+                          return <Icon className="h-5 w-5 text-white" />;
+                        })()}
                       </div>
-                      <div className="mt-auto pt-4 flex justify-center">
-                        <Button variant="outline" size="sm" className="gap-1.5" data-testid="button-daily-challenge">
-                          {getDailyChallengeRecord(dailyChallenge.date) ? "View Result" : "Play Now"}
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-sm">Daily Challenge</span>
+                          {getDailyChallengeRecord(dailyChallenge.date) && (
+                            <CheckCircle className="h-3.5 w-3.5 text-accent shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Today: {dailyChallenge.game.name}
+                        </p>
                       </div>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </CardContent>
                   </Card>
                 </Link>
@@ -188,43 +175,34 @@ export default function Home() {
                 className="flex flex-col"
               >
                 <Card
-                  className="hover-elevate cursor-pointer border-dashed flex-1 flex flex-col"
+                  className="hover-elevate cursor-pointer border-dashed h-full"
                   onClick={pickSurpriseGame}
                   data-testid="card-surprise-me"
                 >
-                  <CardContent className="p-4 flex-1 flex flex-col">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
-                        <Shuffle className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Shuffle className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">Surprise Me</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {!hasPlayed
-                            ? "Not sure where to start? Let us pick a game for you."
-                            : "Try something new — we'll find a game you haven't played yet."}
-                        </p>
-                      </div>
+                  <CardContent className="p-4 flex items-center gap-3 h-full">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
+                      <Shuffle className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="mt-auto pt-4 flex justify-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5"
-                        data-testid="button-surprise-me"
-                        onClick={(e) => { e.stopPropagation(); pickSurpriseGame(); }}
-                      >
-                        Pick for me
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">Surprise Me</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {!hasPlayed ? "Let us pick a game for you." : "Find a game you haven't tried."}
+                      </p>
                     </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardContent>
                 </Card>
               </motion.div>
             )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.24 }}
+              className="flex flex-col"
+            >
+              <PremiumBanner variant="card" />
+            </motion.div>
           </div>
 
           <motion.div

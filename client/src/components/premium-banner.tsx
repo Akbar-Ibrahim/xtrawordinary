@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Crown, Sparkles, Gamepad2, Sliders, Star, ChevronRight } from "lucide-react";
+import { Crown, Sparkles, Gamepad2, Sliders, Star, ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -31,7 +32,7 @@ const PERKS = [
 ];
 
 interface PremiumBannerProps {
-  variant?: "banner" | "nav";
+  variant?: "banner" | "nav" | "card";
 }
 
 export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
@@ -131,6 +132,30 @@ export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
           <Crown className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Go Premium</span>
         </Button>
+        {perksModal}
+      </>
+    );
+  }
+
+  if (variant === "card") {
+    return (
+      <>
+        <Card
+          className="hover-elevate cursor-pointer border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 h-full"
+          onClick={openModal}
+          data-testid="card-go-premium"
+        >
+          <CardContent className="p-4 flex items-center gap-3 h-full">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-100 dark:bg-amber-900/50">
+              <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-amber-900 dark:text-amber-200">Go Premium</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-snug">Custom Play &amp; more perks</p>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-amber-500" />
+          </CardContent>
+        </Card>
         {perksModal}
       </>
     );
