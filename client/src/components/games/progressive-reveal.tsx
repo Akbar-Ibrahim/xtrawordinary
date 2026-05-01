@@ -339,20 +339,22 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode }: { groupSe
                   </div>
                 </div>
 
-                <AnimatePresence>
-                  {feedback === "wrong" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="text-center"
-                    >
-                      <p className="text-sm text-destructive font-medium">
-                        Not quite — try again!
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
+                  <AnimatePresence>
+                    {feedback === "wrong" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center"
+                      >
+                        <p className="text-sm text-destructive font-medium">
+                          Not quite — try again!
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 <div className="flex gap-2 max-w-sm mx-auto">
                   <Input

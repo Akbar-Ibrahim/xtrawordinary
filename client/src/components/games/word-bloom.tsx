@@ -471,19 +471,21 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                 </Button>
               </div>
 
-              <AnimatePresence>
-                {errorMsg && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-sm text-destructive text-center font-medium"
-                    data-testid="text-error"
-                  >
-                    {errorMsg}
-                  </motion.p>
-                )}
-              </AnimatePresence>
+              <div aria-live="polite" className="min-h-[1.5rem] flex items-center justify-center">
+                <AnimatePresence>
+                  {errorMsg && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-sm text-destructive text-center font-medium"
+                      data-testid="text-error"
+                    >
+                      {errorMsg}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {mode === "survival" && (
                 <p className="text-xs text-center text-muted-foreground">
