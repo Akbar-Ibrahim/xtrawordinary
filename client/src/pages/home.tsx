@@ -5,7 +5,7 @@ import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Gamepad2, Sparkles, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle } from "lucide-react";
+import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
@@ -66,19 +66,32 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-6">
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">Challenge Your Vocabulary</span>
+            <div className="flex items-center justify-center gap-3 sm:gap-5 mb-8 flex-wrap">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Gamepad2 className="h-4 w-4 text-primary" />
+                <span>23 games</span>
+              </div>
+              <span className="text-muted-foreground/30 select-none">·</span>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4 text-primary" />
+                <span>Daily challenge</span>
+              </div>
+              <span className="text-muted-foreground/30 select-none">·</span>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Trophy className="h-4 w-4 text-primary" />
+                <span>Free to play</span>
+              </div>
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-              Welcome to{" "}
-              <span className="font-extrabold italic bg-gradient-to-r from-primary via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
+            <h1 className="tracking-tight mb-4">
+              <span className="block text-xl sm:text-2xl font-medium text-foreground/60 mb-2">
+                Think you know words?
+              </span>
+              <span className="text-5xl sm:text-6xl lg:text-7xl font-extrabold italic bg-gradient-to-r from-primary via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
                 xtra<span className="not-italic font-black">W</span>ordinary
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground">
-              Discover a collection of engaging word games designed to test your
-              vocabulary, improve your spelling, and have fun along the way.
+              Daily challenges, leaderboards, and 23 games to obsess over.
             </p>
           </motion.div>
 
