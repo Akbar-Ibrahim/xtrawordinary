@@ -183,12 +183,12 @@ function ModeTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 p-1 bg-muted rounded-lg" data-testid="tabs-mode">
+      <div className="flex gap-1 p-1 bg-muted rounded-lg overflow-x-auto" data-testid="tabs-mode">
         {modes.map((mode) => (
           <button
             key={mode.slug}
             onClick={() => setActiveMode(mode.slug)}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
               activeMode === mode.slug
                 ? "bg-background shadow-sm text-foreground"
                 : "text-muted-foreground hover:text-foreground"
