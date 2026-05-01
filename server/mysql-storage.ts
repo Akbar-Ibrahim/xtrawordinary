@@ -339,15 +339,30 @@ export class MySQLStorage implements IStorage {
 
   async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
     const db = await this.getDb();
-    const bestPerUser = db.select({
+
+    // Step 1: MAX(score) per user for this game
+    const maxScorePerUser = db.select({
       userId: schema.leaderboardEntries.userId,
       maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score"),
-      minId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("min_id"),
     }).from(schema.leaderboardEntries)
       .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
       .groupBy(schema.leaderboardEntries.userId)
-      .as("best_per_user");
+      .as("max_score_per_user");
 
+    // Step 2: Among rows that match (userId, maxScore), pick MIN(id) as the canonical row
+    const bestRowIds = db.select({
+      userId: schema.leaderboardEntries.userId,
+      bestId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("best_id"),
+    }).from(schema.leaderboardEntries)
+      .innerJoin(maxScorePerUser, and(
+        eq(schema.leaderboardEntries.userId, maxScorePerUser.userId),
+        eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore),
+      ))
+      .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
+      .groupBy(schema.leaderboardEntries.userId)
+      .as("best_row_ids");
+
+    // Step 3: Fetch the full canonical rows
     const rows = await db.select({
       id: schema.leaderboardEntries.id,
       userId: schema.leaderboardEntries.userId,
@@ -356,11 +371,7 @@ export class MySQLStorage implements IStorage {
       playerName: schema.leaderboardEntries.playerName,
       playedAt: schema.leaderboardEntries.playedAt,
     }).from(schema.leaderboardEntries)
-      .innerJoin(bestPerUser, and(
-        eq(schema.leaderboardEntries.userId, bestPerUser.userId),
-        eq(schema.leaderboardEntries.score, bestPerUser.maxScore),
-        eq(schema.leaderboardEntries.id, bestPerUser.minId),
-      ))
+      .innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId))
       .orderBy(desc(schema.leaderboardEntries.score))
       .limit(limit);
 
