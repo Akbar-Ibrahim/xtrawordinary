@@ -69,7 +69,7 @@ export default function Home() {
             <div className="flex items-center justify-center gap-3 sm:gap-5 mb-8 flex-wrap">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Gamepad2 className="h-4 w-4 text-primary" />
-                <span>23 games</span>
+                <span>{games?.length ?? "—"} games</span>
               </div>
               <span className="text-muted-foreground/30 select-none">·</span>
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -91,7 +91,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground">
-              Daily challenges, leaderboards, and 23 games to obsess over.
+              Daily challenges, leaderboards, and word games to obsess over.
             </p>
           </motion.div>
 
