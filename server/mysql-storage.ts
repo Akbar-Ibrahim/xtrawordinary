@@ -326,7 +326,7 @@ export class MySQLStorage implements IStorage {
         eq(schema.leaderboardEntries.userId, entry.userId),
         eq(schema.leaderboardEntries.gameSlug, entry.gameSlug),
       )).limit(1);
-    const row = saved[0] as any;
+    const row: typeof schema.leaderboardEntries.$inferSelect = saved[0];
     return {
       id: row.id,
       userId: row.userId,
@@ -339,24 +339,39 @@ export class MySQLStorage implements IStorage {
 
   async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
     const db = await this.getDb();
-    const rows = await db.select().from(schema.leaderboardEntries)
+    const bestPerUser = db.select({
+      userId: schema.leaderboardEntries.userId,
+      maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score"),
+      minId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("min_id"),
+    }).from(schema.leaderboardEntries)
       .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
+      .groupBy(schema.leaderboardEntries.userId)
+      .as("best_per_user");
+
+    const rows = await db.select({
+      id: schema.leaderboardEntries.id,
+      userId: schema.leaderboardEntries.userId,
+      gameSlug: schema.leaderboardEntries.gameSlug,
+      score: schema.leaderboardEntries.score,
+      playerName: schema.leaderboardEntries.playerName,
+      playedAt: schema.leaderboardEntries.playedAt,
+    }).from(schema.leaderboardEntries)
+      .innerJoin(bestPerUser, and(
+        eq(schema.leaderboardEntries.userId, bestPerUser.userId),
+        eq(schema.leaderboardEntries.score, bestPerUser.maxScore),
+        eq(schema.leaderboardEntries.id, bestPerUser.minId),
+      ))
       .orderBy(desc(schema.leaderboardEntries.score))
-      .limit(limit * 10);
+      .limit(limit);
+
     if (rows.length === 0) return [];
-    const seen = new Set<number>();
-    const deduped = rows.filter((r: any) => {
-      if (seen.has(r.userId)) return false;
-      seen.add(r.userId);
-      return true;
-    }).slice(0, limit);
-    const userIds = [...new Set(deduped.map((r: any) => r.userId).filter(Boolean))];
+    const userIds = [...new Set(rows.map(r => r.userId).filter(Boolean))];
     const userRows = userIds.length > 0
       ? await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
           .from(schema.users).where(inArray(schema.users.id, userIds))
       : [];
     const userMap = new Map(userRows.map(u => [u.id, u]));
-    return deduped.map((r: any) => {
+    return rows.map(r => {
       const user = userMap.get(r.userId);
       return {
         id: r.id,
