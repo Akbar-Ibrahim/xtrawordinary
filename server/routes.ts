@@ -2653,8 +2653,11 @@ export async function registerRoutes(
         return res.status(410).json({ error: `This challenge has been ${challenge.status}` });
       }
       const { duelRegistry } = await import("./duel-ws");
-      const room = duelRegistry.getRoom(roomCode);
-      if (!room) return res.status(404).json({ error: "Room not active" });
+      // Room may be missing after a process restart — restore it lazily from
+      // persisted challenge metadata so accepted challenges remain reachable.
+      const room =
+        duelRegistry.getRoom(roomCode) ??
+        duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId);
       res.json({
         gameSlug: room.gameSlug,
         seed: room.seed,

@@ -67,6 +67,8 @@ type DuelRoom = {
   currentTurnUserId: number | null;
   /** Ensures ELO/session is written exactly once. */
   finalized: boolean;
+  /** Epoch ms when the 3-second countdown began; null outside countdown phase. */
+  countdownStartAt: number | null;
 };
 
 const INITIAL_LIVES = 3;
@@ -194,6 +196,7 @@ export class DuelRoomRegistry {
       usedWords: [startWord],
       currentTurnUserId: null,
       finalized: false,
+      countdownStartAt: null,
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} created for game ${gameSlug}`, "duel-ws");
@@ -202,6 +205,37 @@ export class DuelRoomRegistry {
 
   getRoom(roomCode: string): DuelRoom | undefined {
     return this.rooms.get(roomCode);
+  }
+
+  /**
+   * Recreate a waiting room from persisted challenge metadata after a process restart.
+   * Only creates a new room; if one already exists it is returned as-is.
+   */
+  restoreRoom(roomCode: string, gameSlug: string, challengerId: number): DuelRoom {
+    const existing = this.rooms.get(roomCode);
+    if (existing) return existing;
+
+    const seed = Math.floor(Math.random() * 1_000_000);
+    const startWord = DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+    const room: DuelRoom = {
+      roomCode,
+      players: new Map(),
+      gameSlug,
+      seed,
+      startWord,
+      status: "waiting",
+      createdAt: Date.now(),
+      challengerId,
+      livesPerPlayer: new Map(),
+      currentWord: startWord,
+      usedWords: [startWord],
+      currentTurnUserId: null,
+      finalized: false,
+      countdownStartAt: null,
+    };
+    this.rooms.set(roomCode, room);
+    log(`[Duel] Room ${roomCode} restored from challenge metadata`, "duel-ws");
+    return room;
   }
 
   joinRoom(
@@ -242,7 +276,17 @@ export class DuelRoomRegistry {
         if (opponent?.ready) {
           send(ws, { type: "room:player_ready", userId: opponent.userId });
         }
-      } else if (room.status === "playing" || room.status === "countdown") {
+      } else if (room.status === "countdown") {
+        // Reconnect during 3-2-1 countdown — resend ready signal with original startAt
+        // so the client rejoins the countdown at the correct point in time
+        if (opponent) {
+          const elapsedMs = room.countdownStartAt ? Date.now() - room.countdownStartAt : 3000;
+          const startAt = (room.countdownStartAt ?? Date.now()) + 3000;
+          const secondsLeft = Math.max(1, Math.ceil((3000 - elapsedMs) / 1000));
+          send(ws, { type: "room:ready", startAt });
+          send(ws, { type: "room:countdown", secondsLeft });
+        }
+      } else if (room.status === "playing") {
         // Send full authoritative game snapshot so client can restore state
         if (opponent) {
           const myLives = room.livesPerPlayer.get(userId) ?? INITIAL_LIVES;
@@ -328,6 +372,7 @@ export class DuelRoomRegistry {
       room.currentTurnUserId = room.challengerId;
 
       const startAt = Date.now() + 3000;
+      room.countdownStartAt = Date.now();
       for (const p of Array.from(room.players.values())) {
         send(p.ws, { type: "room:ready", startAt });
       }
@@ -591,11 +636,10 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             return;
           }
 
-          const room = duelRegistry.getRoom(roomCode);
-          if (!room) {
-            send(ws, { type: "error", message: "Room not found in registry" });
-            return;
-          }
+          // Restore room lazily if missing after a process restart
+          const room =
+            duelRegistry.getRoom(roomCode) ??
+            duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId);
 
           const user = await storage.getUserById(userId);
           const name = user?.name ?? "Player";
