@@ -86,6 +86,63 @@ export async function registerRoutes(
   });
 
   app.get("/api/games/definition-match/words", async (req, res) => {
+    // --- MYSQL QUERY (uncomment when word_categories table is populated) ---
+    // try {
+    //   const db = await import("./db").then(m => m.db);
+    //   const { wordCategories } = await import("./db-schema");
+    //   const { sql } = await import("drizzle-orm");
+    //
+    //   // Fetch a random selection of rows from word_categories
+    //   const rows = await db
+    //     .select()
+    //     .from(wordCategories)
+    //     .orderBy(sql`RAND()`)
+    //     .limit(20);
+    //
+    //   // Helper: safely parse the definitions JSON column.
+    //   // MySQL drivers may return JSON columns as raw strings — always parse defensively.
+    //   function parseDefinitions(raw: unknown): string[] {
+    //     if (Array.isArray(raw)) return raw.map(String);
+    //     if (typeof raw === "string") {
+    //       try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed.map(String) : []; }
+    //       catch { return []; }
+    //     }
+    //     return [];
+    //   }
+    //
+    //   // Helper: pick N random items from an array (Fisher-Yates slice).
+    //   function pickRandom<T>(arr: T[], n: number): T[] {
+    //     const copy = [...arr];
+    //     for (let i = copy.length - 1; i > 0; i--) {
+    //       const j = Math.floor(Math.random() * (i + 1));
+    //       [copy[i], copy[j]] = [copy[j], copy[i]];
+    //     }
+    //     return copy.slice(0, n);
+    //   }
+    //
+    //   const words = rows
+    //     .map(row => {
+    //       const allDefs = parseDefinitions(row.definitions);
+    //       if (allDefs.length < 1) return null; // skip rows with no definitions
+    //       // If the row has more than 3 definitions, randomly pick 3.
+    //       const chosen = allDefs.length > 3 ? pickRandom(allDefs, 3) : allDefs;
+    //       // Pad to exactly 3 if fewer than 3 exist (reuses last definition as fallback).
+    //       while (chosen.length < 3) chosen.push(chosen[chosen.length - 1]);
+    //       return {
+    //         word: row.word.toUpperCase(),
+    //         partOfSpeech: "word", // extend db-schema with a partOfSpeech column when available
+    //         definitions: chosen as [string, string, string],
+    //       };
+    //     })
+    //     .filter(Boolean);
+    //
+    //   const seed = parseInt(req.query.seed as string);
+    //   return res.json(isNaN(seed) ? words : seededShuffle(words as any[], seed));
+    // } catch (error) {
+    //   console.error("definition-match MySQL fetch error:", error);
+    //   return res.status(500).json({ message: "Failed to fetch definition words" });
+    // }
+    // --- END MYSQL QUERY ---
     try {
       const words = await dataSource.getDefinitionWords();
       const seed = parseInt(req.query.seed as string);

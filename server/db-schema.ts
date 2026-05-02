@@ -233,7 +233,7 @@ export const games = mysqlTable("games", {
 export const wordCategories = mysqlTable("word_categories", {
   id: int("id").primaryKey().autoincrement(),
   word: varchar("word", { length: 100 }).notNull().unique(),
-  subcategory: varchar("subcategory", { length: 255 }).notNull(),
+  definitions: json("definitions").$type<string[]>().notNull(),
   wordLength: int("word_length").notNull(),
 });
 
