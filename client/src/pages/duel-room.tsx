@@ -47,6 +47,8 @@ export default function DuelRoom() {
   // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
   const [errorMsg, setErrorMsg] = useState("");
+  // Ref keeps handleServerMessage from capturing a stale phase value
+  const phaseRef = useRef<Phase>("connecting");
 
   // ── Room / opponent metadata ────────────────────────────────────────────────
   const [opponentId, setOpponentId] = useState<number | null>(null);
@@ -80,6 +82,9 @@ export default function DuelRoom() {
     enabled: !!roomCode && isAuthenticated,
     retry: false,
   });
+
+  // Keep phaseRef current so handleServerMessage never sees a stale phase
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   const sendWs = useCallback((msg: DuelClientMessage) => {
     const ws = wsRef.current;
@@ -137,8 +142,8 @@ export default function DuelRoom() {
         case "error":
           // During active play forward to the engine so it can rollback the
           // optimistic word update, apply the 0.5s time penalty, and restore turn.
-          // Outside the playing phase (e.g. lobby) surface as a toast instead.
-          if (phase === "playing") {
+          // Read phaseRef (not closed-over phase) so we always see the live value.
+          if (phaseRef.current === "playing") {
             setLatestGameMessage(msg);
           } else {
             toast({ title: "Duel error", description: msg.message, variant: "destructive" });
