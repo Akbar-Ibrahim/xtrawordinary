@@ -1232,14 +1232,7 @@ export const gamesData: Game[] = [
     icon: "Ban",
     color: "hsl(0, 75%, 52%)",
     playCount: 0,
-    modes: [
-      { label: "Easy",     slug: "letter-dodge-1" },
-      { label: "Medium",   slug: "letter-dodge-2" },
-      { label: "Hard",     slug: "letter-dodge-3" },
-      { label: "Expert",   slug: "letter-dodge-4" },
-      { label: "Master",   slug: "letter-dodge-5" },
-      { label: "Advanced", slug: "letter-dodge-advanced" },
-    ],
+    modes: [],
   },
   {
     id: 23,
