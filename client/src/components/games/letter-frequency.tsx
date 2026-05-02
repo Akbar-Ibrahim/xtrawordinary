@@ -87,6 +87,17 @@ function generateMultiLetterConstraint(rng: () => number = Math.random): MultiLe
   return { letters, minCount: 2 };
 }
 
+function resolveMultiLetters(template: string[], rng: () => number): string[] {
+  const pinned = template.filter(l => l !== "any");
+  const available = [...MULTI_LETTER_POOL].filter(l => !pinned.includes(l));
+  return template.map(l => {
+    if (l !== "any") return l;
+    if (available.length === 0) return null;
+    const idx = Math.floor(rng() * available.length);
+    return available.splice(idx, 1)[0];
+  }).filter((l): l is string => l !== null);
+}
+
 function validateMultiLetterConstraint(word: string, constraint: MultiLetterConstraint): { valid: boolean; message: string } {
   const upperWord = word.toUpperCase();
   for (const letter of constraint.letters) {
@@ -119,7 +130,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; initialLetter?: string; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
+export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -139,12 +150,24 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed
   });
 
   const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
-  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
+  const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">(() =>
+    initialChallenge !== undefined ? "playing" : "menu"
+  );
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
-  const [constraint, setConstraint] = useState<FrequencyConstraint | null>(null);
-  const [multiConstraint, setMultiConstraint] = useState<MultiLetterConstraint | null>(null);
+  const [constraint, setConstraint] = useState<FrequencyConstraint | null>(() => {
+    if (initialChallenge === undefined || initialChallenge === "multi" || initialChallenge === "random") return null;
+    return generateConstraint(initialChallenge, seedRngRef.current, initialLetter);
+  });
+  const [multiConstraint, setMultiConstraint] = useState<MultiLetterConstraint | null>(() => {
+    if (initialChallenge !== "multi") return null;
+    const rng = seedRngRef.current ?? Math.random;
+    if (initialLetters && initialLetters.length > 0) {
+      return { letters: resolveMultiLetters(initialLetters, rng), minCount: 2 };
+    }
+    return generateMultiLetterConstraint(rng);
+  });
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -154,8 +177,9 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isSurvivalRef = useRef(false);
+  const isSurvivalRef = useRef(initialSurvival ?? false);
   const initialLetterRef = useRef<string | undefined>(initialLetter);
+  const initialLettersRef = useRef<string[] | undefined>(initialLetters);
 
   const wordsPerChallenge = initialWordCount ?? 20;
   const timePerChallenge = initialTimeLimit ?? 120;
@@ -199,7 +223,12 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed
     setFeedback(null);
     if (c === "multi") {
       setConstraint(null);
-      setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
+      const rng = seedRngRef.current ?? Math.random;
+      if (initialLettersRef.current && initialLettersRef.current.length > 0) {
+        setMultiConstraint({ letters: resolveMultiLetters(initialLettersRef.current, rng), minCount: 2 });
+      } else {
+        setMultiConstraint(generateMultiLetterConstraint(rng));
+      }
     } else {
       setMultiConstraint(null);
       setConstraint(generateConstraint(c, seedRngRef.current, initialLetterRef.current));
@@ -211,7 +240,8 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, groupSeed
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startGame(initialChallenge, initialSurvival ?? false);
+      startTimer(initialSurvival ?? false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, []);
 

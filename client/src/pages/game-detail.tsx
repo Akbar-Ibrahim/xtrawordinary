@@ -790,6 +790,7 @@ export default function GameDetail() {
                   return n as 1 | 2 | 3 | 4;
                 })()}
                 initialLetter={customPlayParams.letter || undefined}
+                initialLetters={Array.isArray(customPlayParams.letters) ? customPlayParams.letters : undefined}
                 initialSurvival={customPlayParams.survival === true}
                 initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
                 initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
@@ -1320,7 +1321,12 @@ export default function GameDetail() {
                       value={quizParams.challenge !== undefined ? String(quizParams.challenge) : "0"}
                       onValueChange={(v) => {
                         const c = v === "multi" ? "multi" : Number(v);
-                        setQuizParams(p => ({ ...p, challenge: c === 0 ? undefined : c, letter: c === "multi" ? undefined : p.letter }));
+                        setQuizParams(p => ({
+                          ...p,
+                          challenge: c === 0 ? undefined : c,
+                          letter: c === "multi" ? undefined : p.letter,
+                          letters: c !== "multi" ? undefined : p.letters,
+                        }));
                       }}
                     >
                       <SelectTrigger className="mt-1" data-testid="select-quiz-freq-challenge">
@@ -1336,6 +1342,53 @@ export default function GameDetail() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {quizParams.challenge === "multi" && (
+                    <div>
+                      <label className="text-sm font-medium">Pin Letters (optional)</label>
+                      <div className="flex gap-1 mt-1 mb-2">
+                        {[2, 3].map(n => (
+                          <Button
+                            key={n}
+                            type="button"
+                            size="sm"
+                            variant={(quizParams.letters?.length ?? 2) === n ? "default" : "outline"}
+                            onClick={() => setQuizParams(p => {
+                              const cur: string[] = p.letters ?? Array(2).fill("any");
+                              const next = n > cur.length
+                                ? [...cur, ...Array(n - cur.length).fill("any")]
+                                : cur.slice(0, n);
+                              return { ...p, letters: next };
+                            })}
+                            data-testid={`button-quiz-freq-multi-count-${n}`}
+                          >
+                            {n} letters
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {Array.from({ length: quizParams.letters?.length ?? 2 }).map((_, i) => (
+                          <div key={i} className="flex flex-col items-center gap-0.5">
+                            <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                            <Select
+                              value={(quizParams.letters?.[i]) || "any"}
+                              onValueChange={(v) => setQuizParams(p => {
+                                const letters = [...(p.letters ?? Array(2).fill("any"))];
+                                letters[i] = v;
+                                return { ...p, letters };
+                              })}
+                            >
+                              <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-freq-multi-${i}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">Any</SelectItem>
+                                {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                    </div>
+                  )}
                   {quizParams.challenge && quizParams.challenge !== "multi" && (
                     <div>
                       <label className="text-sm font-medium">Specific Letter (optional)</label>
@@ -1971,7 +2024,7 @@ export default function GameDetail() {
                           const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
                           if (!validLetters.includes(p.letter)) newLetter = undefined;
                         }
-                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter };
+                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter, letters: c !== "multi" ? undefined : p.letters };
                       });
                     }}
                   >
@@ -1988,6 +2041,53 @@ export default function GameDetail() {
                     </SelectContent>
                   </Select>
                 </div>
+                {customPlayParams.challenge === "multi" && (
+                  <div>
+                    <label className="text-sm font-medium">Pin Letters (optional)</label>
+                    <div className="flex gap-1 mt-1 mb-2">
+                      {[2, 3].map(n => (
+                        <Button
+                          key={n}
+                          type="button"
+                          size="sm"
+                          variant={(customPlayParams.letters?.length ?? 2) === n ? "default" : "outline"}
+                          onClick={() => setCustomPlayParams(p => {
+                            const cur: string[] = p.letters ?? Array(2).fill("any");
+                            const next = n > cur.length
+                              ? [...cur, ...Array(n - cur.length).fill("any")]
+                              : cur.slice(0, n);
+                            return { ...p, letters: next };
+                          })}
+                          data-testid={`button-custom-freq-multi-count-${n}`}
+                        >
+                          {n} letters
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {Array.from({ length: customPlayParams.letters?.length ?? 2 }).map((_, i) => (
+                        <div key={i} className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                          <Select
+                            value={(customPlayParams.letters?.[i]) || "any"}
+                            onValueChange={(v) => setCustomPlayParams(p => {
+                              const letters = [...(p.letters ?? Array(2).fill("any"))];
+                              letters[i] = v;
+                              return { ...p, letters };
+                            })}
+                          >
+                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-freq-multi-${i}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                  </div>
+                )}
                 {customPlayParams.challenge !== "multi" && customPlayParams.challenge !== undefined && (
                   <div>
                     <label className="text-sm font-medium">Specific Letter (optional)</label>

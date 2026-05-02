@@ -108,7 +108,10 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const freqMap: Record<string | number, string> = { 1: "Exactly 2×", 2: "Exactly 3×", 3: "Exactly 4×", 4: "5× or more", multi: "Multi-Letter" };
       const challenge = p.challenge ?? p.rank ?? ([1, 2, 3, 4] as const)[seed % 4];
       const letter = p.letter ? ` · Letter ${p.letter}` : "";
-      const freqBase = `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}`;
+      const pinnedMulti = challenge === "multi" && Array.isArray(p.letters) && (p.letters as string[]).some(l => l !== "any")
+        ? ` · ${(p.letters as string[]).filter(l => l !== "any").join(", ")}`
+        : "";
+      const freqBase = `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}${pinnedMulti}`;
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
         const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
@@ -222,7 +225,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const lfWc = !survival ? toNum(params?.wordCount) : undefined;
       const lfTl = !survival ? toNum(params?.timeLimit) : undefined;
       if (rawChallenge === "multi") {
-        return <LetterFrequencyGame initialChallenge="multi" groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
+        const lfMultiLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
+        return <LetterFrequencyGame initialChallenge="multi" initialLetters={lfMultiLetters} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
       }
       const challengeNum = toNum(rawChallenge);
       const rankNum = challengeNum && challengeNum >= 1 && challengeNum <= 4 ? Math.round(challengeNum) : null;
