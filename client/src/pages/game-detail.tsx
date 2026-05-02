@@ -25,6 +25,7 @@ import {
   Copy,
   CheckCheck,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
@@ -286,6 +287,8 @@ export default function GameDetail() {
   const [dmWord, setDmWord] = useState("");
   const [dmPos, setDmPos] = useState("noun");
   const [dmDefs, setDmDefs] = useState(["", "", ""]);
+  const [dmEditIndex, setDmEditIndex] = useState<number | null>(null);
+  const [dmReview, setDmReview] = useState(false);
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -814,7 +817,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -824,6 +827,46 @@ export default function GameDetail() {
           </DialogHeader>
           {!createdQuiz ? (
             <div className="space-y-4">
+              {dmReview && slug === "definition-match" ? (() => {
+                const dmReviewEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <button type="button" onClick={() => setDmReview(false)} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 shrink-0" data-testid="button-dm-review-back">
+                        ← Back
+                      </button>
+                      <span className="text-sm font-semibold mx-auto">Review your quiz</span>
+                    </div>
+                    <div className="rounded-lg border bg-muted/20 p-3 space-y-0.5">
+                      <p className="font-semibold text-sm">{quizTitle || "Untitled Quiz"}</p>
+                      {quizDescription && <p className="text-xs text-muted-foreground">{quizDescription}</p>}
+                      <p className="text-xs text-muted-foreground">{dmReviewEntries.length} word{dmReviewEntries.length !== 1 ? "s" : ""}</p>
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {dmReviewEntries.map((entry, idx) => (
+                        <div key={idx} className="rounded-lg border p-3 space-y-1.5" data-testid={`dm-review-entry-${idx}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold uppercase tracking-wide">{entry.word}</span>
+                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{entry.partOfSpeech}</span>
+                          </div>
+                          <div className="space-y-1">
+                            {entry.definitions.map((def: string, di: number) => (
+                              <div key={di} className={`text-xs px-2 py-1 rounded ${di === 0 ? "bg-primary/5 text-primary" : di === 1 ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400" : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"}`}>
+                                <span className="font-semibold mr-1">C{di + 1}:</span>{def}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <Button className="w-full gap-2" onClick={() => createQuizMutation.mutate()} disabled={createQuizMutation.isPending} data-testid="button-dm-confirm-create">
+                      {createQuizMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
+                      Create Session
+                    </Button>
+                  </div>
+                );
+              })() : (
+              <>
               <p className="text-sm text-muted-foreground">
                 Create a shareable quiz in <strong>{game.name}</strong>. Anyone with the link can play and submit their score.
               </p>
@@ -1303,14 +1346,32 @@ export default function GameDetail() {
               )}
               {slug === "definition-match" && (() => {
                 const dmEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
-                const canAdd = dmWord.trim().length > 0 && dmDefs[0].trim().length > 0 && dmDefs[1].trim().length > 0 && dmDefs[2].trim().length > 0;
-                const addEntry = () => {
-                  if (!canAdd || dmEntries.length >= 20) return;
+                const isEditing = dmEditIndex !== null;
+                const canSave = dmWord.trim().length > 0 && dmDefs[0].trim().length > 0 && dmDefs[1].trim().length > 0 && dmDefs[2].trim().length > 0;
+                const saveEntry = () => {
+                  if (!canSave) return;
                   const entry = { word: dmWord.trim().toUpperCase(), partOfSpeech: dmPos, definitions: [dmDefs[0].trim(), dmDefs[1].trim(), dmDefs[2].trim()] as [string, string, string] };
-                  setQuizParams(p => ({ ...p, words: [...dmEntries, entry] }));
+                  if (isEditing) {
+                    setQuizParams(p => {
+                      const words = [...(Array.isArray(p.words) ? p.words : [])];
+                      words[dmEditIndex!] = entry;
+                      return { ...p, words };
+                    });
+                    setDmEditIndex(null);
+                  } else {
+                    setQuizParams(p => ({ ...p, words: [...dmEntries, entry] }));
+                  }
                   setDmWord("");
                   setDmDefs(["", "", ""]);
                 };
+                const startEdit = (i: number) => {
+                  const e = dmEntries[i];
+                  setDmWord(e.word);
+                  setDmPos(e.partOfSpeech);
+                  setDmDefs([e.definitions[0], e.definitions[1], e.definitions[2]]);
+                  setDmEditIndex(i);
+                };
+                const cancelEdit = () => { setDmEditIndex(null); setDmWord(""); setDmDefs(["", "", ""]); };
                 return (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -1320,28 +1381,32 @@ export default function GameDetail() {
                     {dmEntries.length > 0 && (
                       <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                         {dmEntries.map((entry, i) => (
-                          <div key={i} className="flex items-start gap-2 rounded-md border bg-muted/30 px-3 py-2" data-testid={`dm-entry-${i}`}>
+                          <div key={i} className={`flex items-start gap-2 rounded-md border px-3 py-2 transition-colors ${dmEditIndex === i ? "border-primary bg-primary/5" : "bg-muted/30"}`} data-testid={`dm-entry-${i}`}>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold uppercase tracking-wide">{entry.word}</p>
                               <p className="text-xs text-muted-foreground">{entry.partOfSpeech} · 3 clues</p>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => setQuizParams(p => ({ ...p, words: dmEntries.filter((_, j) => j !== i) }))}
-                              data-testid={`button-dm-remove-${i}`}
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
+                            {dmEditIndex === i ? (
+                              <span className="text-xs text-primary font-medium self-center px-1">editing…</span>
+                            ) : (
+                              <>
+                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-primary" onClick={() => startEdit(i)} data-testid={`button-dm-edit-${i}`}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setQuizParams(p => ({ ...p, words: dmEntries.filter((_, j) => j !== i) }))} data-testid={`button-dm-remove-${i}`}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>
                     )}
-                    {dmEntries.length < 20 && (
+                    {(dmEntries.length < 20 || isEditing) && (
                       <div className="rounded-lg border bg-muted/10 p-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Add a word entry</p>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {isEditing ? `Editing: ${dmEntries[dmEditIndex!]?.word ?? ""}` : "Add a word entry"}
+                        </p>
                         <div className="flex gap-2">
                           <Input
                             placeholder="WORD"
@@ -1375,16 +1440,16 @@ export default function GameDetail() {
                             </span>
                           </div>
                         ))}
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="w-full"
-                          disabled={!canAdd}
-                          onClick={addEntry}
-                          data-testid="button-dm-add-entry"
-                        >
-                          Add Entry
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" className="flex-1" disabled={!canSave} onClick={saveEntry} data-testid="button-dm-add-entry">
+                            {isEditing ? "Save Changes" : "Add Entry"}
+                          </Button>
+                          {isEditing && (
+                            <Button type="button" size="sm" variant="outline" onClick={cancelEdit} data-testid="button-dm-cancel-edit">
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     )}
                     {dmEntries.length === 0 && (
@@ -1420,10 +1485,10 @@ export default function GameDetail() {
               )}
               <Button
                 className="w-full gap-2"
-                onClick={() => createQuizMutation.mutate()}
+                onClick={() => slug === "definition-match" ? setDmReview(true) : createQuizMutation.mutate()}
                 disabled={
                   !quizTitle.trim() ||
-                  createQuizMutation.isPending ||
+                  (slug !== "definition-match" && createQuizMutation.isPending) ||
                   (slug === "letter-position" && (
                     !lpLetter || !lpPosition ||
                     lpCountFetching ||
@@ -1438,9 +1503,11 @@ export default function GameDetail() {
                 }
                 data-testid="button-create-quiz-submit"
               >
-                {createQuizMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
-                Create Session
+                {createQuizMutation.isPending && slug !== "definition-match" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
+                {slug === "definition-match" ? "Review & Create →" : "Create Session"}
               </Button>
+              </>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
