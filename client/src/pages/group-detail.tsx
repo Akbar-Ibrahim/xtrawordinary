@@ -197,6 +197,8 @@ export default function GroupDetail() {
   const [createRoundOpen, setCreateRoundOpen] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState("random");
   const [closesAt, setClosesAt] = useState("");
+  const [roundLetterCount, setRoundLetterCount] = useState<2 | 3>(2);
+  const [roundLetters, setRoundLetters] = useState<string[]>(["any", "any"]);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expandedRoundId, setExpandedRoundId] = useState<number | null>(null);
@@ -258,17 +260,24 @@ export default function GroupDetail() {
   });
 
   const createRoundMutation = useMutation({
-    mutationFn: async () =>
-      apiRequest("POST", `/api/groups/${groupId}/rounds`, {
+    mutationFn: async () => {
+      const body: Record<string, unknown> = {
         gameSlug: selectedSlug === "random" ? undefined : selectedSlug,
         closesAt: closesAt ? new Date(closesAt).toISOString() : undefined,
-      }),
+      };
+      if (selectedSlug === "letter-frequency") {
+        body.gameConfig = { letters: roundLetters };
+      }
+      return apiRequest("POST", `/api/groups/${groupId}/rounds`, body);
+    },
     onSuccess: async (res) => {
       const round: GroupRound = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds"] });
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "activity"] });
       setCreateRoundOpen(false);
       setClosesAt("");
+      setRoundLetterCount(2);
+      setRoundLetters(["any", "any"]);
       navigate(`/groups/${groupId}/rounds/${round.id}/play`);
     },
     onError: () => toast({ title: "Failed to create round", variant: "destructive" }),
@@ -668,7 +677,14 @@ export default function GroupDetail() {
         </Tabs>
       </motion.div>
 
-      <Dialog open={createRoundOpen} onOpenChange={(v) => { setCreateRoundOpen(v); if (!v) setClosesAt(""); }}>
+      <Dialog open={createRoundOpen} onOpenChange={(v) => {
+        setCreateRoundOpen(v);
+        if (!v) {
+          setClosesAt("");
+          setRoundLetterCount(2);
+          setRoundLetters(["any", "any"]);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Start New Round</DialogTitle>
@@ -676,7 +692,11 @@ export default function GroupDetail() {
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <label className="text-sm font-medium">Game</label>
-              <Select value={selectedSlug} onValueChange={setSelectedSlug}>
+              <Select value={selectedSlug} onValueChange={(v) => {
+                setSelectedSlug(v);
+                setRoundLetterCount(2);
+                setRoundLetters(["any", "any"]);
+              }}>
                 <SelectTrigger data-testid="select-game-slug">
                   <SelectValue placeholder="Pick a game" />
                 </SelectTrigger>
@@ -688,6 +708,55 @@ export default function GroupDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {selectedSlug === "letter-frequency" && (
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <label className="text-sm font-medium">Pin Letters <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <div className="flex gap-1">
+                  {([2, 3] as const).map(n => (
+                    <Button
+                      key={n}
+                      type="button"
+                      size="sm"
+                      variant={roundLetterCount === n ? "default" : "outline"}
+                      onClick={() => {
+                        setRoundLetterCount(n);
+                        setRoundLetters(prev => {
+                          const next = n > prev.length
+                            ? [...prev, ...Array(n - prev.length).fill("any")]
+                            : prev.slice(0, n);
+                          return next;
+                        });
+                      }}
+                      data-testid={`button-round-freq-multi-count-${n}`}
+                    >
+                      {n} letters
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {Array.from({ length: roundLetterCount }).map((_, i) => (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                      <Select
+                        value={roundLetters[i] || "any"}
+                        onValueChange={(v) => setRoundLetters(prev => {
+                          const next = [...prev];
+                          next[i] = v;
+                          return next;
+                        })}
+                      >
+                        <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-round-freq-multi-${i}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any</SelectItem>
+                          {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Each slot can be "Any" or a specific letter. All members will play with the same pinned letters.</p>
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-sm font-medium">Closing Time <span className="text-muted-foreground font-normal">(optional)</span></label>
               <input
@@ -701,7 +770,7 @@ export default function GroupDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); setRoundLetterCount(2); setRoundLetters(["any", "any"]); }}>Cancel</Button>
             <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending} data-testid="button-create-round-submit">
               {createRoundMutation.isPending ? "Creating..." : "Start Round"}
             </Button>

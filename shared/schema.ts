@@ -348,6 +348,7 @@ export const groupRoundSchema = z.object({
   status: z.string(),
   createdById: z.number(),
   closesAt: z.string().nullable(),
+  gameConfig: z.string().nullable(),
   createdAt: z.string(),
 });
 export type GroupRound = z.infer<typeof groupRoundSchema>;

@@ -760,6 +760,7 @@ export class MySQLStorage implements IStorage {
       status: r.status,
       createdById: r.createdById,
       closesAt: r.closesAt ? (r.closesAt instanceof Date ? r.closesAt.toISOString() : String(r.closesAt)) : null,
+      gameConfig: r.gameConfig ?? null,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
   }
@@ -903,6 +904,7 @@ export class MySQLStorage implements IStorage {
       status: round.status,
       createdById: round.createdById,
       closesAt: round.closesAt ? new Date(round.closesAt) : null,
+      gameConfig: round.gameConfig ?? null,
     });
     const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.id, result[0].insertId)).limit(1);
     return this.toGroupRound(rows[0]);

@@ -69,7 +69,7 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-function renderGroupGame(slug: string, seed: number): React.ReactNode {
+function renderGroupGame(slug: string, seed: number, gameConfig?: { letters?: string[] } | null): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
@@ -91,6 +91,9 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
       return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked />;
     }
     case "letter-frequency": {
+      if (gameConfig?.letters && gameConfig.letters.length >= 2) {
+        return <LetterFrequencyGame initialChallenge="multi" initialLetters={gameConfig.letters} groupSeed={seed} locked />;
+      }
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
     }
@@ -444,7 +447,7 @@ export default function GroupRoundPlay() {
                 Exit
               </Button>
             </div>
-            {renderGroupGame(round.gameSlug, round.seed) || (
+            {renderGroupGame(round.gameSlug, round.seed, round.gameConfig ? JSON.parse(round.gameConfig) : null) || (
               <Card>
                 <CardContent className="p-8 text-center">
                   <p className="text-muted-foreground">This game type is not available for group rounds.</p>

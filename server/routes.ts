@@ -1889,9 +1889,12 @@ export async function registerRoutes(
       if (!membership || !["owner", "admin"].includes(membership.role)) {
         return res.status(403).json({ error: "Only admins can create rounds" });
       }
-      const { gameSlug, closesAt } = req.body;
+      const { gameSlug, closesAt, gameConfig } = req.body;
       const slug = gameSlug && CHALLENGE_GAME_SLUGS.includes(gameSlug) ? gameSlug : CHALLENGE_GAME_SLUGS[Math.floor(Math.random() * CHALLENGE_GAME_SLUGS.length)];
       const seed = Math.floor(Math.random() * 2147483647);
+      const configJson = (slug === "letter-frequency" && gameConfig && typeof gameConfig === "object")
+        ? JSON.stringify(gameConfig)
+        : null;
       const round = await storage.createGroupRound({
         groupId,
         gameSlug: slug,
@@ -1899,6 +1902,7 @@ export async function registerRoutes(
         status: "active",
         createdById: userId,
         closesAt: closesAt || null,
+        gameConfig: configJson,
       });
       await storage.logGroupActivity(groupId, userId, "round_started", { gameSlug: slug, roundId: round.id, name: (req.user as any).name });
       res.status(201).json(round);

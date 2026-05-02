@@ -148,6 +148,7 @@ export const groupRounds = mysqlTable("group_rounds", {
   status: varchar("status", { length: 20 }).notNull().default("active"),
   createdById: int("created_by_id").notNull(),
   closesAt: timestamp("closes_at"),
+  gameConfig: text("game_config"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("gr_group_idx").on(table.groupId),
