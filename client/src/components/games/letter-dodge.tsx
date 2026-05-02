@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, Timer, Loader2, Ban, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, Timer, Loader2, Ban, LogIn, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -18,20 +18,21 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
-// Common English letters as the forbidden pool — rare letters would make the game too easy
 const DODGE_LETTER_POOL = ["E", "T", "A", "O", "I", "N", "S", "R", "H", "L", "D", "C", "U", "M", "F", "P", "G", "W", "Y", "B"];
 
 const GAME_TIME = 90;
+const SURVIVAL_TIME = 8;
+const MIN_WORD_LENGTH = 4;
 
 type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "advanced";
 
 const DIFFICULTY_CONFIG: Record<DodgeDifficulty, { name: string; description: string; count: number | "random"; stars: string }> = {
-  1:        { name: "Easy",     description: "Avoid 1 forbidden letter",              count: 1,        stars: "★" },
-  2:        { name: "Medium",   description: "Avoid 2 forbidden letters",             count: 2,        stars: "★★" },
-  3:        { name: "Hard",     description: "Avoid 3 forbidden letters",             count: 3,        stars: "★★★" },
-  4:        { name: "Expert",   description: "Avoid 4 forbidden letters",             count: 4,        stars: "★★★★" },
-  5:        { name: "Master",   description: "Avoid 5 forbidden letters",             count: 5,        stars: "★★★★★" },
-  advanced: { name: "Advanced", description: "Random forbidden letters each game!",  count: "random", stars: "?" },
+  1:        { name: "Easy",     description: "Avoid 1 forbidden letter",             count: 1,        stars: "★" },
+  2:        { name: "Medium",   description: "Avoid 2 forbidden letters",            count: 2,        stars: "★★" },
+  3:        { name: "Hard",     description: "Avoid 3 forbidden letters",            count: 3,        stars: "★★★" },
+  4:        { name: "Expert",   description: "Avoid 4 forbidden letters",            count: 4,        stars: "★★★★" },
+  5:        { name: "Master",   description: "Avoid 5 forbidden letters",            count: 5,        stars: "★★★★★" },
+  advanced: { name: "Advanced", description: "Random forbidden letters each game!", count: "random", stars: "?" },
 };
 
 function pickForbiddenLetters(count: number, rng: () => number): string[] {
@@ -67,8 +68,14 @@ export function LetterDodgeGame({
   initialDifficulty,
 }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; initialDifficulty?: DodgeDifficulty } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-dodge", quizMode });
-  const personalBest = usePersonalBest("letter-dodge");
+  const [isSurvival, setIsSurvival] = useState(false);
+  const isSurvivalRef = useRef(false);
+
+  const { reportResult, resetRecorded } = useGameResult({
+    slug: isSurvival ? "letter-dodge-survival" : "letter-dodge",
+    quizMode,
+  });
+  const personalBest = usePersonalBest(isSurvival ? "letter-dodge-survival" : "letter-dodge");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -104,10 +111,47 @@ export function LetterDodgeGame({
     }
   }, []);
 
+  const startSurvivalTimer = useCallback(() => {
+    stopTimer();
+    setTimeLeft(SURVIVAL_TIME);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          playSound("lose");
+          setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
+          setGameStatus("finished");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [stopTimer, playSound]);
+
+  const startClassicTimer = useCallback(() => {
+    stopTimer();
+    setTimeLeft(GAME_TIME);
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          playSound("lose");
+          setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
+          setGameStatus("finished");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [stopTimer, playSound]);
+
   const startGame = useCallback(
     (d: DodgeDifficulty) => {
       resetRecorded();
       stopTimer();
+      isSurvivalRef.current = isSurvival;
       setDifficulty(d);
       setScore(0);
       scoreRef.current = 0;
@@ -116,10 +160,7 @@ export function LetterDodgeGame({
       setUsedWords(new Set());
       setUserInput("");
       setFeedback(null);
-      setTimeLeft(GAME_TIME);
 
-      // Reinitialize the seeded RNG on each game start so replay (Play Again) produces
-      // the same deterministic forbidden-letter constraint for group/challenge fairness.
       if (groupSeed !== undefined) {
         seedRngRef.current = makeSeededRng(groupSeed);
       }
@@ -131,26 +172,43 @@ export function LetterDodgeGame({
 
       setGameStatus("playing");
 
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            timerRef.current = null;
-            playSound("lose");
-            setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
-            setGameStatus("finished");
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      if (isSurvival) {
+        setTimeLeft(SURVIVAL_TIME);
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current!);
+              timerRef.current = null;
+              playSound("lose");
+              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
+              setGameStatus("finished");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setTimeLeft(GAME_TIME);
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current!);
+              timerRef.current = null;
+              playSound("lose");
+              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
+              setGameStatus("finished");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
 
       setTimeout(() => inputRef.current?.focus(), 100);
     },
-    [stopTimer, resetRecorded, playSound]
+    [stopTimer, resetRecorded, playSound, isSurvival, groupSeed]
   );
 
-  // Report result once game finishes
   useEffect(() => {
     if (gameStatus === "finished") {
       reportResult(scoreRef.current, scoreRef.current > 0, foundWordsRef.current.length);
@@ -161,9 +219,6 @@ export function LetterDodgeGame({
     return () => stopTimer();
   }, [stopTimer]);
 
-  // Auto-start if groupSeed provided (seeded / quiz / challenge mode)
-  // Re-derive RNG and restart whenever groupSeed changes so challenge/group-round
-  // play always uses the correct deterministic constraint.
   useEffect(() => {
     if (groupSeed !== undefined) {
       seedRngRef.current = makeSeededRng(groupSeed);
@@ -176,8 +231,8 @@ export function LetterDodgeGame({
 
     const upper = userInput.toUpperCase().trim();
 
-    if (upper.length < 3) {
-      setFeedback({ type: "invalid", message: "Word must be at least 3 letters!" });
+    if (upper.length < MIN_WORD_LENGTH) {
+      setFeedback({ type: "invalid", message: `Word must be at least ${MIN_WORD_LENGTH} letters!` });
       setTimeout(() => setFeedback(null), 1500);
       return;
     }
@@ -227,6 +282,26 @@ export function LetterDodgeGame({
       setUserInput("");
       setFeedback({ type: "correct", message: `+${pts} pts!` });
       setTimeout(() => setFeedback(null), 800);
+
+      // Reset survival timer on correct word
+      if (isSurvivalRef.current) {
+        stopTimer();
+        setTimeLeft(SURVIVAL_TIME);
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(timerRef.current!);
+              timerRef.current = null;
+              playSound("lose");
+              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
+              setGameStatus("finished");
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+
       inputRef.current?.focus();
     } catch {
       setFeedback({ type: "invalid", message: "Error validating word" });
@@ -239,6 +314,7 @@ export function LetterDodgeGame({
   };
 
   const typedOffenders = getForbiddenInWord(userInput, forbiddenLetters);
+  const currentSlug = isSurvivalRef.current ? "letter-dodge-survival" : "letter-dodge";
 
   // ─── MENU ────────────────────────────────────────────────────────────────────
   if (gameStatus === "menu") {
@@ -249,8 +325,36 @@ export function LetterDodgeGame({
             <Ban className="h-12 w-12 mx-auto text-destructive" />
             <h3 className="text-xl font-bold">Choose Your Challenge</h3>
             <p className="text-muted-foreground text-sm">
-              Type valid words that avoid the forbidden letters — 90 seconds on the clock!
+              {isSurvival
+                ? `${SURVIVAL_TIME}s per word — timer resets on each correct answer!`
+                : "Type valid words that avoid the forbidden letters — 90 seconds on the clock!"}
             </p>
+
+            {/* Classic / Survival toggle — hidden in seeded/quiz/challenge sessions */}
+            {groupSeed === undefined && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <Button
+                  variant={!isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(false)}
+                  className="gap-1.5"
+                  data-testid="button-mode-classic"
+                >
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button
+                  variant={isSurvival ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsSurvival(true)}
+                  className="gap-1.5"
+                  data-testid="button-mode-survival"
+                >
+                  <Flame className="h-3.5 w-3.5" />
+                  Survival
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3">
@@ -272,7 +376,11 @@ export function LetterDodgeGame({
                   </Badge>
                   <div className="text-left">
                     <div className="font-semibold">{config.name}</div>
-                    <div className="text-xs text-muted-foreground font-normal">{config.description}</div>
+                    <div className="text-xs text-muted-foreground font-normal">
+                      {isSurvival
+                        ? `${config.description} · ${SURVIVAL_TIME}s/word`
+                        : config.description}
+                    </div>
                   </div>
                 </Button>
               );
@@ -292,17 +400,28 @@ export function LetterDodgeGame({
 
   // ─── PLAYING ─────────────────────────────────────────────────────────────────
   if (gameStatus === "playing") {
+    const isSurvivalActive = isSurvivalRef.current;
     return (
       <div className="space-y-4">
         {/* Timer + Score header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Timer className="h-4 w-4" />
+            {isSurvivalActive ? (
+              <Flame className="h-4 w-4 text-orange-500" />
+            ) : (
+              <Timer className="h-4 w-4" />
+            )}
             <span
-              className={`font-mono font-bold text-lg ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`}
+              className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalActive ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
             >
               {timeLeft}s
             </span>
+            {isSurvivalActive && (
+              <Badge variant="outline" className="gap-1 text-orange-600 border-orange-400/50 text-xs" data-testid="badge-survival">
+                <Flame className="h-3 w-3" />
+                Survival
+              </Badge>
+            )}
           </div>
           <div className="text-center">
             <p className="text-xs text-muted-foreground">Score</p>
@@ -313,7 +432,14 @@ export function LetterDodgeGame({
           </div>
         </div>
 
-        <Progress value={(timeLeft / GAME_TIME) * 100} className="h-1.5" />
+        {isSurvivalActive ? (
+          <Progress
+            value={(timeLeft / SURVIVAL_TIME) * 100}
+            className={`h-2 ${timeLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-orange-500"}`}
+          />
+        ) : (
+          <Progress value={(timeLeft / GAME_TIME) * 100} className="h-1.5" />
+        )}
 
         {/* Forbidden letters */}
         <Card className="border-destructive/40 bg-destructive/5">
@@ -340,11 +466,6 @@ export function LetterDodgeGame({
         {/* Input with per-character forbidden-letter highlighting */}
         <div className="space-y-2">
           <div className="flex gap-2">
-            {/*
-              Mirror-div pattern: a transparent native input sits on top of a highlight
-              layer that renders colored backgrounds under each forbidden character.
-              Both use identical font/size/padding so characters line up precisely.
-            */}
             <div
               className={`relative flex-1 flex items-center rounded-md border bg-background transition-colors ${
                 typedOffenders.length > 0
@@ -352,7 +473,7 @@ export function LetterDodgeGame({
                   : "border-input focus-within:ring-1 focus-within:ring-ring focus-within:border-ring"
               }`}
             >
-              {/* Highlight layer — transparent text, coloured bg on forbidden chars */}
+              {/* Highlight layer */}
               <div
                 aria-hidden
                 className="absolute inset-0 flex items-center px-3 overflow-hidden pointer-events-none"
@@ -372,7 +493,7 @@ export function LetterDodgeGame({
                   ))}
                 </span>
               </div>
-              {/* Actual editable input — bg transparent so highlight shows through */}
+              {/* Editable input */}
               <input
                 ref={inputRef}
                 value={userInput}
@@ -441,6 +562,12 @@ export function LetterDodgeGame({
               </motion.p>
             )}
           </AnimatePresence>
+
+          {isSurvivalActive && (
+            <p className="text-xs text-muted-foreground text-center">
+              Correct answer resets the {SURVIVAL_TIME}s timer!
+            </p>
+          )}
         </div>
 
         {/* Found words */}
@@ -548,7 +675,7 @@ export function LetterDodgeGame({
         <ShareResults
           score={score}
           gameName="Letter Dodge"
-          gameSlug="letter-dodge"
+          gameSlug={currentSlug}
           wordsCompleted={foundWords.length}
           isWin={score > 0}
         />
