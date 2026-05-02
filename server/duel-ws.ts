@@ -71,9 +71,13 @@ type DuelRoom = {
   finalized: boolean;
   /** Epoch ms when the 3-second countdown began; null outside countdown phase. */
   countdownStartAt: number | null;
+  /** Server-side authoritative turn expiry timer; cleared on each valid move. */
+  turnTimeoutTimer: ReturnType<typeof setTimeout> | null;
 };
 
 const INITIAL_LIVES = 3;
+/** Must match the client's default turnTimeSeconds (8 s). */
+const TURN_DURATION_MS = 8_500; // 500 ms of grace over client's 8 s UI timer
 
 function deriveWinnerId(room: DuelRoom): number | null {
   const entries = Array.from(room.livesPerPlayer.entries());
@@ -89,6 +93,11 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
   if (room.finalized) return;
   room.finalized = true;
   room.status = "over";
+  // Cancel the per-turn timer so it never fires after the game ends
+  if (room.turnTimeoutTimer !== null) {
+    clearTimeout(room.turnTimeoutTimer);
+    room.turnTimeoutTimer = null;
+  }
 
   const playerIds = Array.from(room.players.keys());
   if (playerIds.length < 2) return;
@@ -204,6 +213,7 @@ export class DuelRoomRegistry {
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
+      turnTimeoutTimer: null,
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} created for game ${gameSlug}`, "duel-ws");
@@ -247,6 +257,7 @@ export class DuelRoomRegistry {
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
+      turnTimeoutTimer: null,
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} restored from challenge metadata`, "duel-ws");
@@ -401,6 +412,8 @@ export class DuelRoomRegistry {
         if (room.status !== "countdown") return;
         if (seconds <= 0) {
           room.status = "playing";
+          // Arm server-side turn timer now that the game is live
+          this.armTurnTimer(room);
           return;
         }
         for (const p of Array.from(room.players.values())) {
@@ -465,10 +478,15 @@ export class DuelRoomRegistry {
 
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
 
+        // Re-arm server turn timer for the next player
+        this.armTurnTimer(room);
+
       } else if (p.type === "timeout") {
-        // Timeout — relay and advance turn (no word constraint to check)
+        // Client-reported timeout — accept if server timer hasn't already fired.
+        // Re-arm server timer for the next player's turn.
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+        this.armTurnTimer(room);
       } else {
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
       }
@@ -577,11 +595,66 @@ export class DuelRoomRegistry {
     const room = this.rooms.get(roomCode);
     if (!room) return;
     room.status = "over";
+    if (room.turnTimeoutTimer !== null) {
+      clearTimeout(room.turnTimeoutTimer);
+      room.turnTimeoutTimer = null;
+    }
     for (const p of Array.from(room.players.values())) {
       if (p.disconnectTimer) clearTimeout(p.disconnectTimer);
     }
     this.rooms.delete(roomCode);
     log(`[Duel] Room ${roomCode} closed`, "duel-ws");
+  }
+
+  /**
+   * Arms (or re-arms) the server-authoritative per-turn timeout.
+   * Fires TURN_DURATION_MS after the current player's turn begins.
+   * On expiry: deducts a life, advances the turn, and relays a synthetic
+   * timeout move to both players so both UIs stay in sync.
+   */
+  private armTurnTimer(room: DuelRoom): void {
+    if (room.turnTimeoutTimer !== null) {
+      clearTimeout(room.turnTimeoutTimer);
+      room.turnTimeoutTimer = null;
+    }
+    if (room.finalized || room.status !== "playing" || room.currentTurnUserId === null) return;
+
+    const timedOutUserId = room.currentTurnUserId;
+    room.turnTimeoutTimer = setTimeout(() => {
+      // Guard: room may have been finalized or status changed since timer was armed
+      if (room.finalized || room.status !== "playing") return;
+      if (room.currentTurnUserId !== timedOutUserId) return; // stale timer
+
+      const opponent = this.getOpponent(room, timedOutUserId);
+      const timedOutPlayer = room.players.get(timedOutUserId);
+
+      // Deduct one life server-side
+      const currentLives = room.livesPerPlayer.get(timedOutUserId) ?? INITIAL_LIVES;
+      const newLives = Math.max(0, currentLives - 1);
+      room.livesPerPlayer.set(timedOutUserId, newLives);
+      room.currentTurnUserId = opponent?.userId ?? timedOutUserId;
+
+      const timeoutPayload = { type: "timeout", lives: newLives };
+
+      // Notify timed-out player that their turn ended (so UI stays in sync)
+      if (timedOutPlayer) {
+        send(timedOutPlayer.ws, { type: "opponent:move", payload: timeoutPayload });
+      }
+      // Notify opponent that the other player timed out
+      if (opponent) {
+        send(opponent.ws, { type: "opponent:move", payload: timeoutPayload });
+      }
+
+      log(`[Duel] Server timeout for user ${timedOutUserId} in room ${room.roomCode}, lives now ${newLives}`, "duel-ws");
+
+      if (newLives <= 0 && !room.finalized) {
+        void finalizeGame(room, opponent?.userId ?? -1);
+        return;
+      }
+
+      // Re-arm timer for the new current player
+      this.armTurnTimer(room);
+    }, TURN_DURATION_MS);
   }
 
   private getOpponent(room: DuelRoom, userId: number): RoomPlayer | undefined {
