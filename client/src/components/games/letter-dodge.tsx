@@ -3,7 +3,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Timer, Loader2, Ban, LogIn } from "lucide-react";
@@ -120,7 +119,7 @@ export function LetterDodgeGame({
 
       const rng = seedRngRef.current ?? Math.random;
       const config = DIFFICULTY_CONFIG[d];
-      const count = config.count === "random" ? Math.floor(rng() * 3) + 2 : config.count;
+      const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
       const letters = pickForbiddenLetters(count, rng);
       setForbiddenLetters(letters);
 
@@ -157,11 +156,14 @@ export function LetterDodgeGame({
   }, [stopTimer]);
 
   // Auto-start if groupSeed provided (seeded / quiz / challenge mode)
+  // Re-derive RNG and restart whenever groupSeed changes so challenge/group-round
+  // play always uses the correct deterministic constraint.
   useEffect(() => {
     if (groupSeed !== undefined) {
+      seedRngRef.current = makeSeededRng(groupSeed);
       startGame(3); // default to "Hard" for seeded play
     }
-  }, []);
+  }, [groupSeed, startGame]);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || gameStatus !== "playing") return;
@@ -215,7 +217,7 @@ export function LetterDodgeGame({
         foundWordsRef.current = [newWord, ...prev];
         return foundWordsRef.current;
       });
-      setUsedWords((prev) => new Set([...prev, upper]));
+      setUsedWords((prev) => new Set(Array.from(prev).concat(upper)));
       setUserInput("");
       setFeedback({ type: "correct", message: `+${pts} pts!` });
       setTimeout(() => setFeedback(null), 800);
@@ -329,28 +331,58 @@ export function LetterDodgeGame({
           </CardContent>
         </Card>
 
-        {/* Input */}
+        {/* Input with per-character forbidden-letter highlighting */}
         <div className="space-y-2">
           <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={userInput}
-              onChange={(e) =>
-                setUserInput(e.target.value.replace(/[^a-zA-Z]/g, ""))
-              }
-              onKeyDown={handleKeyDown}
-              placeholder="Type a word and press Enter…"
-              className={`text-lg uppercase font-mono flex-1 ${
+            {/*
+              Mirror-div pattern: a transparent native input sits on top of a highlight
+              layer that renders colored backgrounds under each forbidden character.
+              Both use identical font/size/padding so characters line up precisely.
+            */}
+            <div
+              className={`relative flex-1 flex items-center rounded-md border bg-background transition-colors ${
                 typedOffenders.length > 0
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : ""
+                  ? "border-destructive ring-1 ring-destructive"
+                  : "border-input focus-within:ring-1 focus-within:ring-ring focus-within:border-ring"
               }`}
-              maxLength={20}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              data-testid="input-word"
-            />
+            >
+              {/* Highlight layer — transparent text, coloured bg on forbidden chars */}
+              <div
+                aria-hidden
+                className="absolute inset-0 flex items-center px-3 overflow-hidden pointer-events-none"
+              >
+                <span className="text-[1.125rem] font-mono uppercase leading-none whitespace-pre tracking-normal select-none">
+                  {userInput.split("").map((char, i) => (
+                    <span
+                      key={i}
+                      className={
+                        forbiddenLetters.includes(char.toUpperCase())
+                          ? "bg-destructive/25 text-transparent rounded-sm"
+                          : "text-transparent"
+                      }
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </span>
+              </div>
+              {/* Actual editable input — bg transparent so highlight shows through */}
+              <input
+                ref={inputRef}
+                value={userInput}
+                onChange={(e) =>
+                  setUserInput(e.target.value.replace(/[^a-zA-Z]/g, ""))
+                }
+                onKeyDown={handleKeyDown}
+                placeholder="Type a word and press Enter…"
+                className="relative w-full h-10 bg-transparent px-3 text-[1.125rem] uppercase font-mono outline-none placeholder:text-muted-foreground"
+                maxLength={20}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                data-testid="input-word"
+              />
+            </div>
             <Button
               onClick={checkAnswer}
               disabled={!userInput.trim() || validateMutation.isPending}
@@ -510,7 +542,9 @@ export function LetterDodgeGame({
         <ShareResults
           score={score}
           gameName="Letter Dodge"
-          details={`${foundWords.length} words dodging: ${forbiddenLetters.join(", ")}`}
+          gameSlug="letter-dodge"
+          wordsCompleted={foundWords.length}
+          isWin={score > 0}
         />
 
         <TryAnotherGameButton currentSlug="letter-dodge" />
