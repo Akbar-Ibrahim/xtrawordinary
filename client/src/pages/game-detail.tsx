@@ -1603,7 +1603,7 @@ export default function GameDetail() {
                       <div className="flex gap-2 mt-1">
                         <Button type="button" size="sm"
                           variant={!isStructural ? "default" : "outline"}
-                          onClick={() => { setLbMode("count"); setQuizParams(({ category: _c, level: _l, ...rest }) => rest); }}
+                          onClick={() => { setLbMode("count"); setQuizParams(({ category: _c, level: _l, consonantCount: _cc, ...rest }) => rest); }}
                           data-testid="button-lb-mode-count"
                         >
                           Count-based
@@ -2619,7 +2619,7 @@ export default function GameDetail() {
                     <div className="flex gap-2 mt-1">
                       <Button type="button" size="sm"
                         variant={!isStructural ? "default" : "outline"}
-                        onClick={() => { setLbCustomMode("count"); setCustomPlayParams(({ category: _c, level: _l, ...rest }) => rest); }}
+                        onClick={() => { setLbCustomMode("count"); setCustomPlayParams(({ category: _c, level: _l, consonantCount: _cc, ...rest }) => rest); }}
                         data-testid="button-custom-lb-mode-count"
                       >
                         Count-based
