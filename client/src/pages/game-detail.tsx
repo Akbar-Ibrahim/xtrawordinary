@@ -1908,6 +1908,30 @@ export default function GameDetail() {
                 {customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && (
                   <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to start playing.</p>
                 )}
+                <div>
+                  <label className="text-sm font-medium">Words to find</label>
+                  <Input
+                    type="number" min={1} max={50} placeholder="20"
+                    className="mt-1 h-8 text-sm w-24"
+                    data-testid="input-custom-lb-word-count"
+                    value={customPlayParams.wordCount ?? ""}
+                    onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Time limit</label>
+                  <div className="flex gap-1 mt-1 flex-wrap">
+                    {[60, 90, 120, 180, 300].map(t => (
+                      <Button key={t} type="button" size="sm"
+                        variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                        onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                        data-testid={`button-custom-lb-time-${t}`}
+                      >
+                        {t < 60 ? `${t}s` : `${t / 60}min`}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
