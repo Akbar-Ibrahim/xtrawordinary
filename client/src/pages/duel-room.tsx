@@ -135,7 +135,14 @@ export default function DuelRoom() {
           break;
 
         case "error":
-          toast({ title: "Duel error", description: msg.message, variant: "destructive" });
+          // During active play forward to the engine so it can rollback the
+          // optimistic word update, apply the 0.5s time penalty, and restore turn.
+          // Outside the playing phase (e.g. lobby) surface as a toast instead.
+          if (phase === "playing") {
+            setLatestGameMessage(msg);
+          } else {
+            toast({ title: "Duel error", description: msg.message, variant: "destructive" });
+          }
           break;
 
         // ── Game-phase messages → forwarded to DuelTurnEngine ────────────────
