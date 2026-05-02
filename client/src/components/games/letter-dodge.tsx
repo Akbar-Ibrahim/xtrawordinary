@@ -201,8 +201,10 @@ export function LetterDodgeGame({
     if (groupSeed !== undefined) {
       seedRngRef.current = makeSeededRng(groupSeed);
       startGame(initialDifficulty ?? 3);
+    } else if (locked && initialDifficulty !== undefined) {
+      startGame(initialDifficulty);
     }
-  }, [groupSeed, initialDifficulty, startGame]);
+  }, [groupSeed, locked, initialDifficulty, startGame]);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || gameStatus !== "playing") return;
@@ -302,8 +304,8 @@ export function LetterDodgeGame({
                 : "Type valid words that avoid the forbidden letters — 90 seconds on the clock!"}
             </p>
 
-            {/* Classic / Survival toggle — hidden in seeded/quiz/challenge sessions */}
-            {groupSeed === undefined && (
+            {/* Classic / Survival toggle — hidden in seeded/locked/quiz/challenge sessions */}
+            {!locked && groupSeed === undefined && (
               <div className="flex items-center justify-center gap-2 pt-2">
                 <Button
                   variant={!isSurvival ? "default" : "outline"}
@@ -410,7 +412,7 @@ export function LetterDodgeGame({
             className={`h-2 ${timeLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-orange-500"}`}
           />
         ) : (
-          <Progress value={(timeLeft / GAME_TIME) * 100} className="h-1.5" />
+          <Progress value={(timeLeft / (initialTimeLimit ?? GAME_TIME)) * 100} className="h-1.5" />
         )}
 
         {/* Forbidden letters */}

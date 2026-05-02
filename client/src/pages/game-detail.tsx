@@ -1616,7 +1616,7 @@ export default function GameDetail() {
                       type="button"
                       size="sm"
                       variant={quizParams.survival ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n: any = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
+                      onClick={() => setQuizParams(({ wordCount: _wc, timeLimit: _tl, ...rest }) => ({ ...rest, survival: true }))}
                       data-testid="button-quiz-mode-survival"
                     >
                       Survival (8s/word)
@@ -2256,7 +2256,7 @@ export default function GameDetail() {
                     type="button"
                     size="sm"
                     variant={customPlayParams.survival ? "default" : "outline"}
-                    onClick={() => setCustomPlayParams(p => { const n: any = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
+                    onClick={() => setCustomPlayParams(({ wordCount: _wc, timeLimit: _tl, ...rest }) => ({ ...rest, survival: true }))}
                     data-testid="button-custom-mode-survival"
                   >
                     Survival (8s/word)
