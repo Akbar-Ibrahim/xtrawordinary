@@ -162,8 +162,10 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     }
     case "word-roots":
       return "Word roots & etymology";
-    case "progressive-reveal":
-      return "Progressive letter reveal";
+    case "progressive-reveal": {
+      const prWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
+      return prWords.length > 0 ? `${prWords.length} word${prWords.length !== 1 ? "s" : ""} to guess` : "Progressive letter reveal";
+    }
     default:
       return null;
   }
@@ -256,8 +258,10 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     }
     case "word-roots":
       return <WordRootsGame groupSeed={seed} locked quizMode />;
-    case "progressive-reveal":
-      return <ProgressiveRevealGame groupSeed={seed} locked quizMode />;
+    case "progressive-reveal": {
+      const prCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ProgressiveRevealWord[] : undefined;
+      return <ProgressiveRevealGame groupSeed={seed} locked quizMode customWords={prCustomWords} />;
+    }
     default:
       return null;
   }

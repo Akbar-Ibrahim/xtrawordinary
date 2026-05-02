@@ -20,13 +20,14 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
 
-export function ProgressiveRevealGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ProgressiveRevealWord[] } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal", quizMode });
   const personalBest = usePersonalBest("progressive-reveal");
   const seeded = groupSeed !== undefined;
+  const hasCustomWords = customWords && customWords.length > 0;
 
-  const { data: words = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
+  const { data: fetchedWords = [], isLoading, error } = useQuery<ProgressiveRevealWord[]>({
     queryKey: seeded
       ? ["/api/games/progressive-reveal/words", groupSeed]
       : ["/api/games/progressive-reveal/words"],
@@ -36,9 +37,12 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode }: { groupSe
           return r.json();
         }
       : undefined,
+    enabled: !hasCustomWords,
     refetchOnMount: seeded ? false : "always",
     gcTime: seeded ? Infinity : 0,
   });
+
+  const words = hasCustomWords ? customWords! : fetchedWords;
 
   const wordIndexRef = useRef(0);
   const [currentWord, setCurrentWord] = useState<ProgressiveRevealWord | null>(null);

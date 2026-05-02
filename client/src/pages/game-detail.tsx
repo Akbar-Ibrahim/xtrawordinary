@@ -307,6 +307,7 @@ export default function GameDetail() {
   const [dmDefs, setDmDefs] = useState(["", "", ""]);
   const [dmEditIndex, setDmEditIndex] = useState<number | null>(null);
   const [dmReview, setDmReview] = useState(false);
+  const [prWord, setPrWord] = useState("");
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -877,7 +878,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1568,6 +1569,59 @@ export default function GameDetail() {
                   </div>
                 </div>
               )}
+              {slug === "progressive-reveal" && (() => {
+                const prEntries: Array<{ word: string; subcategory: string }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                const addPrWord = () => {
+                  const w = prWord.trim().toUpperCase();
+                  if (!w || prEntries.some(e => e.word === w)) return;
+                  setQuizParams(p => ({ ...p, words: [...prEntries, { word: w, subcategory: "Custom" }] }));
+                  setPrWord("");
+                };
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Words to Guess</label>
+                      <span className="text-xs text-muted-foreground">{prEntries.length}/20</span>
+                    </div>
+                    {prEntries.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                        {prEntries.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-1 rounded-md border bg-muted/30 px-2 py-1" data-testid={`pr-entry-${i}`}>
+                            <span className="text-sm font-mono font-bold tracking-wider">{entry.word}</span>
+                            <button
+                              type="button"
+                              onClick={() => setQuizParams(p => ({ ...p, words: prEntries.filter((_, j) => j !== i) }))}
+                              className="text-muted-foreground hover:text-destructive ml-1"
+                              data-testid={`button-pr-remove-${i}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {prEntries.length < 20 && (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter a word (e.g. ELOQUENT)"
+                          value={prWord}
+                          onChange={e => setPrWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPrWord(); } }}
+                          className="flex-1 font-mono uppercase tracking-wider"
+                          maxLength={20}
+                          data-testid="input-pr-word"
+                        />
+                        <Button type="button" size="sm" disabled={!prWord.trim() || prEntries.some(e => e.word === prWord.trim().toUpperCase())} onClick={addPrWord} data-testid="button-pr-add">
+                          Add
+                        </Button>
+                      </div>
+                    )}
+                    {prEntries.length === 0 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word so players know what to guess.</p>
+                    )}
+                  </div>
+                );
+              })()}
               {slug === "definition-match" && (() => {
                 const dmEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
                 const isEditing = dmEditIndex !== null;
@@ -1723,7 +1777,8 @@ export default function GameDetail() {
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
-                  (slug === "definition-match" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
+                  (slug === "definition-match" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
+                  (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
                 }
                 data-testid="button-create-quiz-submit"
               >
