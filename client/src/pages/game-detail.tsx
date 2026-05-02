@@ -563,7 +563,7 @@ export default function GameDetail() {
                   )}
                 </CardContent>
               </Card>
-              <PremiumBanner />
+              <PremiumBanner variant="card" />
               <MiniLeaderboard game={game} />
             </div>
           </motion.div>
