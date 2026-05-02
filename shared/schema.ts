@@ -512,6 +512,7 @@ export const SEEDED_GAME_SLUGS = new Set([
   "definition-match",
   "ladder-rush",
   "letter-balance",
+  "letter-dodge",
   "letter-frequency",
   "letter-hunt",
   "letter-pool",
