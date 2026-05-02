@@ -1,19 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation, Link } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, HeartOff, Trophy, Clock, ArrowLeft, Loader2, Wifi, WifiOff, Swords } from "lucide-react";
+import { Heart, HeartOff, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
-import type { WordValidationResponse } from "@shared/schema";
+import { DuelTurnEngine } from "@/components/duel-turn-engine";
+import type { GameResult, DuelTurnEngineInitialState } from "@/components/duel-turn-engine";
+import { wordChainDuelAdapter } from "@/components/games/word-chain-duel-adapter";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase =
   | "connecting"
@@ -32,30 +33,7 @@ interface RoomInfo {
   challengeeId: number;
 }
 
-interface GameResult {
-  outcome: "you_win" | "you_lose" | "draw" | "forfeit";
-  eloChange: number;
-  newElo: number;
-  reason?: "disconnect" | "manual";
-}
-
-type WordChainPayload =
-  | { type: "word"; word: string; lives: number }
-  | { type: "timeout"; lives: number };
-
-const TURN_TIME = 8;
-
-function Lives({ count, max = 3, ...domProps }: { count: number; max?: number } & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className="flex gap-1" aria-label={`${count} of ${max} lives`} {...domProps}>
-      {Array.from({ length: max }).map((_, i) => (
-        i < count
-          ? <Heart key={i} className="h-4 w-4 fill-red-500 text-red-500" />
-          : <HeartOff key={i} className="h-4 w-4 text-muted-foreground" />
-      ))}
-    </div>
-  );
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DuelRoom() {
   const [, params] = useRoute("/duel/:roomCode");
@@ -65,37 +43,33 @@ export default function DuelRoom() {
   const { toast } = useToast();
 
   const wsRef = useRef<WebSocket | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const gameEndedRef = useRef(false);
-  /** Set to true when a room:state reconnect snapshot has been applied — prevents
-   *  the first-start initialization effect from overwriting restored state. */
-  const reconnectRestored = useRef(false);
 
+  // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // ── Room / opponent metadata ────────────────────────────────────────────────
   const [opponentId, setOpponentId] = useState<number | null>(null);
   const [opponentName, setOpponentName] = useState("");
   const [opponentAvatarUrl, setOpponentAvatarUrl] = useState<string | null>(null);
+  const [isChallenger, setIsChallenger] = useState(false);
+
+  // ── Waiting room ready state ────────────────────────────────────────────────
   const [meReady, setMeReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
-  const [currentWord, setCurrentWord] = useState("");
-  const [userInput, setUserInput] = useState("");
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [myLives, setMyLives] = useState(3);
-  const [opponentLives, setOpponentLives] = useState(3);
-  const [myWords, setMyWords] = useState<string[]>([]);
-  const [opponentWords, setOpponentWords] = useState<string[]>([]);
-  const [usedWords, setUsedWords] = useState<string[]>([]);
-  const [timerLeft, setTimerLeft] = useState(TURN_TIME);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  // ── DuelTurnEngine initial state (set on first play or reconnect) ───────────
+  const [engineKey, setEngineKey] = useState(0); // bump to remount engine on reconnect
+  const [engineInitState, setEngineInitState] = useState<DuelTurnEngineInitialState | null>(null);
 
-  const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
-  const [disconnectSecsLeft, setDisconnectSecsLeft] = useState(30);
+  // ── Game result (shown in 'over' phase) ────────────────────────────────────
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
-  const [isChallenger, setIsChallenger] = useState(false);
 
+  // ── Latest message for DuelTurnEngine ──────────────────────────────────────
+  const [latestGameMessage, setLatestGameMessage] = useState<DuelServerMessage | null>(null);
+
+  // ── REST query for room metadata ───────────────────────────────────────────
   const { data: roomInfo } = useQuery<RoomInfo>({
     queryKey: ["/api/duels/rooms", roomCode],
     queryFn: async () => {
@@ -107,13 +81,6 @@ export default function DuelRoom() {
     retry: false,
   });
 
-  const validateMutation = useMutation({
-    mutationFn: async (word: string) => {
-      const res = await apiRequest("POST", "/api/games/validate-word", { word });
-      return res.json() as Promise<WordValidationResponse>;
-    },
-  });
-
   const sendWs = useCallback((msg: DuelClientMessage) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -121,61 +88,90 @@ export default function DuelRoom() {
     }
   }, []);
 
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+  // ── Handle server messages ─────────────────────────────────────────────────
+  const handleServerMessage = useCallback(
+    (msg: DuelServerMessage) => {
+      switch (msg.type) {
+        // ── Room-phase messages ──────────────────────────────────────────────
+        case "room:joined":
+          setOpponentId(msg.opponentId);
+          setOpponentName(msg.opponentName);
+          setOpponentAvatarUrl(msg.opponentAvatarUrl);
+          setPhase("waiting");
+          break;
 
-  const startTimer = useCallback(() => {
-    stopTimer();
-    setTimerLeft(TURN_TIME);
-    timerRef.current = setInterval(() => {
-      setTimerLeft((prev) => {
-        if (prev <= 1) {
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
+        case "room:player_ready":
+          setOpponentReady(true);
+          break;
 
-  const handleTimeout = useCallback(() => {
-    stopTimer();
-    setMyLives((prev) => {
-      const newLives = prev - 1;
-      const payload: WordChainPayload = { type: "timeout", lives: newLives };
-      sendWs({ type: "game:move", payload });
-      if (newLives <= 0 && !gameEndedRef.current) {
-        gameEndedRef.current = true;
-        sendWs({ type: "game:end", winnerId: opponentId ?? -1 });
+        case "room:state":
+          // Reconnect snapshot — restore full game state
+          setOpponentId(msg.opponentId);
+          setOpponentName(msg.opponentName);
+          setOpponentAvatarUrl(msg.opponentAvatarUrl);
+          setEngineInitState({
+            currentWord: msg.currentWord,
+            usedWords: msg.usedWords,
+            isMyTurn: msg.isMyTurn,
+            myLives: msg.myLives,
+            opponentLives: msg.opponentLives,
+          });
+          setEngineKey((k) => k + 1); // remount engine with restored state
+          setPhase("playing");
+          break;
+
+        case "room:ready":
+          setPhase("countdown");
+          break;
+
+        case "room:countdown":
+          setCountdownNum(msg.secondsLeft);
+          if (msg.secondsLeft === 1) {
+            setTimeout(() => {
+              setCountdownNum(null);
+              setPhase("playing");
+            }, 1000);
+          }
+          break;
+
+        case "error":
+          toast({ title: "Duel error", description: msg.message, variant: "destructive" });
+          break;
+
+        // ── Game-phase messages → forwarded to DuelTurnEngine ────────────────
+        case "opponent:move":
+        case "player:disconnect":
+        case "player:reconnect":
+        case "player:forfeited":
+        case "game:over":
+          setLatestGameMessage(msg);
+          break;
       }
-      return newLives;
-    });
-    setIsMyTurn(false);
-  }, [stopTimer, sendWs, opponentId]);
+    },
+    [toast],
+  );
 
+  // ── Set initial engine state when room info + phase arrive ─────────────────
   useEffect(() => {
-    if (timerLeft === 0 && isMyTurn && phase === "playing") {
-      handleTimeout();
+    if (phase === "playing" && roomInfo && user && !engineInitState) {
+      const isFirst = user.id === roomInfo.challengerId;
+      setEngineInitState({
+        currentWord: roomInfo.startWord,
+        usedWords: [roomInfo.startWord.toUpperCase()],
+        isMyTurn: isFirst,
+        myLives: 3,
+        opponentLives: 3,
+      });
     }
-  }, [timerLeft, isMyTurn, phase, handleTimeout]);
+  }, [phase, roomInfo, user, engineInitState]);
 
   useEffect(() => {
-    if (isMyTurn && phase === "playing") {
-      startTimer();
-    } else {
-      stopTimer();
+    if (roomInfo && user) {
+      setIsChallenger(user.id === roomInfo.challengerId);
     }
-    return () => stopTimer();
-  }, [isMyTurn, phase, startTimer, stopTimer]);
-
-  useEffect(() => {
-    if (!roomInfo || !user) return;
-    setIsChallenger(user.id === roomInfo.challengerId);
   }, [roomInfo, user]);
 
+  // ── WebSocket setup ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isAuthenticated || !roomCode || !user) return;
 
@@ -205,184 +201,35 @@ export default function DuelRoom() {
     };
 
     ws.onclose = () => {
-      if (phase !== "over" && phase !== "error") {
-        setPhase("error");
-        setErrorMsg("Disconnected from server.");
-      }
+      setPhase((current) => {
+        if (current !== "over" && current !== "error") {
+          setErrorMsg("Disconnected from server.");
+          return "error";
+        }
+        return current;
+      });
     };
 
     return () => {
       ws.close();
       wsRef.current = null;
-      stopTimer();
     };
   }, [roomCode, isAuthenticated, user?.id]);
-
-  function handleServerMessage(msg: DuelServerMessage) {
-    switch (msg.type) {
-      case "room:joined":
-        setOpponentId(msg.opponentId);
-        setOpponentName(msg.opponentName);
-        setOpponentAvatarUrl(msg.opponentAvatarUrl);
-        setPhase("waiting");
-        break;
-
-      case "room:player_ready":
-        // The opponent signalled ready — update their badge in real time
-        setOpponentReady(true);
-        break;
-
-      case "room:state":
-        // Reconnect snapshot — restore full authoritative game state from server
-        setOpponentId(msg.opponentId);
-        setOpponentName(msg.opponentName);
-        setOpponentAvatarUrl(msg.opponentAvatarUrl);
-        setMyLives(msg.myLives);
-        setOpponentLives(msg.opponentLives);
-        setCurrentWord(msg.currentWord);
-        setUsedWords(msg.usedWords);
-        setIsMyTurn(msg.isMyTurn);
-        // Mark reconnect done BEFORE setting phase so the init effect is skipped
-        reconnectRestored.current = true;
-        setPhase("playing");
-        break;
-
-      case "room:ready":
-        setPhase("countdown");
-        break;
-
-      case "room:countdown":
-        setCountdownNum(msg.secondsLeft);
-        if (msg.secondsLeft === 1) {
-          setTimeout(() => {
-            setCountdownNum(null);
-            setPhase("playing");
-          }, 1000);
-        }
-        break;
-
-      case "opponent:move": {
-        const payload = msg.payload as WordChainPayload;
-        if (payload.type === "word") {
-          setOpponentWords((prev) => [...prev, payload.word]);
-          setUsedWords((prev) => [...prev, payload.word.toUpperCase()]);
-          setCurrentWord(payload.word.toUpperCase());
-          setOpponentLives(payload.lives);
-        } else if (payload.type === "timeout") {
-          setOpponentLives(payload.lives);
-          if (payload.lives <= 0 && !gameEndedRef.current) {
-            gameEndedRef.current = true;
-            sendWs({ type: "game:end", winnerId: user?.id ?? -1 });
-          }
-        }
-        setIsMyTurn(true);
-        break;
-      }
-
-      case "game:over":
-        stopTimer();
-        setGameResult({
-          outcome: msg.outcome,
-          eloChange: msg.eloChange,
-          newElo: msg.newElo,
-        });
-        setPhase("over");
-        break;
-
-      case "player:disconnect":
-        setDisconnectDeadline(msg.reconnectDeadlineMs);
-        setDisconnectSecsLeft(Math.ceil((msg.reconnectDeadlineMs - Date.now()) / 1000));
-        break;
-
-      case "player:reconnect":
-        setDisconnectDeadline(null);
-        break;
-
-      case "player:forfeited":
-        stopTimer();
-        setGameResult({
-          outcome: "forfeit",
-          eloChange: 0,
-          newElo: 0,
-          reason: msg.reason,
-        });
-        setPhase("over");
-        break;
-
-      case "error":
-        toast({ title: "Duel error", description: msg.message, variant: "destructive" });
-        break;
-    }
-  }
-
-  useEffect(() => {
-    if (!disconnectDeadline) return;
-    const interval = setInterval(() => {
-      const secs = Math.ceil((disconnectDeadline - Date.now()) / 1000);
-      setDisconnectSecsLeft(Math.max(0, secs));
-      if (secs <= 0) {
-        clearInterval(interval);
-        setDisconnectDeadline(null);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [disconnectDeadline]);
-
-  useEffect(() => {
-    // Only initialize on first game start — skip if state was restored via reconnect snapshot
-    if (phase === "playing" && roomInfo && user && !reconnectRestored.current) {
-      const isFirst = user.id === roomInfo.challengerId;
-      setCurrentWord(roomInfo.startWord);
-      setUsedWords([roomInfo.startWord.toUpperCase()]);
-      setIsMyTurn(isFirst);
-    }
-  }, [phase, roomInfo, user?.id]);
 
   const handleReady = () => {
     setMeReady(true);
     sendWs({ type: "room:ready" });
   };
 
-  const handleSubmit = async () => {
-    if (!userInput.trim() || !isMyTurn || phase !== "playing") return;
-    const word = userInput.trim().toUpperCase();
+  const handleGameOver = useCallback(
+    (result: GameResult) => {
+      setGameResult(result);
+      setPhase("over");
+    },
+    [],
+  );
 
-    if (usedWords.includes(word)) {
-      setFeedback("That word was already used!");
-      return;
-    }
-
-    const lastLetter = currentWord[currentWord.length - 1];
-    if (!word.startsWith(lastLetter)) {
-      setFeedback(`Word must start with "${lastLetter}"`);
-      setTimerLeft((prev) => Math.max(0, prev - 0.5));
-      return;
-    }
-
-    setFeedback(null);
-    try {
-      const result = await validateMutation.mutateAsync(word);
-      if (!result.valid) {
-        setFeedback(`"${word}" is not a valid word`);
-        setTimerLeft((prev) => Math.max(0, prev - 0.5));
-        return;
-      }
-
-      stopTimer();
-      setMyWords((prev) => [...prev, word]);
-      setUsedWords((prev) => [...prev, word]);
-      setCurrentWord(word);
-      setUserInput("");
-      setFeedback(null);
-
-      const payload: WordChainPayload = { type: "word", word, lives: myLives };
-      sendWs({ type: "game:move", payload });
-      setIsMyTurn(false);
-    } catch {
-      setFeedback("Validation failed. Try again.");
-    }
-  };
-
+  // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
@@ -392,6 +239,7 @@ export default function DuelRoom() {
     );
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <Link href="/friends">
@@ -412,7 +260,8 @@ export default function DuelRoom() {
       </div>
 
       <AnimatePresence mode="wait">
-        {phase === "connecting" || phase === "lobby" ? (
+        {/* ── Connecting / Lobby ─────────────────────────────────────────── */}
+        {(phase === "connecting" || phase === "lobby") && (
           <motion.div key="connecting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Card>
               <CardContent className="py-16 text-center space-y-4">
@@ -421,7 +270,10 @@ export default function DuelRoom() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : phase === "error" ? (
+        )}
+
+        {/* ── Error ─────────────────────────────────────────────────────── */}
+        {phase === "error" && (
           <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Card className="border-destructive">
               <CardContent className="py-12 text-center space-y-4">
@@ -433,7 +285,10 @@ export default function DuelRoom() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : phase === "waiting" ? (
+        )}
+
+        {/* ── Waiting Room ──────────────────────────────────────────────── */}
+        {phase === "waiting" && (
           <motion.div key="waiting" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <Card>
               <CardContent className="py-8 space-y-6">
@@ -486,7 +341,10 @@ export default function DuelRoom() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : phase === "countdown" ? (
+        )}
+
+        {/* ── Countdown ─────────────────────────────────────────────────── */}
+        {phase === "countdown" && (
           <motion.div key="countdown" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <Card>
               <CardContent className="py-24 text-center">
@@ -506,225 +364,88 @@ export default function DuelRoom() {
               </CardContent>
             </Card>
           </motion.div>
-        ) : phase === "playing" ? (
+        )}
+
+        {/* ── Playing ───────────────────────────────────────────────────── */}
+        {phase === "playing" && engineInitState && (
           <motion.div key="playing" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="space-y-4">
-              {disconnectDeadline && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-                  data-testid="overlay-disconnect"
-                >
-                  <Card className="max-w-sm w-full border-orange-500">
-                    <CardContent className="py-8 text-center space-y-3">
-                      <WifiOff className="h-12 w-12 mx-auto text-orange-500" />
-                      <h3 className="text-xl font-bold">Opponent disconnected</h3>
-                      <p className="text-muted-foreground text-sm">
-                        {disconnectSecsLeft}s to reconnect…
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        If they don't return in time, you win by forfeit.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <Card className={isMyTurn ? "border-primary shadow-md" : ""} data-testid="card-player-me">
-                  <CardContent className="py-3 px-4 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium truncate">{user?.name ?? "You"}</p>
-                      {isMyTurn && <Badge className="text-xs h-5" data-testid="badge-your-turn">Your turn</Badge>}
-                    </div>
-                    <Lives count={myLives} data-testid="lives-me" />
-                    <div className="text-xs text-muted-foreground">{myWords.length} words</div>
-                  </CardContent>
-                </Card>
-                <Card className={!isMyTurn ? "border-primary shadow-md" : ""} data-testid="card-opponent">
-                  <CardContent className="py-3 px-4 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-medium truncate">{opponentName || "Opponent"}</p>
-                      {!isMyTurn && <Badge variant="outline" className="text-xs h-5" data-testid="badge-opponent-turn">Their turn</Badge>}
-                    </div>
-                    <Lives count={opponentLives} />
-                    <div className="text-xs text-muted-foreground">{opponentWords.length} words</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {isMyTurn && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Time left</span>
-                    <span className={timerLeft <= 3 ? "text-destructive font-bold" : ""}>{Math.ceil(timerLeft)}s</span>
-                  </div>
-                  <Progress
-                    value={(timerLeft / TURN_TIME) * 100}
-                    className={`h-2 ${timerLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"}`}
-                    data-testid="progress-timer"
-                  />
-                </div>
-              )}
-
-              <Card>
-                <CardContent className="py-4 px-5 space-y-3">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Chain from</p>
-                    <p className="text-3xl font-black text-primary tracking-wider" data-testid="text-current-word">
-                      {currentWord}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Next word must start with <strong>"{currentWord[currentWord.length - 1]}"</strong>
-                    </p>
-                  </div>
-                  {isMyTurn ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          value={userInput}
-                          onChange={(e) => {
-                            setUserInput(e.target.value.toUpperCase());
-                            setFeedback(null);
-                          }}
-                          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-                          placeholder={`Start with "${currentWord[currentWord.length - 1]}"…`}
-                          className="font-mono uppercase"
-                          autoFocus
-                          disabled={validateMutation.isPending}
-                          data-testid="input-word"
-                          maxLength={30}
-                        />
-                        <Button
-                          onClick={handleSubmit}
-                          disabled={!userInput.trim() || validateMutation.isPending}
-                          data-testid="button-submit"
-                        >
-                          {validateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
-                        </Button>
-                      </div>
-                      {feedback && (
-                        <p className="text-xs text-destructive text-center" data-testid="text-feedback">{feedback}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center text-sm text-muted-foreground py-2 flex items-center justify-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Waiting for {opponentName}…
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Your words</p>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto" data-testid="list-my-words">
-                    {myWords.map((w, i) => (
-                      <Badge key={i} variant="default" className="text-xs font-mono">{w}</Badge>
-                    ))}
-                    {myWords.length === 0 && <span className="text-xs text-muted-foreground">None yet</span>}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">{opponentName}'s words</p>
-                  <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto" data-testid="list-opponent-words">
-                    {opponentWords.map((w, i) => (
-                      <Badge key={i} variant="outline" className="text-xs font-mono">{w}</Badge>
-                    ))}
-                    {opponentWords.length === 0 && <span className="text-xs text-muted-foreground">None yet</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DuelTurnEngine
+              key={engineKey}
+              userId={user?.id ?? 0}
+              opponentId={opponentId}
+              opponentName={opponentName}
+              opponentAvatarUrl={opponentAvatarUrl}
+              myName={user?.name ?? "You"}
+              myAvatarUrl={user?.avatarUrl ?? null}
+              initialState={engineInitState}
+              sendWs={sendWs}
+              latestMessage={latestGameMessage}
+              onGameOver={handleGameOver}
+              adapter={wordChainDuelAdapter}
+            />
           </motion.div>
-        ) : phase === "over" ? (
+        )}
+
+        {/* ── Game Over ─────────────────────────────────────────────────── */}
+        {phase === "over" && gameResult && (
           <motion.div key="over" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             <Card className={
-              !gameResult ? "" :
-              gameResult.outcome === "you_win" || (gameResult.outcome === "forfeit" && !gameResult.reason)
-                ? "border-green-500"
+              gameResult.outcome === "you_win"
+                ? "border-yellow-400"
                 : gameResult.outcome === "you_lose"
                 ? "border-muted"
-                : gameResult.outcome === "draw"
-                ? "border-blue-400"
-                : "border-green-500"
+                : "border-blue-400"
             }>
-              <CardContent className="py-8 text-center space-y-4">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}>
-                  <Trophy className={`h-16 w-16 mx-auto ${
-                    gameResult?.outcome === "you_win" || gameResult?.outcome === "forfeit"
-                      ? "text-yellow-500"
-                      : gameResult?.outcome === "draw"
-                      ? "text-blue-500"
-                      : "text-muted-foreground"
-                  }`} />
-                </motion.div>
-
-                <div>
-                  <h2 className="text-3xl font-black" data-testid="text-result-outcome">
-                    {!gameResult
-                      ? "Match Over"
-                      : gameResult.outcome === "you_win"
-                      ? "You Win! 🎉"
-                      : gameResult.outcome === "you_lose"
-                      ? "You Lose"
-                      : gameResult.outcome === "draw"
-                      ? "Draw!"
-                      : "Forfeit Win!"}
-                  </h2>
-                  {gameResult?.outcome === "forfeit" && gameResult.reason && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {opponentName} {gameResult.reason === "disconnect" ? "disconnected and forfeited" : "forfeited"}
-                    </p>
-                  )}
-                </div>
-
-                {gameResult && gameResult.outcome !== "forfeit" && (
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${
-                    gameResult.eloChange > 0
-                      ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
-                      : gameResult.eloChange < 0
-                      ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
-                      : "bg-muted text-muted-foreground"
-                  }`} data-testid="text-elo-change">
-                    {gameResult.eloChange > 0 ? "+" : ""}{gameResult.eloChange} ELO
-                    <span className="text-xs font-normal opacity-70">→ {gameResult.newElo}</span>
-                  </div>
+              <CardContent className="py-12 text-center space-y-4">
+                <Trophy className={`h-16 w-16 mx-auto ${
+                  gameResult.outcome === "you_win" ? "text-yellow-500" : "text-muted-foreground"
+                }`} />
+                <h2 className="text-3xl font-black">
+                  {gameResult.outcome === "you_win"
+                    ? "You Win! 🎉"
+                    : gameResult.outcome === "you_lose"
+                    ? "You Lose"
+                    : gameResult.outcome === "draw"
+                    ? "It's a Draw"
+                    : "Forfeit Victory"}
+                </h2>
+                {gameResult.outcome === "forfeit" && gameResult.forfeitReason && (
+                  <p className="text-sm text-muted-foreground">
+                    Your opponent {gameResult.forfeitReason === "disconnect" ? "disconnected" : "forfeited"}.
+                  </p>
                 )}
-
-                <div className="grid grid-cols-2 gap-3 text-left mt-2">
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Your words ({myWords.length})</p>
-                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                      {myWords.map((w, i) => <Badge key={i} variant="default" className="text-xs font-mono">{w}</Badge>)}
-                      {myWords.length === 0 && <span className="text-xs text-muted-foreground">None</span>}
-                    </div>
+                <div className="flex justify-center gap-6 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">ELO change</p>
+                    <p className={`text-2xl font-bold ${
+                      gameResult.eloChange > 0
+                        ? "text-green-600"
+                        : gameResult.eloChange < 0
+                        ? "text-red-500"
+                        : "text-muted-foreground"
+                    }`} data-testid="text-elo-change">
+                      {gameResult.eloChange > 0 ? `+${gameResult.eloChange}` : gameResult.eloChange}
+                    </p>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-xs text-muted-foreground mb-1">{opponentName}'s words ({opponentWords.length})</p>
-                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
-                      {opponentWords.map((w, i) => <Badge key={i} variant="outline" className="text-xs font-mono">{w}</Badge>)}
-                      {opponentWords.length === 0 && <span className="text-xs text-muted-foreground">None</span>}
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide">New ELO</p>
+                    <p className="text-2xl font-bold" data-testid="text-new-elo">
+                      {gameResult.newElo}
+                    </p>
                   </div>
                 </div>
-
-                <div className="flex gap-2 justify-center flex-wrap pt-2">
+                <div className="flex gap-3 justify-center pt-2">
                   <Link href="/friends">
-                    <Button variant="outline" data-testid="button-back-to-friends">Back to Friends</Button>
+                    <Button variant="outline" data-testid="button-back-friends">Back to Friends</Button>
                   </Link>
-                  {user && (
-                    <Link href={`/profile/${user.id}`}>
-                      <Button variant="ghost" data-testid="button-view-profile">View Profile</Button>
-                    </Link>
-                  )}
+                  <Link href="/games/word-chain">
+                    <Button data-testid="button-play-again">Play Word Chain</Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
     </div>
   );
