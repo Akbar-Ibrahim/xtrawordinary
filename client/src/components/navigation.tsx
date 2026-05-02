@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -145,6 +145,12 @@ export function Navigation() {
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-groups">
                       <Users className="h-4 w-4 mr-2" />
                       Groups
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/create-quiz">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-create-quiz">
+                      <GraduationCap className="h-4 w-4 mr-2" />
+                      Create Quiz
                     </DropdownMenuItem>
                   </Link>
                   {user.isAdmin && (
