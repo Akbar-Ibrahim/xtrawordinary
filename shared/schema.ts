@@ -50,12 +50,11 @@ export const scrambleWordSchema = z.object({
 export type ScrambleWord = z.infer<typeof scrambleWordSchema>;
 export const scrambleWordsSchema = z.array(scrambleWordSchema);
 
-// Definition Match words (word + definition)
+// Definition Match words (word + three graded definitions, cryptic → obvious)
 export const definitionWordSchema = z.object({
   word: z.string(),
-  definition: z.string(),
+  definitions: z.tuple([z.string(), z.string(), z.string()]),
   partOfSpeech: z.string(),
-  synonyms: z.array(z.string()).optional(),
 });
 export type DefinitionWord = z.infer<typeof definitionWordSchema>;
 export const definitionWordsSchema = z.array(definitionWordSchema);

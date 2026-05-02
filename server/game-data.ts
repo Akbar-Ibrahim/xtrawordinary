@@ -197,16 +197,96 @@ export const scrambleWords: ScrambleWord[] = [
 ];
 
 export const definitionWords: DefinitionWord[] = [
-  { word: "LUMINOUS", definition: "Emitting or reflecting light; shining brightly", partOfSpeech: "adjective", synonyms: ["bright", "radiant", "glowing", "shining"] },
-  { word: "EPHEMERAL", definition: "Lasting for a very short time; fleeting", partOfSpeech: "adjective", synonyms: ["fleeting", "transient", "brief", "momentary"] },
-  { word: "ELOQUENT", definition: "Fluent or persuasive in speaking or writing", partOfSpeech: "adjective", synonyms: ["articulate", "expressive", "fluent"] },
-  { word: "RESILIENT", definition: "Able to recover quickly from difficulties", partOfSpeech: "adjective", synonyms: ["tough", "flexible", "adaptable", "strong"] },
-  { word: "SERENE", definition: "Calm, peaceful, and untroubled", partOfSpeech: "adjective", synonyms: ["peaceful", "calm", "tranquil"] },
-  { word: "OBSCURE", definition: "Not clearly expressed or easily understood", partOfSpeech: "adjective", synonyms: ["unclear", "vague", "ambiguous", "cryptic"] },
-  { word: "MEANDER", definition: "To follow a winding course; to wander aimlessly", partOfSpeech: "verb", synonyms: ["wander", "roam", "stroll"] },
-  { word: "PONDER", definition: "To think about something carefully before making a decision", partOfSpeech: "verb", synonyms: ["consider", "contemplate", "reflect", "think"] },
-  { word: "CHERISH", definition: "To protect and care for lovingly; to hold dear", partOfSpeech: "verb", synonyms: ["treasure", "value", "love"] },
-  { word: "FLOURISH", definition: "To grow or develop in a healthy or vigorous way", partOfSpeech: "verb", synonyms: ["thrive", "prosper", "bloom", "grow"] },
+  {
+    word: "LUMINOUS",
+    partOfSpeech: "adjective",
+    definitions: [
+      "A quality ascribed to things that make their surroundings visible simply by existing",
+      "Producing or reflecting a strong, visible glow",
+      "Bright and shining; emitting or reflecting light intensely",
+    ],
+  },
+  {
+    word: "EPHEMERAL",
+    partOfSpeech: "adjective",
+    definitions: [
+      "Used to describe things whose existence is measured not in years or decades, but in moments",
+      "Short-lived by nature; not designed to endure",
+      "Lasting only a very short time; fleeting and transient",
+    ],
+  },
+  {
+    word: "ELOQUENT",
+    partOfSpeech: "adjective",
+    definitions: [
+      "A quality of communication that moves listeners without apparent effort on the speaker's part",
+      "Able to express ideas clearly, vividly, and persuasively",
+      "Fluent and expressive in speech or writing; powerfully articulate",
+    ],
+  },
+  {
+    word: "RESILIENT",
+    partOfSpeech: "adjective",
+    definitions: [
+      "What engineers look for when designing structures that must survive repeated stress without breaking",
+      "Capable of springing back to its original form after being bent or compressed",
+      "Able to recover quickly from difficulties; tough and adaptable in adversity",
+    ],
+  },
+  {
+    word: "SERENE",
+    partOfSpeech: "adjective",
+    definitions: [
+      "Often depicted by still water at dawn, no wind, and an absence of any disturbance",
+      "Completely undisturbed; free from agitation, anxiety, or strong emotion",
+      "Calm, peaceful, and untroubled; tranquil",
+    ],
+  },
+  {
+    word: "OBSCURE",
+    partOfSpeech: "adjective",
+    definitions: [
+      "A word that can describe both a poorly-lit corner of a room and a poet no one has ever heard of",
+      "Not well known; or not clearly expressed or easily understood",
+      "Unknown, unclear, or hard to find; not famous or not easy to understand",
+    ],
+  },
+  {
+    word: "MEANDER",
+    partOfSpeech: "verb",
+    definitions: [
+      "What a river does when left entirely to its own devices across flat, open terrain over centuries",
+      "To move slowly in a winding, irregular course with no clear destination",
+      "To wander or walk aimlessly; to follow a winding path without purpose",
+    ],
+  },
+  {
+    word: "PONDER",
+    partOfSpeech: "verb",
+    definitions: [
+      "What one does before making a decision that feels too important or irreversible to rush",
+      "To spend time weighing something carefully in your mind before acting",
+      "To think about something carefully and at length; to contemplate or consider deeply",
+    ],
+  },
+  {
+    word: "CHERISH",
+    partOfSpeech: "verb",
+    definitions: [
+      "What you do with a memory, a relationship, or an object you would be devastated to lose",
+      "To hold something or someone very dear; to guard and protect it with care",
+      "To protect and care for lovingly; to feel and show great affection for someone or something",
+    ],
+  },
+  {
+    word: "FLOURISH",
+    partOfSpeech: "verb",
+    definitions: [
+      "What happens to plants placed in ideal conditions — and to people who finally find their calling",
+      "To grow strongly and successfully; to be in a state of vigour and activity",
+      "To grow or develop in a healthy and vigorous way; to thrive and prosper",
+    ],
+  },
 ];
 
 export function generateLetterPool(word: string, decoyCount: number = 4): string[] {
@@ -680,14 +760,15 @@ export const gamesData: Game[] = [
     id: 4,
     slug: "definition-match",
     name: "Definition Match",
-    description: "Read the definition and guess the word it describes.",
-    longDescription: "Expand your vocabulary in this definition-based word game! You'll be shown a definition and must figure out which word it describes. The part of speech is provided as a hint. Score points for each correct answer and build your streak for bonus points. Perfect for vocabulary building!",
+    description: "Guess the word from up to three progressively clearer clues — the fewer you need, the more you score.",
+    longDescription: "Each round gives you one cryptic clue to start. Guess correctly from that alone and earn full points. Still stuck? Reveal a second clue for a cost, then a third. If all three aren't enough, you can reveal the answer and move on. Guess early, score big — every clue you reveal chips away at your points.",
     rules: [
-      "Read the definition carefully",
-      "Type the word that matches the definition",
-      "Part of speech is shown as a hint",
-      "Case doesn't matter - just spell it right!",
-      "Build streaks for bonus points"
+      "Each word comes with three clues, ordered from cryptic to obvious",
+      "Only the first clue is shown — guess correctly for 100 points",
+      "Reveal the second clue for −25 pts (worth 75 if you then guess right)",
+      "Reveal the third clue for another −25 pts (worth 50 if you then guess right)",
+      "Exhaust all three clues and still stuck? Hit 'Show answer' — no points awarded",
+      "Build streaks for bonus points on top of each correct answer"
     ],
     difficulty: "medium",
     estimatedTime: "3-5 min",
