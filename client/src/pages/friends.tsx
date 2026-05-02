@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Zap } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";

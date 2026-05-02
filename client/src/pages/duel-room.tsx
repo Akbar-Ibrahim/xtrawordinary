@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, HeartOff, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react";
+import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
 import type { GameResult, DuelTurnEngineInitialState } from "@/components/duel-turn-engine";
@@ -57,8 +57,6 @@ export default function DuelRoom() {
   const [opponentId, setOpponentId] = useState<number | null>(null);
   const [opponentName, setOpponentName] = useState("");
   const [opponentAvatarUrl, setOpponentAvatarUrl] = useState<string | null>(null);
-  const [isChallenger, setIsChallenger] = useState(false);
-
   // ── Waiting room ready state ────────────────────────────────────────────────
   const [meReady, setMeReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
@@ -231,12 +229,6 @@ export default function DuelRoom() {
       });
     }
   }, [phase, roomInfo, user, engineInitState]);
-
-  useEffect(() => {
-    if (roomInfo && user) {
-      setIsChallenger(user.id === roomInfo.challengerId);
-    }
-  }, [roomInfo, user]);
 
   // ── WebSocket setup ────────────────────────────────────────────────────────
   useEffect(() => {
