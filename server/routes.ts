@@ -2544,7 +2544,13 @@ export async function registerRoutes(
   app.get("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const challenges = await storage.getDuelChallengesForUser(userId);
+      const type = req.query.type as string | undefined;
+      let challenges = await storage.getDuelChallengesForUser(userId);
+      if (type === "incoming") {
+        challenges = challenges.filter((c) => c.challengeeId === userId);
+      } else if (type === "outgoing") {
+        challenges = challenges.filter((c) => c.challengerId === userId);
+      }
       const enriched = await Promise.all(
         challenges.map(async (c) => {
           const [challenger, challengee] = await Promise.all([
@@ -2553,8 +2559,8 @@ export async function registerRoutes(
           ]);
           return {
             ...c,
-            challengerName: challenger?.name,
-            challengeeName: challengee?.name,
+            challengerName: challenger?.name ?? null,
+            challengeeName: challengee?.name ?? null,
             challengerAvatarUrl: challenger?.avatarUrl ?? null,
             challengeeAvatarUrl: challengee?.avatarUrl ?? null,
           };

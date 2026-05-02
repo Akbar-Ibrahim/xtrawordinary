@@ -181,8 +181,7 @@ export class DuelRoomRegistry {
       if (opponent) {
         send(opponent.ws, { type: "player:forfeited", reason: "disconnect" });
       }
-      room.status = "over";
-      room.players.delete(userId);
+      this.endRoom(roomCode);
     }, GRACE_MS);
 
     log(`[Duel] Player ${userId} disconnected from room ${roomCode}, grace timer started`, "duel-ws");
@@ -195,8 +194,8 @@ export class DuelRoomRegistry {
     if (opponent) {
       send(opponent.ws, { type: "player:forfeited", reason: "manual" });
     }
-    room.status = "over";
     log(`[Duel] Player ${userId} manually forfeited room ${roomCode}`, "duel-ws");
+    this.endRoom(roomCode);
   }
 
   endRoom(roomCode: string): void {
@@ -242,7 +241,13 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
     if (!url.startsWith("/ws/duel")) return;
 
     const sessionMiddleware = getSessionMiddleware();
-    sessionMiddleware(request as unknown as Request, {} as unknown as Response, () => {
+    const noopRes = {
+      getHeader: (_name: string) => undefined as string | string[] | number | undefined,
+      setHeader: (_name: string, _value: string | string[]) => noopRes,
+      end: () => noopRes,
+      on: (_event: string, _fn: () => void) => noopRes,
+    } as unknown as Response;
+    sessionMiddleware(request as unknown as Request, noopRes, () => {
       const sessionReq = request as SessionIncomingMessage;
       const userId = sessionReq.session?.passport?.user;
 
