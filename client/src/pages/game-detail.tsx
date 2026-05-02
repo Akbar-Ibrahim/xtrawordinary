@@ -304,6 +304,7 @@ export default function GameDetail() {
   const [quizLinkCopied, setQuizLinkCopied] = useState(false);
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
+  const [lbMode, setLbMode] = useState<"count" | "structural">("count");
   const [dmWord, setDmWord] = useState("");
   const [dmPos, setDmPos] = useState("noun");
   const [dmDefs, setDmDefs] = useState(["", "", ""]);
@@ -931,7 +932,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); setAsWord(""); setWsWord(""); setWsCategory(""); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); setAsWord(""); setWsWord(""); setWsCategory(""); setLbMode("count"); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1580,7 +1581,7 @@ export default function GameDetail() {
                 </div>
               )}
               {slug === "letter-balance" && (() => {
-                const isStructural = quizParams.category !== undefined;
+                const isStructural = lbMode === "structural";
                 const structuralCats = [
                   { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
                   { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
@@ -1597,14 +1598,14 @@ export default function GameDetail() {
                       <div className="flex gap-2 mt-1">
                         <Button type="button" size="sm"
                           variant={!isStructural ? "default" : "outline"}
-                          onClick={() => setQuizParams(({ category: _c, level: _l, ...rest }) => rest)}
+                          onClick={() => { setLbMode("count"); setQuizParams(({ category: _c, level: _l, ...rest }) => rest); }}
                           data-testid="button-lb-mode-count"
                         >
                           Count-based
                         </Button>
                         <Button type="button" size="sm"
                           variant={isStructural ? "default" : "outline"}
-                          onClick={() => setQuizParams(({ vowels: _v, consonants: _co, length: _l, ...rest }) => rest)}
+                          onClick={() => { setLbMode("structural"); setQuizParams(({ vowels: _v, consonants: _co, length: _l, ...rest }) => rest); }}
                           data-testid="button-lb-mode-structural"
                         >
                           Structural
