@@ -634,7 +634,9 @@ export class DuelRoomRegistry {
       room.livesPerPlayer.set(timedOutUserId, newLives);
       room.currentTurnUserId = opponent?.userId ?? timedOutUserId;
 
-      const timeoutPayload = { type: "timeout", lives: newLives };
+      // Include timedOutUserId so each client can route the life deduction to
+      // myLives (if they're the one who timed out) vs opponentLives correctly.
+      const timeoutPayload = { type: "timeout", lives: newLives, timedOutUserId };
 
       // Notify timed-out player that their turn ended (so UI stays in sync)
       if (timedOutPlayer) {

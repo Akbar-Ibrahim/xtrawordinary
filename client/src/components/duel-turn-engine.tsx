@@ -242,7 +242,7 @@ export function DuelTurnEngine({
     prevMsgRef.current = latestMessage;
 
     switch (latestMessage.type) {
-      // --- Opponent submitted a valid word ---
+      // --- Opponent submitted a valid word (or server-fired timeout) ---
       case "opponent:move": {
         const payload = latestMessage.payload;
         const word = adapter.extractOpponentWord(payload);
@@ -252,18 +252,37 @@ export function DuelTurnEngine({
           setUsedWords((prev) => [...prev, upper]);
           opponentWordsRef.current = [...opponentWordsRef.current, upper];
         }
-        // Update opponent lives
+        // Update lives — timedOutUserId is present on server-generated timeouts.
+        // When present: route to myLives if I was the one who timed out,
+        // or to opponentLives if the opponent timed out.
         if (payload !== null && typeof payload === "object") {
-          const p = payload as { lives?: number };
+          const p = payload as { lives?: number; timedOutUserId?: number };
           if (typeof p.lives === "number") {
-            setOpponentLives(p.lives);
-            if (p.lives <= 0 && !gameEndedRef.current) {
-              gameEndedRef.current = true;
-              sendWs({ type: "game:end" });
+            const iServerTimedOutMe = p.timedOutUserId !== undefined && p.timedOutUserId === userId;
+            if (iServerTimedOutMe) {
+              // Server enforced a timeout on me (background tab / clock drift edge case)
+              setMyLives(p.lives);
+              if (p.lives <= 0 && !gameEndedRef.current) {
+                gameEndedRef.current = true;
+                sendWs({ type: "game:end" });
+              }
+              // It is now my opponent's turn — do NOT set isMyTurn=true below
+              resetClockOnNextStartRef.current = true;
+              setIsMyTurn(false);
+            } else {
+              setOpponentLives(p.lives);
+              if (p.lives <= 0 && !gameEndedRef.current) {
+                gameEndedRef.current = true;
+                sendWs({ type: "game:end" });
+              }
+              // Fresh turn — clock resets to full
+              resetClockOnNextStartRef.current = true;
+              setIsMyTurn(true);
             }
+            break;
           }
         }
-        // Fresh turn — clock resets to full
+        // Default: no lives field — normal opponent word submission
         resetClockOnNextStartRef.current = true;
         setIsMyTurn(true);
         break;
