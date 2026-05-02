@@ -81,7 +81,7 @@ function deriveWinnerId(room: DuelRoom): number | null {
   return null;
 }
 
-async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
+async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false): Promise<void> {
   if (room.finalized) return;
   room.finalized = true;
   room.status = "over";
@@ -145,7 +145,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
   if (p1) {
     send(p1.ws, {
       type: "game:over",
-      outcome: isDraw ? "draw" : p1wins ? "you_win" : "you_lose",
+      outcome: isDraw ? "draw" : p1wins ? (isForfeit ? "forfeit" : "you_win") : "you_lose",
       eloChange: delta1,
       newElo: elo1 + delta1,
     });
@@ -153,7 +153,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
   if (p2) {
     send(p2.ws, {
       type: "game:over",
-      outcome: isDraw ? "draw" : !p1wins ? "you_win" : "you_lose",
+      outcome: isDraw ? "draw" : !p1wins ? (isForfeit ? "forfeit" : "you_win") : "you_lose",
       eloChange: delta2,
       newElo: elo2 + delta2,
     });
@@ -222,16 +222,14 @@ export class DuelRoomRegistry {
       }
 
       if (room.status === "waiting") {
-        // Resend join confirmation so client advances to waiting phase
-        if (opponent) {
-          send(ws, {
-            type: "room:joined",
-            roomCode,
-            opponentId: opponent.userId,
-            opponentName: opponent.name,
-            opponentAvatarUrl: opponent.avatarUrl,
-          });
-        }
+        // Always send room:joined on reconnect — null opponent if not yet present
+        send(ws, {
+          type: "room:joined",
+          roomCode,
+          opponentId: opponent?.userId ?? null,
+          opponentName: opponent?.name ?? null,
+          opponentAvatarUrl: opponent?.avatarUrl ?? null,
+        });
       } else if (room.status === "playing" || room.status === "countdown") {
         // Send full authoritative game snapshot so client can restore state
         if (opponent) {
@@ -432,7 +430,7 @@ export class DuelRoomRegistry {
       if (currentOpponent) {
         send(currentOpponent.ws, { type: "player:forfeited", reason: "disconnect" });
         try {
-          await finalizeGame(currentRoom, currentOpponent.userId);
+          await finalizeGame(currentRoom, currentOpponent.userId, true);
         } catch (err) {
           log(`[Duel] ELO update failed for forfeit in room ${roomCode}: ${err}`, "duel-ws");
         }
@@ -452,7 +450,7 @@ export class DuelRoomRegistry {
     }
     void (async () => {
       try {
-        await finalizeGame(room, opponent?.userId ?? -1);
+        await finalizeGame(room, opponent?.userId ?? -1, true);
       } catch (err) {
         log(`[Duel] ELO update failed for manual forfeit in room ${roomCode}: ${err}`, "duel-ws");
       }

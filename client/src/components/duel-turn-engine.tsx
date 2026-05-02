@@ -181,7 +181,7 @@ export function DuelTurnEngine({
       sendWs({ type: "game:move", payload: adapter.buildTimeoutPayload(newLives) });
       if (newLives <= 0 && !gameEndedRef.current) {
         gameEndedRef.current = true;
-        sendWs({ type: "game:end", winnerId: opponentId ?? -1 });
+        sendWs({ type: "game:end" });
       }
       return newLives;
     });
@@ -254,7 +254,7 @@ export function DuelTurnEngine({
             setOpponentLives(p.lives);
             if (p.lives <= 0 && !gameEndedRef.current) {
               gameEndedRef.current = true;
-              sendWs({ type: "game:end", winnerId: userId });
+              sendWs({ type: "game:end" });
             }
           }
         }

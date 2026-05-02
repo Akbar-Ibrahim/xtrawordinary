@@ -2,7 +2,9 @@ export type DuelClientMessage =
   | { type: "room:join"; roomCode: string }
   | { type: "room:ready" }
   | { type: "game:move"; payload: unknown }
-  | { type: "game:end"; winnerId: number };
+  /** Signal that the game has ended. The server derives the winner from
+   *  authoritative life counts — no winnerId needed from the client. */
+  | { type: "game:end" };
 
 export type DuelServerMessage =
   | {
