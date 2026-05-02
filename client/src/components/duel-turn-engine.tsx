@@ -10,14 +10,13 @@ import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DuelGameAdapter {
-  /** Client-side pre-validation before sending to server.
-   *  Returns an error string when invalid, or null when the move is acceptable. */
+  /** Client-side pre-validation. Returns error string or null. */
   validateMoveClient(input: string, currentWord: string, usedWords: string[]): string | null;
   /** Build the game:move payload for a submitted word. */
   buildWordPayload(word: string, lives: number): unknown;
   /** Build the game:move payload for a timer expiry. */
   buildTimeoutPayload(lives: number): unknown;
-  /** Extract the word string from an opponent's word-move payload for state update. */
+  /** Extract the word string from an opponent's word-move payload. */
   extractOpponentWord(payload: unknown): string | null;
   /** Render the active-player input area. */
   renderInput(props: DuelInputProps): React.ReactNode;
@@ -29,6 +28,9 @@ export interface DuelInputProps {
   currentWord: string;
   usedWords: string[];
   onSubmit: (word: string) => void;
+  /** Call when the adapter itself determines a move is invalid (e.g. API check),
+   *  so the engine can apply the 0.5s time penalty. */
+  onInvalidMove: () => void;
   disabled: boolean;
   feedback: string | null;
   clearFeedback: () => void;
@@ -46,6 +48,10 @@ export interface GameResult {
   eloChange: number;
   newElo: number;
   forfeitReason?: "disconnect" | "manual";
+  /** Words submitted by the local player (excluding the seed word). */
+  myWords: string[];
+  /** Words submitted by the opponent (excluding the seed word). */
+  opponentWords: string[];
 }
 
 export interface DuelTurnEngineInitialState {
@@ -65,8 +71,7 @@ export interface DuelTurnEngineProps {
   myAvatarUrl: string | null;
   initialState: DuelTurnEngineInitialState;
   sendWs: (msg: DuelClientMessage) => void;
-  /** The latest WS message from the server that the engine should process.
-   *  Parent updates this whenever a game-phase message arrives. */
+  /** Latest WS message from the server — engine processes via useEffect. */
   latestMessage: DuelServerMessage | null;
   onGameOver: (result: GameResult) => void;
   adapter: DuelGameAdapter;
@@ -114,15 +119,30 @@ export function DuelTurnEngine({
   const [isMyTurn, setIsMyTurn] = useState(initialState.isMyTurn);
   const [myLives, setMyLives] = useState(initialState.myLives);
   const [opponentLives, setOpponentLives] = useState(initialState.opponentLives);
-  const [timerLeft, setTimerLeft] = useState(turnTimeSeconds);
+  const [timerLeft, setTimerLeft] = useState<number>(turnTimeSeconds);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
   const [disconnectSecsLeft, setDisconnectSecsLeft] = useState(30);
+  const [forfeitPending, setForfeitPending] = useState(false);
+
+  // Per-player word tracking (refs — only needed at game-end)
+  const myWordsRef = useRef<string[]>([]);
+  const opponentWordsRef = useRef<string[]>([]);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameEndedRef = useRef(false);
   const prevMsgRef = useRef<DuelServerMessage | null>(null);
+
+  // When true, startTimer resets the clock to turnTimeSeconds.
+  // Set to false before restoring turn after a server rejection so the
+  // penalty-reduced timer value is preserved.
+  const resetClockOnNextStartRef = useRef(true);
+
+  // Optimistic-update rollback snapshot: saved before each optimistic word write.
+  const rollbackRef = useRef<{ currentWord: string; usedWords: string[] } | null>(null);
+
+  // ── Timer helpers ──────────────────────────────────────────────────────────
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -133,13 +153,16 @@ export function DuelTurnEngine({
 
   const startTimer = useCallback(() => {
     stopTimer();
-    setTimerLeft(turnTimeSeconds);
+    if (resetClockOnNextStartRef.current) {
+      setTimerLeft(turnTimeSeconds);
+    }
+    resetClockOnNextStartRef.current = true; // restore default for next call
     timerRef.current = setInterval(() => {
       setTimerLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
   }, [stopTimer, turnTimeSeconds]);
 
-  // Start/stop timer when turn changes
+  // Start/stop timer based on turn ownership
   useEffect(() => {
     if (isMyTurn) {
       startTimer();
@@ -149,19 +172,20 @@ export function DuelTurnEngine({
     return () => stopTimer();
   }, [isMyTurn, startTimer, stopTimer]);
 
-  // Auto-timeout when timer hits 0
+  // ── Timeout ────────────────────────────────────────────────────────────────
+
   const handleTimeout = useCallback(() => {
     stopTimer();
     setMyLives((prev) => {
       const newLives = Math.max(0, prev - 1);
-      const payload = adapter.buildTimeoutPayload(newLives);
-      sendWs({ type: "game:move", payload });
+      sendWs({ type: "game:move", payload: adapter.buildTimeoutPayload(newLives) });
       if (newLives <= 0 && !gameEndedRef.current) {
         gameEndedRef.current = true;
         sendWs({ type: "game:end", winnerId: opponentId ?? -1 });
       }
       return newLives;
     });
+    rollbackRef.current = null;
     setIsMyTurn(false);
   }, [stopTimer, adapter, sendWs, opponentId]);
 
@@ -169,12 +193,51 @@ export function DuelTurnEngine({
     if (timerLeft === 0 && isMyTurn) handleTimeout();
   }, [timerLeft, isMyTurn, handleTimeout]);
 
-  // Process incoming WS messages
+  // ── 0.5s penalty helper ────────────────────────────────────────────────────
+
+  const applyTimePenalty = useCallback(() => {
+    setTimerLeft((prev) => Math.max(0.5, prev - 0.5));
+  }, []);
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+
+  const handleSubmit = useCallback(
+    (word: string) => {
+      if (!isMyTurn) return;
+      const upper = word.toUpperCase().trim();
+
+      const clientError = adapter.validateMoveClient(upper, currentWord, usedWords);
+      if (clientError) {
+        setFeedback(clientError);
+        applyTimePenalty();
+        return;
+      }
+
+      setFeedback(null);
+      stopTimer();
+
+      // Save rollback snapshot before optimistic state write
+      rollbackRef.current = { currentWord, usedWords: [...usedWords] };
+
+      // Optimistic update
+      setCurrentWord(upper);
+      setUsedWords((prev) => [...prev, upper]);
+      myWordsRef.current = [...myWordsRef.current, upper];
+
+      sendWs({ type: "game:move", payload: adapter.buildWordPayload(upper, myLives) });
+      setIsMyTurn(false);
+    },
+    [isMyTurn, adapter, currentWord, usedWords, myLives, sendWs, stopTimer, applyTimePenalty],
+  );
+
+  // ── Process incoming WS messages ───────────────────────────────────────────
+
   useEffect(() => {
     if (!latestMessage || latestMessage === prevMsgRef.current) return;
     prevMsgRef.current = latestMessage;
 
     switch (latestMessage.type) {
+      // --- Opponent submitted a valid word ---
       case "opponent:move": {
         const payload = latestMessage.payload;
         const word = adapter.extractOpponentWord(payload);
@@ -182,8 +245,9 @@ export function DuelTurnEngine({
           const upper = word.toUpperCase();
           setCurrentWord(upper);
           setUsedWords((prev) => [...prev, upper]);
+          opponentWordsRef.current = [...opponentWordsRef.current, upper];
         }
-        // Update opponent lives from payload
+        // Update opponent lives
         if (payload !== null && typeof payload === "object") {
           const p = payload as { lives?: number };
           if (typeof p.lives === "number") {
@@ -194,19 +258,44 @@ export function DuelTurnEngine({
             }
           }
         }
+        // Fresh turn — clock resets to full
+        resetClockOnNextStartRef.current = true;
         setIsMyTurn(true);
         break;
       }
 
+      // --- Server rejected a move (e.g. dictionary miss) ---
+      // Rollback optimistic state, deduct 0.5s, restore turn
+      case "error": {
+        if (rollbackRef.current) {
+          const { currentWord: prev, usedWords: prevUsed } = rollbackRef.current;
+          // Remove the word we speculatively added to myWordsRef
+          myWordsRef.current = myWordsRef.current.slice(0, -1);
+          setCurrentWord(prev);
+          setUsedWords(prevUsed);
+          rollbackRef.current = null;
+        }
+        setFeedback(latestMessage.message);
+        // Resume timer without resetting, minus the 0.5s penalty
+        setTimerLeft((prev) => Math.max(0.5, prev - 0.5));
+        resetClockOnNextStartRef.current = false; // preserve penalised timerLeft
+        setIsMyTurn(true); // triggers useEffect → startTimer (no reset)
+        break;
+      }
+
+      // --- Authoritative game over — includes real ELO for all outcomes ---
       case "game:over":
         stopTimer();
         onGameOver({
           outcome: latestMessage.outcome,
           eloChange: latestMessage.eloChange,
           newElo: latestMessage.newElo,
+          myWords: [...myWordsRef.current],
+          opponentWords: [...opponentWordsRef.current],
         });
         break;
 
+      // --- Opponent disconnected: show overlay but keep playing your turn ---
       case "player:disconnect":
         setDisconnectDeadline(latestMessage.reconnectDeadlineMs);
         setDisconnectSecsLeft(
@@ -218,14 +307,11 @@ export function DuelTurnEngine({
         setDisconnectDeadline(null);
         break;
 
+      // --- Forfeit: show banner but defer to game:over for ELO ---
       case "player:forfeited":
         stopTimer();
-        onGameOver({
-          outcome: "forfeit",
-          eloChange: 0,
-          newElo: 0,
-          forfeitReason: latestMessage.reason,
-        });
+        setForfeitPending(true);
+        // game:over will arrive next from the server with authoritative ELO data
         break;
 
       default:
@@ -233,7 +319,8 @@ export function DuelTurnEngine({
     }
   }, [latestMessage, adapter, sendWs, userId, stopTimer, onGameOver]);
 
-  // Disconnect countdown
+  // ── Disconnect countdown ───────────────────────────────────────────────────
+
   useEffect(() => {
     if (!disconnectDeadline) return;
     const interval = setInterval(() => {
@@ -246,26 +333,6 @@ export function DuelTurnEngine({
     }, 500);
     return () => clearInterval(interval);
   }, [disconnectDeadline]);
-
-  const handleSubmit = useCallback(
-    (word: string) => {
-      if (!isMyTurn) return;
-      const upper = word.toUpperCase().trim();
-      const clientError = adapter.validateMoveClient(upper, currentWord, usedWords);
-      if (clientError) {
-        setFeedback(clientError);
-        return;
-      }
-      setFeedback(null);
-      stopTimer();
-      setCurrentWord(upper);
-      setUsedWords((prev) => [...prev, upper]);
-      const payload = adapter.buildWordPayload(upper, myLives);
-      sendWs({ type: "game:move", payload });
-      setIsMyTurn(false);
-    },
-    [isMyTurn, adapter, currentWord, usedWords, myLives, sendWs, stopTimer],
-  );
 
   const timerPercent = (timerLeft / turnTimeSeconds) * 100;
 
@@ -292,6 +359,17 @@ export function DuelTurnEngine({
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Forfeit pending banner */}
+      {forfeitPending && (
+        <div
+          className="rounded-lg border border-orange-400 bg-orange-50 dark:bg-orange-950/20 px-4 py-3 text-sm text-orange-700 dark:text-orange-300 flex items-center gap-2"
+          data-testid="banner-forfeit"
+        >
+          <WifiOff className="h-4 w-4 shrink-0" />
+          Opponent forfeited — calculating final results…
+        </div>
       )}
 
       {/* Player panels */}
@@ -327,7 +405,11 @@ export function DuelTurnEngine({
               />
               <p className="text-xs font-medium truncate flex-1">{opponentName}</p>
               {!isMyTurn && (
-                <Badge variant="outline" className="text-xs h-5 shrink-0" data-testid="badge-opponent-turn">
+                <Badge
+                  variant="outline"
+                  className="text-xs h-5 shrink-0"
+                  data-testid="badge-opponent-turn"
+                >
                   Their turn
                 </Badge>
               )}
@@ -337,7 +419,7 @@ export function DuelTurnEngine({
         </Card>
       </div>
 
-      {/* Timer bar */}
+      {/* Timer bar — only shown on my turn */}
       {isMyTurn && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -349,7 +431,7 @@ export function DuelTurnEngine({
             </span>
           </div>
           <Progress
-            value={timerPercent}
+            value={Math.min(100, timerPercent)}
             className={`h-2 ${timerLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"}`}
             data-testid="progress-timer"
           />
@@ -359,17 +441,13 @@ export function DuelTurnEngine({
       {/* Game-specific display + input */}
       <Card>
         <CardContent className="py-4 px-5 space-y-3">
-          {adapter.renderGameDisplay({
-            currentWord,
-            usedWords,
-            isMyTurn,
-            opponentName,
-          })}
+          {adapter.renderGameDisplay({ currentWord, usedWords, isMyTurn, opponentName })}
           {isMyTurn ? (
             adapter.renderInput({
               currentWord,
               usedWords,
               onSubmit: handleSubmit,
+              onInvalidMove: applyTimePenalty,
               disabled: false,
               feedback,
               clearFeedback: () => setFeedback(null),
@@ -383,7 +461,7 @@ export function DuelTurnEngine({
         </CardContent>
       </Card>
 
-      {/* Shared used-words panel */}
+      {/* Shared used-words panel — visible to both players */}
       {usedWords.length > 1 && (
         <Card>
           <CardContent className="py-3 px-4">

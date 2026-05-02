@@ -390,51 +390,120 @@ export default function DuelRoom() {
         {phase === "over" && gameResult && (
           <motion.div key="over" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             <Card className={
-              gameResult.outcome === "you_win"
+              gameResult.outcome === "you_win" || gameResult.outcome === "forfeit"
                 ? "border-yellow-400"
-                : gameResult.outcome === "you_lose"
-                ? "border-muted"
-                : "border-blue-400"
+                : gameResult.outcome === "draw"
+                ? "border-blue-400"
+                : "border-muted"
             }>
-              <CardContent className="py-12 text-center space-y-4">
-                <Trophy className={`h-16 w-16 mx-auto ${
-                  gameResult.outcome === "you_win" ? "text-yellow-500" : "text-muted-foreground"
-                }`} />
-                <h2 className="text-3xl font-black">
-                  {gameResult.outcome === "you_win"
-                    ? "You Win! 🎉"
-                    : gameResult.outcome === "you_lose"
-                    ? "You Lose"
-                    : gameResult.outcome === "draw"
-                    ? "It's a Draw"
-                    : "Forfeit Victory"}
-                </h2>
-                {gameResult.outcome === "forfeit" && gameResult.forfeitReason && (
-                  <p className="text-sm text-muted-foreground">
-                    Your opponent {gameResult.forfeitReason === "disconnect" ? "disconnected" : "forfeited"}.
-                  </p>
-                )}
-                <div className="flex justify-center gap-6 text-sm">
-                  <div>
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide">ELO change</p>
-                    <p className={`text-2xl font-bold ${
-                      gameResult.eloChange > 0
-                        ? "text-green-600"
-                        : gameResult.eloChange < 0
-                        ? "text-red-500"
-                        : "text-muted-foreground"
-                    }`} data-testid="text-elo-change">
+              <CardContent className="py-10 space-y-6">
+                {/* Winner banner */}
+                <div className="text-center space-y-2">
+                  <Trophy className={`h-14 w-14 mx-auto ${
+                    gameResult.outcome === "you_win" || gameResult.outcome === "forfeit"
+                      ? "text-yellow-500"
+                      : "text-muted-foreground"
+                  }`} />
+                  <h2 className="text-3xl font-black" data-testid="text-outcome">
+                    {gameResult.outcome === "you_win"
+                      ? "You Win! 🎉"
+                      : gameResult.outcome === "you_lose"
+                      ? "You Lose"
+                      : gameResult.outcome === "draw"
+                      ? "It's a Draw"
+                      : "Forfeit Victory 🎉"}
+                  </h2>
+                  {(gameResult.outcome === "forfeit") && (
+                    <p className="text-sm text-muted-foreground">
+                      Your opponent{" "}
+                      {gameResult.forfeitReason === "disconnect" ? "disconnected" : "forfeited"}.
+                    </p>
+                  )}
+                </div>
+
+                {/* ELO delta */}
+                <div className="flex justify-center gap-8">
+                  <div className="text-center">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">ELO change</p>
+                    <p
+                      className={`text-2xl font-bold ${
+                        gameResult.eloChange > 0
+                          ? "text-green-600"
+                          : gameResult.eloChange < 0
+                          ? "text-red-500"
+                          : "text-muted-foreground"
+                      }`}
+                      data-testid="text-elo-change"
+                    >
                       {gameResult.eloChange > 0 ? `+${gameResult.eloChange}` : gameResult.eloChange}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide">New ELO</p>
+                  <div className="text-center">
+                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">New ELO</p>
                     <p className="text-2xl font-bold" data-testid="text-new-elo">
                       {gameResult.newElo}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-3 justify-center pt-2">
+
+                {/* Both players' word lists */}
+                {(gameResult.myWords.length > 0 || gameResult.opponentWords.length > 0) && (
+                  <div className="grid grid-cols-2 gap-3" data-testid="section-word-lists">
+                    {/* My words */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        Your words ({gameResult.myWords.length})
+                      </p>
+                      <div
+                        className="flex flex-wrap gap-1 max-h-32 overflow-y-auto"
+                        data-testid="list-my-words"
+                      >
+                        {gameResult.myWords.length > 0 ? (
+                          gameResult.myWords.map((w, i) => (
+                            <Badge
+                              key={i}
+                              variant="secondary"
+                              className="text-xs font-mono"
+                              data-testid={`word-mine-${i}`}
+                            >
+                              {w}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">None</p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Opponent words */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        {opponentName || "Opponent"}'s words ({gameResult.opponentWords.length})
+                      </p>
+                      <div
+                        className="flex flex-wrap gap-1 max-h-32 overflow-y-auto"
+                        data-testid="list-opponent-words"
+                      >
+                        {gameResult.opponentWords.length > 0 ? (
+                          gameResult.opponentWords.map((w, i) => (
+                            <Badge
+                              key={i}
+                              variant="outline"
+                              className="text-xs font-mono"
+                              data-testid={`word-opponent-${i}`}
+                            >
+                              {w}
+                            </Badge>
+                          ))
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">None</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3 justify-center pt-1">
                   <Link href="/friends">
                     <Button variant="outline" data-testid="button-back-friends">Back to Friends</Button>
                   </Link>
