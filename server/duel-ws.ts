@@ -54,12 +54,33 @@ type DuelRoom = {
   startWord: string;
   status: "waiting" | "countdown" | "playing" | "over";
   createdAt: number;
+  /** Server-tracked lives per player (userId → lives). Starts at 3 once playing begins. */
+  livesPerPlayer: Map<number, number>;
+  /** Ensures ELO/session is written exactly once regardless of how many game:end / forfeit triggers arrive. */
+  finalized: boolean;
 };
 
-async function computeAndFinalizeElo(
-  room: DuelRoom,
-  winnerId: number,
-): Promise<void> {
+const INITIAL_LIVES = 3;
+
+/** Compute winner from server-tracked state.
+ *  Returns the userId of the winner, or -1 for a draw.
+ *  Returns null when there is insufficient state to determine a winner.
+ */
+function deriveWinnerId(room: DuelRoom): number | null {
+  const entries = Array.from(room.livesPerPlayer.entries());
+  if (entries.length < 2) return null;
+  const [a, b] = entries;
+  if (a[1] <= 0 && b[1] <= 0) return -1; // simultaneous death → draw
+  if (a[1] <= 0) return b[0]; // b wins
+  if (b[1] <= 0) return a[0]; // a wins
+  return null; // game still ongoing
+}
+
+async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
+  if (room.finalized) return;
+  room.finalized = true;
+  room.status = "over";
+
   const playerIds = Array.from(room.players.keys());
   if (playerIds.length < 2) return;
   const [id1, id2] = playerIds;
@@ -159,6 +180,8 @@ export class DuelRoomRegistry {
       startWord,
       status: "waiting",
       createdAt: Date.now(),
+      livesPerPlayer: new Map(),
+      finalized: false,
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} created for game ${gameSlug}`, "duel-ws");
@@ -231,6 +254,10 @@ export class DuelRoomRegistry {
 
     if (room.players.size === 2 && this.allReady(room)) {
       room.status = "countdown";
+      // Initialize server-tracked lives for all players
+      for (const pid of Array.from(room.players.keys())) {
+        room.livesPerPlayer.set(pid, INITIAL_LIVES);
+      }
       const startAt = Date.now() + 3000;
       for (const p of Array.from(room.players.values())) {
         send(p.ws, { type: "room:ready", startAt });
@@ -251,13 +278,41 @@ export class DuelRoomRegistry {
     }
   }
 
-  relayMove(roomCode: string, fromUserId: number, payload: unknown): void {
+  /** Relay a game move from one player to the other, and update server-tracked lives.
+   *  Returns true if the move triggered end-of-game (caller should schedule endRoom). */
+  relayMove(
+    roomCode: string,
+    fromUserId: number,
+    payload: unknown,
+  ): { triggered: boolean; winnerId?: number } {
     const room = this.rooms.get(roomCode);
-    if (!room || room.status !== "playing") return;
+    if (!room || room.status !== "playing") return { triggered: false };
+
+    // Relay to opponent first
     const opponent = this.getOpponent(room, fromUserId);
     if (opponent) {
       send(opponent.ws, { type: "opponent:move", payload });
     }
+
+    // Server-side tracking: extract lives from the move payload and update state
+    if (payload !== null && typeof payload === "object") {
+      const p = payload as { type?: string; lives?: number };
+      if (typeof p.lives === "number") {
+        // Accept only non-increasing values to prevent cheating (lives can only go down)
+        const current = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
+        const reported = p.lives;
+        const serverLives = Math.min(current, reported); // take the lower value
+        room.livesPerPlayer.set(fromUserId, serverLives);
+
+        if (serverLives <= 0 && !room.finalized) {
+          // The sender ran out of lives — opponent wins
+          const winnerId = opponent?.userId ?? -1;
+          return { triggered: true, winnerId };
+        }
+      }
+    }
+
+    return { triggered: false };
   }
 
   handleDisconnect(roomCode: string, userId: number): void {
@@ -282,7 +337,7 @@ export class DuelRoomRegistry {
       if (currentOpponent) {
         send(currentOpponent.ws, { type: "player:forfeited", reason: "disconnect" });
         try {
-          await computeAndFinalizeElo(currentRoom, currentOpponent.userId);
+          await finalizeGame(currentRoom, currentOpponent.userId);
         } catch (err) {
           log(`[Duel] ELO update failed for forfeit in room ${roomCode}: ${err}`, "duel-ws");
         }
@@ -302,13 +357,24 @@ export class DuelRoomRegistry {
     }
     void (async () => {
       try {
-        await computeAndFinalizeElo(room, opponent?.userId ?? -1);
+        await finalizeGame(room, opponent?.userId ?? -1);
       } catch (err) {
         log(`[Duel] ELO update failed for manual forfeit in room ${roomCode}: ${err}`, "duel-ws");
       }
       this.endRoom(roomCode);
     })();
     log(`[Duel] Player ${userId} manually forfeited room ${roomCode}`, "duel-ws");
+  }
+
+  /** Finalize from a client game:end signal. Derives winner from server-tracked state.
+   *  Ignores the client-provided winnerId entirely to prevent result manipulation. */
+  async finalizeFromClient(roomCode: string): Promise<void> {
+    const room = this.rooms.get(roomCode);
+    if (!room || room.finalized) return;
+    // Derive winner server-side; fall back to draw if indeterminate
+    const winnerId = deriveWinnerId(room) ?? -1;
+    await finalizeGame(room, winnerId);
+    this.endRoom(roomCode);
   }
 
   endRoom(roomCode: string): void {
@@ -447,25 +513,34 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: "Not in a room" });
             return;
           }
-          duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
+          const moveResult = duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
+          if (moveResult.triggered && moveResult.winnerId !== undefined) {
+            const room = duelRegistry.getRoom(currentRoomCode);
+            if (room) {
+              try {
+                await finalizeGame(room, moveResult.winnerId);
+              } catch (err) {
+                log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
+              }
+              duelRegistry.endRoom(currentRoomCode);
+              currentRoomCode = undefined;
+            }
+          }
           break;
         }
 
         case "game:end": {
+          // Client signals game ended; we derive winner server-side and ignore msg.winnerId
           if (!currentRoomCode) {
             send(ws, { type: "error", message: "Not in a room" });
             return;
           }
-          const room = duelRegistry.getRoom(currentRoomCode);
-          if (!room) return;
-
           try {
-            await computeAndFinalizeElo(room, msg.winnerId);
+            await duelRegistry.finalizeFromClient(currentRoomCode);
           } catch (err) {
             log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
             send(ws, { type: "error", message: "Failed to finalize game" });
           }
-          duelRegistry.endRoom(currentRoomCode);
           currentRoomCode = undefined;
           break;
         }

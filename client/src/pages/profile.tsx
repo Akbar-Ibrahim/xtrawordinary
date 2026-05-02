@@ -109,7 +109,7 @@ export default function Profile() {
     return gameSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  const { data: duelRating } = useQuery<{ userId: number; rating: number; wins: number; losses: number; draws: number }>({
+  const { data: duelRating } = useQuery<{ userId: number; elo: number; wins: number; losses: number; draws: number }>({
     queryKey: ["/api/duels/ratings", userId],
     queryFn: async () => {
       const res = await fetch(`/api/duels/ratings/${userId}`, { credentials: "include" });
@@ -306,7 +306,7 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-black text-violet-600 dark:text-violet-400" data-testid="text-duel-elo">{duelRating.rating}</p>
+                  <p className="text-2xl font-black text-violet-600 dark:text-violet-400" data-testid="text-duel-elo">{duelRating.elo}</p>
                   <p className="text-xs text-muted-foreground">
                     {duelRating.wins}W · {duelRating.losses}L · {duelRating.draws}D
                   </p>
