@@ -1579,100 +1579,172 @@ export default function GameDetail() {
                   )}
                 </div>
               )}
-              {slug === "letter-balance" && (
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
-                  <div className="grid grid-cols-3 gap-2">
+              {slug === "letter-balance" && (() => {
+                const isStructural = quizParams.category !== undefined;
+                const structuralCats = [
+                  { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                  { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                  { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                  { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                  { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2,3,4,5] },
+                  { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2,3,4,5] },
+                ] as const;
+                const selectedCat = structuralCats.find(c => c.id === quizParams.category);
+                return (
+                  <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium">Vowels</label>
-                      <Input
-                        type="number" min={1} max={7} placeholder="Any"
-                        className="mt-1 h-8 text-sm"
-                        data-testid="input-quiz-lb-vowels"
-                        value={quizParams.vowels ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                          setQuizParams(p => {
-                            const consonants = p.consonants;
-                            if (v !== undefined && consonants !== undefined) {
-                              return { ...p, vowels: v, length: v + consonants };
-                            }
-                            if (v === undefined) {
-                              return { ...p, vowels: v, length: undefined };
-                            }
-                            return { ...p, vowels: v };
-                          });
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium">Consonants</label>
-                      <Input
-                        type="number" min={1} max={7} placeholder="Any"
-                        className="mt-1 h-8 text-sm"
-                        data-testid="input-quiz-lb-consonants"
-                        value={quizParams.consonants ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                          setQuizParams(p => {
-                            const vowels = p.vowels;
-                            if (v !== undefined && vowels !== undefined) {
-                              return { ...p, consonants: v, length: vowels + v };
-                            }
-                            if (v === undefined) {
-                              return { ...p, consonants: v, length: undefined };
-                            }
-                            return { ...p, consonants: v };
-                          });
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium">
-                        {quizParams.vowels !== undefined && quizParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
-                      </label>
-                      <Input
-                        type="number" min={3} max={15} placeholder="Any"
-                        className="mt-1 h-8 text-sm"
-                        data-testid="input-quiz-lb-length"
-                        disabled={quizParams.vowels !== undefined && quizParams.consonants !== undefined}
-                        value={quizParams.length ?? ""}
-                        onChange={(e) => {
-                          const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
-                          setQuizParams(p => ({ ...p, length: v }));
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {quizParams.vowels === undefined && quizParams.consonants === undefined && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to configure this quiz.</p>
-                  )}
-                  <div>
-                    <label className="text-sm font-medium">Words to find (Classic)</label>
-                    <Input
-                      type="number" min={1} max={50} placeholder="20"
-                      className="mt-1 h-8 text-sm w-24"
-                      data-testid="input-quiz-lb-word-count"
-                      value={quizParams.wordCount ?? ""}
-                      onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Time limit (Classic)</label>
-                    <div className="flex gap-1 mt-1 flex-wrap">
-                      {[60, 90, 120, 180, 300].map(t => (
-                        <Button key={t} type="button" size="sm"
-                          variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
-                          onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
-                          data-testid={`button-quiz-lb-time-${t}`}
+                      <label className="text-sm font-medium">Challenge type</label>
+                      <div className="flex gap-2 mt-1">
+                        <Button type="button" size="sm"
+                          variant={!isStructural ? "default" : "outline"}
+                          onClick={() => setQuizParams(({ category: _c, level: _l, ...rest }) => rest)}
+                          data-testid="button-lb-mode-count"
                         >
-                          {t < 60 ? `${t}s` : `${t / 60}min`}
+                          Count-based
                         </Button>
-                      ))}
+                        <Button type="button" size="sm"
+                          variant={isStructural ? "default" : "outline"}
+                          onClick={() => setQuizParams(({ vowels: _v, consonants: _co, length: _l, ...rest }) => rest)}
+                          data-testid="button-lb-mode-structural"
+                        >
+                          Structural
+                        </Button>
+                      </div>
+                    </div>
+                    {!isStructural ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-xs font-medium">Vowels</label>
+                            <Input
+                              type="number" min={1} max={7} placeholder="Any"
+                              className="mt-1 h-8 text-sm"
+                              data-testid="input-quiz-lb-vowels"
+                              value={quizParams.vowels ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                                setQuizParams(p => {
+                                  const consonants = p.consonants;
+                                  if (v !== undefined && consonants !== undefined) return { ...p, vowels: v, length: v + consonants };
+                                  if (v === undefined) return { ...p, vowels: v, length: undefined };
+                                  return { ...p, vowels: v };
+                                });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">Consonants</label>
+                            <Input
+                              type="number" min={1} max={7} placeholder="Any"
+                              className="mt-1 h-8 text-sm"
+                              data-testid="input-quiz-lb-consonants"
+                              value={quizParams.consonants ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                                setQuizParams(p => {
+                                  const vowels = p.vowels;
+                                  if (v !== undefined && vowels !== undefined) return { ...p, consonants: v, length: vowels + v };
+                                  if (v === undefined) return { ...p, consonants: v, length: undefined };
+                                  return { ...p, consonants: v };
+                                });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium">
+                              {quizParams.vowels !== undefined && quizParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
+                            </label>
+                            <Input
+                              type="number" min={3} max={15} placeholder="Any"
+                              className="mt-1 h-8 text-sm"
+                              data-testid="input-quiz-lb-length"
+                              disabled={quizParams.vowels !== undefined && quizParams.consonants !== undefined}
+                              value={quizParams.length ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
+                                setQuizParams(p => ({ ...p, length: v }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                        {quizParams.vowels === undefined && quizParams.consonants === undefined && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to configure this quiz.</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium">Category</label>
+                          <div className="grid grid-cols-2 gap-1.5 mt-1">
+                            {structuralCats.map(cat => (
+                              <Button
+                                key={cat.id}
+                                type="button"
+                                size="sm"
+                                variant={quizParams.category === cat.id ? "default" : "outline"}
+                                className="justify-start text-left h-auto py-1.5 px-2.5 text-xs"
+                                onClick={() => setQuizParams(p => ({ ...p, category: cat.id, level: cat.levels[0] }))}
+                                data-testid={`button-lb-cat-${cat.id}`}
+                              >
+                                {cat.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        {selectedCat && (
+                          <div>
+                            <label className="text-sm font-medium">
+                              Level <span className="text-xs font-normal text-muted-foreground">({selectedCat.levelType === "length" ? "word length" : "count"})</span>
+                            </label>
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {selectedCat.levels.map(lv => (
+                                <Button
+                                  key={lv}
+                                  type="button"
+                                  size="sm"
+                                  variant={quizParams.level === lv ? "default" : "outline"}
+                                  onClick={() => setQuizParams(p => ({ ...p, level: lv }))}
+                                  data-testid={`button-lb-level-${lv}`}
+                                >
+                                  {lv}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {!quizParams.category && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">Pick a category to configure this quiz.</p>
+                        )}
+                      </>
+                    )}
+                    <div>
+                      <label className="text-sm font-medium">Words to find (Classic)</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-quiz-lb-word-count"
+                        value={quizParams.wordCount ?? ""}
+                        onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit (Classic)</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                            onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-quiz-lb-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {slug === "progressive-reveal" && (() => {
                 const prEntries: Array<{ word: string; subcategory: string }> = Array.isArray(quizParams.words) ? quizParams.words : [];
                 const addPrWord = () => {
@@ -2017,7 +2089,7 @@ export default function GameDetail() {
                   (slug === "word-length" && (!wlQuizLength || wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok)) ||
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
-                  (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
+                  (slug === "letter-balance" && quizParams.category === undefined && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
                   (slug === "definition-match" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                   (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                   (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
