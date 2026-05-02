@@ -18,20 +18,23 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
-export function AnagramSolverGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
+export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[] } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver", quizMode });
   const personalBest = usePersonalBest("anagram-solver");
   const seeded = groupSeed !== undefined;
+  const hasCustomWords = customWords && customWords.length > 0;
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: wordSets = [], isLoading, error } = useQuery<AnagramWordSet[]>({
+  const { data: fetchedWordSets = [], isLoading, error } = useQuery<AnagramWordSet[]>({
     queryKey: seeded ? ["/api/games/anagram-solver/words", groupSeed] : ["/api/games/anagram-solver/words"],
     ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/anagram-solver/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
+    enabled: !hasCustomWords,
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
+  const wordSets = hasCustomWords ? customWords! : fetchedWordSets;
 
   const [activeWordSets, setActiveWordSets] = useState<AnagramWordSet[]>([]);
   const [currentSet, setCurrentSet] = useState<AnagramWordSet | null>(null);

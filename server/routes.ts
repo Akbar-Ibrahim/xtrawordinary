@@ -252,6 +252,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/validate-word", async (req, res) => {
+    try {
+      const word = ((req.query.word as string) || "").trim().toUpperCase();
+      if (!word || word.length < 2) return res.status(400).json({ message: "word must be at least 2 characters" });
+      const exists = await dataSource.validateWord(word);
+      res.json({ exists });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word" });
+    }
+  });
+
   app.get("/api/games/word-stretch/validate", async (req, res) => {
     try {
       const stretched = (req.query.stretched as string) || "";

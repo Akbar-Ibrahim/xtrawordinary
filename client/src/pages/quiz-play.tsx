@@ -33,6 +33,8 @@ import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
+import { AnagramSolverGame } from "@/components/games/anagram-solver";
+import { WordScrambleGame } from "@/components/games/word-scramble";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -168,6 +170,14 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const prWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
       return prWords.length > 0 ? `${prWords.length} word${prWords.length !== 1 ? "s" : ""} to guess` : "Progressive letter reveal";
     }
+    case "anagram-solver": {
+      const asWords = Array.isArray(params?.words) ? params!.words as Array<{ original: string }> : [];
+      return asWords.length > 0 ? `${asWords.length} anagram${asWords.length !== 1 ? "s" : ""}` : "Anagram solving";
+    }
+    case "word-scramble": {
+      const wsWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
+      return wsWords.length > 0 ? `${wsWords.length} word${wsWords.length !== 1 ? "s" : ""} to unscramble` : "Word unscrambling";
+    }
     default:
       return null;
   }
@@ -264,6 +274,14 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "progressive-reveal": {
       const prCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ProgressiveRevealWord[] : undefined;
       return <ProgressiveRevealGame groupSeed={seed} locked quizMode customWords={prCustomWords} />;
+    }
+    case "anagram-solver": {
+      const asCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").AnagramWordSet[] : undefined;
+      return <AnagramSolverGame groupSeed={seed} locked quizMode customWords={asCustomWords} />;
+    }
+    case "word-scramble": {
+      const wsCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ScrambleWord[] : undefined;
+      return <WordScrambleGame groupSeed={seed} locked quizMode customWords={wsCustomWords} />;
     }
     default:
       return null;

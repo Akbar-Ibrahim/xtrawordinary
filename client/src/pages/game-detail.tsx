@@ -17,6 +17,8 @@ import {
   Play,
   X,
   CheckCircle,
+  CheckCircle2,
+  AlertTriangle,
   Swords,
   Trophy,
   User,
@@ -311,6 +313,9 @@ export default function GameDetail() {
   const [lpWord, setLpWord] = useState("");
   const [lpHint, setLpHint] = useState("");
   const [lpCategory, setLpCategory] = useState("");
+  const [asWord, setAsWord] = useState("");
+  const [wsWord, setWsWord] = useState("");
+  const [wsCategory, setWsCategory] = useState("");
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -354,6 +359,42 @@ export default function GameDetail() {
     },
     enabled: slug === "word-length" && !!wlQuizLength,
     staleTime: Infinity,
+  });
+
+  const prWordKey = (showQuizDialog && slug === "progressive-reveal" && prWord.trim().length >= 2) ? prWord.trim().toUpperCase() : "";
+  const { data: prWordValid, isFetching: prWordValidating } = useQuery<{ exists: boolean }>({
+    queryKey: ["/api/games/validate-word", prWordKey],
+    queryFn: async () => { const r = await fetch(`/api/games/validate-word?word=${encodeURIComponent(prWordKey)}`, { credentials: "include" }); return r.json(); },
+    enabled: !!prWordKey,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const lpWordKey = (showQuizDialog && slug === "letter-pool" && lpWord.trim().length >= 2) ? lpWord.trim().toUpperCase() : "";
+  const { data: lpWordValid, isFetching: lpWordValidating } = useQuery<{ exists: boolean }>({
+    queryKey: ["/api/games/validate-word", lpWordKey],
+    queryFn: async () => { const r = await fetch(`/api/games/validate-word?word=${encodeURIComponent(lpWordKey)}`, { credentials: "include" }); return r.json(); },
+    enabled: !!lpWordKey,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const asWordKey = (showQuizDialog && slug === "anagram-solver" && asWord.trim().length >= 2) ? asWord.trim().toUpperCase() : "";
+  const { data: asWordValid, isFetching: asWordValidating } = useQuery<{ exists: boolean }>({
+    queryKey: ["/api/games/validate-word", asWordKey],
+    queryFn: async () => { const r = await fetch(`/api/games/validate-word?word=${encodeURIComponent(asWordKey)}`, { credentials: "include" }); return r.json(); },
+    enabled: !!asWordKey,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const wsWordKey = (showQuizDialog && slug === "word-scramble" && wsWord.trim().length >= 2) ? wsWord.trim().toUpperCase() : "";
+  const { data: wsWordValid, isFetching: wsWordValidating } = useQuery<{ exists: boolean }>({
+    queryKey: ["/api/games/validate-word", wsWordKey],
+    queryFn: async () => { const r = await fetch(`/api/games/validate-word?word=${encodeURIComponent(wsWordKey)}`, { credentials: "include" }); return r.json(); },
+    enabled: !!wsWordKey,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const wlCustomLength = customPlayParams.length as number | undefined;
@@ -881,7 +922,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); setAsWord(""); setWsWord(""); setWsCategory(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1013,7 +1054,17 @@ export default function GameDetail() {
                       {lpEntries.length < 20 && (
                         <div className="rounded-lg border bg-muted/10 p-3 space-y-2">
                           <div className="flex gap-2">
-                            <Input placeholder="WORD" value={lpWord} onChange={e => setLpWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())} className="w-32 shrink-0 font-mono uppercase tracking-wider" maxLength={20} data-testid="input-lp-word" />
+                            <div className="flex items-center gap-1 w-32 shrink-0">
+                            <Input placeholder="WORD" value={lpWord} onChange={e => setLpWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())} className="flex-1 font-mono uppercase tracking-wider" maxLength={20} data-testid="input-lp-word" />
+                            <span className="w-5 shrink-0 flex items-center justify-center">
+                              {lpWordValidating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                              {!lpWordValidating && lpWordValid !== undefined && lpWord.trim().length >= 2 && (
+                                lpWordValid.exists
+                                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                  : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              )}
+                            </span>
+                          </div>
                             <Input placeholder="Hint / clue for players" value={lpHint} onChange={e => setLpHint(e.target.value)} className="flex-1" maxLength={100} data-testid="input-lp-hint" />
                           </div>
                           <div className="flex gap-2">
@@ -1646,15 +1697,25 @@ export default function GameDetail() {
                     )}
                     {prEntries.length < 20 && (
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter a word (e.g. ELOQUENT)"
-                          value={prWord}
-                          onChange={e => setPrWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
-                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPrWord(); } }}
-                          className="flex-1 font-mono uppercase tracking-wider"
-                          maxLength={20}
-                          data-testid="input-pr-word"
-                        />
+                        <div className="flex flex-1 items-center gap-1">
+                          <Input
+                            placeholder="Enter a word (e.g. ELOQUENT)"
+                            value={prWord}
+                            onChange={e => setPrWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPrWord(); } }}
+                            className="flex-1 font-mono uppercase tracking-wider"
+                            maxLength={20}
+                            data-testid="input-pr-word"
+                          />
+                          <span className="w-5 shrink-0 flex items-center justify-center">
+                            {prWordValidating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                            {!prWordValidating && prWordValid !== undefined && prWord.trim().length >= 2 && (
+                              prWordValid.exists
+                                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                            )}
+                          </span>
+                        </div>
                         <Button type="button" size="sm" disabled={!prWord.trim() || prEntries.some(e => e.word === prWord.trim().toUpperCase())} onClick={addPrWord} data-testid="button-pr-add">
                           Add
                         </Button>
@@ -1662,6 +1723,123 @@ export default function GameDetail() {
                     )}
                     {prEntries.length === 0 && (
                       <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word so players know what to guess.</p>
+                    )}
+                  </div>
+                );
+              })()}
+              {slug === "anagram-solver" && (() => {
+                const asEntries: Array<{ original: string; anagrams: string[] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                const addAsWord = () => {
+                  const w = asWord.trim().toUpperCase();
+                  if (!w || asEntries.some(e => e.original === w)) return;
+                  setQuizParams(p => ({ ...p, words: [...asEntries, { original: w, anagrams: [w] }] }));
+                  setAsWord("");
+                };
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Words to Unscramble</label>
+                      <span className="text-xs text-muted-foreground">{asEntries.length}/20</span>
+                    </div>
+                    {asEntries.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                        {asEntries.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-1 rounded-md border bg-muted/30 px-2 py-1" data-testid={`as-entry-${i}`}>
+                            <span className="text-sm font-mono font-bold tracking-wider">{entry.original}</span>
+                            <button type="button" onClick={() => setQuizParams(p => ({ ...p, words: asEntries.filter((_, j) => j !== i) }))} className="text-muted-foreground hover:text-destructive" data-testid={`button-as-remove-${i}`}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {asEntries.length < 20 && (
+                      <div className="flex gap-2 items-center">
+                        <div className="flex flex-1 items-center gap-1">
+                          <Input
+                            placeholder="Enter a word (e.g. PLANET)"
+                            value={asWord}
+                            onChange={e => setAsWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addAsWord(); } }}
+                            className="flex-1 font-mono uppercase tracking-wider"
+                            maxLength={20}
+                            data-testid="input-as-word"
+                          />
+                          <span className="w-5 shrink-0 flex items-center justify-center">
+                            {asWordValidating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                            {!asWordValidating && asWordValid !== undefined && asWord.trim().length >= 2 && (
+                              asWordValid.exists
+                                ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                            )}
+                          </span>
+                        </div>
+                        <Button type="button" size="sm" disabled={!asWord.trim() || asEntries.some(e => e.original === asWord.trim().toUpperCase())} onClick={addAsWord} data-testid="button-as-add">Add</Button>
+                      </div>
+                    )}
+                    {asEntries.length === 0 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word. Players will see the letters scrambled and must type the answer.</p>
+                    )}
+                  </div>
+                );
+              })()}
+              {slug === "word-scramble" && (() => {
+                const wsEntries: Array<{ word: string; category: string }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                const addWsWord = () => {
+                  const w = wsWord.trim().toUpperCase();
+                  if (!w || wsEntries.some(e => e.word === w)) return;
+                  setQuizParams(p => ({ ...p, words: [...wsEntries, { word: w, category: wsCategory.trim() || "Custom" }] }));
+                  setWsWord("");
+                  setWsCategory("");
+                };
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Words to Unscramble</label>
+                      <span className="text-xs text-muted-foreground">{wsEntries.length}/20</span>
+                    </div>
+                    {wsEntries.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                        {wsEntries.map((entry, i) => (
+                          <div key={i} className="flex items-center gap-1 rounded-md border bg-muted/30 px-2 py-1" data-testid={`ws-entry-${i}`}>
+                            <span className="text-sm font-mono font-bold tracking-wider">{entry.word}</span>
+                            {entry.category !== "Custom" && <span className="text-xs text-muted-foreground">({entry.category})</span>}
+                            <button type="button" onClick={() => setQuizParams(p => ({ ...p, words: wsEntries.filter((_, j) => j !== i) }))} className="text-muted-foreground hover:text-destructive" data-testid={`button-ws-remove-${i}`}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {wsEntries.length < 20 && (
+                      <div className="rounded-lg border bg-muted/10 p-3 space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <div className="flex flex-1 items-center gap-1">
+                            <Input
+                              placeholder="WORD"
+                              value={wsWord}
+                              onChange={e => setWsWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addWsWord(); } }}
+                              className="w-32 shrink-0 font-mono uppercase tracking-wider"
+                              maxLength={20}
+                              data-testid="input-ws-word"
+                            />
+                            <span className="w-5 shrink-0 flex items-center justify-center">
+                              {wsWordValidating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                              {!wsWordValidating && wsWordValid !== undefined && wsWord.trim().length >= 2 && (
+                                wsWordValid.exists
+                                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                  : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              )}
+                            </span>
+                          </div>
+                          <Input placeholder="Category (optional, e.g. Animals)" value={wsCategory} onChange={e => setWsCategory(e.target.value)} className="flex-1" maxLength={50} data-testid="input-ws-category" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addWsWord(); } }} />
+                          <Button type="button" size="sm" disabled={!wsWord.trim() || wsEntries.some(e => e.word === wsWord.trim().toUpperCase())} onClick={addWsWord} data-testid="button-ws-add">Add</Button>
+                        </div>
+                      </div>
+                    )}
+                    {wsEntries.length === 0 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word. Players will see the letters scrambled and must type the answer.</p>
                     )}
                   </div>
                 );
@@ -1822,7 +2000,9 @@ export default function GameDetail() {
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
                   (slug === "definition-match" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
-                  (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
+                  (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
+                  (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
+                  (slug === "word-scramble" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
                 }
                 data-testid="button-create-quiz-submit"
               >

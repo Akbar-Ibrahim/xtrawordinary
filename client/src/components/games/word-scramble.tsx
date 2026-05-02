@@ -18,20 +18,23 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
-export function WordScrambleGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
+export function WordScrambleGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[] } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-scramble" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-scramble", quizMode });
   const personalBest = usePersonalBest("word-scramble");
   const seeded = groupSeed !== undefined;
+  const hasCustomWords = customWords && customWords.length > 0;
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: words = [], isLoading, error } = useQuery<ScrambleWord[]>({
+  const { data: fetchedWords = [], isLoading, error } = useQuery<ScrambleWord[]>({
     queryKey: seeded ? ["/api/games/word-scramble/words", groupSeed] : ["/api/games/word-scramble/words"],
     ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/word-scramble/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
+    enabled: !hasCustomWords,
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
+  const words = hasCustomWords ? customWords! : fetchedWords;
 
   const [activeWords, setActiveWords] = useState<ScrambleWord[]>([]);
   const [currentWord, setCurrentWord] = useState<ScrambleWord | null>(null);
