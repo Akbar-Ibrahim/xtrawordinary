@@ -66,21 +66,33 @@ function WordChainInput({
   currentWord,
   usedWords,
   onSubmit,
+  onInvalidMove,
   disabled,
   feedback,
   clearFeedback,
 }: DuelInputProps) {
   const [value, setValue] = useState("");
+  const [localFeedback, setLocalFeedback] = useState<string | null>(null);
 
   const handleSubmit = () => {
     const upper = value.toUpperCase().trim();
     if (!upper || disabled) return;
 
-    // Client-side checks (mirrors adapter.validateMoveClient)
+    // Client-side checks — call onInvalidMove() so the engine applies the 0.5s
+    // time penalty even when the adapter short-circuits before calling onSubmit.
     const requiredLetter = currentWord[currentWord.length - 1];
-    if (!upper.startsWith(requiredLetter)) return;
-    if (usedWords.includes(upper)) return;
+    if (!upper.startsWith(requiredLetter)) {
+      setLocalFeedback(`Word must start with "${requiredLetter}"`);
+      onInvalidMove();
+      return;
+    }
+    if (usedWords.includes(upper)) {
+      setLocalFeedback("That word was already used!");
+      onInvalidMove();
+      return;
+    }
 
+    setLocalFeedback(null);
     setValue("");
     clearFeedback();
     // Dictionary validation is server-authoritative; onSubmit sends to server.
@@ -116,9 +128,9 @@ function WordChainInput({
           Submit
         </Button>
       </div>
-      {feedback && (
+      {(localFeedback ?? feedback) && (
         <p className="text-xs text-destructive text-center" data-testid="text-feedback">
-          {feedback}
+          {localFeedback ?? feedback}
         </p>
       )}
     </div>
