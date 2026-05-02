@@ -531,15 +531,16 @@ export const duelChallengeSchema = z.object({
 });
 export type DuelChallenge = z.infer<typeof duelChallengeSchema>;
 
-export const insertDuelChallengeSchema = duelChallengeSchema.omit({
-  id: true,
-  createdAt: true,
-  roomCode: true,
-  challengerName: true,
-  challengeeName: true,
-  challengerAvatarUrl: true,
-  challengeeAvatarUrl: true,
-});
+export const insertDuelChallengeSchema = duelChallengeSchema
+  .omit({
+    id: true,
+    createdAt: true,
+    challengerName: true,
+    challengeeName: true,
+    challengerAvatarUrl: true,
+    challengeeAvatarUrl: true,
+  })
+  .extend({ roomCode: z.string().nullable().optional() });
 export type InsertDuelChallenge = z.infer<typeof insertDuelChallengeSchema>;
 
 export const duelSessionOutcomeSchema = z.enum([

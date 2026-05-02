@@ -1416,6 +1416,7 @@ export class MySQLStorage implements IStorage {
       message: data.message ?? null,
       status: data.status ?? "pending",
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      roomCode: data.roomCode ?? null,
     });
     const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.id, result[0].insertId)).limit(1);
     return this.mapDuelChallenge(rows[0]);

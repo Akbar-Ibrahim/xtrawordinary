@@ -74,6 +74,7 @@ export default function DuelRoom() {
   const [opponentName, setOpponentName] = useState("");
   const [opponentAvatarUrl, setOpponentAvatarUrl] = useState<string | null>(null);
   const [meReady, setMeReady] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   const [currentWord, setCurrentWord] = useState("");
@@ -221,6 +222,21 @@ export default function DuelRoom() {
         setOpponentName(msg.opponentName);
         setOpponentAvatarUrl(msg.opponentAvatarUrl);
         setPhase("waiting");
+        break;
+
+      case "room:player_ready":
+        // The opponent signalled ready — update their badge in real time
+        setOpponentReady(true);
+        break;
+
+      case "room:state":
+        // Reconnect snapshot — restore phase from server state
+        setOpponentId(msg.opponentId);
+        setOpponentName(msg.opponentName);
+        setOpponentAvatarUrl(msg.opponentAvatarUrl);
+        setMyLives(msg.myLives);
+        setOpponentLives(msg.opponentLives);
+        setPhase("playing");
         break;
 
       case "room:ready":
@@ -429,7 +445,10 @@ export default function DuelRoom() {
                       <>
                         <UserAvatar name={opponentName} avatarUrl={opponentAvatarUrl} className="h-14 w-14 text-lg" />
                         <p className="font-semibold text-sm text-center truncate max-w-full">{opponentName}</p>
-                        <Badge variant="secondary" className="text-xs" data-testid="badge-opponent-status">In Room</Badge>
+                        {opponentReady
+                          ? <Badge className="bg-green-500 text-white text-xs" data-testid="badge-opponent-ready">Ready!</Badge>
+                          : <Badge variant="secondary" className="text-xs" data-testid="badge-opponent-status">In Room</Badge>
+                        }
                       </>
                     ) : (
                       <>

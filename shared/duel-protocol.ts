@@ -12,8 +12,23 @@ export type DuelServerMessage =
       opponentName: string;
       opponentAvatarUrl: string | null;
     }
+  /** Sent to the *other* player when one player clicks "Ready" */
+  | { type: "room:player_ready"; userId: number }
   | { type: "room:ready"; startAt: number }
   | { type: "room:countdown"; secondsLeft: number }
+  /**
+   * Sent to a reconnecting player so the client can restore its phase.
+   * Carries the minimal snapshot the server knows about.
+   */
+  | {
+      type: "room:state";
+      phase: "waiting" | "playing";
+      opponentId: number;
+      opponentName: string;
+      opponentAvatarUrl: string | null;
+      myLives: number;
+      opponentLives: number;
+    }
   | { type: "opponent:move"; payload: unknown }
   | {
       type: "game:over";

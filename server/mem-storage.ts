@@ -1348,7 +1348,7 @@ export class MemStorage implements IStorage {
     const challenge: DuelChallenge = {
       ...data,
       id: this.duelChallengeIdCounter++,
-      roomCode: null,
+      roomCode: data.roomCode ?? null,
       createdAt: new Date().toISOString(),
     };
     this.duelChallenges.push(challenge);

@@ -2515,6 +2515,10 @@ export async function registerRoutes(
       if (!friendship || friendship.status !== "accepted") {
         return res.status(403).json({ error: "You can only challenge friends" });
       }
+      // Create the duel room immediately so the challenger can enter the waiting room right away.
+      const { duelRegistry } = await import("./duel-ws");
+      const roomCode = duelRegistry.createRoom(gameSlug);
+
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const challenge = await storage.createDuelChallenge({
         challengerId,
@@ -2523,6 +2527,7 @@ export async function registerRoutes(
         message: message ?? null,
         status: "pending",
         expiresAt,
+        roomCode,
       });
       const [challenger, challengee] = await Promise.all([
         storage.getUserById(challengerId),
@@ -2530,6 +2535,7 @@ export async function registerRoutes(
       ]);
       res.status(201).json({
         ...challenge,
+        roomCode,
         challengerName: challenger?.name,
         challengeeName: challengee?.name,
         challengerAvatarUrl: challenger?.avatarUrl ?? null,
@@ -2584,9 +2590,8 @@ export async function registerRoutes(
         await storage.updateDuelChallengeStatus(id, "expired");
         return res.status(410).json({ error: "Challenge has expired" });
       }
-      const { duelRegistry } = await import("./duel-ws");
-      const roomCode = duelRegistry.createRoom(challenge.gameSlug);
-      const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode);
+      // Room was already created when the challenge was sent — just mark it accepted.
+      const updated = await storage.updateDuelChallengeStatus(id, "accepted");
       res.json(updated);
     } catch (err) {
       console.error(err);
