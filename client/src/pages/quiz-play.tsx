@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { QuizSession, QuizSessionScore, DefinitionWord } from "@shared/schema";
 import { UserAvatar } from "@/components/user-avatar";
+import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
@@ -244,6 +245,7 @@ export default function QuizPlay() {
   const [submitted, setSubmitted] = useState(false);
   const [myFinalScore, setMyFinalScore] = useState<number | null>(null);
   const hasSubmitted = useRef(false);
+  const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !submitted);
 
   const { data: session, isLoading: sessionLoading } = useQuery<SessionResponse>({
     queryKey: ["/api/quiz-sessions", code],
@@ -479,7 +481,13 @@ export default function QuizPlay() {
               <Button
                 variant="ghost"
                 className="gap-2"
-                onClick={() => setIsPlaying(false)}
+                onClick={() => {
+                  if (!submitted) {
+                    confirmExit(() => setIsPlaying(false));
+                  } else {
+                    setIsPlaying(false);
+                  }
+                }}
                 data-testid="button-back-to-quiz"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -519,6 +527,7 @@ export default function QuizPlay() {
           </motion.div>
         )}
       </AnimatePresence>
+      {ConfirmDialog}
     </div>
   );
 }
