@@ -1999,10 +1999,10 @@ export default function GameDetail() {
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                   (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
-                  (slug === "definition-match" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
-                  (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
-                  (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0)) ||
-                  (slug === "word-scramble" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
+                  (slug === "definition-match" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
+                  (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
+                  (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
+                  (slug === "word-scramble" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0))
                 }
                 data-testid="button-create-quiz-submit"
               >
