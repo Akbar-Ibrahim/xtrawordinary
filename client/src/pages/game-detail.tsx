@@ -119,8 +119,7 @@ const LETTER_BALANCE_CATEGORIES_DETAIL = [
   { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
   { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
   { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2, 3, 4, 5] },
-  { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2, 3, 4, 5] },
+  { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10] },
 ] as const;
 
 interface ChallengeResult {
@@ -887,7 +886,7 @@ export default function GameDetail() {
                 }
                 initialChallenge={
                   customPlayFrozenParams.category !== undefined
-                    ? { category: customPlayFrozenParams.category, level: customPlayFrozenParams.level ?? 4 }
+                    ? { category: customPlayFrozenParams.category, level: customPlayFrozenParams.level ?? 4, consonantCount: customPlayFrozenParams.consonantCount }
                     : undefined
                 }
                 initialSurvival={customPlayFrozenParams.survival === true}
@@ -1590,13 +1589,12 @@ export default function GameDetail() {
               {slug === "letter-balance" && (() => {
                 const isStructural = lbMode === "structural";
                 const structuralCats = [
-                  { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                  { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                  { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                  { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                  { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2,3,4,5] },
-                  { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2,3,4,5] },
-                ] as const;
+                  { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                  { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                  { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                  { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                  { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [] as number[] },
+                ];
                 const selectedCat = structuralCats.find(c => c.id === quizParams.category);
                 return (
                   <div className="space-y-3">
@@ -1692,7 +1690,10 @@ export default function GameDetail() {
                                 size="sm"
                                 variant={quizParams.category === cat.id ? "default" : "outline"}
                                 className="justify-start text-left h-auto py-1.5 px-2.5 text-xs"
-                                onClick={() => setQuizParams(p => ({ ...p, category: cat.id, level: cat.levels[0] }))}
+                                onClick={() => cat.id === "locked_balance"
+                                  ? setQuizParams(p => ({ ...p, category: cat.id, level: undefined, consonantCount: undefined }))
+                                  : setQuizParams(p => ({ ...p, category: cat.id, level: cat.levels[0], consonantCount: undefined }))
+                                }
                                 data-testid={`button-lb-cat-${cat.id}`}
                               >
                                 {cat.name}
@@ -1700,7 +1701,49 @@ export default function GameDetail() {
                             ))}
                           </div>
                         </div>
-                        {selectedCat && (
+                        {quizParams.category === "locked_balance" ? (
+                          <>
+                            <div>
+                              <label className="text-sm font-medium">Word length</label>
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {[4,5,6,7,8,9,10].map(lv => (
+                                  <Button key={lv} type="button" size="sm"
+                                    variant={quizParams.level === lv ? "default" : "outline"}
+                                    onClick={() => setQuizParams(p => ({ ...p, level: lv, consonantCount: undefined }))}
+                                    data-testid={`button-lb-level-${lv}`}
+                                  >
+                                    {lv}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                            {quizParams.level !== undefined && (
+                              <div>
+                                <label className="text-sm font-medium">Consonant count <span className="text-xs font-normal text-muted-foreground">(vowels = {quizParams.level} − count)</span></label>
+                                <div className="flex gap-1 mt-1 flex-wrap">
+                                  {Array.from({ length: quizParams.level - 1 }, (_, i) => i + 1).map(c => {
+                                    const v = quizParams.level - c;
+                                    return (
+                                      <Button key={c} type="button" size="sm"
+                                        variant={quizParams.consonantCount === c ? "default" : "outline"}
+                                        onClick={() => setQuizParams(p => ({ ...p, consonantCount: c }))}
+                                        data-testid={`button-lb-consonant-${c}`}
+                                        title={`${c}C / ${v}V`}
+                                      >
+                                        {c}C/{v}V
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            {(!quizParams.level || !quizParams.consonantCount) && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                {!quizParams.level ? "Pick a word length." : "Pick a consonant count."}
+                              </p>
+                            )}
+                          </>
+                        ) : selectedCat ? (
                           <div>
                             <label className="text-sm font-medium">
                               Level <span className="text-xs font-normal text-muted-foreground">({selectedCat.levelType === "length" ? "word length" : "count"})</span>
@@ -1720,7 +1763,7 @@ export default function GameDetail() {
                               ))}
                             </div>
                           </div>
-                        )}
+                        ) : null}
                         {!quizParams.category && (
                           <p className="text-xs text-amber-600 dark:text-amber-400">Pick a category to configure this quiz.</p>
                         )}
@@ -2102,6 +2145,7 @@ export default function GameDetail() {
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                   (slug === "letter-balance" && quizParams.category === undefined && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
+                  (slug === "letter-balance" && quizParams.category === "locked_balance" && (!quizParams.level || !quizParams.consonantCount)) ||
                   (slug === "definition-match" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                   (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                   (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
@@ -2561,13 +2605,12 @@ export default function GameDetail() {
             {slug === "letter-balance" && (() => {
               const isStructural = lbCustomMode === "structural";
               const structuralCats = [
-                { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
-                { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2,3,4,5] },
-                { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2,3,4,5] },
-              ] as const;
+                { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
+                { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [] as number[] },
+              ];
               const selectedCat = structuralCats.find(c => c.id === customPlayParams.category);
               return (
                 <div className="space-y-3">
@@ -2663,7 +2706,10 @@ export default function GameDetail() {
                               size="sm"
                               variant={customPlayParams.category === cat.id ? "default" : "outline"}
                               className="justify-start text-left h-auto py-1.5 px-2.5 text-xs"
-                              onClick={() => setCustomPlayParams(p => ({ ...p, category: cat.id, level: cat.levels[0] }))}
+                              onClick={() => cat.id === "locked_balance"
+                                ? setCustomPlayParams(p => ({ ...p, category: cat.id, level: undefined, consonantCount: undefined }))
+                                : setCustomPlayParams(p => ({ ...p, category: cat.id, level: cat.levels[0], consonantCount: undefined }))
+                              }
                               data-testid={`button-custom-lb-cat-${cat.id}`}
                             >
                               {cat.name}
@@ -2671,7 +2717,49 @@ export default function GameDetail() {
                           ))}
                         </div>
                       </div>
-                      {selectedCat && (
+                      {customPlayParams.category === "locked_balance" ? (
+                        <>
+                          <div>
+                            <label className="text-sm font-medium">Word length</label>
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {[4,5,6,7,8,9,10].map(lv => (
+                                <Button key={lv} type="button" size="sm"
+                                  variant={customPlayParams.level === lv ? "default" : "outline"}
+                                  onClick={() => setCustomPlayParams(p => ({ ...p, level: lv, consonantCount: undefined }))}
+                                  data-testid={`button-custom-lb-level-${lv}`}
+                                >
+                                  {lv}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                          {customPlayParams.level !== undefined && (
+                            <div>
+                              <label className="text-sm font-medium">Consonant count <span className="text-xs font-normal text-muted-foreground">(vowels = {customPlayParams.level} − count)</span></label>
+                              <div className="flex gap-1 mt-1 flex-wrap">
+                                {Array.from({ length: customPlayParams.level - 1 }, (_, i) => i + 1).map(c => {
+                                  const v = customPlayParams.level - c;
+                                  return (
+                                    <Button key={c} type="button" size="sm"
+                                      variant={customPlayParams.consonantCount === c ? "default" : "outline"}
+                                      onClick={() => setCustomPlayParams(p => ({ ...p, consonantCount: c }))}
+                                      data-testid={`button-custom-lb-consonant-${c}`}
+                                      title={`${c}C / ${v}V`}
+                                    >
+                                      {c}C/{v}V
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {(!customPlayParams.level || !customPlayParams.consonantCount) && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                              {!customPlayParams.level ? "Pick a word length." : "Pick a consonant count."}
+                            </p>
+                          )}
+                        </>
+                      ) : selectedCat ? (
                         <div>
                           <label className="text-sm font-medium">
                             Level <span className="text-xs font-normal text-muted-foreground">({selectedCat.levelType === "length" ? "word length" : "count"})</span>
@@ -2691,7 +2779,7 @@ export default function GameDetail() {
                             ))}
                           </div>
                         </div>
-                      )}
+                      ) : null}
                       {!customPlayParams.category && (
                         <p className="text-xs text-amber-600 dark:text-amber-400">Pick a category to start playing.</p>
                       )}
@@ -2864,6 +2952,7 @@ export default function GameDetail() {
               }}
               disabled={
                 (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && !customPlayParams.category) ||
+                (slug === "letter-balance" && customPlayParams.category === "locked_balance" && (!customPlayParams.level || !customPlayParams.consonantCount)) ||
                 (slug === "word-length" && (!wlCustomLength || wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok)) ||
                 (slug === "letter-position" && (!customLpLetter || !customLpPosition || customLpCountFetching || !customLpCountData || customLpCountData.count < LP_QUIZ_MIN_WORDS))
               }

@@ -38,13 +38,13 @@ import { WordScrambleGame } from "@/components/games/word-scramble";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
-  "start_vowel_end_consonant", "start_consonant_end_vowel", "consonant_oblivion", "vowel_oblivion",
+  "start_vowel_end_consonant", "start_consonant_end_vowel", "locked_balance",
 ] as const;
 const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_count: [2, 3, 4, 5, 6, 7], vowel_count: [2, 3, 4, 5, 6, 7],
   start_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12], start_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12],
   start_vowel_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12], start_consonant_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
+  locked_balance: [4, 5, 6, 7, 8, 9, 10],
 };
 
 const LETTER_BALANCE_CATEGORY_NAMES: Record<string, string> = {
@@ -54,8 +54,7 @@ const LETTER_BALANCE_CATEGORY_NAMES: Record<string, string> = {
   start_end_consonant: "Start & End Consonants",
   start_vowel_end_consonant: "Start Vowel, End Consonant",
   start_consonant_end_vowel: "Start Consonant, End Vowel",
-  consonant_oblivion: "Consonant Oblivion",
-  vowel_oblivion: "Vowel Oblivion",
+  locked_balance: "Locked Balance",
 };
 
 function getVariantSummary(slug: string, seed: number, params?: Record<string, any>): string | null {
@@ -132,6 +131,10 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const cat = p.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const level = p.level;
       const catName = LETTER_BALANCE_CATEGORY_NAMES[cat] ?? cat;
+      if (cat === "locked_balance" && level !== undefined && p.consonantCount !== undefined) {
+        const v = level - p.consonantCount;
+        return `${catName} · ${level}L / ${p.consonantCount}C / ${v}V${survival}`;
+      }
       return level !== undefined ? `${catName} · Level ${level}${survival}` : `${catName}${survival}`;
     }
     case "letter-pool": {
@@ -231,7 +234,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
       const level = params?.level !== undefined ? (toNum(params.level) ?? levels[(seed >> 4) % levels.length]) : levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      const consonantCount = cat === "locked_balance" && params?.consonantCount !== undefined ? toNum(params.consonantCount) : undefined;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level, consonantCount }} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];

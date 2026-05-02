@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles, LogIn, Flame } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Lock, Sparkles, LogIn, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -53,8 +53,7 @@ export type VariationCategory =
   | "start_end_consonant"
   | "start_vowel_end_consonant"
   | "start_consonant_end_vowel"
-  | "consonant_oblivion"
-  | "vowel_oblivion";
+  | "locked_balance";
 
 // Level type - either a number or "advanced"
 type LevelType = number | "advanced";
@@ -139,23 +138,13 @@ const CATEGORIES: CategoryDefinition[] = [
     hasAdvanced: true,
   },
   {
-    id: "consonant_oblivion",
-    name: "Consonant Oblivion",
-    description: "Exact consonant count AND word length - ultimate challenge!",
-    icon: "oblivion",
-    levelType: "count",
-    minLevel: 2,
-    maxLevel: 5,
-    hasAdvanced: true,
-  },
-  {
-    id: "vowel_oblivion",
-    name: "Vowel Oblivion",
-    description: "Exact vowel count AND word length - ultimate challenge!",
-    icon: "oblivion",
-    levelType: "count",
-    minLevel: 2,
-    maxLevel: 5,
+    id: "locked_balance",
+    name: "Locked Balance",
+    description: "You pick the word length and consonant count — vowels follow automatically",
+    icon: "locked",
+    levelType: "length",
+    minLevel: 4,
+    maxLevel: 10,
     hasAdvanced: true,
   },
 ];
@@ -165,7 +154,8 @@ function generateConstraint(
   category: VariationCategory,
   level: LevelType,
   wordIndex: number = 0,
-  rng: () => number = Math.random
+  rng: () => number = Math.random,
+  fixedConsonantCount?: number
 ): GameConstraint {
   const categoryDef = CATEGORIES.find(c => c.id === category)!;
   
@@ -292,42 +282,29 @@ function generateConstraint(
       };
     }
     
-    case "consonant_oblivion": {
-      const count = isAdvanced ? getRandomValue(2, 5) : level as number;
-      // Word length is count + random vowels (between 2 and 4)
-      const vowelCount = isAdvanced ? getRandomValue(2, 4) : (wordIndex % 3) + 2;
-      const length = count + vowelCount;
+    case "locked_balance": {
+      const wordLength = isAdvanced ? getRandomValue(4, 10) : level as number;
+      let consonants: number;
+      if (isAdvanced) {
+        consonants = getRandomValue(1, wordLength - 1);
+      } else if (fixedConsonantCount !== undefined) {
+        consonants = fixedConsonantCount;
+      } else {
+        const maxC = Math.min(wordLength - 1, Math.ceil(wordLength * 0.6));
+        const minC = Math.max(1, Math.floor(wordLength * 0.3));
+        consonants = minC + (wordIndex % Math.max(1, maxC - minC + 1));
+      }
+      const vowels = wordLength - consonants;
       return {
-        description: `${length}-letter word with exactly ${count} consonants`,
+        description: `${wordLength}-letter word: ${consonants} consonant${consonants !== 1 ? "s" : ""}, ${vowels} vowel${vowels !== 1 ? "s" : ""}`,
         validate: (word: string) => {
           const upper = word.toUpperCase();
-          if (upper.length !== length) {
-            return { valid: false, message: `Word must be exactly ${length} letters long` };
+          if (upper.length !== wordLength) {
+            return { valid: false, message: `Word must be exactly ${wordLength} letters long` };
           }
           const actualConsonants = countConsonants(upper);
-          if (actualConsonants !== count) {
-            return { valid: false, message: `Word must have exactly ${count} consonants (found ${actualConsonants})` };
-          }
-          return { valid: true, message: "" };
-        }
-      };
-    }
-    
-    case "vowel_oblivion": {
-      const count = isAdvanced ? getRandomValue(2, 5) : level as number;
-      // Word length is count + random consonants (between 2 and 5)
-      const consonantCount = isAdvanced ? getRandomValue(2, 5) : (wordIndex % 4) + 2;
-      const length = count + consonantCount;
-      return {
-        description: `${length}-letter word with exactly ${count} vowels`,
-        validate: (word: string) => {
-          const upper = word.toUpperCase();
-          if (upper.length !== length) {
-            return { valid: false, message: `Word must be exactly ${length} letters long` };
-          }
-          const actualVowels = countVowels(upper);
-          if (actualVowels !== count) {
-            return { valid: false, message: `Word must have exactly ${count} vowels (found ${actualVowels})` };
+          if (actualConsonants !== consonants) {
+            return { valid: false, message: `Word must have exactly ${consonants} consonant${consonants !== 1 ? "s" : ""} (found ${actualConsonants})` };
           }
           return { valid: true, message: "" };
         }
@@ -375,7 +352,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; onGameEnd?: () => void } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType; consonantCount?: number }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -402,6 +379,8 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   const [gameState, setGameState] = useState<GameState>("category_menu");
   const [selectedCategory, setSelectedCategory] = useState<VariationCategory | null>(initialChallenge?.category ?? null);
   const [selectedLevel, setSelectedLevel] = useState<LevelType | null>(initialChallenge?.level ?? null);
+  const [lockedConsonantCount, setLockedConsonantCount] = useState<number | null>(initialChallenge?.consonantCount ?? null);
+  const [pendingLockedLength, setPendingLockedLength] = useState<number | null>(null);
   const [currentConstraint, setCurrentConstraint] = useState<GameConstraint | null>(null);
   
   // Gameplay state
@@ -487,19 +466,20 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   // Select a category and show level menu
   const selectCategory = (category: VariationCategory) => {
     setSelectedCategory(category);
+    setPendingLockedLength(null);
     setGameState("level_menu");
   };
 
   // Start game with selected category and level
-  const startGame = useCallback((level: LevelType) => {
+  const startGame = useCallback((level: LevelType, consonantCount?: number) => {
     if (!selectedCategory) return;
     
     resetRecorded();
-    // Clear any existing timer first
     clearTimer();
     
-    // Reset all game state
     setSelectedLevel(level);
+    setPendingLockedLength(null);
+    if (consonantCount !== undefined) setLockedConsonantCount(consonantCount);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
@@ -507,12 +487,9 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     setUserInput("");
     setFeedback(null);
     
-    // Generate initial constraint
-    const constraint = generateConstraint(selectedCategory, level, 0, seedRngRef.current);
+    const constraint = generateConstraint(selectedCategory, level, 0, seedRngRef.current, consonantCount);
     setCurrentConstraint(constraint);
     setGameState("playing");
-    
-    // Start timer (will set isPlayingRef.current = true)
     startTimer();
   }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
 
@@ -531,7 +508,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       setGameState("playing");
       startTimer();
     } else if (initialChallenge && selectedCategory) {
-      startGame(initialChallenge.level);
+      startGame(initialChallenge.level, initialChallenge.consonantCount);
     }
   }, []);
 
@@ -547,14 +524,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     if (!selectedCategory || selectedLevel === null) return;
     
     const newWordIndex = wordsCompleted + 1;
-    const constraint = generateConstraint(selectedCategory, selectedLevel, newWordIndex, seedRngRef.current);
+    const constraint = generateConstraint(selectedCategory, selectedLevel, newWordIndex, seedRngRef.current, lockedConsonantCount ?? undefined);
     setCurrentConstraint(constraint);
     
     if (selectedLevel === "advanced") {
-      // In advanced mode, constraint changes every word
       setCurrentConstraint(constraint);
     }
-  }, [selectedCategory, selectedLevel, wordsCompleted]);
+  }, [selectedCategory, selectedLevel, wordsCompleted, lockedConsonantCount]);
 
   // Continue to next level
   const continueToNextLevel = useCallback(() => {
@@ -573,14 +549,12 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       setUserInput("");
       setFeedback(null);
       
-      const constraint = generateConstraint(selectedCategory, nextLevel, 0, seedRngRef.current);
+      const constraint = generateConstraint(selectedCategory, nextLevel, 0, seedRngRef.current, lockedConsonantCount ?? undefined);
       setCurrentConstraint(constraint);
       setGameState("playing");
-      
-      // Start timer (will set isPlayingRef.current = true)
       startTimer();
     }
-  }, [selectedCategory, selectedLevel, startTimer, clearTimer]);
+  }, [selectedCategory, selectedLevel, startTimer, clearTimer, lockedConsonantCount]);
 
   // Back to category menu
   const backToMenu = () => {
@@ -658,7 +632,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
         } else {
           // Generate new constraint for advanced mode
           if (selectedLevel === "advanced" && selectedCategory) {
-            const newConstraint = generateConstraint(selectedCategory, selectedLevel, newWordsCompleted, seedRngRef.current);
+            const newConstraint = generateConstraint(selectedCategory, selectedLevel, newWordsCompleted, seedRngRef.current, lockedConsonantCount ?? undefined);
             setCurrentConstraint(newConstraint);
           }
           startTimer();
@@ -731,8 +705,8 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                     data-testid={`button-category-${cat.id}`}
                   >
                     <div className="flex-shrink-0">
-                      {cat.icon === "oblivion" ? (
-                        <Skull className="h-6 w-6 text-destructive" />
+                      {cat.icon === "locked" ? (
+                        <Lock className="h-6 w-6 text-primary" />
                       ) : cat.icon === "count" ? (
                         <Type className="h-6 w-6 text-primary" />
                       ) : (
@@ -745,11 +719,6 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                         {cat.description}
                       </span>
                     </div>
-                    {cat.icon === "oblivion" && (
-                      <Badge variant="destructive" className="ml-auto">
-                        Extreme
-                      </Badge>
-                    )}
                   </Button>
                 </motion.div>
               ))}
@@ -763,6 +732,88 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   // Level Menu
   if (gameState === "level_menu" && selectedCategory) {
     const categoryDef = CATEGORIES.find(c => c.id === selectedCategory)!;
+
+    // Locked Balance: two-step picker (word length → consonant count)
+    if (selectedCategory === "locked_balance") {
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              {!locked && (
+                <div className="flex items-center gap-2 mb-6">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={pendingLockedLength !== null ? () => setPendingLockedLength(null) : backToMenu}
+                    className="gap-1"
+                    data-testid="button-back-category"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back
+                  </Button>
+                </div>
+              )}
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold">{categoryDef.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{categoryDef.description}</p>
+              </div>
+              {pendingLockedLength === null ? (
+                <>
+                  <p className="text-sm font-medium text-center mb-3 text-muted-foreground">Step 1 of 2 — Choose word length</p>
+                  <div className="grid gap-2">
+                    {([4,5,6,7,8,9,10,"advanced"] as const).map((level) => (
+                      <motion.div key={String(level)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          variant={level === "advanced" ? "default" : "outline"}
+                          className={`w-full h-auto py-3 px-6 flex items-center justify-between ${level === "advanced" ? "bg-gradient-to-r from-primary to-accent text-white" : ""}`}
+                          onClick={() => level === "advanced" ? startGame("advanced") : setPendingLockedLength(level as number)}
+                          data-testid={`button-level-${level}`}
+                        >
+                          <span className="font-semibold flex items-center gap-2">
+                            {level === "advanced" ? (
+                              <><Sparkles className="h-4 w-4" />Advanced Mode</>
+                            ) : (
+                              `${level}-Letter Words`
+                            )}
+                          </span>
+                          {level === "advanced" && (
+                            <Badge variant="secondary" className="bg-white/20 text-white">Random</Badge>
+                          )}
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-center mb-1 text-muted-foreground">Step 2 of 2 — Choose consonant count</p>
+                  <p className="text-xs text-muted-foreground text-center mb-3">{pendingLockedLength}-letter words · vowels = {pendingLockedLength} − consonants</p>
+                  <div className="grid gap-2">
+                    {Array.from({ length: pendingLockedLength - 1 }, (_, i) => i + 1).map((c) => {
+                      const v = pendingLockedLength - c;
+                      return (
+                        <motion.div key={c} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                          <Button
+                            variant="outline"
+                            className="w-full h-auto py-3 px-6 flex items-center justify-between"
+                            onClick={() => startGame(pendingLockedLength, c)}
+                            data-testid={`button-consonant-count-${c}`}
+                          >
+                            <span className="font-semibold">{c} consonant{c !== 1 ? "s" : ""}</span>
+                            <span className="text-sm text-muted-foreground">→ {v} vowel{v !== 1 ? "s" : ""}</span>
+                          </Button>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     const levels: LevelType[] = [];
     
     for (let i = categoryDef.minLevel; i <= categoryDef.maxLevel; i++) {
