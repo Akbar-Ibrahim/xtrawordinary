@@ -2517,7 +2517,7 @@ export async function registerRoutes(
       }
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
-      const roomCode = duelRegistry.createRoom(gameSlug, challengerId);
+      const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(gameSlug, challengerId);
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const challenge = await storage.createDuelChallenge({
@@ -2528,6 +2528,8 @@ export async function registerRoutes(
         status: "pending",
         expiresAt,
         roomCode,
+        seed: roomSeed,
+        startWord: roomStartWord,
       });
       const [challenger, challengee] = await Promise.all([
         storage.getUserById(challengerId),
@@ -2595,7 +2597,8 @@ export async function registerRoutes(
       let roomCode = challenge.roomCode;
       if (!roomCode) {
         const { duelRegistry } = await import("./duel-ws");
-        roomCode = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
+        const created = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
+        roomCode = created.roomCode;
       }
       const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
       res.json(updated);
@@ -2668,7 +2671,7 @@ export async function registerRoutes(
       // persisted challenge metadata so accepted/pending challenges remain reachable.
       const room =
         duelRegistry.getRoom(roomCode) ??
-        duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId);
+        duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId, challenge.seed, challenge.startWord);
       res.json({
         gameSlug: room.gameSlug,
         seed: room.seed,

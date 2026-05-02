@@ -313,6 +313,9 @@ export const duelChallenges = mysqlTable("duel_challenges", {
   message: text("message"),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   roomCode: varchar("room_code", { length: 12 }),
+  /** Persisted so restoreRoom is deterministic after process restart. */
+  seed: int("seed"),
+  startWord: varchar("start_word", { length: 60 }),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [

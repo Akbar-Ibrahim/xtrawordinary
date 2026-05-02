@@ -1373,6 +1373,8 @@ export class MySQLStorage implements IStorage {
       message: row.message ?? null,
       status: row.status as DuelChallengeStatus,
       roomCode: row.roomCode ?? null,
+      seed: row.seed ?? null,
+      startWord: row.startWord ?? null,
       createdAt: MySQLStorage.tsToIso(row.createdAt)!,
       expiresAt: MySQLStorage.tsToIso(row.expiresAt),
     };
@@ -1417,6 +1419,8 @@ export class MySQLStorage implements IStorage {
       status: data.status ?? "pending",
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       roomCode: data.roomCode ?? null,
+      seed: data.seed ?? null,
+      startWord: data.startWord ?? null,
     });
     const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.id, result[0].insertId)).limit(1);
     return this.mapDuelChallenge(rows[0]);

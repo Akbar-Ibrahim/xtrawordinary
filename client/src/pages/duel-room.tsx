@@ -44,6 +44,8 @@ export default function DuelRoom() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Server-issued startAt timestamp (epoch ms) for clock-aligned countdown display
+  const countdownStartAtRef = useRef<number | null>(null);
 
   // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
@@ -142,19 +144,31 @@ export default function DuelRoom() {
           break;
 
         case "room:ready":
+          // Store server's startAt for clock-aligned countdown display
+          countdownStartAtRef.current = msg.startAt;
           setPhase("countdown");
           break;
 
-        case "room:countdown":
-          setCountdownNum(msg.secondsLeft);
+        case "room:countdown": {
+          // Derive display number from server's startAt when available for
+          // accurate sync under network latency rather than raw server ticks.
+          const displayNum = countdownStartAtRef.current
+            ? Math.max(1, Math.ceil((countdownStartAtRef.current - Date.now()) / 1000))
+            : msg.secondsLeft;
+          setCountdownNum(displayNum);
           if (msg.secondsLeft === 1) {
+            // Schedule playing-phase transition based on actual time remaining
+            const msToPlay = countdownStartAtRef.current
+              ? Math.max(0, countdownStartAtRef.current - Date.now())
+              : 1000;
             const t = setTimeout(() => {
               setCountdownNum(null);
               setPhase("playing");
-            }, 1000);
+            }, msToPlay);
             countdownTimeoutRef.current = t;
           }
           break;
+        }
 
         case "error":
           // During active play forward to the engine so it can rollback the

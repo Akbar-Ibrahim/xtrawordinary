@@ -179,7 +179,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
 export class DuelRoomRegistry {
   private rooms: Map<string, DuelRoom> = new Map();
 
-  createRoom(gameSlug: string, challengerId: number): string {
+  createRoom(gameSlug: string, challengerId: number): { roomCode: string; seed: number; startWord: string } {
     let roomCode: string;
     do {
       roomCode = generateRoomCode();
@@ -207,7 +207,7 @@ export class DuelRoomRegistry {
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} created for game ${gameSlug}`, "duel-ws");
-    return roomCode;
+    return { roomCode, seed, startWord };
   }
 
   getRoom(roomCode: string): DuelRoom | undefined {
@@ -216,14 +216,21 @@ export class DuelRoomRegistry {
 
   /**
    * Recreate a waiting room from persisted challenge metadata after a process restart.
+   * Accepts optional seed/startWord from the DB so the room is deterministic.
    * Only creates a new room; if one already exists it is returned as-is.
    */
-  restoreRoom(roomCode: string, gameSlug: string, challengerId: number): DuelRoom {
+  restoreRoom(
+    roomCode: string,
+    gameSlug: string,
+    challengerId: number,
+    persistedSeed?: number | null,
+    persistedStartWord?: string | null,
+  ): DuelRoom {
     const existing = this.rooms.get(roomCode);
     if (existing) return existing;
 
-    const seed = Math.floor(Math.random() * 1_000_000);
-    const startWord = DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+    const seed = persistedSeed ?? Math.floor(Math.random() * 1_000_000);
+    const startWord = persistedStartWord ?? DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
     const room: DuelRoom = {
       roomCode,
       players: new Map(),
@@ -686,7 +693,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           // Restore room lazily if missing after a process restart
           const room =
             duelRegistry.getRoom(roomCode) ??
-            duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId);
+            duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId, challenge.seed, challenge.startWord);
 
           const user = await storage.getUserById(userId);
           const name = user?.name ?? "Player";

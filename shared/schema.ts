@@ -522,6 +522,9 @@ export const duelChallengeSchema = z.object({
   message: z.string().nullable(),
   status: duelChallengeStatusSchema,
   roomCode: z.string().nullable(),
+  /** Persisted seed so restoreRoom is deterministic after process restart. */
+  seed: z.number().nullable().optional(),
+  startWord: z.string().nullable().optional(),
   createdAt: z.string(),
   expiresAt: z.string().nullable(),
   challengerName: z.string().optional(),
