@@ -29,6 +29,7 @@ import {
   Sparkles,
   Pencil,
   RotateCcw,
+  RefreshCw,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
@@ -328,6 +329,7 @@ export default function GameDetail() {
   const [asWord, setAsWord] = useState("");
   const [wsWord, setWsWord] = useState("");
   const [wsCategory, setWsCategory] = useState("");
+  const [wrSeed, setWrSeed] = useState<number>(() => Math.floor(Math.random() * 1_000_000));
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -409,6 +411,18 @@ export default function GameDetail() {
     gcTime: 5 * 60 * 1000,
   });
 
+  const wrPreviewEnabled = showQuizDialog && slug === "word-roots";
+  const { data: wrPreviewPuzzles, isFetching: wrPreviewFetching } = useQuery<Array<{ canonicalWord: string; derivatives: string[] }>>({
+    queryKey: ["/api/games/word-roots/puzzles", wrSeed],
+    queryFn: async () => {
+      const r = await fetch(`/api/games/word-roots/puzzles?seed=${wrSeed}`, { credentials: "include" });
+      return r.json();
+    },
+    enabled: wrPreviewEnabled,
+    staleTime: Infinity,
+    gcTime: 5 * 60 * 1000,
+  });
+
   const dmWordKey = (showQuizDialog && slug === "definition-match" && dmWord.trim().length >= 2) ? dmWord.trim().toUpperCase() : "";
   const { data: dmWordValid, isFetching: dmWordValidating } = useQuery<{ exists: boolean }>({
     queryKey: ["/api/games/validate-word", dmWordKey],
@@ -442,6 +456,8 @@ export default function GameDetail() {
       closesAt: quizClosesAt ? new Date(quizClosesAt).toISOString() : null,
       params: slug === "letter-position"
         ? { ...quizParams, mode: 1 }
+        : slug === "word-roots"
+        ? { wrSeed }
         : (Object.keys(quizParams).length > 0 ? quizParams : null),
     }),
     onSuccess: async (res: any) => {
@@ -1000,7 +1016,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); setAsWord(""); setWsWord(""); setWsCategory(""); setLbMode("count"); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); setAsWord(""); setWsWord(""); setWsCategory(""); setLbMode("count"); setWrSeed(Math.floor(Math.random() * 1_000_000)); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -2166,6 +2182,51 @@ export default function GameDetail() {
                   </div>
                 );
               })()}
+              {slug === "word-roots" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Puzzle Set Preview</label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setWrSeed(Math.floor(Math.random() * 1_000_000))}
+                      disabled={wrPreviewFetching}
+                      className="gap-1.5 h-7 text-xs"
+                      data-testid="button-wr-reroll"
+                    >
+                      {wrPreviewFetching
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <RefreshCw className="h-3 w-3" />}
+                      Re-roll
+                    </Button>
+                  </div>
+                  <div className="rounded-lg border bg-muted/10 p-3 space-y-2 min-h-[120px]">
+                    {wrPreviewFetching ? (
+                      <div className="flex items-center justify-center h-20">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : wrPreviewPuzzles ? (
+                      wrPreviewPuzzles.map((p, i) => (
+                        <div key={i} className="flex flex-col gap-0.5" data-testid={`wr-preview-${i}`}>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xs text-muted-foreground w-4 shrink-0">{i + 1}.</span>
+                            <span className="font-mono font-bold tracking-wider text-sm">{p.canonicalWord}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 pl-6">
+                            {p.derivatives.map((d, j) => (
+                              <span key={j} className="text-xs bg-muted rounded px-1.5 py-0.5 font-mono text-muted-foreground">{d}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center pt-6">Loading preview…</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Players see the derivative clues (badges), not the canonical word. Re-roll to get a different set of 5 puzzles.</p>
+                </div>
+              )}
               {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency" || slug === "letter-dodge" || slug === "letter-balance") && (
                 <div>
                   <label className="text-sm font-medium">Mode</label>

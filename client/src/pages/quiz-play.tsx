@@ -168,7 +168,7 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       return `${dodgeBase}${survival}`;
     }
     case "word-roots":
-      return "Word roots & etymology";
+      return params?.wrSeed !== undefined ? "5 puzzles • seeded set" : "Word roots & etymology";
     case "progressive-reveal": {
       const prWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
       return prWords.length > 0 ? `${prWords.length} word${prWords.length !== 1 ? "s" : ""} to guess` : "Progressive letter reveal";
@@ -281,8 +281,10 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const dodgeTl = !survival ? toNum(params?.timeLimit) : undefined;
       return <LetterDodgeGame groupSeed={seed} locked quizMode initialDifficulty={initialDifficulty} initialForbiddenLetters={initialForbiddenLetters} initialSurvival={survival} initialWordCount={dodgeWc} initialTimeLimit={dodgeTl} />;
     }
-    case "word-roots":
-      return <WordRootsGame groupSeed={seed} locked quizMode />;
+    case "word-roots": {
+      const wrGroupSeed = params?.wrSeed !== undefined ? Number(params.wrSeed) : seed;
+      return <WordRootsGame groupSeed={wrGroupSeed} locked quizMode />;
+    }
     case "progressive-reveal": {
       const prCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ProgressiveRevealWord[] : undefined;
       return <ProgressiveRevealGame groupSeed={seed} locked quizMode customWords={prCustomWords} />;
