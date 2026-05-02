@@ -2608,6 +2608,11 @@ export async function registerRoutes(
       if (challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "declined");
+      // Close the pre-created room so stale-room play is impossible
+      if (challenge.roomCode) {
+        const { duelRegistry } = await import("./duel-ws");
+        duelRegistry.endRoom(challenge.roomCode);
+      }
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to decline challenge" });
@@ -2623,6 +2628,11 @@ export async function registerRoutes(
       if (challenge.challengerId !== userId) return res.status(403).json({ error: "Only the challenger can cancel" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "cancelled");
+      // Close the pre-created room so stale-room play is impossible
+      if (challenge.roomCode) {
+        const { duelRegistry } = await import("./duel-ws");
+        duelRegistry.endRoom(challenge.roomCode);
+      }
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to cancel challenge" });
@@ -2637,6 +2647,10 @@ export async function registerRoutes(
       if (!challenge) return res.status(404).json({ error: "Room not found" });
       if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
         return res.status(403).json({ error: "Not a participant" });
+      }
+      // Block entry for non-playable statuses
+      if (challenge.status === "declined" || challenge.status === "cancelled" || challenge.status === "expired") {
+        return res.status(410).json({ error: `This challenge has been ${challenge.status}` });
       }
       const { duelRegistry } = await import("./duel-ws");
       const room = duelRegistry.getRoom(roomCode);

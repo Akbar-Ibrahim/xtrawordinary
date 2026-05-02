@@ -565,6 +565,11 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: "You are not a participant in this duel" });
             return;
           }
+          // Reject entry for non-playable statuses
+          if (challenge.status === "declined" || challenge.status === "cancelled" || challenge.status === "expired") {
+            send(ws, { type: "error", message: `This challenge has been ${challenge.status}` });
+            return;
+          }
 
           const room = duelRegistry.getRoom(roomCode);
           if (!room) {
