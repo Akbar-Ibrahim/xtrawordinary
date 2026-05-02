@@ -26,6 +26,7 @@ import {
   CheckCheck,
   Sparkles,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
@@ -291,6 +292,7 @@ export default function GameDetail() {
   const [showCustomPlayDialog, setShowCustomPlayDialog] = useState(false);
   const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
   const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
+  const [customPlayKey, setCustomPlayKey] = useState(0);
   const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
@@ -607,24 +609,38 @@ export default function GameDetail() {
                 </div>
                 <h2 className="text-xl font-semibold">{game.name}</h2>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsPlaying(false);
-                  setIsCustomPlay(false);
-                  setChallengeResult(null);
-                  alreadySubmittedRef.current = false;
-                  if (challengeId || challengeNewFriendId) {
-                    navigate(`/game/${slug}`, { replace: true });
-                  }
-                }}
-                className="gap-1.5"
-                data-testid="button-close-game"
-              >
-                <X className="h-4 w-4" />
-                Exit Game
-              </Button>
+              <div className="flex items-center gap-2">
+                {isCustomPlay && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setCustomPlayKey(k => k + 1)}
+                    className="gap-1.5"
+                    data-testid="button-custom-play-again"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Play Again
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsPlaying(false);
+                    setIsCustomPlay(false);
+                    setChallengeResult(null);
+                    alreadySubmittedRef.current = false;
+                    if (challengeId || challengeNewFriendId) {
+                      navigate(`/game/${slug}`, { replace: true });
+                    }
+                  }}
+                  className="gap-1.5"
+                  data-testid="button-close-game"
+                >
+                  <X className="h-4 w-4" />
+                  Exit Game
+                </Button>
+              </div>
             </div>
 
             {isSenderMode && !challengeResult && (
@@ -754,6 +770,7 @@ export default function GameDetail() {
               </Card>
             ) : isCustomPlay && slug === "letter-position" ? (
               <LetterPositionGame
+                key={customPlayKey}
                 initialChallenge={(customPlayFrozenParams.letter && customPlayFrozenParams.position ? 1 : 2) as 1 | 2}
                 initialLetter={customPlayFrozenParams.letter as string | undefined}
                 initialPosition={customPlayFrozenParams.position ? Number(customPlayFrozenParams.position) : undefined}
@@ -765,6 +782,7 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-hunt" ? (
               <LetterHuntGame
+                key={customPlayKey}
                 initialChallenge={(() => {
                   const c = customPlayFrozenParams.challenge;
                   if (c === undefined) return (Math.floor(Math.random() * 5) + 1) as 1 | 2 | 3 | 4 | 5;
@@ -780,6 +798,7 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-frequency" ? (
               <LetterFrequencyGame
+                key={customPlayKey}
                 initialChallenge={(() => {
                   const c = customPlayFrozenParams.challenge;
                   if (c === undefined) {
@@ -800,6 +819,7 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
+                key={customPlayKey}
                 customConstraint={
                   customPlayFrozenParams.vowels !== undefined || customPlayFrozenParams.consonants !== undefined
                     ? { vowels: customPlayFrozenParams.vowels, consonants: customPlayFrozenParams.consonants, length: customPlayFrozenParams.length }
@@ -810,6 +830,7 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "word-length" ? (
               <WordLengthGame
+                key={customPlayKey}
                 customConstraint={(customPlayFrozenParams.length as number | undefined) ? { length: customPlayFrozenParams.length as number, startsWith: customPlayFrozenParams.startsWith as string | undefined, endsWith: customPlayFrozenParams.endsWith as string | undefined, contains: customPlayFrozenParams.contains as string | undefined } : undefined}
                 initialVariation={(customPlayFrozenParams.length as number | undefined) ? undefined : (Math.min(5, Math.max(1, Number(customPlayFrozenParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5)}
                 initialSurvival={customPlayFrozenParams.survival === true}
@@ -820,6 +841,7 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "letter-dodge" ? (
               <LetterDodgeGame
+                key={customPlayKey}
                 initialDifficulty={(() => {
                   const d = customPlayFrozenParams.difficulty;
                   if (d === "advanced") return "advanced" as const;
