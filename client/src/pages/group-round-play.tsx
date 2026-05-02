@@ -21,6 +21,7 @@ import { WordMakerGame } from "@/components/games/word-maker";
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
+import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { NoRepeatsGame } from "@/components/games/no-repeats";
@@ -50,7 +51,7 @@ const GAME_NAMES: Record<string, string> = {
   "word-scramble": "Word Scramble", "definition-match": "Definition Match",
   "letter-pool": "Letter Pool", "word-maker": "Word Maker",
   "word-length": "Length Challenge", "letter-position": "Position Master",
-  "letter-hunt": "Letter Hunt", "letter-balance": "Letter Balance",
+  "letter-hunt": "Letter Hunt", "letter-dodge": "Letter Dodge", "letter-balance": "Letter Balance",
   "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
   "shell-words": "Shell Words",
@@ -78,6 +79,10 @@ function renderGroupGame(slug: string, seed: number): React.ReactNode {
     case "letter-hunt": {
       const options: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       return <LetterHuntGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
+    }
+    case "letter-dodge": {
+      const dodgeOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
+      return <LetterDodgeGame initialDifficulty={dodgeOptions[seed % dodgeOptions.length]} groupSeed={seed} locked />;
     }
     case "letter-balance": {
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];

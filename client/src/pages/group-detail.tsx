@@ -26,7 +26,7 @@ const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
 const GAME_SLUGS = [
   "word-ladder", "anagram-solver", "word-scramble", "definition-match",
   "letter-pool", "word-maker", "word-length", "letter-position",
-  "letter-hunt", "letter-balance", "letter-frequency", "no-repeats",
+  "letter-hunt", "letter-dodge", "letter-balance", "letter-frequency", "no-repeats",
   "word-sweep", "word-roots", "shell-words", "deep-shell-words",
 ];
 
@@ -35,7 +35,8 @@ const GAME_NAMES: Record<string, string> = {
   "word-scramble": "Word Scramble", "definition-match": "Definition Match",
   "letter-pool": "Letter Pool", "word-maker": "Word Maker",
   "word-length": "Length Challenge", "letter-position": "Position Master",
-  "letter-hunt": "Letter Hunt", "letter-balance": "Letter Balance",
+  "letter-hunt": "Letter Hunt", "letter-dodge": "Letter Dodge",
+  "letter-balance": "Letter Balance",
   "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
   "shell-words": "Shell Words", "deep-shell-words": "Deep Shell Words",
