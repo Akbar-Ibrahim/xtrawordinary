@@ -244,7 +244,7 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const isDodgeDifficulty = (v: unknown): v is DodgeDifficulty =>
         v === 1 || v === 2 || v === 3 || v === 4 || v === 5 || v === "advanced";
       const dodgeDiff = params?.difficulty;
-      const initialDifficulty: DodgeDifficulty = isDodgeDifficulty(dodgeDiff) ? dodgeDiff : 3;
+      const initialDifficulty: DodgeDifficulty = isDodgeDifficulty(dodgeDiff) ? dodgeDiff : "advanced";
       const initialForbiddenLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
       const dodgeWc = !survival ? toNum(params?.wordCount) : undefined;
       const dodgeTl = !survival ? toNum(params?.timeLimit) : undefined;

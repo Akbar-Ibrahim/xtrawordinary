@@ -200,9 +200,9 @@ export function LetterDodgeGame({
   useEffect(() => {
     if (groupSeed !== undefined) {
       seedRngRef.current = makeSeededRng(groupSeed);
-      startGame(initialDifficulty ?? 3);
-    } else if (locked && initialDifficulty !== undefined) {
-      startGame(initialDifficulty);
+      startGame(initialDifficulty ?? "advanced");
+    } else if (locked) {
+      startGame(initialDifficulty ?? "advanced");
     }
   }, [groupSeed, locked, initialDifficulty, startGame]);
 
