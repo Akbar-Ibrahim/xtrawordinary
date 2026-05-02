@@ -1284,7 +1284,7 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const { friendId, gameSlug, score, message, seed } = req.body;
+      const { friendId, gameSlug, score, message, seed, gameConfig } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
       if (!gameSlug || typeof gameSlug !== "string") return res.status(400).json({ error: "Valid gameSlug is required" });
       if (!SEEDED_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support challenges" });
@@ -1293,6 +1293,9 @@ export async function registerRoutes(
       if (seed !== undefined && (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > 2147483647)) return res.status(400).json({ error: "Seed must be a non-negative integer" });
       const friendship = await storage.getFriendship(req.user!.id, friendId);
       if (!friendship || friendship.status !== "accepted") return res.status(400).json({ error: "You can only challenge friends" });
+      const configJson = (gameSlug === "letter-balance" && gameConfig && typeof gameConfig === "object")
+        ? JSON.stringify(gameConfig)
+        : null;
       const challenge = await storage.createFriendChallenge({
         senderId: req.user!.id,
         receiverId: friendId,
@@ -1302,6 +1305,7 @@ export async function registerRoutes(
         status: "pending",
         message: message || null,
         seed: typeof seed === "number" ? seed : null,
+        gameConfig: configJson,
         senderViewed: false,
       });
       res.json(challenge);
@@ -1903,7 +1907,7 @@ export async function registerRoutes(
       const { gameSlug, closesAt, gameConfig } = req.body;
       const slug = gameSlug && CHALLENGE_GAME_SLUGS.includes(gameSlug) ? gameSlug : CHALLENGE_GAME_SLUGS[Math.floor(Math.random() * CHALLENGE_GAME_SLUGS.length)];
       const seed = Math.floor(Math.random() * 2147483647);
-      const configJson = (slug === "letter-frequency" && gameConfig && typeof gameConfig === "object")
+      const configJson = ((slug === "letter-frequency" || slug === "letter-balance") && gameConfig && typeof gameConfig === "object")
         ? JSON.stringify(gameConfig)
         : null;
       const round = await storage.createGroupRound({

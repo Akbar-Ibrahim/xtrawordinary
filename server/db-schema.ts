@@ -99,6 +99,7 @@ export const friendChallenges = mysqlTable("friend_challenges", {
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   message: text("message"),
   seed: int("seed"),
+  gameConfig: text("game_config"),
   senderViewed: boolean("sender_viewed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [

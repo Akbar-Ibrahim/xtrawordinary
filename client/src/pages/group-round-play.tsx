@@ -69,7 +69,9 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-function renderGroupGame(slug: string, seed: number, gameConfig?: { letters?: string[] } | null): React.ReactNode {
+type GroupGameConfig = { letters?: string[]; category?: string; level?: number; consonantCount?: number };
+
+function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfig | null): React.ReactNode {
   switch (slug) {
     case "word-length": {
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
@@ -85,6 +87,9 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: { letters?: st
       return <LetterDodgeGame initialDifficulty={dodgeOptions[seed % dodgeOptions.length]} groupSeed={seed} locked />;
     }
     case "letter-balance": {
+      if (gameConfig?.category === "locked_balance" && gameConfig.level && gameConfig.consonantCount) {
+        return <LetterBalanceGame initialChallenge={{ category: "locked_balance", level: gameConfig.level, consonantCount: gameConfig.consonantCount }} groupSeed={seed} locked />;
+      }
       const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat];
       const level = levels[(seed >> 4) % levels.length];

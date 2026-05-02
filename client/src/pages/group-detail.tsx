@@ -199,6 +199,9 @@ export default function GroupDetail() {
   const [closesAt, setClosesAt] = useState("");
   const [roundLetterCount, setRoundLetterCount] = useState<2 | 3>(2);
   const [roundLetters, setRoundLetters] = useState<string[]>(["any", "any"]);
+  const [roundLbMode, setRoundLbMode] = useState<"random" | "locked">("random");
+  const [roundLbLevel, setRoundLbLevel] = useState<number | undefined>(undefined);
+  const [roundLbConsonantCount, setRoundLbConsonantCount] = useState<number | undefined>(undefined);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [expandedRoundId, setExpandedRoundId] = useState<number | null>(null);
@@ -268,6 +271,9 @@ export default function GroupDetail() {
       if (selectedSlug === "letter-frequency") {
         body.gameConfig = { letters: roundLetters };
       }
+      if (selectedSlug === "letter-balance" && roundLbMode === "locked" && roundLbLevel !== undefined && roundLbConsonantCount !== undefined) {
+        body.gameConfig = { category: "locked_balance", level: roundLbLevel, consonantCount: roundLbConsonantCount };
+      }
       return apiRequest("POST", `/api/groups/${groupId}/rounds`, body);
     },
     onSuccess: async (res) => {
@@ -278,6 +284,9 @@ export default function GroupDetail() {
       setClosesAt("");
       setRoundLetterCount(2);
       setRoundLetters(["any", "any"]);
+      setRoundLbMode("random");
+      setRoundLbLevel(undefined);
+      setRoundLbConsonantCount(undefined);
       navigate(`/groups/${groupId}/rounds/${round.id}/play`);
     },
     onError: () => toast({ title: "Failed to create round", variant: "destructive" }),
@@ -708,6 +717,70 @@ export default function GroupDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {selectedSlug === "letter-balance" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <label className="text-sm font-medium">Challenge type</label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm"
+                    variant={roundLbMode === "random" ? "default" : "outline"}
+                    onClick={() => { setRoundLbMode("random"); setRoundLbLevel(undefined); setRoundLbConsonantCount(undefined); }}
+                    data-testid="button-round-lb-random"
+                  >
+                    Random
+                  </Button>
+                  <Button type="button" size="sm"
+                    variant={roundLbMode === "locked" ? "default" : "outline"}
+                    onClick={() => setRoundLbMode("locked")}
+                    data-testid="button-round-lb-locked"
+                  >
+                    Locked Balance
+                  </Button>
+                </div>
+                {roundLbMode === "locked" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium">Word length</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[4,5,6,7,8,9,10].map(lv => (
+                          <Button key={lv} type="button" size="sm"
+                            variant={roundLbLevel === lv ? "default" : "outline"}
+                            onClick={() => { setRoundLbLevel(lv); setRoundLbConsonantCount(undefined); }}
+                            data-testid={`button-round-lb-level-${lv}`}
+                          >
+                            {lv}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    {roundLbLevel !== undefined && (
+                      <div>
+                        <label className="text-xs font-medium">Consonant count <span className="text-muted-foreground font-normal">(vowels = {roundLbLevel} − count)</span></label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {Array.from({ length: roundLbLevel - 1 }, (_, i) => i + 1).map(c => {
+                            const v = roundLbLevel - c;
+                            return (
+                              <Button key={c} type="button" size="sm"
+                                variant={roundLbConsonantCount === c ? "default" : "outline"}
+                                onClick={() => setRoundLbConsonantCount(c)}
+                                data-testid={`button-round-lb-consonant-${c}`}
+                                title={`${c}C / ${v}V`}
+                              >
+                                {c}C/{v}V
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {(!roundLbLevel || !roundLbConsonantCount) && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        {!roundLbLevel ? "Pick a word length." : "Pick a consonant count."}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             {selectedSlug === "letter-frequency" && (
               <div className="space-y-2 rounded-md border border-border p-3">
                 <label className="text-sm font-medium">Pin Letters <span className="text-muted-foreground font-normal">(optional)</span></label>
@@ -770,8 +843,8 @@ export default function GroupDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); setRoundLetterCount(2); setRoundLetters(["any", "any"]); }}>Cancel</Button>
-            <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending} data-testid="button-create-round-submit">
+            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); setRoundLetterCount(2); setRoundLetters(["any", "any"]); setRoundLbMode("random"); setRoundLbLevel(undefined); setRoundLbConsonantCount(undefined); }}>Cancel</Button>
+            <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending || (selectedSlug === "letter-balance" && roundLbMode === "locked" && (!roundLbLevel || !roundLbConsonantCount))} data-testid="button-create-round-submit">
               {createRoundMutation.isPending ? "Creating..." : "Start Round"}
             </Button>
           </DialogFooter>

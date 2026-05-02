@@ -148,6 +148,9 @@ export default function GameDetail() {
   const challengeNewFriendId = searchParams.get("challenge-new");
   const challengeNewSeed = searchParams.get("seed");
   const challengeNewMsg = searchParams.get("msg");
+  const challengeNewLbCategory = searchParams.get("lbCategory");
+  const challengeNewLbLevel = searchParams.get("lbLevel");
+  const challengeNewLbConsonantCount = searchParams.get("lbConsonantCount");
 
   const isReceiverMode = !!challengeId;
   const isSenderMode = !!challengeNewFriendId && !!challengeNewSeed;
@@ -208,8 +211,9 @@ export default function GameDetail() {
     }
   }, [isReceiverMode, challengeLoading, receiverChallenge]);
 
+  type LbGameConfig = { category: "locked_balance"; level: number; consonantCount: number };
   const submitChallengeMutation = useMutation({
-    mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string }) =>
+    mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string; gameConfig?: LbGameConfig }) =>
       apiRequest("POST", "/api/challenges", payload),
     onSuccess: () => {
       toast({ title: "Challenge sent!", description: "Your friend will be notified." });
@@ -250,12 +254,16 @@ export default function GameDetail() {
         const parsedFriendId = parseInt(challengeNewFriendId);
         const parsedSeed = parseInt(challengeNewSeed);
         if (isNaN(parsedFriendId) || isNaN(parsedSeed)) return;
+        const lbGameConfig: LbGameConfig | undefined = (slug === "letter-balance" && challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
+          ? { category: "locked_balance" as const, level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) }
+          : undefined;
         submitChallengeMutation.mutate({
           friendId: parsedFriendId,
           gameSlug: slug!,
           score,
           seed: parsedSeed,
           message: challengeNewMsg || undefined,
+          gameConfig: lbGameConfig,
         });
       } else if (isReceiverMode && challengeId && receiverChallenge) {
         if (receiverChallenge.status === "pending") {
@@ -290,6 +298,9 @@ export default function GameDetail() {
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
   const [challengeMsg, setChallengeMsg] = useState("");
+  const [challengeLbMode, setChallengeLbMode] = useState<"random" | "locked">("random");
+  const [challengeLbLevel, setChallengeLbLevel] = useState<number | undefined>(undefined);
+  const [challengeLbConsonantCount, setChallengeLbConsonantCount] = useState<number | undefined>(undefined);
   const [showCustomPlayDialog, setShowCustomPlayDialog] = useState(false);
   const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
   const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
@@ -492,10 +503,17 @@ export default function GameDetail() {
     if (!selectedFriendId) return;
     const seed = Math.floor(Math.random() * 1000000);
     const msgParam = challengeMsg ? `&msg=${encodeURIComponent(challengeMsg)}` : "";
+    let lbParams = "";
+    if (slug === "letter-balance" && challengeLbMode === "locked" && challengeLbLevel !== undefined && challengeLbConsonantCount !== undefined) {
+      lbParams = `&lbCategory=locked_balance&lbLevel=${challengeLbLevel}&lbConsonantCount=${challengeLbConsonantCount}`;
+    }
     setShowChallengeDialog(false);
     setSelectedFriendId("");
     setChallengeMsg("");
-    navigate(`/game/${slug}?challenge-new=${selectedFriendId}&seed=${seed}${msgParam}`);
+    setChallengeLbMode("random");
+    setChallengeLbLevel(undefined);
+    setChallengeLbConsonantCount(undefined);
+    navigate(`/game/${slug}?challenge-new=${selectedFriendId}&seed=${seed}${msgParam}${lbParams}`);
   };
 
   return (
@@ -784,7 +802,27 @@ export default function GameDetail() {
                             : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
                       </p>
                     </div>
-                    <div className="flex gap-6 text-sm">
+                    {slug === "letter-balance" && (() => {
+                      const lbCfgStr = isReceiverMode ? receiverChallenge?.gameConfig : null;
+                      const senderLbStr = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
+                        ? JSON.stringify({ category: "locked_balance", level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) })
+                        : null;
+                      const cfgStr = isReceiverMode ? lbCfgStr : senderLbStr;
+                      if (!cfgStr) return null;
+                      try {
+                        const cfg = JSON.parse(cfgStr);
+                        if (cfg?.category === "locked_balance" && cfg.level && cfg.consonantCount) {
+                          const vowels = cfg.level - cfg.consonantCount;
+                          return (
+                            <p className="text-xs text-muted-foreground mt-1" data-testid="text-challenge-lb-config">
+                              Locked Balance · {cfg.level}-letter words · {cfg.consonantCount}C/{vowels}V
+                            </p>
+                          );
+                        }
+                      } catch {}
+                      return null;
+                    })()}
+                    <div className="flex gap-6 text-sm mt-2">
                       <div>
                         <p className="text-muted-foreground">Your score</p>
                         <p className="text-2xl font-bold">{challengeResult.myScore}</p>
@@ -923,7 +961,29 @@ export default function GameDetail() {
                 locked
                 quizMode
               />
-            ) : GameComponent ? (
+            ) : (isSenderMode || isReceiverMode) && slug === "letter-balance" ? (() => {
+              const senderLbConfig = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
+                ? { category: "locked_balance" as const, level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) }
+                : undefined;
+              const receiverLbConfig = (() => {
+                if (!receiverChallenge?.gameConfig) return undefined;
+                try {
+                  const cfg = JSON.parse(receiverChallenge.gameConfig);
+                  if (cfg?.category === "locked_balance" && cfg.level && cfg.consonantCount) {
+                    return { category: "locked_balance" as const, level: cfg.level as number, consonantCount: cfg.consonantCount as number };
+                  }
+                } catch {}
+                return undefined;
+              })();
+              const lbConfig = isSenderMode ? senderLbConfig : receiverLbConfig;
+              return (
+                <LetterBalanceGame
+                  initialChallenge={lbConfig}
+                  groupSeed={effectiveGroupSeed}
+                  locked
+                />
+              );
+            })() : GameComponent ? (
               <GameComponent groupSeed={effectiveGroupSeed} />
             ) : (
               <Card>
@@ -2992,6 +3052,70 @@ export default function GameDetail() {
                 </SelectContent>
               </Select>
             </div>
+            {slug === "letter-balance" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <label className="text-sm font-medium">Challenge type</label>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm"
+                    variant={challengeLbMode === "random" ? "default" : "outline"}
+                    onClick={() => { setChallengeLbMode("random"); setChallengeLbLevel(undefined); setChallengeLbConsonantCount(undefined); }}
+                    data-testid="button-challenge-lb-random"
+                  >
+                    Random
+                  </Button>
+                  <Button type="button" size="sm"
+                    variant={challengeLbMode === "locked" ? "default" : "outline"}
+                    onClick={() => setChallengeLbMode("locked")}
+                    data-testid="button-challenge-lb-locked"
+                  >
+                    Locked Balance
+                  </Button>
+                </div>
+                {challengeLbMode === "locked" && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium">Word length</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[4,5,6,7,8,9,10].map(lv => (
+                          <Button key={lv} type="button" size="sm"
+                            variant={challengeLbLevel === lv ? "default" : "outline"}
+                            onClick={() => { setChallengeLbLevel(lv); setChallengeLbConsonantCount(undefined); }}
+                            data-testid={`button-challenge-lb-level-${lv}`}
+                          >
+                            {lv}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    {challengeLbLevel !== undefined && (
+                      <div>
+                        <label className="text-xs font-medium">Consonant count <span className="text-muted-foreground font-normal">(vowels = {challengeLbLevel} − count)</span></label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {Array.from({ length: challengeLbLevel - 1 }, (_, i) => i + 1).map(c => {
+                            const v = challengeLbLevel - c;
+                            return (
+                              <Button key={c} type="button" size="sm"
+                                variant={challengeLbConsonantCount === c ? "default" : "outline"}
+                                onClick={() => setChallengeLbConsonantCount(c)}
+                                data-testid={`button-challenge-lb-consonant-${c}`}
+                                title={`${c}C / ${v}V`}
+                              >
+                                {c}C/{v}V
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {challengeLbMode === "locked" && (!challengeLbLevel || !challengeLbConsonantCount) && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        {!challengeLbLevel ? "Pick a word length." : "Pick a consonant count."}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium">Message (optional)</label>
               <Input
@@ -3005,7 +3129,7 @@ export default function GameDetail() {
             <Button
               className="w-full gap-2"
               onClick={handleStartChallenge}
-              disabled={!selectedFriendId}
+              disabled={!selectedFriendId || (slug === "letter-balance" && challengeLbMode === "locked" && (!challengeLbLevel || !challengeLbConsonantCount))}
               data-testid="button-start-challenge"
             >
               <Play className="h-4 w-4" />

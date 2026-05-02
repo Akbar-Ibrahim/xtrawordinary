@@ -880,7 +880,7 @@ export class MemStorage implements IStorage {
   }
 
   async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> {
-    const fc: FriendChallenge = { ...challenge, seed: challenge.seed ?? null, senderViewed: challenge.senderViewed ?? false, id: this.fcIdCounter++, createdAt: new Date().toISOString() };
+    const fc: FriendChallenge = { ...challenge, seed: challenge.seed ?? null, gameConfig: challenge.gameConfig ?? null, senderViewed: challenge.senderViewed ?? false, id: this.fcIdCounter++, createdAt: new Date().toISOString() };
     this.friendChallengesStore.push(fc);
     return fc;
   }

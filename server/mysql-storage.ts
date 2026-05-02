@@ -652,6 +652,7 @@ export class MySQLStorage implements IStorage {
       status: r.status as FriendChallenge["status"],
       message: r.message || null,
       seed: r.seed ?? null,
+      gameConfig: r.gameConfig ?? null,
       senderViewed: Boolean(r.senderViewed),
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
@@ -668,6 +669,7 @@ export class MySQLStorage implements IStorage {
       status: challenge.status,
       message: challenge.message,
       seed: challenge.seed ?? null,
+      gameConfig: challenge.gameConfig ?? null,
       senderViewed: challenge.senderViewed ?? false,
     });
     const created = await this.getFriendChallenge(result[0].insertId);
