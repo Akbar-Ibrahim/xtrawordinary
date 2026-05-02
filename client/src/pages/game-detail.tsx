@@ -397,6 +397,15 @@ export default function GameDetail() {
     gcTime: 5 * 60 * 1000,
   });
 
+  const dmWordKey = (showQuizDialog && slug === "definition-match" && dmWord.trim().length >= 2) ? dmWord.trim().toUpperCase() : "";
+  const { data: dmWordValid, isFetching: dmWordValidating } = useQuery<{ exists: boolean }>({
+    queryKey: ["/api/games/validate-word", dmWordKey],
+    queryFn: async () => { const r = await fetch(`/api/games/validate-word?word=${encodeURIComponent(dmWordKey)}`, { credentials: "include" }); return r.json(); },
+    enabled: !!dmWordKey,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
   const wlCustomLength = customPlayParams.length as number | undefined;
   const wlCustomStartsWith = customPlayParams.startsWith as string | undefined;
   const wlCustomEndsWith = customPlayParams.endsWith as string | undefined;
@@ -1908,13 +1917,23 @@ export default function GameDetail() {
                           {isEditing ? `Editing: ${dmEntries[dmEditIndex!]?.word ?? ""}` : "Add a word entry"}
                         </p>
                         <div className="flex gap-2">
-                          <Input
-                            placeholder="WORD"
-                            value={dmWord}
-                            onChange={e => setDmWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
-                            className="flex-1 font-mono uppercase tracking-wider"
-                            data-testid="input-dm-word"
-                          />
+                          <div className="flex flex-1 items-center gap-1">
+                            <Input
+                              placeholder="WORD"
+                              value={dmWord}
+                              onChange={e => setDmWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                              className="flex-1 font-mono uppercase tracking-wider"
+                              data-testid="input-dm-word"
+                            />
+                            <span className="w-5 shrink-0 flex items-center justify-center">
+                              {dmWordValidating && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                              {!dmWordValidating && dmWordValid !== undefined && dmWord.trim().length >= 2 && (
+                                dmWordValid.exists
+                                  ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                                  : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              )}
+                            </span>
+                          </div>
                           <Select value={dmPos} onValueChange={setDmPos}>
                             <SelectTrigger className="w-32 shrink-0" data-testid="select-dm-pos">
                               <SelectValue />
