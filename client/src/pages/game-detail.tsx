@@ -305,6 +305,7 @@ export default function GameDetail() {
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
   const [lbMode, setLbMode] = useState<"count" | "structural">("count");
+  const [lbCustomMode, setLbCustomMode] = useState<"count" | "structural">("count");
   const [dmWord, setDmWord] = useState("");
   const [dmPos, setDmPos] = useState("noun");
   const [dmDefs, setDmDefs] = useState(["", "", ""]);
@@ -884,6 +885,12 @@ export default function GameDetail() {
                     ? { vowels: customPlayFrozenParams.vowels, consonants: customPlayFrozenParams.consonants, length: customPlayFrozenParams.length }
                     : undefined
                 }
+                initialChallenge={
+                  customPlayFrozenParams.category !== undefined
+                    ? { category: customPlayFrozenParams.category, level: customPlayFrozenParams.level ?? 4 }
+                    : undefined
+                }
+                initialSurvival={customPlayFrozenParams.survival === true}
                 onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
@@ -2156,7 +2163,7 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showCustomPlayDialog} onOpenChange={(open) => { setShowCustomPlayDialog(open); if (!open) setCustomPlayParams({}); }}>
+      <Dialog open={showCustomPlayDialog} onOpenChange={(open) => { setShowCustomPlayDialog(open); if (!open) { setCustomPlayParams({}); setLbCustomMode("count"); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -2551,100 +2558,176 @@ export default function GameDetail() {
               </>
             )}
 
-            {slug === "letter-balance" && (
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
-                <div className="grid grid-cols-3 gap-2">
+            {slug === "letter-balance" && (() => {
+              const isStructural = lbCustomMode === "structural";
+              const structuralCats = [
+                { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] },
+                { id: "consonant_oblivion", name: "Consonant Oblivion", levelType: "count", levels: [2,3,4,5] },
+                { id: "vowel_oblivion", name: "Vowel Oblivion", levelType: "count", levels: [2,3,4,5] },
+              ] as const;
+              const selectedCat = structuralCats.find(c => c.id === customPlayParams.category);
+              return (
+                <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium">Vowels</label>
-                    <Input
-                      type="number" min={1} max={7} placeholder="Any"
-                      className="mt-1 h-8 text-sm"
-                      data-testid="input-custom-lb-vowels"
-                      value={customPlayParams.vowels ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                        setCustomPlayParams(p => {
-                          const consonants = p.consonants;
-                          if (v !== undefined && consonants !== undefined) {
-                            return { ...p, vowels: v, length: v + consonants };
-                          }
-                          if (v === undefined) {
-                            return { ...p, vowels: v, length: undefined };
-                          }
-                          return { ...p, vowels: v };
-                        });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium">Consonants</label>
-                    <Input
-                      type="number" min={1} max={7} placeholder="Any"
-                      className="mt-1 h-8 text-sm"
-                      data-testid="input-custom-lb-consonants"
-                      value={customPlayParams.consonants ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
-                        setCustomPlayParams(p => {
-                          const vowels = p.vowels;
-                          if (v !== undefined && vowels !== undefined) {
-                            return { ...p, consonants: v, length: vowels + v };
-                          }
-                          if (v === undefined) {
-                            return { ...p, consonants: v, length: undefined };
-                          }
-                          return { ...p, consonants: v };
-                        });
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium">
-                      {customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
-                    </label>
-                    <Input
-                      type="number" min={3} max={15} placeholder="Any"
-                      className="mt-1 h-8 text-sm"
-                      data-testid="input-custom-lb-length"
-                      disabled={customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined}
-                      value={customPlayParams.length ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
-                        setCustomPlayParams(p => ({ ...p, length: v }));
-                      }}
-                    />
-                  </div>
-                </div>
-                {customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to start playing.</p>
-                )}
-                <div>
-                  <label className="text-sm font-medium">Words to find</label>
-                  <Input
-                    type="number" min={1} max={50} placeholder="20"
-                    className="mt-1 h-8 text-sm w-24"
-                    data-testid="input-custom-lb-word-count"
-                    value={customPlayParams.wordCount ?? ""}
-                    onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Time limit</label>
-                  <div className="flex gap-1 mt-1 flex-wrap">
-                    {[60, 90, 120, 180, 300].map(t => (
-                      <Button key={t} type="button" size="sm"
-                        variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
-                        onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
-                        data-testid={`button-custom-lb-time-${t}`}
+                    <label className="text-sm font-medium">Challenge type</label>
+                    <div className="flex gap-2 mt-1">
+                      <Button type="button" size="sm"
+                        variant={!isStructural ? "default" : "outline"}
+                        onClick={() => { setLbCustomMode("count"); setCustomPlayParams(({ category: _c, level: _l, ...rest }) => rest); }}
+                        data-testid="button-custom-lb-mode-count"
                       >
-                        {t < 60 ? `${t}s` : `${t / 60}min`}
+                        Count-based
                       </Button>
-                    ))}
+                      <Button type="button" size="sm"
+                        variant={isStructural ? "default" : "outline"}
+                        onClick={() => { setLbCustomMode("structural"); setCustomPlayParams(({ vowels: _v, consonants: _co, length: _l, ...rest }) => rest); }}
+                        data-testid="button-custom-lb-mode-structural"
+                      >
+                        Structural
+                      </Button>
+                    </div>
                   </div>
+                  {!isStructural ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">Set vowel and/or consonant counts (at least one required). Length is optional.</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs font-medium">Vowels</label>
+                          <Input
+                            type="number" min={1} max={7} placeholder="Any"
+                            className="mt-1 h-8 text-sm"
+                            data-testid="input-custom-lb-vowels"
+                            value={customPlayParams.vowels ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                              setCustomPlayParams(p => {
+                                const consonants = p.consonants;
+                                if (v !== undefined && consonants !== undefined) return { ...p, vowels: v, length: v + consonants };
+                                if (v === undefined) return { ...p, vowels: v, length: undefined };
+                                return { ...p, vowels: v };
+                              });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">Consonants</label>
+                          <Input
+                            type="number" min={1} max={7} placeholder="Any"
+                            className="mt-1 h-8 text-sm"
+                            data-testid="input-custom-lb-consonants"
+                            value={customPlayParams.consonants ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value === "" ? undefined : Math.min(7, Math.max(1, parseInt(e.target.value) || 1));
+                              setCustomPlayParams(p => {
+                                const vowels = p.vowels;
+                                if (v !== undefined && vowels !== undefined) return { ...p, consonants: v, length: vowels + v };
+                                if (v === undefined) return { ...p, consonants: v, length: undefined };
+                                return { ...p, consonants: v };
+                              });
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">
+                            {customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined ? "Length (auto)" : "Length (opt.)"}
+                          </label>
+                          <Input
+                            type="number" min={3} max={15} placeholder="Any"
+                            className="mt-1 h-8 text-sm"
+                            data-testid="input-custom-lb-length"
+                            disabled={customPlayParams.vowels !== undefined && customPlayParams.consonants !== undefined}
+                            value={customPlayParams.length ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value === "" ? undefined : Math.min(15, Math.max(3, parseInt(e.target.value) || 3));
+                              setCustomPlayParams(p => ({ ...p, length: v }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Set at least vowels or consonants to start playing.</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Category</label>
+                        <div className="grid grid-cols-2 gap-1.5 mt-1">
+                          {structuralCats.map(cat => (
+                            <Button
+                              key={cat.id}
+                              type="button"
+                              size="sm"
+                              variant={customPlayParams.category === cat.id ? "default" : "outline"}
+                              className="justify-start text-left h-auto py-1.5 px-2.5 text-xs"
+                              onClick={() => setCustomPlayParams(p => ({ ...p, category: cat.id, level: cat.levels[0] }))}
+                              data-testid={`button-custom-lb-cat-${cat.id}`}
+                            >
+                              {cat.name}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      {selectedCat && (
+                        <div>
+                          <label className="text-sm font-medium">
+                            Level <span className="text-xs font-normal text-muted-foreground">({selectedCat.levelType === "length" ? "word length" : "count"})</span>
+                          </label>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {selectedCat.levels.map(lv => (
+                              <Button
+                                key={lv}
+                                type="button"
+                                size="sm"
+                                variant={customPlayParams.level === lv ? "default" : "outline"}
+                                onClick={() => setCustomPlayParams(p => ({ ...p, level: lv }))}
+                                data-testid={`button-custom-lb-level-${lv}`}
+                              >
+                                {lv}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {!customPlayParams.category && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">Pick a category to start playing.</p>
+                      )}
+                    </>
+                  )}
+                  {!customPlayParams.survival && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Words to find</label>
+                        <Input
+                          type="number" min={1} max={50} placeholder="20"
+                          className="mt-1 h-8 text-sm w-24"
+                          data-testid="input-custom-lb-word-count"
+                          value={customPlayParams.wordCount ?? ""}
+                          onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time limit</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[60, 90, 120, 180, 300].map(t => (
+                            <Button key={t} type="button" size="sm"
+                              variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                              onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                              data-testid={`button-custom-lb-time-${t}`}
+                            >
+                              {t < 60 ? `${t}s` : `${t / 60}min`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {slug === "word-length" && (
               <div className="space-y-3">
@@ -2744,7 +2827,7 @@ export default function GameDetail() {
               </div>
             )}
 
-            {slug !== "letter-balance" && (
+            {(
               <div>
                 <label className="text-sm font-medium">Mode</label>
                 <div className="flex gap-2 mt-1">
@@ -2780,7 +2863,7 @@ export default function GameDetail() {
                 setIsPlaying(true);
               }}
               disabled={
-                (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined) ||
+                (slug === "letter-balance" && customPlayParams.vowels === undefined && customPlayParams.consonants === undefined && !customPlayParams.category) ||
                 (slug === "word-length" && (!wlCustomLength || wlCustomCountFetching || !wlCustomCountData || !wlCustomCountData.ok)) ||
                 (slug === "letter-position" && (!customLpLetter || !customLpPosition || customLpCountFetching || !customLpCountData || customLpCountData.count < LP_QUIZ_MIN_WORDS))
               }
