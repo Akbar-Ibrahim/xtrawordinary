@@ -22,6 +22,22 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
+function getEffectiveSlug(
+  isSurvival: boolean,
+  category: VariationCategory | null,
+  level: LevelType | null,
+  consonantCount: number | null
+): string {
+  if (isSurvival) return "letter-balance-survival";
+  if (category === "locked_balance") {
+    if (level === "advanced") return "letter-balance-locked-advanced";
+    if (level !== null && consonantCount !== null) {
+      return `letter-balance-locked-${level}l${consonantCount}c`;
+    }
+  }
+  return "letter-balance";
+}
+
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "5s", seconds: 5 },
@@ -372,8 +388,14 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   const survivalTimeRef = useRef(SURVIVAL_TIME_PER_WORD);
   isSurvivalRef.current = isSurvival;
   survivalTimeRef.current = survivalTime;
-  const { reportResult, resetRecorded } = useGameResult({ slug: isSurvival ? "letter-balance-survival" : "letter-balance", quizMode });
-  const personalBest = usePersonalBest(isSurvival ? "letter-balance-survival" : "letter-balance");
+  const [gameState, setGameState] = useState<GameState>("category_menu");
+  const [selectedCategory, setSelectedCategory] = useState<VariationCategory | null>(initialChallenge?.category ?? null);
+  const [selectedLevel, setSelectedLevel] = useState<LevelType | null>(initialChallenge?.level ?? null);
+  const [lockedConsonantCount, setLockedConsonantCount] = useState<number | null>(initialChallenge?.consonantCount ?? null);
+  const [pendingLockedLength, setPendingLockedLength] = useState<number | null>(null);
+  const effectiveSlug = getEffectiveSlug(isSurvival, selectedCategory, selectedLevel, lockedConsonantCount);
+  const { reportResult, resetRecorded } = useGameResult({ slug: effectiveSlug, quizMode });
+  const personalBest = usePersonalBest(effectiveSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -387,12 +409,6 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       return response.json() as Promise<WordValidationResponse>;
     },
   });
-
-  const [gameState, setGameState] = useState<GameState>("category_menu");
-  const [selectedCategory, setSelectedCategory] = useState<VariationCategory | null>(initialChallenge?.category ?? null);
-  const [selectedLevel, setSelectedLevel] = useState<LevelType | null>(initialChallenge?.level ?? null);
-  const [lockedConsonantCount, setLockedConsonantCount] = useState<number | null>(initialChallenge?.consonantCount ?? null);
-  const [pendingLockedLength, setPendingLockedLength] = useState<number | null>(null);
   const [currentConstraint, setCurrentConstraint] = useState<GameConstraint | null>(null);
   
   // Gameplay state

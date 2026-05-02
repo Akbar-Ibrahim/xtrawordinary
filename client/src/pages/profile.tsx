@@ -94,6 +94,21 @@ export default function Profile() {
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
 
+  function formatGameName(gameSlug: string): string {
+    const game = gameMap.get(gameSlug);
+    if (game) return game.name;
+    const lockedMatch = gameSlug.match(/^letter-balance-locked-(\d+)l(\d+)c$/);
+    if (lockedMatch) {
+      const length = parseInt(lockedMatch[1]);
+      const consonants = parseInt(lockedMatch[2]);
+      const vowels = length - consonants;
+      return `Locked Balance (${length}L/${consonants}C/${vowels}V)`;
+    }
+    if (gameSlug === "letter-balance-locked-advanced") return "Locked Balance (Advanced)";
+    if (gameSlug === "letter-balance-survival") return "Letter Balance (Survival)";
+    return gameSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   const { data: myQuizzes = [], isLoading: myQuizzesLoading } = useQuery<QuizSessionWithCount[]>({
     queryKey: ["/api/quiz-sessions/my"],
     queryFn: async () => {
@@ -303,11 +318,10 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-2">
                     {profile.stats.map((stat) => {
-                      const game = gameMap.get(stat.gameSlug);
                       return (
                         <div key={stat.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-game-stat-${stat.gameSlug}`}>
                           <div>
-                            <p className="font-medium">{game?.name || stat.gameSlug}</p>
+                            <p className="font-medium">{formatGameName(stat.gameSlug)}</p>
                             <p className="text-xs text-muted-foreground">{stat.gamesPlayed} played, {stat.gamesWon} won</p>
                           </div>
                           <div className="text-right">
@@ -438,10 +452,9 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-2">
                     {profile.leaderboardRankings.map((r) => {
-                      const game = gameMap.get(r.gameSlug);
                       return (
                         <div key={r.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-ranking-${r.gameSlug}`}>
-                          <span className="font-medium">{game?.name || r.gameSlug}</span>
+                          <span className="font-medium">{formatGameName(r.gameSlug)}</span>
                           <div className="flex items-center gap-3">
                             <span className="text-sm text-muted-foreground">{r.score.toLocaleString()} pts</span>
                             <Badge variant={r.rank <= 3 ? "default" : "secondary"}>#{r.rank}</Badge>
