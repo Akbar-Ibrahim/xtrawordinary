@@ -928,6 +928,8 @@ export default function GameDetail() {
                     : undefined
                 }
                 initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode

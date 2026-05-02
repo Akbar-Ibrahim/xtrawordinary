@@ -206,7 +206,9 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const wlOptions: Array<1 | 2 | 3 | 4 | 5> = [1, 2, 3, 4, 5];
       const rawVar = toNum(params?.variation);
       const variation: 1 | 2 | 3 | 4 | 5 = (rawVar && rawVar >= 1 && rawVar <= 5 ? Math.round(rawVar) as 1|2|3|4|5 : null) ?? wlOptions[seed % wlOptions.length];
-      return <WordLengthGame initialChallenge={variation} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      const wlWc = !survival ? toNum(params?.wordCount) : undefined;
+      const wlTl = !survival ? toNum(params?.timeLimit) : undefined;
+      return <WordLengthGame initialChallenge={variation} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={wlWc} initialTimeLimit={wlTl} />;
     }
     case "letter-position": {
       const initialLetter = params?.letter as string | undefined;
