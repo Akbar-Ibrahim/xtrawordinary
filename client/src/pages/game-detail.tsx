@@ -179,16 +179,16 @@ export default function GameDetail() {
     if (challengeId || challengeNewFriendId) setIsPlaying(true);
   }, [challengeId, challengeNewFriendId]);
 
+  const createQuizHandledRef = useRef(false);
   useEffect(() => {
-    if (searchParams.get("create-quiz") === "1" && isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug)) {
-      const timer = setTimeout(() => {
-        setCreatedQuiz(null);
-        setShowQuizDialog(true);
-      }, 300);
-      navigate(`/game/${slug}`, { replace: true });
-      return () => clearTimeout(timer);
-    }
-  }, []);
+    if (createQuizHandledRef.current) return;
+    if (searchParams.get("create-quiz") !== "1") return;
+    if (!isAuthenticated || !slug || !QUIZ_MASTER_GAME_SLUGS.has(slug)) return;
+    createQuizHandledRef.current = true;
+    setCreatedQuiz(null);
+    setShowQuizDialog(true);
+    navigate(`/game/${slug}`, { replace: true });
+  }, [isAuthenticated, slug, searchString]);
 
   useEffect(() => {
     if (!isReceiverMode) {

@@ -23,7 +23,8 @@ const QUIZ_GAME_DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function CreateQuiz() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const backHref = user ? `/profile/${user.id}` : "/";
 
   const { data: allGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -60,7 +61,7 @@ export default function CreateQuiz() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Link href="/profile">
+      <Link href={backHref}>
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back-create-quiz">
           <ArrowLeft className="h-4 w-4" />
           Back
