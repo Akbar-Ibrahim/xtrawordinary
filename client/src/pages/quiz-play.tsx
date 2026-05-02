@@ -231,7 +231,11 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
         const cc = { vowels: toNum(params?.vowels), consonants: toNum(params?.consonants), length: toNum(params?.length) };
         return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} />;
       }
-      const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      // Normalize legacy category slugs from old quiz sessions
+      const rawCat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
+      const cat: typeof LETTER_BALANCE_CATEGORIES[number] = (LETTER_BALANCE_CATEGORIES as readonly string[]).includes(rawCat)
+        ? (rawCat as typeof LETTER_BALANCE_CATEGORIES[number])
+        : LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
       const level = params?.level !== undefined ? (toNum(params.level) ?? levels[(seed >> 4) % levels.length]) : levels[(seed >> 4) % levels.length];
       const consonantCount = cat === "locked_balance" && params?.consonantCount !== undefined ? toNum(params.consonantCount) : undefined;

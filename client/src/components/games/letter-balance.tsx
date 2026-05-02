@@ -69,7 +69,7 @@ interface CategoryDefinition {
   id: VariationCategory;
   name: string;
   description: string;
-  icon: "count" | "position" | "oblivion";
+  icon: "count" | "position" | "oblivion" | "locked";
   levelType: "count" | "length";
   minLevel: number;
   maxLevel: number;
@@ -305,6 +305,18 @@ function generateConstraint(
           const actualConsonants = countConsonants(upper);
           if (actualConsonants !== consonants) {
             return { valid: false, message: `Word must have exactly ${consonants} consonant${consonants !== 1 ? "s" : ""} (found ${actualConsonants})` };
+          }
+          return { valid: true, message: "" };
+        }
+      };
+    }
+    default: {
+      // Defensive fallback for unknown/legacy category slugs
+      return {
+        description: "Any word (4 or more letters)",
+        validate: (word: string) => {
+          if (word.trim().length < 4) {
+            return { valid: false, message: "Word must be at least 4 letters long" };
           }
           return { valid: true, message: "" };
         }
