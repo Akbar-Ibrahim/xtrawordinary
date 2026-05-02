@@ -542,7 +542,7 @@ export default function GameDetail() {
                       Challenge a Friend
                     </Button>
                   )}
-                  {isAuthenticated && user?.isPremium && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
+                  {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
