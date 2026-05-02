@@ -2590,8 +2590,14 @@ export async function registerRoutes(
         await storage.updateDuelChallengeStatus(id, "expired");
         return res.status(410).json({ error: "Challenge has expired" });
       }
-      // Room was already created when the challenge was sent — just mark it accepted.
-      const updated = await storage.updateDuelChallengeStatus(id, "accepted");
+      // Room should have been pre-created at challenge send time.
+      // If missing (legacy challenge), create it now and persist the roomCode.
+      let roomCode = challenge.roomCode;
+      if (!roomCode) {
+        const { duelRegistry } = await import("./duel-ws");
+        roomCode = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
+      }
+      const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
       res.json(updated);
     } catch (err) {
       console.error(err);
@@ -2648,13 +2654,18 @@ export async function registerRoutes(
       if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
         return res.status(403).json({ error: "Not a participant" });
       }
-      // Block entry for non-playable statuses
-      if (challenge.status === "declined" || challenge.status === "cancelled" || challenge.status === "expired") {
+      // Block entry for non-playable statuses (including completed — duel is over)
+      if (
+        challenge.status === "declined" ||
+        challenge.status === "cancelled" ||
+        challenge.status === "expired" ||
+        challenge.status === "completed"
+      ) {
         return res.status(410).json({ error: `This challenge has been ${challenge.status}` });
       }
       const { duelRegistry } = await import("./duel-ws");
       // Room may be missing after a process restart — restore it lazily from
-      // persisted challenge metadata so accepted challenges remain reachable.
+      // persisted challenge metadata so accepted/pending challenges remain reachable.
       const room =
         duelRegistry.getRoom(roomCode) ??
         duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId);

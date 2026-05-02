@@ -111,6 +111,10 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
   const delta2 = Math.round(K * (result2 - expected2));
 
   const challenge = await storage.getDuelChallengeByRoom(room.roomCode);
+  // Mark challenge terminal so restoreRoom is never called for a completed game
+  if (challenge) {
+    void storage.updateDuelChallengeStatus(challenge.id, "completed").catch(() => {});
+  }
   const outcome = isDraw
     ? "draw"
     : isForfeit
@@ -643,8 +647,13 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: "You are not a participant in this duel" });
             return;
           }
-          // Reject entry for non-playable statuses
-          if (challenge.status === "declined" || challenge.status === "cancelled" || challenge.status === "expired") {
+          // Reject entry for non-playable statuses (including completed — duel is over)
+          if (
+            challenge.status === "declined" ||
+            challenge.status === "cancelled" ||
+            challenge.status === "expired" ||
+            challenge.status === "completed"
+          ) {
             send(ws, { type: "error", message: `This challenge has been ${challenge.status}` });
             return;
           }

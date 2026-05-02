@@ -511,7 +511,7 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
 
 // ==================== DUELS ====================
 
-export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired"]);
+export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired", "completed"]);
 export type DuelChallengeStatus = z.infer<typeof duelChallengeStatusSchema>;
 
 export const duelChallengeSchema = z.object({
