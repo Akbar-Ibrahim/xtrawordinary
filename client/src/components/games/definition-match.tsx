@@ -20,7 +20,7 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const POINTS_BY_HINTS = [100, 75, 50] as const;
 
-export function DefinitionMatchGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: customWordsProp }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: DefinitionWord[] } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match", quizMode });
   const personalBest = usePersonalBest("definition-match");
@@ -28,12 +28,16 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode }: { groupSeed
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
-  const { data: words = [], isLoading, error } = useQuery<DefinitionWord[]>({
+  const { data: fetchedWords = [], isLoading: fetchLoading, error: fetchError } = useQuery<DefinitionWord[]>({
     queryKey: seeded ? ["/api/games/definition-match/words", groupSeed] : ["/api/games/definition-match/words"],
     ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
+    enabled: !customWordsProp,
   });
+  const words = customWordsProp ?? fetchedWords;
+  const isLoading = customWordsProp ? false : fetchLoading;
+  const error = customWordsProp ? null : fetchError;
 
   const [activeWords, setActiveWords] = useState<DefinitionWord[]>([]);
   const [currentWord, setCurrentWord] = useState<DefinitionWord | null>(null);

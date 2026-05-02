@@ -283,6 +283,9 @@ export default function GameDetail() {
   const [quizLinkCopied, setQuizLinkCopied] = useState(false);
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
+  const [dmWord, setDmWord] = useState("");
+  const [dmPos, setDmPos] = useState("noun");
+  const [dmDefs, setDmDefs] = useState(["", "", ""]);
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -811,7 +814,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1298,6 +1301,98 @@ export default function GameDetail() {
                   )}
                 </div>
               )}
+              {slug === "definition-match" && (() => {
+                const dmEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                const canAdd = dmWord.trim().length > 0 && dmDefs[0].trim().length > 0 && dmDefs[1].trim().length > 0 && dmDefs[2].trim().length > 0;
+                const addEntry = () => {
+                  if (!canAdd || dmEntries.length >= 20) return;
+                  const entry = { word: dmWord.trim().toUpperCase(), partOfSpeech: dmPos, definitions: [dmDefs[0].trim(), dmDefs[1].trim(), dmDefs[2].trim()] as [string, string, string] };
+                  setQuizParams(p => ({ ...p, words: [...dmEntries, entry] }));
+                  setDmWord("");
+                  setDmDefs(["", "", ""]);
+                };
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">Word Entries</label>
+                      <span className="text-xs text-muted-foreground">{dmEntries.length}/20</span>
+                    </div>
+                    {dmEntries.length > 0 && (
+                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                        {dmEntries.map((entry, i) => (
+                          <div key={i} className="flex items-start gap-2 rounded-md border bg-muted/30 px-3 py-2" data-testid={`dm-entry-${i}`}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold uppercase tracking-wide">{entry.word}</p>
+                              <p className="text-xs text-muted-foreground">{entry.partOfSpeech} · 3 clues</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => setQuizParams(p => ({ ...p, words: dmEntries.filter((_, j) => j !== i) }))}
+                              data-testid={`button-dm-remove-${i}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {dmEntries.length < 20 && (
+                      <div className="rounded-lg border bg-muted/10 p-3 space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Add a word entry</p>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="WORD"
+                            value={dmWord}
+                            onChange={e => setDmWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
+                            className="flex-1 font-mono uppercase tracking-wider"
+                            data-testid="input-dm-word"
+                          />
+                          <Select value={dmPos} onValueChange={setDmPos}>
+                            <SelectTrigger className="w-32 shrink-0" data-testid="select-dm-pos">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {["noun", "verb", "adjective", "adverb", "phrase"].map(p => (
+                                <SelectItem key={p} value={p}>{p}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {[0, 1, 2].map(i => (
+                          <div key={i} className="relative">
+                            <input
+                              placeholder={i === 0 ? "Clue 1 — cryptic / abstract" : i === 1 ? "Clue 2 — more specific" : "Clue 3 — most obvious"}
+                              value={dmDefs[i]}
+                              onChange={e => setDmDefs(prev => { const next = [...prev]; next[i] = e.target.value; return next; })}
+                              className={`w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${i === 0 ? "" : i === 1 ? "border-amber-200 dark:border-amber-800" : "border-emerald-200 dark:border-emerald-800"}`}
+                              data-testid={`input-dm-def-${i}`}
+                            />
+                            <span className={`absolute right-2 top-2 text-[10px] font-semibold px-1 rounded ${i === 0 ? "text-primary/60" : i === 1 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              {i === 0 ? "C1" : i === 1 ? "C2" : "C3"}
+                            </span>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          disabled={!canAdd}
+                          onClick={addEntry}
+                          data-testid="button-dm-add-entry"
+                        >
+                          Add Entry
+                        </Button>
+                      </div>
+                    )}
+                    {dmEntries.length === 0 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word entry to create this quiz.</p>
+                    )}
+                  </div>
+                );
+              })()}
               {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency") && (
                 <div>
                   <label className="text-sm font-medium">Mode</label>
@@ -1338,7 +1433,8 @@ export default function GameDetail() {
                   (slug === "word-length" && (!wlQuizLength || wlQuizCountFetching || !wlQuizCountData || !wlQuizCountData.ok)) ||
                   (slug === "word-length" && !quizParams.survival && wlQuizCountData?.ok && (quizParams.wordCount ?? 20) > wlQuizCountData.count) ||
                   (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
-                  (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined)
+                  (slug === "letter-balance" && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
+                  (slug === "definition-match" && (!Array.isArray(quizParams.words) || (quizParams.words as any[]).length === 0))
                 }
                 data-testid="button-create-quiz-submit"
               >

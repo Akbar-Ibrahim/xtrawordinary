@@ -19,7 +19,7 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import type { QuizSession, QuizSessionScore } from "@shared/schema";
+import type { QuizSession, QuizSessionScore, DefinitionWord } from "@shared/schema";
 import { UserAvatar } from "@/components/user-avatar";
 
 import { WordLengthGame } from "@/components/games/word-length";
@@ -131,8 +131,10 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
       return v === "with-pool" ? "With Pool" : "Without Pool";
     }
-    case "definition-match":
-      return "Random definitions";
+    case "definition-match": {
+      const wordCount = Array.isArray(params?.words) ? (params.words as any[]).length : null;
+      return wordCount ? `${wordCount} custom word${wordCount !== 1 ? "s" : ""}` : "Random definitions";
+    }
     case "word-roots":
       return "Word roots & etymology";
     case "progressive-reveal":
@@ -205,8 +207,12 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const rank = (rankNum ?? options[seed % options.length]) as 1 | 2 | 3 | 4;
       return <LetterFrequencyGame initialChallenge={rank} initialLetter={params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
     }
-    case "definition-match":
-      return <DefinitionMatchGame groupSeed={seed} locked quizMode />;
+    case "definition-match": {
+      const customWords = Array.isArray(params?.words) && params.words.length > 0
+        ? (params.words as DefinitionWord[])
+        : undefined;
+      return <DefinitionMatchGame groupSeed={seed} locked quizMode customWords={customWords} />;
+    }
     case "letter-pool": {
       const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
       return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked quizMode />;
