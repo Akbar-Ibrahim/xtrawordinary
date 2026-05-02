@@ -475,6 +475,19 @@ export class DuelRoomRegistry {
     const deadline = Date.now() + GRACE_MS;
 
     const opponent = this.getOpponent(room, userId);
+
+    // Only start forfeit countdown and notify opponent if the game is active.
+    // Pre-game disconnects (waiting/countdown) simply remove the player without
+    // triggering ELO/session side-effects or confusing in-game overlays.
+    if (room.status !== "playing") {
+      room.players.delete(userId);
+      if (room.status === "waiting") {
+        room.status = "waiting"; // stay open for re-join
+      }
+      log(`[Duel] Player ${userId} disconnected from room ${roomCode} (phase: ${room.status}) — no forfeit`, "duel-ws");
+      return;
+    }
+
     if (opponent) {
       send(opponent.ws, { type: "player:disconnect", reconnectDeadlineMs: deadline });
     }
@@ -691,14 +704,19 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
 
         case "game:end": {
           if (!currentRoomCode) {
-            send(ws, { type: "error", message: "Not in a room" });
-            return;
+            // Room already closed (server finalised it first via game:move) — ignore silently.
+            break;
+          }
+          const endRoom = duelRegistry.getRoom(currentRoomCode);
+          if (!endRoom || endRoom.finalized) {
+            // Already handled server-side; clear local ref without emitting an error.
+            currentRoomCode = undefined;
+            break;
           }
           try {
             await duelRegistry.finalizeFromClient(currentRoomCode);
           } catch (err) {
             log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
-            send(ws, { type: "error", message: "Failed to finalize game" });
           }
           currentRoomCode = undefined;
           break;
