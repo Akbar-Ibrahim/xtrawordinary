@@ -111,27 +111,9 @@ export function LetterDodgeGame({
     }
   }, []);
 
-  const startSurvivalTimer = useCallback(() => {
+  const startCountdown = useCallback((initialTime: number) => {
     stopTimer();
-    setTimeLeft(SURVIVAL_TIME);
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          timerRef.current = null;
-          playSound("lose");
-          setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
-          setGameStatus("finished");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer, playSound]);
-
-  const startClassicTimer = useCallback(() => {
-    stopTimer();
-    setTimeLeft(GAME_TIME);
+    setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -171,42 +153,10 @@ export function LetterDodgeGame({
       setForbiddenLetters(letters);
 
       setGameStatus("playing");
-
-      if (isSurvival) {
-        setTimeLeft(SURVIVAL_TIME);
-        timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timerRef.current!);
-              timerRef.current = null;
-              playSound("lose");
-              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
-              setGameStatus("finished");
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        setTimeLeft(GAME_TIME);
-        timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timerRef.current!);
-              timerRef.current = null;
-              playSound("lose");
-              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
-              setGameStatus("finished");
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      }
-
+      startCountdown(isSurvival ? SURVIVAL_TIME : GAME_TIME);
       setTimeout(() => inputRef.current?.focus(), 100);
     },
-    [stopTimer, resetRecorded, playSound, isSurvival, groupSeed]
+    [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed]
   );
 
   useEffect(() => {
@@ -285,21 +235,7 @@ export function LetterDodgeGame({
 
       // Reset survival timer on correct word
       if (isSurvivalRef.current) {
-        stopTimer();
-        setTimeLeft(SURVIVAL_TIME);
-        timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              clearInterval(timerRef.current!);
-              timerRef.current = null;
-              playSound("lose");
-              setCompletionMessage(getCompletionMessage(scoreRef.current > 0));
-              setGameStatus("finished");
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startCountdown(SURVIVAL_TIME);
       }
 
       inputRef.current?.focus();

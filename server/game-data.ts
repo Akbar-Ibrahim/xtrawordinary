@@ -1225,7 +1225,7 @@ export const gamesData: Game[] = [
       "Scoring: word length × 10 pts, plus +20 bonus for words with 7 or more letters",
       "Duplicate words are not counted",
       "Classic: you have 90 seconds to submit as many valid words as possible",
-      "Survival: each correct word resets an 8-second countdown — one wrong pause ends the run",
+      "Survival: each correct word resets an 8-second countdown — if time runs out between words, the run ends",
       "Easy (1 letter banned) → Medium (2) → Hard (3) → Expert (4) → Master (5) → Advanced (randomised)",
     ],
     difficulty: "medium",
