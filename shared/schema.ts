@@ -509,6 +509,78 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
   "word-scramble",
 ]);
 
+// ==================== DUELS ====================
+
+export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired"]);
+export type DuelChallengeStatus = z.infer<typeof duelChallengeStatusSchema>;
+
+export const duelChallengeSchema = z.object({
+  id: z.number(),
+  challengerId: z.number(),
+  challengeeId: z.number(),
+  gameSlug: z.string(),
+  message: z.string().nullable(),
+  status: duelChallengeStatusSchema,
+  roomCode: z.string().nullable(),
+  createdAt: z.string(),
+  expiresAt: z.string().nullable(),
+  challengerName: z.string().optional(),
+  challengeeName: z.string().optional(),
+  challengerAvatarUrl: z.string().nullable().optional(),
+  challengeeAvatarUrl: z.string().nullable().optional(),
+});
+export type DuelChallenge = z.infer<typeof duelChallengeSchema>;
+
+export const insertDuelChallengeSchema = duelChallengeSchema.omit({
+  id: true,
+  createdAt: true,
+  roomCode: true,
+  challengerName: true,
+  challengeeName: true,
+  challengerAvatarUrl: true,
+  challengeeAvatarUrl: true,
+});
+export type InsertDuelChallenge = z.infer<typeof insertDuelChallengeSchema>;
+
+export const duelSessionOutcomeSchema = z.enum([
+  "player1_wins",
+  "player2_wins",
+  "draw",
+  "forfeit_player1",
+  "forfeit_player2",
+]);
+export type DuelSessionOutcome = z.infer<typeof duelSessionOutcomeSchema>;
+
+export const duelSessionSchema = z.object({
+  id: z.number(),
+  roomCode: z.string(),
+  challengeId: z.number().nullable(),
+  player1Id: z.number(),
+  player2Id: z.number(),
+  gameSlug: z.string(),
+  seed: z.number(),
+  outcome: duelSessionOutcomeSchema.nullable(),
+  eloDeltaPlayer1: z.number().nullable(),
+  eloDeltaPlayer2: z.number().nullable(),
+  startedAt: z.string(),
+  endedAt: z.string().nullable(),
+});
+export type DuelSession = z.infer<typeof duelSessionSchema>;
+
+export const insertDuelSessionSchema = duelSessionSchema.omit({ id: true });
+export type InsertDuelSession = z.infer<typeof insertDuelSessionSchema>;
+
+export const duelRatingSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  elo: z.number(),
+  wins: z.number(),
+  losses: z.number(),
+  draws: z.number(),
+  updatedAt: z.string(),
+});
+export type DuelRating = z.infer<typeof duelRatingSchema>;
+
 // ==================== CHALLENGES ====================
 
 export const SEEDED_GAME_SLUGS = new Set([

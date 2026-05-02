@@ -304,3 +304,52 @@ export const quizSessionScores = mysqlTable("quiz_session_scores", {
   index("qss_user_idx").on(table.userId),
   uniqueIndex("qss_session_user_idx").on(table.sessionId, table.userId),
 ]);
+
+export const duelChallenges = mysqlTable("duel_challenges", {
+  id: int("id").primaryKey().autoincrement(),
+  challengerId: int("challenger_id").notNull(),
+  challengeeId: int("challengee_id").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  message: text("message"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  roomCode: varchar("room_code", { length: 12 }),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("dc_challenger_idx").on(table.challengerId),
+  index("dc_challengee_idx").on(table.challengeeId),
+  index("dc_status_idx").on(table.status),
+  index("dc_created_at_idx").on(table.createdAt),
+]);
+
+export const duelSessions = mysqlTable("duel_sessions", {
+  id: int("id").primaryKey().autoincrement(),
+  roomCode: varchar("room_code", { length: 12 }).notNull().unique(),
+  challengeId: int("challenge_id"),
+  player1Id: int("player1_id").notNull(),
+  player2Id: int("player2_id").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  seed: int("seed").notNull(),
+  outcome: varchar("outcome", { length: 30 }),
+  eloDeltaPlayer1: int("elo_delta_player1"),
+  eloDeltaPlayer2: int("elo_delta_player2"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  endedAt: timestamp("ended_at"),
+}, (table) => [
+  index("ds_player1_idx").on(table.player1Id),
+  index("ds_player2_idx").on(table.player2Id),
+  index("ds_room_code_idx").on(table.roomCode),
+  index("ds_started_at_idx").on(table.startedAt),
+]);
+
+export const duelRatings = mysqlTable("duel_ratings", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull().unique(),
+  elo: int("elo").notNull().default(1200),
+  wins: int("wins").notNull().default(0),
+  losses: int("losses").notNull().default(0),
+  draws: int("draws").notNull().default(0),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("dr_user_id_idx").on(table.userId),
+]);

@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initStorage } from "./storage";
+import { setupDuelWebSocket } from "./duel-ws";
 
 const app = express();
 const httpServer = createServer(app);
@@ -65,6 +66,7 @@ app.use((req, res, next) => {
   await initStorage();
   setupAuth(app);
   await registerRoutes(httpServer, app);
+  setupDuelWebSocket(httpServer);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

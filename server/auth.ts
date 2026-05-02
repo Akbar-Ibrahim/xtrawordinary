@@ -2,10 +2,18 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
+import type { RequestHandler } from "express";
 import MySQLStoreFactory from "express-mysql-session";
 import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
+
+let _sessionMiddleware: RequestHandler | null = null;
+
+export function getSessionMiddleware(): RequestHandler {
+  if (!_sessionMiddleware) throw new Error("Session middleware not yet initialised — call setupAuth first");
+  return _sessionMiddleware;
+}
 
 declare global {
   namespace Express {
@@ -73,7 +81,8 @@ export function setupAuth(app: Express) {
     console.log("[Session] Using in-memory session store (sessions won't persist across restarts)");
   }
 
-  app.use(session(sessionOptions));
+  _sessionMiddleware = session(sessionOptions);
+  app.use(_sessionMiddleware);
 
   app.use(passport.initialize());
   app.use(passport.session());

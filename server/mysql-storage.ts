@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1357,5 +1357,160 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     await db.delete(schema.quizSessionScores).where(eq(schema.quizSessionScores.sessionId, id));
     await db.delete(schema.quizSessions).where(eq(schema.quizSessions.id, id));
+  }
+
+  private mapDuelChallenge(row: any): DuelChallenge {
+    return {
+      id: row.id,
+      challengerId: row.challengerId,
+      challengeeId: row.challengeeId,
+      gameSlug: row.gameSlug,
+      message: row.message ?? null,
+      status: row.status as DuelChallengeStatus,
+      roomCode: row.roomCode ?? null,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+      expiresAt: row.expiresAt ? (row.expiresAt instanceof Date ? row.expiresAt.toISOString() : String(row.expiresAt)) : null,
+    };
+  }
+
+  private mapDuelSession(row: any): DuelSession {
+    return {
+      id: row.id,
+      roomCode: row.roomCode,
+      challengeId: row.challengeId ?? null,
+      player1Id: row.player1Id,
+      player2Id: row.player2Id,
+      gameSlug: row.gameSlug,
+      seed: row.seed,
+      outcome: row.outcome ?? null,
+      eloDeltaPlayer1: row.eloDeltaPlayer1 ?? null,
+      eloDeltaPlayer2: row.eloDeltaPlayer2 ?? null,
+      startedAt: row.startedAt instanceof Date ? row.startedAt.toISOString() : String(row.startedAt),
+      endedAt: row.endedAt ? (row.endedAt instanceof Date ? row.endedAt.toISOString() : String(row.endedAt)) : null,
+    };
+  }
+
+  private mapDuelRating(row: any): DuelRating {
+    return {
+      id: row.id,
+      userId: row.userId,
+      elo: row.elo,
+      wins: row.wins,
+      losses: row.losses,
+      draws: row.draws,
+      updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+    };
+  }
+
+  async createDuelChallenge(data: InsertDuelChallenge): Promise<DuelChallenge> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.duelChallenges).values({
+      challengerId: data.challengerId,
+      challengeeId: data.challengeeId,
+      gameSlug: data.gameSlug,
+      message: data.message ?? null,
+      status: data.status ?? "pending",
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+    });
+    const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.id, result[0].insertId)).limit(1);
+    return this.mapDuelChallenge(rows[0]);
+  }
+
+  async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.id, id)).limit(1);
+    return rows[0] ? this.mapDuelChallenge(rows[0]) : undefined;
+  }
+
+  async getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.roomCode, roomCode)).limit(1);
+    return rows[0] ? this.mapDuelChallenge(rows[0]) : undefined;
+  }
+
+  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined> {
+    const db = await this.getDb();
+    const updates: any = { status };
+    if (roomCode !== undefined) updates.roomCode = roomCode;
+    await db.update(schema.duelChallenges).set(updates).where(eq(schema.duelChallenges.id, id));
+    return this.getDuelChallenge(id);
+  }
+
+  async getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelChallenges)
+      .where(or(eq(schema.duelChallenges.challengerId, userId), eq(schema.duelChallenges.challengeeId, userId)))
+      .orderBy(desc(schema.duelChallenges.createdAt));
+    return rows.map(r => this.mapDuelChallenge(r));
+  }
+
+  async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.duelSessions).values({
+      roomCode: data.roomCode,
+      challengeId: data.challengeId ?? null,
+      player1Id: data.player1Id,
+      player2Id: data.player2Id,
+      gameSlug: data.gameSlug,
+      seed: data.seed,
+      outcome: data.outcome ?? null,
+      eloDeltaPlayer1: data.eloDeltaPlayer1 ?? null,
+      eloDeltaPlayer2: data.eloDeltaPlayer2 ?? null,
+      startedAt: data.startedAt ? new Date(data.startedAt) : new Date(),
+      endedAt: data.endedAt ? new Date(data.endedAt) : null,
+    });
+    const rows = await db.select().from(schema.duelSessions).where(eq(schema.duelSessions.id, result[0].insertId)).limit(1);
+    return this.mapDuelSession(rows[0]);
+  }
+
+  async getDuelSession(id: number): Promise<DuelSession | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelSessions).where(eq(schema.duelSessions.id, id)).limit(1);
+    return rows[0] ? this.mapDuelSession(rows[0]) : undefined;
+  }
+
+  async getDuelSessionByRoom(roomCode: string): Promise<DuelSession | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelSessions).where(eq(schema.duelSessions.roomCode, roomCode)).limit(1);
+    return rows[0] ? this.mapDuelSession(rows[0]) : undefined;
+  }
+
+  async updateDuelSession(id: number, updates: Partial<Pick<DuelSession, "outcome" | "eloDeltaPlayer1" | "eloDeltaPlayer2" | "endedAt">>): Promise<DuelSession | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.outcome !== undefined) dbUpdates.outcome = updates.outcome;
+    if (updates.eloDeltaPlayer1 !== undefined) dbUpdates.eloDeltaPlayer1 = updates.eloDeltaPlayer1;
+    if (updates.eloDeltaPlayer2 !== undefined) dbUpdates.eloDeltaPlayer2 = updates.eloDeltaPlayer2;
+    if (updates.endedAt !== undefined) dbUpdates.endedAt = updates.endedAt ? new Date(updates.endedAt) : null;
+    await db.update(schema.duelSessions).set(dbUpdates).where(eq(schema.duelSessions.id, id));
+    return this.getDuelSession(id);
+  }
+
+  async getDuelRating(userId: number): Promise<DuelRating | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelRatings).where(eq(schema.duelRatings.userId, userId)).limit(1);
+    return rows[0] ? this.mapDuelRating(rows[0]) : undefined;
+  }
+
+  async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> {
+    const db = await this.getDb();
+    const existing = await this.getDuelRating(userId);
+    if (existing) {
+      const dbUpdates: any = { updatedAt: new Date() };
+      if (updates.elo !== undefined) dbUpdates.elo = updates.elo;
+      if (updates.wins !== undefined) dbUpdates.wins = updates.wins;
+      if (updates.losses !== undefined) dbUpdates.losses = updates.losses;
+      if (updates.draws !== undefined) dbUpdates.draws = updates.draws;
+      await db.update(schema.duelRatings).set(dbUpdates).where(eq(schema.duelRatings.userId, userId));
+      return this.getDuelRating(userId) as Promise<DuelRating>;
+    }
+    await db.insert(schema.duelRatings).values({
+      userId,
+      elo: updates.elo ?? 1200,
+      wins: updates.wins ?? 0,
+      losses: updates.losses ?? 0,
+      draws: updates.draws ?? 0,
+    });
+    return this.getDuelRating(userId) as Promise<DuelRating>;
   }
 }

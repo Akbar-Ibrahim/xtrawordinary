@@ -2499,5 +2499,138 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== DUELS ====================
+
+  app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
+    try {
+      const { challengeeId, gameSlug, message } = req.body;
+      if (!challengeeId || !gameSlug) {
+        return res.status(400).json({ error: "challengeeId and gameSlug are required" });
+      }
+      const challengerId = req.user.id;
+      if (challengerId === challengeeId) {
+        return res.status(400).json({ error: "Cannot challenge yourself" });
+      }
+      const friendship = await storage.getFriendship(challengerId, challengeeId);
+      if (!friendship || friendship.status !== "accepted") {
+        return res.status(403).json({ error: "You can only challenge friends" });
+      }
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const challenge = await storage.createDuelChallenge({
+        challengerId,
+        challengeeId,
+        gameSlug,
+        message: message ?? null,
+        status: "pending",
+        expiresAt,
+      });
+      const [challenger, challengee] = await Promise.all([
+        storage.getUserById(challengerId),
+        storage.getUserById(challengeeId),
+      ]);
+      res.status(201).json({
+        ...challenge,
+        challengerName: challenger?.name,
+        challengeeName: challengee?.name,
+        challengerAvatarUrl: challenger?.avatarUrl ?? null,
+        challengeeAvatarUrl: challengee?.avatarUrl ?? null,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to create duel challenge" });
+    }
+  });
+
+  app.get("/api/duels/challenges", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const challenges = await storage.getDuelChallengesForUser(userId);
+      const enriched = await Promise.all(
+        challenges.map(async (c) => {
+          const [challenger, challengee] = await Promise.all([
+            storage.getUserById(c.challengerId),
+            storage.getUserById(c.challengeeId),
+          ]);
+          return {
+            ...c,
+            challengerName: challenger?.name,
+            challengeeName: challengee?.name,
+            challengerAvatarUrl: challenger?.avatarUrl ?? null,
+            challengeeAvatarUrl: challengee?.avatarUrl ?? null,
+          };
+        }),
+      );
+      res.json(enriched);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch duel challenges" });
+    }
+  });
+
+  app.patch("/api/duels/challenges/:id/accept", requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.id;
+      const challenge = await storage.getDuelChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
+      if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
+      if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
+        await storage.updateDuelChallengeStatus(id, "expired");
+        return res.status(410).json({ error: "Challenge has expired" });
+      }
+      const { duelRegistry } = await import("./duel-ws");
+      const roomCode = duelRegistry.createRoom(challenge.gameSlug);
+      const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode);
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to accept challenge" });
+    }
+  });
+
+  app.patch("/api/duels/challenges/:id/decline", requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.id;
+      const challenge = await storage.getDuelChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
+      if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
+      const updated = await storage.updateDuelChallengeStatus(id, "declined");
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to decline challenge" });
+    }
+  });
+
+  app.patch("/api/duels/challenges/:id/cancel", requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.id;
+      const challenge = await storage.getDuelChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.challengerId !== userId) return res.status(403).json({ error: "Only the challenger can cancel" });
+      if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
+      const updated = await storage.updateDuelChallengeStatus(id, "cancelled");
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to cancel challenge" });
+    }
+  });
+
+  app.get("/api/duels/ratings/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid userId" });
+      const rating = await storage.getDuelRating(userId);
+      if (!rating) {
+        return res.json({ userId, elo: 1200, wins: 0, losses: 0, draws: 0 });
+      }
+      res.json(rating);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch duel rating" });
+    }
+  });
+
   return httpServer;
 }

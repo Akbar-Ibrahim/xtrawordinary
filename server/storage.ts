@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -174,6 +174,21 @@ export interface IStorage {
   addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore>;
   getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]>;
   getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined>;
+
+  // Duels
+  createDuelChallenge(data: InsertDuelChallenge): Promise<DuelChallenge>;
+  getDuelChallenge(id: number): Promise<DuelChallenge | undefined>;
+  getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined>;
+  updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined>;
+  getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]>;
+
+  createDuelSession(data: InsertDuelSession): Promise<DuelSession>;
+  getDuelSession(id: number): Promise<DuelSession | undefined>;
+  getDuelSessionByRoom(roomCode: string): Promise<DuelSession | undefined>;
+  updateDuelSession(id: number, updates: Partial<Pick<DuelSession, "outcome" | "eloDeltaPlayer1" | "eloDeltaPlayer2" | "endedAt">>): Promise<DuelSession | undefined>;
+
+  getDuelRating(userId: number): Promise<DuelRating | undefined>;
+  upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating>;
 }
 
 export { MemStorage } from "./mem-storage";

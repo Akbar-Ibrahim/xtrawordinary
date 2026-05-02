@@ -5,6 +5,8 @@ xtraWordinary is a web-based platform offering 23 interactive vocabulary games f
 
 The platform also includes a "Quiz Master" feature allowing signed-in users to create shareable quiz sessions for 9 supported games, complete with leaderboards and creator dashboards. A "Premium Custom Play" feature enables premium users to configure custom variants of 5 specific games for practice without score saving.
 
+A real-time 1-on-1 Duel system is under construction. The foundational backend layer is in place: a WebSocket server at `/ws/duel` (authenticated via session cookie), a typed message protocol (`shared/duel-protocol.ts`), an in-memory `DuelRoomRegistry` managing room lifecycle with 30-second forfeit timers, three database tables (`duel_challenges`, `duel_sessions`, `duel_ratings`), full REST API for the challenge lifecycle, and ELO ratings support.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

@@ -1,9 +1,16 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
 
 function generateShareCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
@@ -16,6 +23,13 @@ export class MemStorage implements IStorage {
   private quizSessionScores: QuizSessionScore[] = [];
   private quizIdCounter = 1;
   private quizScoreIdCounter = 1;
+
+  private duelChallenges: DuelChallenge[] = [];
+  private duelChallengeIdCounter = 1;
+  private duelSessions: DuelSession[] = [];
+  private duelSessionIdCounter = 1;
+  private duelRatings: DuelRating[] = [];
+  private duelRatingIdCounter = 1;
 
   constructor() {
     this.games = gamesData;
@@ -1328,5 +1342,89 @@ export class MemStorage implements IStorage {
   async deleteQuizSession(id: number): Promise<void> {
     this.quizSessionScores = this.quizSessionScores.filter(s => s.sessionId !== id);
     this.quizSessions = this.quizSessions.filter(s => s.id !== id);
+  }
+
+  async createDuelChallenge(data: InsertDuelChallenge): Promise<DuelChallenge> {
+    const challenge: DuelChallenge = {
+      ...data,
+      id: this.duelChallengeIdCounter++,
+      roomCode: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.duelChallenges.push(challenge);
+    return challenge;
+  }
+
+  async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> {
+    return this.duelChallenges.find(c => c.id === id);
+  }
+
+  async getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined> {
+    return this.duelChallenges.find(c => c.roomCode === roomCode);
+  }
+
+  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined> {
+    const challenge = this.duelChallenges.find(c => c.id === id);
+    if (!challenge) return undefined;
+    challenge.status = status;
+    if (roomCode !== undefined) challenge.roomCode = roomCode;
+    return challenge;
+  }
+
+  async getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]> {
+    return this.duelChallenges
+      .filter(c => c.challengerId === userId || c.challengeeId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
+    const session: DuelSession = {
+      ...data,
+      id: this.duelSessionIdCounter++,
+    };
+    this.duelSessions.push(session);
+    return session;
+  }
+
+  async getDuelSession(id: number): Promise<DuelSession | undefined> {
+    return this.duelSessions.find(s => s.id === id);
+  }
+
+  async getDuelSessionByRoom(roomCode: string): Promise<DuelSession | undefined> {
+    return this.duelSessions.find(s => s.roomCode === roomCode);
+  }
+
+  async updateDuelSession(id: number, updates: Partial<Pick<DuelSession, "outcome" | "eloDeltaPlayer1" | "eloDeltaPlayer2" | "endedAt">>): Promise<DuelSession | undefined> {
+    const session = this.duelSessions.find(s => s.id === id);
+    if (!session) return undefined;
+    Object.assign(session, updates);
+    return session;
+  }
+
+  async getDuelRating(userId: number): Promise<DuelRating | undefined> {
+    return this.duelRatings.find(r => r.userId === userId);
+  }
+
+  async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> {
+    let rating = this.duelRatings.find(r => r.userId === userId);
+    if (rating) {
+      if (updates.elo !== undefined) rating.elo = updates.elo;
+      if (updates.wins !== undefined) rating.wins = updates.wins;
+      if (updates.losses !== undefined) rating.losses = updates.losses;
+      if (updates.draws !== undefined) rating.draws = updates.draws;
+      rating.updatedAt = new Date().toISOString();
+      return rating;
+    }
+    rating = {
+      id: this.duelRatingIdCounter++,
+      userId,
+      elo: updates.elo ?? 1200,
+      wins: updates.wins ?? 0,
+      losses: updates.losses ?? 0,
+      draws: updates.draws ?? 0,
+      updatedAt: new Date().toISOString(),
+    };
+    this.duelRatings.push(rating);
+    return rating;
   }
 }
