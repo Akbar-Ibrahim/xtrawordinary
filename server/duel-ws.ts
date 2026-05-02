@@ -650,7 +650,9 @@ export class DuelRoomRegistry {
       log(`[Duel] Server timeout for user ${timedOutUserId} in room ${room.roomCode}, lives now ${newLives}`, "duel-ws");
 
       if (newLives <= 0 && !room.finalized) {
-        void finalizeGame(room, opponent?.userId ?? -1);
+        void finalizeGame(room, opponent?.userId ?? -1).then(() => {
+          this.endRoom(room.roomCode);
+        });
         return;
       }
 
