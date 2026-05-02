@@ -32,6 +32,7 @@ import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { LetterPoolGame } from "@/components/games/letter-pool";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
+import { LetterDodgeGame } from "@/components/games/letter-dodge";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -136,6 +137,18 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
       const wordCount = Array.isArray(params?.words) ? (params.words as any[]).length : null;
       return wordCount ? `${wordCount} custom word${wordCount !== 1 ? "s" : ""}` : "Random definitions";
     }
+    case "letter-dodge": {
+      const diffLabels: Record<string | number, string> = {
+        1: "Easy (1 forbidden letter)",
+        2: "Medium (2 forbidden letters)",
+        3: "Hard (3 forbidden letters)",
+        4: "Expert (4 forbidden letters)",
+        5: "Master (5 forbidden letters)",
+        advanced: "Advanced (random forbidden letters)",
+      };
+      const diff = p.difficulty ?? 3;
+      return `Letter Dodge · ${diffLabels[diff] ?? `Difficulty ${diff}`}`;
+    }
     case "word-roots":
       return "Word roots & etymology";
     case "progressive-reveal":
@@ -217,6 +230,14 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "letter-pool": {
       const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
       return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked quizMode />;
+    }
+    case "letter-dodge": {
+      type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "advanced";
+      const isDodgeDifficulty = (v: unknown): v is DodgeDifficulty =>
+        v === 1 || v === 2 || v === 3 || v === 4 || v === 5 || v === "advanced";
+      const dodgeDiff = params?.difficulty;
+      const initialDifficulty: DodgeDifficulty = isDodgeDifficulty(dodgeDiff) ? dodgeDiff : 3;
+      return <LetterDodgeGame groupSeed={seed} locked quizMode initialDifficulty={initialDifficulty} />;
     }
     case "word-roots":
       return <WordRootsGame groupSeed={seed} locked quizMode />;

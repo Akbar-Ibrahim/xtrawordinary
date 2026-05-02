@@ -64,7 +64,8 @@ export function LetterDodgeGame({
   groupSeed,
   locked,
   quizMode,
-}: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+  initialDifficulty,
+}: { groupSeed?: number; locked?: boolean; quizMode?: boolean; initialDifficulty?: DodgeDifficulty } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "letter-dodge", quizMode });
   const personalBest = usePersonalBest("letter-dodge");
@@ -166,9 +167,9 @@ export function LetterDodgeGame({
   useEffect(() => {
     if (groupSeed !== undefined) {
       seedRngRef.current = makeSeededRng(groupSeed);
-      startGame(3); // default to "Hard" for seeded play
+      startGame(initialDifficulty ?? 3);
     }
-  }, [groupSeed, startGame]);
+  }, [groupSeed, initialDifficulty, startGame]);
 
   const checkAnswer = async () => {
     if (!userInput.trim() || gameStatus !== "playing") return;

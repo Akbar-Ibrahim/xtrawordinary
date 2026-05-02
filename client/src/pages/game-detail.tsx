@@ -937,6 +937,39 @@ export default function GameDetail() {
                   </div>
                 </div>
               )}
+              {slug === "letter-dodge" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Difficulty (forbidden letters)</label>
+                  <p className="text-xs text-muted-foreground">All players will face the same forbidden-letter constraint determined by this difficulty and the session seed.</p>
+                  <div className="grid gap-2">
+                    {([1, 2, 3, 4, 5, "advanced"] as const).map((d) => {
+                      const labels: Record<string | number, { name: string; desc: string }> = {
+                        1: { name: "Easy", desc: "Avoid 1 forbidden letter" },
+                        2: { name: "Medium", desc: "Avoid 2 forbidden letters" },
+                        3: { name: "Hard", desc: "Avoid 3 forbidden letters" },
+                        4: { name: "Expert", desc: "Avoid 4 forbidden letters" },
+                        5: { name: "Master", desc: "Avoid 5 forbidden letters" },
+                        advanced: { name: "Advanced", desc: "Random number of forbidden letters" },
+                      };
+                      const selected = (quizParams.difficulty ?? 3) === d;
+                      return (
+                        <Button
+                          key={String(d)}
+                          type="button"
+                          size="sm"
+                          variant={selected ? "default" : "outline"}
+                          className="w-full justify-start gap-2 h-auto py-2"
+                          onClick={() => setQuizParams(p => ({ ...p, difficulty: d }))}
+                          data-testid={`button-quiz-dodge-difficulty-${d}`}
+                        >
+                          <span className="font-semibold">{labels[d].name}</span>
+                          <span className="text-xs font-normal opacity-70">{labels[d].desc}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {slug === "letter-position" && (
                 <div className="space-y-3">
                   <div>

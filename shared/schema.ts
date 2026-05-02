@@ -498,6 +498,7 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
   "letter-position",
   "letter-balance",
   "letter-pool",
+  "letter-dodge",
   "word-length",
   "definition-match",
   "word-roots",

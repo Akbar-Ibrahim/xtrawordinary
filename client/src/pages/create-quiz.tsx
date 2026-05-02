@@ -16,6 +16,7 @@ const QUIZ_GAME_DESCRIPTIONS: Record<string, string> = {
   "letter-position": "Find words with a specific letter at a set position.",
   "letter-balance": "Balance vowels and consonants to form valid words.",
   "letter-pool": "Build words from a fixed pool of letters.",
+  "letter-dodge": "Type valid words while avoiding forbidden letters — everyone faces the same constraint.",
   "word-length": "Find words of an exact length, with optional filters.",
   "definition-match": "Match words to their definitions across three clue tiers.",
   "word-roots": "Guess words from their Latin or Greek root.",
