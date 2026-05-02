@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 import { getSessionMiddleware } from "./auth";
 import { log } from "./index";
 import { storage } from "./storage";
+import { wordDictSet } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 
 interface DuelWebSocket extends WebSocket {
@@ -326,35 +327,65 @@ export class DuelRoomRegistry {
     }
   }
 
-  /** Relay a game move, track lives/turn server-side, and auto-finalize when lives hit 0. */
+  /** Relay a game move with full server-side validation. Returns an error string when
+   *  the move is illegal, or triggered=true when it causes the game to end. */
   relayMove(
     roomCode: string,
     fromUserId: number,
     payload: unknown,
-  ): { triggered: boolean; winnerId?: number } {
+  ): { triggered: boolean; winnerId?: number; error?: string } {
     const room = this.rooms.get(roomCode);
     if (!room || room.status !== "playing") return { triggered: false };
 
-    const opponent = this.getOpponent(room, fromUserId);
-    if (opponent) {
-      send(opponent.ws, { type: "opponent:move", payload });
+    // --- Turn enforcement ---
+    if (room.currentTurnUserId !== null && room.currentTurnUserId !== fromUserId) {
+      log(`[Duel] Rejected out-of-turn move from user ${fromUserId} in room ${roomCode}`, "duel-ws");
+      return { triggered: false, error: "It is not your turn" };
     }
+
+    const opponent = this.getOpponent(room, fromUserId);
 
     if (payload !== null && typeof payload === "object") {
       const p = payload as { type?: string; word?: string; lives?: number };
 
-      // Update authoritative chain state when a valid word is played
       if (p.type === "word" && typeof p.word === "string") {
-        room.currentWord = p.word.toUpperCase();
-        room.usedWords = [...room.usedWords, p.word.toUpperCase()];
-        // Advance turn to opponent
+        const submittedWord = p.word.toUpperCase().trim();
+
+        // --- Starting-letter constraint ---
+        const requiredLetter = room.currentWord[room.currentWord.length - 1];
+        if (!submittedWord.startsWith(requiredLetter)) {
+          return {
+            triggered: false,
+            error: `Word must start with "${requiredLetter}"`,
+          };
+        }
+
+        // --- Duplicate constraint ---
+        if (room.usedWords.includes(submittedWord)) {
+          return { triggered: false, error: "That word was already used" };
+        }
+
+        // --- Dictionary check ---
+        if (!wordDictSet.has(submittedWord.toLowerCase())) {
+          return { triggered: false, error: `"${submittedWord}" is not a valid word` };
+        }
+
+        // Move is valid — update authoritative state and relay to opponent
+        room.currentWord = submittedWord;
+        room.usedWords = [...room.usedWords, submittedWord];
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
+
+        if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+
       } else if (p.type === "timeout") {
-        // Timeout — turn passes to opponent
+        // Timeout — relay and advance turn (no word constraint to check)
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
+        if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+      } else {
+        if (opponent) send(opponent.ws, { type: "opponent:move", payload });
       }
 
-      // Lives tracking: accept only non-increasing values (anti-cheat)
+      // --- Lives tracking: accept only non-increasing values ---
       if (typeof p.lives === "number") {
         const current = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
         const serverLives = Math.min(current, p.lives);
@@ -423,7 +454,12 @@ export class DuelRoomRegistry {
   async finalizeFromClient(roomCode: string): Promise<void> {
     const room = this.rooms.get(roomCode);
     if (!room || room.finalized) return;
-    const winnerId = deriveWinnerId(room) ?? -1;
+    const winnerId = deriveWinnerId(room);
+    // Only finalize if server state actually confirms a winner — reject premature signals
+    if (winnerId === null) {
+      log(`[Duel] Ignoring premature game:end in room ${roomCode} — no winner yet`, "duel-ws");
+      return;
+    }
     await finalizeGame(room, winnerId);
     this.endRoom(roomCode);
   }
@@ -564,6 +600,11 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             return;
           }
           const moveResult = duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
+          if (moveResult.error) {
+            // Illegal move — notify sender only (opponent state unchanged)
+            send(ws, { type: "error", message: moveResult.error });
+            break;
+          }
           if (moveResult.triggered && moveResult.winnerId !== undefined) {
             const room = duelRegistry.getRoom(currentRoomCode);
             if (room) {
