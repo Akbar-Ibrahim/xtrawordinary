@@ -61,6 +61,7 @@ import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { WordStretchGame } from "@/components/games/word-stretch";
 import { WordBloomGame } from "@/components/games/word-bloom";
+import { LetterDodgeGame } from "@/components/games/letter-dodge";
 
 const difficultyColors = {
   easy: "bg-accent text-accent-foreground",
@@ -96,6 +97,7 @@ const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; l
   "deep-shell-words": DeepShellWordsGame,
   "word-stretch": WordStretchGame,
   "word-bloom": WordBloomGame,
+  "letter-dodge": LetterDodgeGame,
 };
 
 const CUSTOM_PLAY_SLUGS = new Set([
