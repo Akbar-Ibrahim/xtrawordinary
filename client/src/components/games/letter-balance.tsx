@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Skull, Sparkles, LogIn, Flame } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -21,6 +21,13 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+
+const SURVIVAL_TIME_PER_WORD = 8;
+const SURVIVAL_TIME_OPTIONS = [
+  { label: "5s", seconds: 5 },
+  { label: "8s", seconds: 8 },
+  { label: "12s", seconds: 12 },
+];
 
 function countVowels(word: string): number {
   return word.split("").filter(c => VOWELS.has(c)).length;
@@ -368,10 +375,16 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; onGameEnd?: () => void } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance", quizMode });
-  const personalBest = usePersonalBest("letter-balance");
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
+  const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
+  const isSurvivalRef = useRef(false);
+  const survivalTimeRef = useRef(SURVIVAL_TIME_PER_WORD);
+  isSurvivalRef.current = isSurvival;
+  survivalTimeRef.current = survivalTime;
+  const { reportResult, resetRecorded } = useGameResult({ slug: isSurvival ? "letter-balance-survival" : "letter-balance", quizMode });
+  const personalBest = usePersonalBest(isSurvival ? "letter-balance-survival" : "letter-balance");
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -438,7 +451,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     }
     
     // Set initial values - use ref to get latest value
-    const initialTime = timePerWordRef.current;
+    const initialTime = isSurvivalRef.current ? survivalTimeRef.current : timePerWordRef.current;
     timeLeftRef.current = initialTime;
     setTimeLeft(initialTime);
     isPlayingRef.current = true;
@@ -639,7 +652,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerLevel) {
+        if (!isSurvivalRef.current && newWordsCompleted >= wordsPerLevel) {
           setCompletionMessage(getCompletionMessage(true));
           setGameState("level_complete");
         } else {
@@ -682,6 +695,28 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
         <Card>
           <CardContent className="p-6">
             <h3 className="text-xl font-bold text-center mb-6">Choose Your Challenge</h3>
+            {!locked && (
+              <div className="flex justify-center gap-2 mb-2">
+                <Button variant={!isSurvival ? "default" : "outline"} size="sm" onClick={() => setIsSurvival(false)} className="gap-1.5" data-testid="button-mode-classic">
+                  <Timer className="h-3.5 w-3.5" />
+                  Classic
+                </Button>
+                <Button variant={isSurvival ? "default" : "outline"} size="sm" onClick={() => setIsSurvival(true)} className="gap-1.5" data-testid="button-mode-survival">
+                  <Flame className="h-3.5 w-3.5" />
+                  {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
+                </Button>
+              </div>
+            )}
+            {isSurvival && !locked && (
+              <div className="flex justify-center items-center gap-2 mb-4 flex-wrap">
+                {SURVIVAL_TIME_OPTIONS.map(opt => (
+                  <Button key={opt.seconds} variant={survivalTime === opt.seconds ? "default" : "outline"} size="sm" onClick={() => setSurvivalTime(opt.seconds)} data-testid={`button-survival-time-${opt.seconds}`}>
+                    {opt.label}
+                  </Button>
+                ))}
+                <p className="w-full text-center text-xs text-muted-foreground">{survivalTime}s per word — timer resets on correct answer!</p>
+              </div>
+            )}
             <div className="grid gap-3">
               {CATEGORIES.map((cat) => (
                 <motion.div
@@ -1023,6 +1058,12 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             <Trophy className="h-3.5 w-3.5" />
             <AnimatedNumber value={score} /> pts
           </Badge>
+          {isSurvivalRef.current && (
+            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+              <Flame className="h-3.5 w-3.5" />
+              Survival
+            </Badge>
+          )}
           <StreakIndicator streak={streak} />
           {selectedLevel !== null && selectedLevel !== "advanced" && (
             <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
@@ -1109,9 +1150,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 >
                   {currentConstraint?.description}
                 </Badge>
-                <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
+                {!isSurvivalRef.current && (
+                  <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
+                )}
                 <p className="text-sm text-muted-foreground">
-                  {wordsCompleted} / {wordsPerLevel} words
+                  {isSurvivalRef.current
+                    ? `${wordsCompleted} word${wordsCompleted !== 1 ? "s" : ""}`
+                    : `${wordsCompleted} / ${wordsPerLevel} words`}
                 </p>
               </div>
 

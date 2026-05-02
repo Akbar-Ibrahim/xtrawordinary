@@ -1719,30 +1719,34 @@ export default function GameDetail() {
                         )}
                       </>
                     )}
-                    <div>
-                      <label className="text-sm font-medium">Words to find (Classic)</label>
-                      <Input
-                        type="number" min={1} max={50} placeholder="20"
-                        className="mt-1 h-8 text-sm w-24"
-                        data-testid="input-quiz-lb-word-count"
-                        value={quizParams.wordCount ?? ""}
-                        onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Time limit (Classic)</label>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {[60, 90, 120, 180, 300].map(t => (
-                          <Button key={t} type="button" size="sm"
-                            variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
-                            onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
-                            data-testid={`button-quiz-lb-time-${t}`}
-                          >
-                            {t < 60 ? `${t}s` : `${t / 60}min`}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
+                    {!quizParams.survival && (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium">Words to find</label>
+                          <Input
+                            type="number" min={1} max={50} placeholder="20"
+                            className="mt-1 h-8 text-sm w-24"
+                            data-testid="input-quiz-lb-word-count"
+                            value={quizParams.wordCount ?? ""}
+                            onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Time limit</label>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {[60, 90, 120, 180, 300].map(t => (
+                              <Button key={t} type="button" size="sm"
+                                variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
+                                onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                                data-testid={`button-quiz-lb-time-${t}`}
+                              >
+                                {t < 60 ? `${t}s` : `${t / 60}min`}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -2050,7 +2054,7 @@ export default function GameDetail() {
                   </div>
                 );
               })()}
-              {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency" || slug === "letter-dodge") && (
+              {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency" || slug === "letter-dodge" || slug === "letter-balance") && (
                 <div>
                   <label className="text-sm font-medium">Mode</label>
                   <div className="flex gap-2 mt-1">

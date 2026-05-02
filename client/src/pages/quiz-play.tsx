@@ -127,12 +127,12 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
         if (p.vowels !== undefined) parts.push(`${p.vowels} vowel${p.vowels !== 1 ? "s" : ""}`);
         if (p.consonants !== undefined) parts.push(`${p.consonants} consonant${p.consonants !== 1 ? "s" : ""}`);
         if (p.length !== undefined) parts.push(`${p.length} letters`);
-        return `Letter Balance: ${parts.join(", ")}`;
+        return `Letter Balance: ${parts.join(", ")}${survival}`;
       }
       const cat = p.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const level = p.level;
       const catName = LETTER_BALANCE_CATEGORY_NAMES[cat] ?? cat;
-      return level !== undefined ? `${catName} · Level ${level}` : catName;
+      return level !== undefined ? `${catName} · Level ${level}${survival}` : `${catName}${survival}`;
     }
     case "letter-pool": {
       const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
@@ -226,12 +226,12 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "letter-balance": {
       if (params?.vowels !== undefined || params?.consonants !== undefined) {
         const cc = { vowels: toNum(params?.vowels), consonants: toNum(params?.consonants), length: toNum(params?.length) };
-        return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode />;
+        return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} />;
       }
       const cat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
       const level = params?.level !== undefined ? (toNum(params.level) ?? levels[(seed >> 4) % levels.length]) : levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked quizMode />;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked quizMode initialSurvival={survival} />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
