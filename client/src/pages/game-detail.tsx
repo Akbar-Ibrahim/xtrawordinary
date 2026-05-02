@@ -290,6 +290,7 @@ export default function GameDetail() {
   const [challengeMsg, setChallengeMsg] = useState("");
   const [showCustomPlayDialog, setShowCustomPlayDialog] = useState(false);
   const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
+  const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
   const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
@@ -753,34 +754,34 @@ export default function GameDetail() {
               </Card>
             ) : isCustomPlay && slug === "letter-position" ? (
               <LetterPositionGame
-                initialChallenge={(customPlayParams.letter && customPlayParams.position ? 1 : 2) as 1 | 2}
-                initialLetter={customPlayParams.letter as string | undefined}
-                initialPosition={customPlayParams.position ? Number(customPlayParams.position) : undefined}
-                initialSurvival={customPlayParams.survival === true}
-                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
-                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                initialChallenge={(customPlayFrozenParams.letter && customPlayFrozenParams.position ? 1 : 2) as 1 | 2}
+                initialLetter={customPlayFrozenParams.letter as string | undefined}
+                initialPosition={customPlayFrozenParams.position ? Number(customPlayFrozenParams.position) : undefined}
+                initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-hunt" ? (
               <LetterHuntGame
                 initialChallenge={(() => {
-                  const c = customPlayParams.challenge;
+                  const c = customPlayFrozenParams.challenge;
                   if (c === undefined) return (Math.floor(Math.random() * 5) + 1) as 1 | 2 | 3 | 4 | 5;
                   if (c === "advanced") return "advanced" as const;
                   return Math.min(5, Math.max(1, Number(c) || 1)) as 1 | 2 | 3 | 4 | 5;
                 })()}
-                initialLetters={customPlayParams.letters as string[] | undefined}
-                initialSurvival={customPlayParams.survival === true}
-                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
-                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                initialLetters={customPlayFrozenParams.letters as string[] | undefined}
+                initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-frequency" ? (
               <LetterFrequencyGame
                 initialChallenge={(() => {
-                  const c = customPlayParams.challenge;
+                  const c = customPlayFrozenParams.challenge;
                   if (c === undefined) {
                     const auto = ([1, 2, 3, 4] as const)[Math.floor(Math.random() * 4)];
                     return auto;
@@ -789,19 +790,19 @@ export default function GameDetail() {
                   const n = Math.min(4, Math.max(1, Number(c) || 1));
                   return n as 1 | 2 | 3 | 4;
                 })()}
-                initialLetter={customPlayParams.letter || undefined}
-                initialLetters={Array.isArray(customPlayParams.letters) ? customPlayParams.letters : undefined}
-                initialSurvival={customPlayParams.survival === true}
-                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
-                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                initialLetter={customPlayFrozenParams.letter || undefined}
+                initialLetters={Array.isArray(customPlayFrozenParams.letters) ? customPlayFrozenParams.letters : undefined}
+                initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
                 customConstraint={
-                  customPlayParams.vowels !== undefined || customPlayParams.consonants !== undefined
-                    ? { vowels: customPlayParams.vowels, consonants: customPlayParams.consonants, length: customPlayParams.length }
+                  customPlayFrozenParams.vowels !== undefined || customPlayFrozenParams.consonants !== undefined
+                    ? { vowels: customPlayFrozenParams.vowels, consonants: customPlayFrozenParams.consonants, length: customPlayFrozenParams.length }
                     : undefined
                 }
                 locked
@@ -809,26 +810,26 @@ export default function GameDetail() {
               />
             ) : isCustomPlay && slug === "word-length" ? (
               <WordLengthGame
-                customConstraint={wlCustomLength ? { length: wlCustomLength, startsWith: wlCustomStartsWith, endsWith: wlCustomEndsWith, contains: wlCustomContains } : undefined}
-                initialVariation={wlCustomLength ? undefined : (Math.min(5, Math.max(1, Number(customPlayParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5)}
-                initialSurvival={customPlayParams.survival === true}
-                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
-                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                customConstraint={(customPlayFrozenParams.length as number | undefined) ? { length: customPlayFrozenParams.length as number, startsWith: customPlayFrozenParams.startsWith as string | undefined, endsWith: customPlayFrozenParams.endsWith as string | undefined, contains: customPlayFrozenParams.contains as string | undefined } : undefined}
+                initialVariation={(customPlayFrozenParams.length as number | undefined) ? undefined : (Math.min(5, Math.max(1, Number(customPlayFrozenParams.variation) || 1)) as 1 | 2 | 3 | 4 | 5)}
+                initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 locked
                 quizMode
               />
             ) : isCustomPlay && slug === "letter-dodge" ? (
               <LetterDodgeGame
                 initialDifficulty={(() => {
-                  const d = customPlayParams.difficulty;
+                  const d = customPlayFrozenParams.difficulty;
                   if (d === "advanced") return "advanced" as const;
                   if (d !== undefined) return Math.min(5, Math.max(1, Number(d) || 1)) as 1 | 2 | 3 | 4 | 5;
                   return undefined;
                 })()}
-                initialForbiddenLetters={customPlayParams.letters as string[] | undefined}
-                initialSurvival={customPlayParams.survival === true}
-                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
-                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                initialForbiddenLetters={customPlayFrozenParams.letters as string[] | undefined}
+                initialSurvival={customPlayFrozenParams.survival === true}
+                initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
+                initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 locked
                 quizMode
               />
@@ -1325,7 +1326,7 @@ export default function GameDetail() {
                           ...p,
                           challenge: c === 0 ? undefined : c,
                           letter: c === "multi" ? undefined : p.letter,
-                          letters: c !== "multi" ? undefined : p.letters,
+                          letters: c !== "multi" ? undefined : (p.letters ?? ["any", "any"]),
                         }));
                       }}
                     >
@@ -2024,7 +2025,7 @@ export default function GameDetail() {
                           const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
                           if (!validLetters.includes(p.letter)) newLetter = undefined;
                         }
-                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter, letters: c !== "multi" ? undefined : p.letters };
+                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter, letters: c !== "multi" ? undefined : (p.letters ?? ["any", "any"]) };
                       });
                     }}
                   >
@@ -2368,6 +2369,7 @@ export default function GameDetail() {
             <Button
               className="w-full gap-2"
               onClick={() => {
+                setCustomPlayFrozenParams(customPlayParams);
                 setShowCustomPlayDialog(false);
                 setIsCustomPlay(true);
                 setIsPlaying(true);
