@@ -109,7 +109,15 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
   const delta2 = Math.round(K * (result2 - expected2));
 
   const challenge = await storage.getDuelChallengeByRoom(room.roomCode);
-  const outcome = isDraw ? "draw" : p1wins ? "player1_wins" : "player2_wins";
+  const outcome = isDraw
+    ? "draw"
+    : isForfeit
+    ? p1wins
+      ? "forfeit_player2"  // p1 wins = p2 forfeited
+      : "forfeit_player1"  // p2 wins = p1 forfeited
+    : p1wins
+    ? "player1_wins"
+    : "player2_wins";
 
   await Promise.all([
     storage.upsertDuelRating(id1, {
@@ -230,6 +238,10 @@ export class DuelRoomRegistry {
           opponentName: opponent?.name ?? null,
           opponentAvatarUrl: opponent?.avatarUrl ?? null,
         });
+        // If opponent had already marked ready, replay that signal so UI stays in sync
+        if (opponent?.ready) {
+          send(ws, { type: "room:player_ready", userId: opponent.userId });
+        }
       } else if (room.status === "playing" || room.status === "countdown") {
         // Send full authoritative game snapshot so client can restore state
         if (opponent) {
