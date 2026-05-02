@@ -458,6 +458,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     }
     
     // Set initial values - use ref to get latest value
+    console.log('[LB-DEBUG] startTimer called. isSurvivalRef.current=', isSurvivalRef.current, 'survivalTimeRef.current=', survivalTimeRef.current, 'timePerWordRef.current=', timePerWordRef.current);
     const initialTime = isSurvivalRef.current ? survivalTimeRef.current : timePerWordRef.current;
     timeLeftRef.current = initialTime;
     setTimeLeft(initialTime);
