@@ -890,7 +890,7 @@ export default function GameDetail() {
             </DialogTitle>
           </DialogHeader>
           {!createdQuiz ? (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto max-h-[65vh] pr-1">
               {dmReview && slug === "definition-match" ? (() => {
                 const dmReviewEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
                 return (
