@@ -1438,10 +1438,12 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.mapDuelChallenge(rows[0]) : undefined;
   }
 
-  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined> {
+  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string, seed?: number | null, startWord?: string | null): Promise<DuelChallenge | undefined> {
     const db = await this.getDb();
-    const updates: { status: DuelChallengeStatus; roomCode?: string } = { status };
+    const updates: { status: DuelChallengeStatus; roomCode?: string; seed?: number | null; startWord?: string | null } = { status };
     if (roomCode !== undefined) updates.roomCode = roomCode;
+    if (seed !== undefined) updates.seed = seed;
+    if (startWord !== undefined) updates.startWord = startWord;
     await db.update(schema.duelChallenges).set(updates).where(eq(schema.duelChallenges.id, id));
     return this.getDuelChallenge(id);
   }

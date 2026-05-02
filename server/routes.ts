@@ -2596,20 +2596,15 @@ export async function registerRoutes(
         return res.status(410).json({ error: "Challenge has expired" });
       }
       // Room should have been pre-created at challenge send time.
-      // If missing (legacy challenge), create it now and persist the roomCode
-      // along with seed/startWord so restart restoration is deterministic.
+      // If missing (legacy challenge), create it now and update the existing row
+      // with roomCode + seed/startWord so restart restoration is deterministic.
       let roomCode = challenge.roomCode;
       if (!roomCode) {
         const { duelRegistry } = await import("./duel-ws");
         const created = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
         roomCode = created.roomCode;
-        // Best-effort: persist seed/startWord for the newly-created legacy room
-        await storage.createDuelChallenge({
-          ...challenge,
-          roomCode: created.roomCode,
-          seed: created.seed,
-          startWord: created.startWord,
-        }).catch(() => {});
+        // Update the existing challenge row with the new room metadata (no duplicate)
+        await storage.updateDuelChallengeStatus(id, challenge.status as DuelChallengeStatus, created.roomCode, created.seed, created.startWord);
       }
       const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
       res.json(updated);

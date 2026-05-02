@@ -1363,11 +1363,13 @@ export class MemStorage implements IStorage {
     return this.duelChallenges.find(c => c.roomCode === roomCode);
   }
 
-  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined> {
+  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string, seed?: number | null, startWord?: string | null): Promise<DuelChallenge | undefined> {
     const challenge = this.duelChallenges.find(c => c.id === id);
     if (!challenge) return undefined;
     challenge.status = status;
     if (roomCode !== undefined) challenge.roomCode = roomCode;
+    if (seed !== undefined) challenge.seed = seed;
+    if (startWord !== undefined) challenge.startWord = startWord;
     return challenge;
   }
 
