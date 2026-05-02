@@ -262,7 +262,17 @@ export class DuelRoomRegistry {
     room.players.set(userId, { ws, userId, name, avatarUrl, ready: false, disconnectTimer: null });
     log(`[Duel] Player ${userId} joined room ${roomCode} (${room.players.size}/2)`, "duel-ws");
 
-    if (room.players.size === 2) {
+    if (room.players.size === 1) {
+      // First player (challenger) — send waiting confirmation with no opponent yet
+      send(ws, {
+        type: "room:joined",
+        roomCode,
+        opponentId: null,
+        opponentName: null,
+        opponentAvatarUrl: null,
+      });
+    } else if (room.players.size === 2) {
+      // Second player joined — notify both with each other's info
       const [p1, p2] = Array.from(room.players.values());
       send(p1.ws, {
         type: "room:joined",

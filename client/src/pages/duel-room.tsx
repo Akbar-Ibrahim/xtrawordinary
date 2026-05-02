@@ -99,8 +99,10 @@ export default function DuelRoom() {
       switch (msg.type) {
         // ── Room-phase messages ──────────────────────────────────────────────
         case "room:joined":
-          setOpponentId(msg.opponentId);
-          setOpponentName(msg.opponentName);
+          // opponentId/Name may be null when the challenger joins first (no opponent yet).
+          // A second room:joined arrives when the opponent joins, filling in their details.
+          if (msg.opponentId !== null) setOpponentId(msg.opponentId);
+          if (msg.opponentName !== null) setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
           setPhase("waiting");
           break;

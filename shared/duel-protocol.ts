@@ -8,8 +8,10 @@ export type DuelServerMessage =
   | {
       type: "room:joined";
       roomCode: string;
-      opponentId: number;
-      opponentName: string;
+      /** null when the local player joins first and the opponent hasn't arrived yet */
+      opponentId: number | null;
+      /** null when waiting for opponent */
+      opponentName: string | null;
       opponentAvatarUrl: string | null;
     }
   /** Sent to the *other* player when one player clicks "Ready" */
