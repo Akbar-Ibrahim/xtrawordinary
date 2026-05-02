@@ -308,6 +308,9 @@ export default function GameDetail() {
   const [dmEditIndex, setDmEditIndex] = useState<number | null>(null);
   const [dmReview, setDmReview] = useState(false);
   const [prWord, setPrWord] = useState("");
+  const [lpWord, setLpWord] = useState("");
+  const [lpHint, setLpHint] = useState("");
+  const [lpCategory, setLpCategory] = useState("");
 
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
@@ -878,7 +881,7 @@ export default function GameDetail() {
         )}
       </AnimatePresence>
 
-      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); } }}>
+      <Dialog open={showQuizDialog} onOpenChange={(open) => { setShowQuizDialog(open); if (!open) { setCreatedQuiz(null); setQuizParams({}); setQuizClosesAt(""); setQuizTitle(""); setQuizDescription(""); setDmWord(""); setDmPos("noun"); setDmDefs(["", "", ""]); setDmEditIndex(null); setDmReview(false); setPrWord(""); setLpWord(""); setLpHint(""); setLpCategory(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -966,25 +969,66 @@ export default function GameDetail() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">Leave empty to keep accepting submissions indefinitely.</p>
               </div>
-              {slug === "letter-pool" && (
-                <div>
-                  <label className="text-sm font-medium">Pool Mode</label>
-                  <div className="flex gap-2 mt-1">
-                    {(["with-pool", "without-pool"] as const).map(v => (
-                      <Button
-                        key={v}
-                        type="button"
-                        size="sm"
-                        variant={quizParams.variant === v ? "default" : "outline"}
-                        onClick={() => setQuizParams(p => ({ ...p, variant: v }))}
-                        data-testid={`button-quiz-pool-${v}`}
-                      >
-                        {v === "with-pool" ? "With Pool" : "Without Pool"}
-                      </Button>
-                    ))}
+              {slug === "letter-pool" && (() => {
+                const lpEntries: Array<{ word: string; hint: string; category: string; letterPool: string[] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
+                const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+                const addLpWord = () => {
+                  const w = lpWord.trim().toUpperCase();
+                  if (!w || !lpHint.trim() || lpEntries.some(e => e.word === w)) return;
+                  const wordLetters = new Set(w.split(""));
+                  const letterPool = ALPHABET.filter(l => !wordLetters.has(l));
+                  setQuizParams(p => ({ ...p, words: [...lpEntries, { word: w, hint: lpHint.trim(), category: lpCategory.trim() || "Custom", letterPool }] }));
+                  setLpWord(""); setLpHint(""); setLpCategory("");
+                };
+                return (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Pool Mode</label>
+                      <div className="flex gap-2 mt-1">
+                        {(["with-pool", "without-pool"] as const).map(v => (
+                          <Button key={v} type="button" size="sm" variant={quizParams.variant === v ? "default" : "outline"} onClick={() => setQuizParams(p => ({ ...p, variant: v }))} data-testid={`button-quiz-pool-${v}`}>
+                            {v === "with-pool" ? "With Pool" : "Without Pool"}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">Words to Guess <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <span className="text-xs text-muted-foreground">{lpEntries.length}/20</span>
+                      </div>
+                      {lpEntries.length > 0 && (
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {lpEntries.map((entry, i) => (
+                            <div key={i} className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-1.5" data-testid={`lp-entry-${i}`}>
+                              <span className="text-sm font-mono font-bold tracking-wider flex-1">{entry.word}</span>
+                              <span className="text-xs text-muted-foreground truncate max-w-[120px]">{entry.hint}</span>
+                              <button type="button" onClick={() => setQuizParams(p => ({ ...p, words: lpEntries.filter((_, j) => j !== i) }))} className="text-muted-foreground hover:text-destructive shrink-0" data-testid={`button-lp-remove-${i}`}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {lpEntries.length < 20 && (
+                        <div className="rounded-lg border bg-muted/10 p-3 space-y-2">
+                          <div className="flex gap-2">
+                            <Input placeholder="WORD" value={lpWord} onChange={e => setLpWord(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())} className="w-32 shrink-0 font-mono uppercase tracking-wider" maxLength={20} data-testid="input-lp-word" />
+                            <Input placeholder="Hint / clue for players" value={lpHint} onChange={e => setLpHint(e.target.value)} className="flex-1" maxLength={100} data-testid="input-lp-hint" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Input placeholder="Category (optional, e.g. Animals)" value={lpCategory} onChange={e => setLpCategory(e.target.value)} className="flex-1" maxLength={50} data-testid="input-lp-category" onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addLpWord(); } }} />
+                            <Button type="button" size="sm" disabled={!lpWord.trim() || !lpHint.trim() || lpEntries.some(e => e.word === lpWord.trim().toUpperCase())} onClick={addLpWord} data-testid="button-lp-add">Add</Button>
+                          </div>
+                        </div>
+                      )}
+                      {lpEntries.length === 0 && (
+                        <p className="text-xs text-muted-foreground">Leave empty to use random words, or add specific words for your quiz.</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {slug === "letter-dodge" && (
                 <div className="space-y-3">
                   <div>

@@ -134,7 +134,9 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     }
     case "letter-pool": {
       const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
-      return v === "with-pool" ? "With Pool" : "Without Pool";
+      const modeLabel = v === "with-pool" ? "With Pool" : "Without Pool";
+      const lpWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
+      return lpWords.length > 0 ? `${modeLabel} · ${lpWords.length} word${lpWords.length !== 1 ? "s" : ""}` : modeLabel;
     }
     case "definition-match": {
       const wordCount = Array.isArray(params?.words) ? (params.words as any[]).length : null;
@@ -243,7 +245,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     }
     case "letter-pool": {
       const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
-      return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked quizMode />;
+      const lpCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").LetterPoolWord[] : undefined;
+      return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked quizMode customWords={lpCustomWords} />;
     }
     case "letter-dodge": {
       type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "advanced";

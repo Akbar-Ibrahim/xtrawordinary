@@ -23,19 +23,23 @@ interface LetterPoolGameProps {
   groupSeed?: number;
   locked?: boolean;
   quizMode?: boolean;
+  customWords?: LetterPoolWord[];
 }
 
-export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode }: LetterPoolGameProps) {
+export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, customWords }: LetterPoolGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool", quizMode });
   const personalBest = usePersonalBest("letter-pool");
   const seeded = groupSeed !== undefined;
-  const { data: words = [], isLoading, error } = useQuery<LetterPoolWord[]>({
+  const hasCustomWords = customWords && customWords.length > 0;
+  const { data: fetchedWords = [], isLoading, error } = useQuery<LetterPoolWord[]>({
     queryKey: seeded ? ["/api/games/letter-pool/words", groupSeed] : ["/api/games/letter-pool/words"],
     ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/letter-pool/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
+    enabled: !hasCustomWords,
     refetchOnMount: seeded ? false : "always",
     gcTime: 0,
   });
+  const words = hasCustomWords ? customWords! : fetchedWords;
 
   const [variation, setVariation] = useState<Variation | null>(initialChallenge || null);
   const [activeWords, setActiveWords] = useState<LetterPoolWord[]>([]);
