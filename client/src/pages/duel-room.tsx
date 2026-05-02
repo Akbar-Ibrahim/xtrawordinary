@@ -173,11 +173,21 @@ export default function DuelRoom() {
 
         // ── Game-phase messages → forwarded to DuelTurnEngine ────────────────
         case "opponent:move":
-        case "player:disconnect":
         case "player:reconnect":
         case "player:forfeited":
         case "game:over":
           setLatestGameMessage(msg);
+          break;
+
+        case "player:disconnect":
+          // reconnectDeadlineMs=0 is a countdown-abort signal from the server
+          // (opponent left before the game began). Reset UI to waiting state.
+          if (msg.reconnectDeadlineMs === 0 && phaseRef.current === "countdown") {
+            setOpponentReady(false);
+            setPhase("waiting");
+          } else {
+            setLatestGameMessage(msg);
+          }
           break;
       }
     },

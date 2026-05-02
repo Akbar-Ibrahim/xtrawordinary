@@ -382,6 +382,8 @@ export class DuelRoomRegistry {
       }
       let seconds = 3;
       const tick = (): void => {
+        // Abort if a disconnect or other transition already moved room out of countdown
+        if (room.status !== "countdown") return;
         if (seconds <= 0) {
           room.status = "playing";
           return;

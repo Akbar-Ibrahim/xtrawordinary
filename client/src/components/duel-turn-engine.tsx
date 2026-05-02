@@ -125,6 +125,7 @@ export function DuelTurnEngine({
   const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
   const [disconnectSecsLeft, setDisconnectSecsLeft] = useState(30);
   const [forfeitPending, setForfeitPending] = useState(false);
+  const forfeitReasonRef = useRef<"disconnect" | "manual" | undefined>(undefined);
 
   // Per-player word tracking (refs — only needed at game-end)
   const myWordsRef = useRef<string[]>([]);
@@ -290,6 +291,7 @@ export function DuelTurnEngine({
           outcome: latestMessage.outcome,
           eloChange: latestMessage.eloChange,
           newElo: latestMessage.newElo,
+          forfeitReason: forfeitReasonRef.current,
           myWords: [...myWordsRef.current],
           opponentWords: [...opponentWordsRef.current],
         });
@@ -311,6 +313,7 @@ export function DuelTurnEngine({
       case "player:forfeited":
         stopTimer();
         setForfeitPending(true);
+        forfeitReasonRef.current = latestMessage.reason;
         // game:over will arrive next from the server with authoritative ELO data
         break;
 
