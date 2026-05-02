@@ -293,6 +293,7 @@ export default function GameDetail() {
   const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
   const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
   const [customPlayKey, setCustomPlayKey] = useState(0);
+  const [customPlayEnded, setCustomPlayEnded] = useState(false);
   const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
@@ -610,11 +611,11 @@ export default function GameDetail() {
                 <h2 className="text-xl font-semibold">{game.name}</h2>
               </div>
               <div className="flex items-center gap-2">
-                {isCustomPlay && (
+                {isCustomPlay && customPlayEnded && (
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => setCustomPlayKey(k => k + 1)}
+                    onClick={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                     className="gap-1.5"
                     data-testid="button-custom-play-again"
                   >
@@ -777,6 +778,7 @@ export default function GameDetail() {
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -793,6 +795,7 @@ export default function GameDetail() {
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -814,6 +817,7 @@ export default function GameDetail() {
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -825,6 +829,7 @@ export default function GameDetail() {
                     ? { vowels: customPlayFrozenParams.vowels, consonants: customPlayFrozenParams.consonants, length: customPlayFrozenParams.length }
                     : undefined
                 }
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -836,6 +841,7 @@ export default function GameDetail() {
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -852,6 +858,7 @@ export default function GameDetail() {
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
+                onGameEnd={() => setCustomPlayEnded(true)}
                 locked
                 quizMode
               />
@@ -2392,6 +2399,7 @@ export default function GameDetail() {
               className="w-full gap-2"
               onClick={() => {
                 setCustomPlayFrozenParams(customPlayParams);
+                setCustomPlayEnded(false);
                 setShowCustomPlayDialog(false);
                 setIsCustomPlay(true);
                 setIsPlaying(true);

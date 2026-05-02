@@ -368,7 +368,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "letter-balance", quizMode });
   const personalBest = usePersonalBest("letter-balance");
@@ -525,6 +525,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   useEffect(() => {
     if (gameState === "level_complete" || gameState === "game_over") {
       reportResult(score, gameState === "level_complete", wordsCompleted);
+      onGameEnd?.();
     }
   }, [gameState, score, reportResult, wordsCompleted]);
 

@@ -99,7 +99,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -240,6 +240,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
       if (isCompetitive) {
         reportResult(score, gameStatus === "won", wordsCompleted);
       }
+      onGameEnd?.();
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 

@@ -60,7 +60,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -176,6 +176,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
       if (isCompetitive) {
         reportResult(score, gameStatus === "won", wordsCompleted);
       }
+      onGameEnd?.();
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 

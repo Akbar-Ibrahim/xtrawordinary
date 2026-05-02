@@ -143,7 +143,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number } = {}) {
+export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
   const resolvedInitialChallenge = initialVariation ?? initialChallenge;
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
@@ -240,6 +240,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
       if (isCompetitive) {
         reportResult(score, gameStatus === "won", wordsCompleted);
       }
+      onGameEnd?.();
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 

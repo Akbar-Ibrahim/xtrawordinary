@@ -76,6 +76,7 @@ export function LetterDodgeGame({
   groupSeed,
   locked,
   quizMode,
+  onGameEnd,
   initialDifficulty,
   initialSurvival,
   initialWordCount,
@@ -85,6 +86,7 @@ export function LetterDodgeGame({
   groupSeed?: number;
   locked?: boolean;
   quizMode?: boolean;
+  onGameEnd?: () => void;
   initialDifficulty?: DodgeDifficulty;
   initialSurvival?: boolean;
   initialWordCount?: number;
@@ -190,6 +192,7 @@ export function LetterDodgeGame({
   useEffect(() => {
     if (gameStatus === "finished") {
       reportResult(scoreRef.current, scoreRef.current > 0, foundWordsRef.current.length);
+      onGameEnd?.();
     }
   }, [gameStatus]);
 
