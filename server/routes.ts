@@ -2508,6 +2508,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: "challengeeId and gameSlug are required" });
       }
       const challengerId = req.user.id;
+      if (!req.user.isPremium) {
+        return res.status(403).json({ error: "Duels require a Premium account." });
+      }
       if (challengerId === challengeeId) {
         return res.status(400).json({ error: "Cannot challenge yourself" });
       }
