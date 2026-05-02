@@ -117,6 +117,11 @@ export function LetterDodgeGame({
       setFeedback(null);
       setTimeLeft(GAME_TIME);
 
+      // Reinitialize the seeded RNG on each game start so replay (Play Again) produces
+      // the same deterministic forbidden-letter constraint for group/challenge fairness.
+      if (groupSeed !== undefined) {
+        seedRngRef.current = makeSeededRng(groupSeed);
+      }
       const rng = seedRngRef.current ?? Math.random;
       const config = DIFFICULTY_CONFIG[d];
       const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
