@@ -26,6 +26,7 @@ import GroupDetail from "@/pages/group-detail";
 import GroupRoundPlay from "@/pages/group-round-play";
 import QuizPlay from "@/pages/quiz-play";
 import QuizResults from "@/pages/quiz-results";
+import CreateQuiz from "@/pages/create-quiz";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/groups/:id/rounds/:roundId/play" component={GroupRoundPlay} />
       <Route path="/quiz/:code/results" component={QuizResults} />
       <Route path="/quiz/:code" component={QuizPlay} />
+      <Route path="/create-quiz" component={CreateQuiz} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -180,6 +180,17 @@ export default function GameDetail() {
   }, [challengeId, challengeNewFriendId]);
 
   useEffect(() => {
+    if (searchParams.get("create-quiz") === "1" && isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug)) {
+      const timer = setTimeout(() => {
+        setCreatedQuiz(null);
+        setShowQuizDialog(true);
+      }, 300);
+      navigate(`/game/${slug}`, { replace: true });
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!isReceiverMode) {
       setUrlCleaned(true);
       return;

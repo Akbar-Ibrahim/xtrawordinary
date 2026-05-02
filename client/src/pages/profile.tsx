@@ -322,6 +322,16 @@ export default function Profile() {
               </TabsContent>
 
               <TabsContent value="quizzes" className="mt-4">
+                {isOwnProfile && !quizzesLoading && (
+                  <div className="flex justify-end mb-3">
+                    <Link href="/create-quiz">
+                      <Button size="sm" className="gap-2" data-testid="button-create-new-quiz">
+                        <GraduationCap className="h-4 w-4" />
+                        Create Quiz
+                      </Button>
+                    </Link>
+                  </div>
+                )}
                 {quizzesLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-14 w-full rounded-lg" />
@@ -333,8 +343,8 @@ export default function Profile() {
                     <p className="font-medium mb-1">No quizzes yet</p>
                     {isOwnProfile ? (
                       <>
-                        <p className="text-sm mb-4">Create a shareable quiz session from any supported game page so others can compete on the same puzzle.</p>
-                        <Link href="/game/definition-match">
+                        <p className="text-sm mb-4">Pick a game and set up a shareable quiz — others compete on the same puzzle and scores appear on your leaderboard.</p>
+                        <Link href="/create-quiz">
                           <Button variant="outline" size="sm" data-testid="button-quiz-empty-cta">Browse Quiz Games</Button>
                         </Link>
                       </>
