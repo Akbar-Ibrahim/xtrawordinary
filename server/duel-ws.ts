@@ -485,8 +485,16 @@ export class DuelRoomRegistry {
     // triggering ELO/session side-effects or confusing in-game overlays.
     if (room.status !== "playing") {
       room.players.delete(userId);
-      if (room.status === "waiting") {
-        room.status = "waiting"; // stay open for re-join
+      // If disconnect happened mid-countdown, reset room to waiting so the
+      // remaining player can see the "opponent left" state and re-ready properly.
+      if (room.status === "countdown") {
+        room.status = "waiting";
+        room.livesPerPlayer.clear();
+        room.currentTurnUserId = null;
+        room.countdownStartAt = null;
+        if (opponent) {
+          send(opponent.ws, { type: "player:disconnect", reconnectDeadlineMs: 0 });
+        }
       }
       log(`[Duel] Player ${userId} disconnected from room ${roomCode} (phase: ${room.status}) — no forfeit`, "duel-ws");
       return;
@@ -655,6 +663,11 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             challenge.status === "completed"
           ) {
             send(ws, { type: "error", message: `This challenge has been ${challenge.status}` });
+            return;
+          }
+          // Challengee must have explicitly accepted before being allowed into the room
+          if (challenge.challengeeId === userId && challenge.status === "pending") {
+            send(ws, { type: "error", message: "You must accept the challenge before entering the room" });
             return;
           }
 

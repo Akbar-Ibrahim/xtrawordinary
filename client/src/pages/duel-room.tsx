@@ -72,16 +72,27 @@ export default function DuelRoom() {
   const [latestGameMessage, setLatestGameMessage] = useState<DuelServerMessage | null>(null);
 
   // ── REST query for room metadata ───────────────────────────────────────────
-  const { data: roomInfo } = useQuery<RoomInfo>({
+  const { data: roomInfo, error: roomFetchError } = useQuery<RoomInfo, Error>({
     queryKey: ["/api/duels/rooms", roomCode],
     queryFn: async () => {
       const res = await fetch(`/api/duels/rooms/${roomCode}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Room not found");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? "Room not found");
+      }
       return res.json();
     },
     enabled: !!roomCode && isAuthenticated,
     retry: false,
   });
+
+  // Transition to terminal error UI if room fetch fails (404/403/410)
+  useEffect(() => {
+    if (roomFetchError) {
+      setErrorMsg(roomFetchError.message);
+      setPhase("error");
+    }
+  }, [roomFetchError]);
 
   // Keep phaseRef current so handleServerMessage never sees a stale phase
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -147,6 +158,14 @@ export default function DuelRoom() {
           // Read phaseRef (not closed-over phase) so we always see the live value.
           if (phaseRef.current === "playing") {
             setLatestGameMessage(msg);
+          } else if (
+            phaseRef.current === "connecting" ||
+            phaseRef.current === "lobby" ||
+            phaseRef.current === "waiting"
+          ) {
+            // Terminal pre-game error (e.g. completed/declined challenge) — show error screen
+            setErrorMsg(msg.message);
+            setPhase("error");
           } else {
             toast({ title: "Duel error", description: msg.message, variant: "destructive" });
           }
