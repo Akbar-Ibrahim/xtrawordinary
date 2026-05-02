@@ -18,7 +18,7 @@ export type DuelServerMessage =
   | { type: "room:countdown"; secondsLeft: number }
   /**
    * Sent to a reconnecting player so the client can restore its phase.
-   * Carries the minimal snapshot the server knows about.
+   * Contains the full authoritative game snapshot needed to resume.
    */
   | {
       type: "room:state";
@@ -28,6 +28,12 @@ export type DuelServerMessage =
       opponentAvatarUrl: string | null;
       myLives: number;
       opponentLives: number;
+      /** Current word in the chain (head of the chain). */
+      currentWord: string;
+      /** All words used so far (uppercased). */
+      usedWords: string[];
+      /** Whether it is the reconnecting player's turn. */
+      isMyTurn: boolean;
     }
   | { type: "opponent:move"; payload: unknown }
   | {

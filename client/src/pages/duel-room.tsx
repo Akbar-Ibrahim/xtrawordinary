@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,9 +45,9 @@ type WordChainPayload =
 
 const TURN_TIME = 8;
 
-function Lives({ count, max = 3 }: { count: number; max?: number }) {
+function Lives({ count, max = 3, ...domProps }: { count: number; max?: number } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className="flex gap-1" aria-label={`${count} of ${max} lives`}>
+    <div className="flex gap-1" aria-label={`${count} of ${max} lives`} {...domProps}>
       {Array.from({ length: max }).map((_, i) => (
         i < count
           ? <Heart key={i} className="h-4 w-4 fill-red-500 text-red-500" />
@@ -67,6 +67,9 @@ export default function DuelRoom() {
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameEndedRef = useRef(false);
+  /** Set to true when a room:state reconnect snapshot has been applied — prevents
+   *  the first-start initialization effect from overwriting restored state. */
+  const reconnectRestored = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("connecting");
   const [errorMsg, setErrorMsg] = useState("");
@@ -230,12 +233,17 @@ export default function DuelRoom() {
         break;
 
       case "room:state":
-        // Reconnect snapshot — restore phase from server state
+        // Reconnect snapshot — restore full authoritative game state from server
         setOpponentId(msg.opponentId);
         setOpponentName(msg.opponentName);
         setOpponentAvatarUrl(msg.opponentAvatarUrl);
         setMyLives(msg.myLives);
         setOpponentLives(msg.opponentLives);
+        setCurrentWord(msg.currentWord);
+        setUsedWords(msg.usedWords);
+        setIsMyTurn(msg.isMyTurn);
+        // Mark reconnect done BEFORE setting phase so the init effect is skipped
+        reconnectRestored.current = true;
         setPhase("playing");
         break;
 
@@ -321,7 +329,8 @@ export default function DuelRoom() {
   }, [disconnectDeadline]);
 
   useEffect(() => {
-    if (phase === "playing" && roomInfo && user) {
+    // Only initialize on first game start — skip if state was restored via reconnect snapshot
+    if (phase === "playing" && roomInfo && user && !reconnectRestored.current) {
       const isFirst = user.id === roomInfo.challengerId;
       setCurrentWord(roomInfo.startWord);
       setUsedWords([roomInfo.startWord.toUpperCase()]);

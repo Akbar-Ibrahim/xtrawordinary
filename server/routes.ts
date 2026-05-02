@@ -2517,7 +2517,7 @@ export async function registerRoutes(
       }
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
-      const roomCode = duelRegistry.createRoom(gameSlug);
+      const roomCode = duelRegistry.createRoom(gameSlug, challengerId);
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const challenge = await storage.createDuelChallenge({

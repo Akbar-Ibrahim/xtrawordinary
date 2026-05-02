@@ -54,26 +54,30 @@ type DuelRoom = {
   startWord: string;
   status: "waiting" | "countdown" | "playing" | "over";
   createdAt: number;
-  /** Server-tracked lives per player (userId → lives). Starts at 3 once playing begins. */
+  /** The challenger (goes first). */
+  challengerId: number;
+  /** Server-tracked lives per player (userId → lives). Populated when playing begins. */
   livesPerPlayer: Map<number, number>;
-  /** Ensures ELO/session is written exactly once regardless of how many triggers arrive. */
+  /** Authoritative chain head (uppercased). Set to startWord when game starts. */
+  currentWord: string;
+  /** All words used so far (uppercased). */
+  usedWords: string[];
+  /** Whose turn it currently is. null until game starts. */
+  currentTurnUserId: number | null;
+  /** Ensures ELO/session is written exactly once. */
   finalized: boolean;
 };
 
 const INITIAL_LIVES = 3;
 
-/** Compute winner from server-tracked state.
- *  Returns the userId of the winner, or -1 for a draw.
- *  Returns null when there is insufficient state to determine a winner.
- */
 function deriveWinnerId(room: DuelRoom): number | null {
   const entries = Array.from(room.livesPerPlayer.entries());
   if (entries.length < 2) return null;
   const [a, b] = entries;
-  if (a[1] <= 0 && b[1] <= 0) return -1; // simultaneous death → draw
-  if (a[1] <= 0) return b[0]; // b wins
-  if (b[1] <= 0) return a[0]; // a wins
-  return null; // game still ongoing
+  if (a[1] <= 0 && b[1] <= 0) return -1;
+  if (a[1] <= 0) return b[0];
+  if (b[1] <= 0) return a[0];
+  return null;
 }
 
 async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
@@ -104,12 +108,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
   const delta2 = Math.round(K * (result2 - expected2));
 
   const challenge = await storage.getDuelChallengeByRoom(room.roomCode);
-
-  const outcome = isDraw
-    ? "draw"
-    : p1wins
-    ? "player1_wins"
-    : "player2_wins";
+  const outcome = isDraw ? "draw" : p1wins ? "player1_wins" : "player2_wins";
 
   await Promise.all([
     storage.upsertDuelRating(id1, {
@@ -163,7 +162,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number): Promise<void> {
 export class DuelRoomRegistry {
   private rooms: Map<string, DuelRoom> = new Map();
 
-  createRoom(gameSlug: string): string {
+  createRoom(gameSlug: string, challengerId: number): string {
     let roomCode: string;
     do {
       roomCode = generateRoomCode();
@@ -180,7 +179,11 @@ export class DuelRoomRegistry {
       startWord,
       status: "waiting",
       createdAt: Date.now(),
+      challengerId,
       livesPerPlayer: new Map(),
+      currentWord: startWord,
+      usedWords: [startWord],
+      currentTurnUserId: null,
       finalized: false,
     };
     this.rooms.set(roomCode, room);
@@ -205,7 +208,7 @@ export class DuelRoomRegistry {
 
     const existingPlayer = room.players.get(userId);
     if (existingPlayer) {
-      // Reconnect path — update WS handle and cancel disconnect timer
+      // Reconnect — update WS handle and cancel disconnect timer
       existingPlayer.ws = ws;
       if (existingPlayer.disconnectTimer) {
         clearTimeout(existingPlayer.disconnectTimer);
@@ -217,8 +220,8 @@ export class DuelRoomRegistry {
         send(opponent.ws, { type: "player:reconnect" });
       }
 
-      // Send state snapshot to the reconnecting player so client can restore phase
       if (room.status === "waiting") {
+        // Resend join confirmation so client advances to waiting phase
         if (opponent) {
           send(ws, {
             type: "room:joined",
@@ -229,9 +232,11 @@ export class DuelRoomRegistry {
           });
         }
       } else if (room.status === "playing" || room.status === "countdown") {
+        // Send full authoritative game snapshot so client can restore state
         if (opponent) {
           const myLives = room.livesPerPlayer.get(userId) ?? INITIAL_LIVES;
           const opponentLives = room.livesPerPlayer.get(opponent.userId) ?? INITIAL_LIVES;
+          const isMyTurn = room.currentTurnUserId === userId;
           send(ws, {
             type: "room:state",
             phase: "playing",
@@ -240,6 +245,9 @@ export class DuelRoomRegistry {
             opponentAvatarUrl: opponent.avatarUrl,
             myLives,
             opponentLives,
+            currentWord: room.currentWord,
+            usedWords: [...room.usedWords],
+            isMyTurn,
           });
         }
       }
@@ -290,10 +298,14 @@ export class DuelRoomRegistry {
 
     if (room.players.size === 2 && this.allReady(room)) {
       room.status = "countdown";
-      // Initialize server-tracked lives for all players
       for (const pid of Array.from(room.players.keys())) {
         room.livesPerPlayer.set(pid, INITIAL_LIVES);
       }
+      // Initialize authoritative game state
+      room.currentWord = room.startWord;
+      room.usedWords = [room.startWord.toUpperCase()];
+      room.currentTurnUserId = room.challengerId;
+
       const startAt = Date.now() + 3000;
       for (const p of Array.from(room.players.values())) {
         send(p.ws, { type: "room:ready", startAt });
@@ -314,8 +326,7 @@ export class DuelRoomRegistry {
     }
   }
 
-  /** Relay a game move, track lives server-side, and auto-finalize when lives hit 0.
-   *  Returns triggered=true if finalization should be triggered. */
+  /** Relay a game move, track lives/turn server-side, and auto-finalize when lives hit 0. */
   relayMove(
     roomCode: string,
     fromUserId: number,
@@ -329,9 +340,21 @@ export class DuelRoomRegistry {
       send(opponent.ws, { type: "opponent:move", payload });
     }
 
-    // Server-side lives tracking: accept only non-increasing values (anti-cheat)
     if (payload !== null && typeof payload === "object") {
-      const p = payload as { type?: string; lives?: number };
+      const p = payload as { type?: string; word?: string; lives?: number };
+
+      // Update authoritative chain state when a valid word is played
+      if (p.type === "word" && typeof p.word === "string") {
+        room.currentWord = p.word.toUpperCase();
+        room.usedWords = [...room.usedWords, p.word.toUpperCase()];
+        // Advance turn to opponent
+        room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
+      } else if (p.type === "timeout") {
+        // Timeout — turn passes to opponent
+        room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
+      }
+
+      // Lives tracking: accept only non-increasing values (anti-cheat)
       if (typeof p.lives === "number") {
         const current = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
         const serverLives = Math.min(current, p.lives);
@@ -361,7 +384,7 @@ export class DuelRoomRegistry {
     }
 
     player.disconnectTimer = setTimeout(async () => {
-      log(`[Duel] Player ${userId} forfeited in room ${roomCode} (timeout)`, "duel-ws");
+      log(`[Duel] Player ${userId} forfeited room ${roomCode} (timeout)`, "duel-ws");
       const currentRoom = this.rooms.get(roomCode);
       if (!currentRoom) return;
       const currentOpponent = this.getOpponent(currentRoom, userId);
@@ -397,8 +420,6 @@ export class DuelRoomRegistry {
     log(`[Duel] Player ${userId} manually forfeited room ${roomCode}`, "duel-ws");
   }
 
-  /** Finalize from a client game:end signal. Derives winner from server-tracked state.
-   *  Client-provided winnerId is ignored entirely. */
   async finalizeFromClient(roomCode: string): Promise<void> {
     const room = this.rooms.get(roomCode);
     if (!room || room.finalized) return;
@@ -505,7 +526,6 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             return;
           }
           if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
-            log(`[Duel] Unauthorized join attempt: user ${userId} not in challenge for room ${roomCode}`, "duel-ws");
             send(ws, { type: "error", message: "You are not a participant in this duel" });
             return;
           }
@@ -560,7 +580,6 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
         }
 
         case "game:end": {
-          // Client signals game ended; server derives winner from tracked state
           if (!currentRoomCode) {
             send(ws, { type: "error", message: "Not in a room" });
             return;
