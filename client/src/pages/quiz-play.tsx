@@ -227,9 +227,11 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       return <LetterHuntGame initialChallenge={challenge} initialLetters={initialLetters} initialLetter={initialLetters ? undefined : params?.letter} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lhWc} initialTimeLimit={lhTl} />;
     }
     case "letter-balance": {
+      const lbWc = !survival ? toNum(params?.wordCount) : undefined;
+      const lbTl = !survival ? toNum(params?.timeLimit) : undefined;
       if (params?.vowels !== undefined || params?.consonants !== undefined) {
         const cc = { vowels: toNum(params?.vowels), consonants: toNum(params?.consonants), length: toNum(params?.length) };
-        return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+        return <LetterBalanceGame customConstraint={cc} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lbWc} initialTimeLimit={lbTl} />;
       }
       // Normalize legacy category slugs from old quiz sessions
       const rawCat = params?.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
@@ -239,7 +241,7 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const levels = LETTER_BALANCE_LEVELS[cat] ?? LETTER_BALANCE_LEVELS[LETTER_BALANCE_CATEGORIES[0]];
       const level = params?.level !== undefined ? (toNum(params.level) ?? levels[(seed >> 4) % levels.length]) : levels[(seed >> 4) % levels.length];
       const consonantCount = cat === "locked_balance" && params?.consonantCount !== undefined ? toNum(params.consonantCount) : undefined;
-      return <LetterBalanceGame initialChallenge={{ category: cat, level, consonantCount }} groupSeed={seed} locked quizMode initialSurvival={survival} />;
+      return <LetterBalanceGame initialChallenge={{ category: cat, level, consonantCount }} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lbWc} initialTimeLimit={lbTl} />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];

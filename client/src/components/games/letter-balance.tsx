@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Lock, Sparkles, LogIn, Flame } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, ArrowLeft, Loader2, Type, Lock, Sparkles, LogIn, Flame, Skull } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -38,6 +38,7 @@ function getEffectiveSlug(
   return "letter-balance";
 }
 
+const CLASSIC_TIME_LIMIT = 90;
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "5s", seconds: 5 },
@@ -380,7 +381,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType; consonantCount?: number }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; onGameEnd?: () => void } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialTimeLimit, initialWordCount, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType; consonantCount?: number }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialTimeLimit?: number; initialWordCount?: number; onGameEnd?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -416,24 +417,21 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(12);
+  const [timeLeft, setTimeLeft] = useState(initialTimeLimit ?? CLASSIC_TIME_LIMIT);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeLeftRef = useRef<number>(12);
+  const timeLeftRef = useRef<number>(initialTimeLimit ?? CLASSIC_TIME_LIMIT);
   const isPlayingRef = useRef<boolean>(false);
+  const totalTimeLimitRef = useRef<number>(initialTimeLimit ?? CLASSIC_TIME_LIMIT);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const wordsPerLevel = config?.wordsPerRound || 20;
-  const timePerWord = config?.timePerWord || 12;
+  const wordsPerLevel = initialWordCount ?? config?.wordsPerRound ?? 20;
+  const classicTimeLimit = initialTimeLimit ?? CLASSIC_TIME_LIMIT;
   const isLoading = configLoading;
-  
-  // Use ref to always have latest timePerWord value
-  const timePerWordRef = useRef<number>(12);
-  timePerWordRef.current = timePerWord;
 
   // Focus input when game starts or constraint changes
   useEffect(() => {
@@ -450,31 +448,25 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     isPlayingRef.current = false;
   }, []);
 
-  const startTimer = useCallback(() => {
-    // Clear any existing timer
+  const startTimer = useCallback((survivalMode: boolean) => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    
-    // Set initial values - use ref to get latest value
-    console.log('[LB-DEBUG] startTimer called. isSurvivalRef.current=', isSurvivalRef.current, 'survivalTimeRef.current=', survivalTimeRef.current, 'timePerWordRef.current=', timePerWordRef.current);
-    const initialTime = isSurvivalRef.current ? survivalTimeRef.current : timePerWordRef.current;
+
+    const initialTime = survivalMode ? survivalTimeRef.current : classicTimeLimit;
+    totalTimeLimitRef.current = initialTime;
     timeLeftRef.current = initialTime;
     setTimeLeft(initialTime);
     isPlayingRef.current = true;
-    
-    // Start countdown
+
     timerRef.current = setInterval(() => {
-      // Guard: only count down if game is active
-      if (!isPlayingRef.current) {
-        return;
-      }
-      
+      if (!isPlayingRef.current) return;
+
       timeLeftRef.current -= 1;
       const newTime = timeLeftRef.current;
       setTimeLeft(newTime);
-      
+
       if (newTime <= 0) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
@@ -485,7 +477,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
         setGameState("game_over");
       }
     }, 1000);
-  }, []);
+  }, [classicTimeLimit]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -519,7 +511,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     const constraint = generateConstraint(selectedCategory, level, 0, seedRngRef.current, consonantCount);
     setCurrentConstraint(constraint);
     setGameState("playing");
-    startTimer();
+    startTimer(isSurvivalRef.current);
   }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
 
   useEffect(() => {
@@ -535,7 +527,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       setFeedback(null);
       setCurrentConstraint(synth);
       setGameState("playing");
-      startTimer();
+      startTimer(isSurvivalRef.current);
     } else if (initialChallenge && selectedCategory) {
       startGame(initialChallenge.level, initialChallenge.consonantCount);
     }
@@ -569,7 +561,6 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     const nextLevel = (selectedLevel as number) + 1;
     
     if (nextLevel <= categoryDef.maxLevel) {
-      // Clear any existing timer first
       clearTimer();
       
       setSelectedLevel(nextLevel);
@@ -581,7 +572,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       const constraint = generateConstraint(selectedCategory, nextLevel, 0, seedRngRef.current, lockedConsonantCount ?? undefined);
       setCurrentConstraint(constraint);
       setGameState("playing");
-      startTimer();
+      startTimer(false);
     }
   }, [selectedCategory, selectedLevel, startTimer, clearTimer, lockedConsonantCount]);
 
@@ -638,10 +629,8 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
         return;
       }
 
-      clearTimer();
-      
       playSound("correct");
-        setFeedback({ type: "correct", message: "Correct!" });
+      setFeedback({ type: "correct", message: "Correct!" });
       setStreak(prev => prev + 1);
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
       
@@ -664,7 +653,10 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             const newConstraint = generateConstraint(selectedCategory, selectedLevel, newWordsCompleted, seedRngRef.current, lockedConsonantCount ?? undefined);
             setCurrentConstraint(newConstraint);
           }
-          startTimer();
+          // Survival: restart per-word timer. Classic: timer keeps running.
+          if (isSurvivalRef.current) {
+            startTimer(true);
+          }
         }
       }, 500);
     } catch {
@@ -1165,15 +1157,15 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Badge 
-            variant={timeLeft <= 3 ? "destructive" : "secondary"} 
-            className="gap-1.5 min-w-[60px] justify-center" 
+          <Badge
+            variant={timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "destructive" : "secondary"}
+            className="gap-1.5 min-w-[60px] justify-center"
             data-testid="badge-timer"
             role="timer"
-            aria-label={`${timeLeft} seconds remaining`}
+            aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
           >
             <Timer className="h-3.5 w-3.5" />
-            {timeLeft}s
+            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </Badge>
           {!locked && (
             <Button
@@ -1240,7 +1232,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 </p>
               </div>
 
-              <Progress value={(timeLeft / timePerWord) * 100} className="h-2" />
+              <Progress value={(timeLeft / totalTimeLimitRef.current) * 100} className="h-2" />
 
               <div className="max-w-sm mx-auto space-y-4">
                 <div className="relative">
