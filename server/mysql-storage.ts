@@ -1359,7 +1359,12 @@ export class MySQLStorage implements IStorage {
     await db.delete(schema.quizSessions).where(eq(schema.quizSessions.id, id));
   }
 
-  private mapDuelChallenge(row: any): DuelChallenge {
+  private static tsToIso(d: Date | string | null | undefined): string | null {
+    if (!d) return null;
+    return d instanceof Date ? d.toISOString() : String(d);
+  }
+
+  private mapDuelChallenge(row: typeof schema.duelChallenges.$inferSelect): DuelChallenge {
     return {
       id: row.id,
       challengerId: row.challengerId,
@@ -1368,12 +1373,12 @@ export class MySQLStorage implements IStorage {
       message: row.message ?? null,
       status: row.status as DuelChallengeStatus,
       roomCode: row.roomCode ?? null,
-      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
-      expiresAt: row.expiresAt ? (row.expiresAt instanceof Date ? row.expiresAt.toISOString() : String(row.expiresAt)) : null,
+      createdAt: MySQLStorage.tsToIso(row.createdAt)!,
+      expiresAt: MySQLStorage.tsToIso(row.expiresAt),
     };
   }
 
-  private mapDuelSession(row: any): DuelSession {
+  private mapDuelSession(row: typeof schema.duelSessions.$inferSelect): DuelSession {
     return {
       id: row.id,
       roomCode: row.roomCode,
@@ -1382,15 +1387,15 @@ export class MySQLStorage implements IStorage {
       player2Id: row.player2Id,
       gameSlug: row.gameSlug,
       seed: row.seed,
-      outcome: row.outcome ?? null,
+      outcome: (row.outcome as DuelSession["outcome"]) ?? null,
       eloDeltaPlayer1: row.eloDeltaPlayer1 ?? null,
       eloDeltaPlayer2: row.eloDeltaPlayer2 ?? null,
-      startedAt: row.startedAt instanceof Date ? row.startedAt.toISOString() : String(row.startedAt),
-      endedAt: row.endedAt ? (row.endedAt instanceof Date ? row.endedAt.toISOString() : String(row.endedAt)) : null,
+      startedAt: MySQLStorage.tsToIso(row.startedAt)!,
+      endedAt: MySQLStorage.tsToIso(row.endedAt),
     };
   }
 
-  private mapDuelRating(row: any): DuelRating {
+  private mapDuelRating(row: typeof schema.duelRatings.$inferSelect): DuelRating {
     return {
       id: row.id,
       userId: row.userId,
@@ -1398,7 +1403,7 @@ export class MySQLStorage implements IStorage {
       wins: row.wins,
       losses: row.losses,
       draws: row.draws,
-      updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+      updatedAt: MySQLStorage.tsToIso(row.updatedAt)!,
     };
   }
 
@@ -1430,7 +1435,7 @@ export class MySQLStorage implements IStorage {
 
   async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string): Promise<DuelChallenge | undefined> {
     const db = await this.getDb();
-    const updates: any = { status };
+    const updates: { status: DuelChallengeStatus; roomCode?: string } = { status };
     if (roomCode !== undefined) updates.roomCode = roomCode;
     await db.update(schema.duelChallenges).set(updates).where(eq(schema.duelChallenges.id, id));
     return this.getDuelChallenge(id);
@@ -1441,7 +1446,7 @@ export class MySQLStorage implements IStorage {
     const rows = await db.select().from(schema.duelChallenges)
       .where(or(eq(schema.duelChallenges.challengerId, userId), eq(schema.duelChallenges.challengeeId, userId)))
       .orderBy(desc(schema.duelChallenges.createdAt));
-    return rows.map(r => this.mapDuelChallenge(r));
+    return rows.map((r: typeof schema.duelChallenges.$inferSelect) => this.mapDuelChallenge(r));
   }
 
   async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
@@ -1477,7 +1482,13 @@ export class MySQLStorage implements IStorage {
 
   async updateDuelSession(id: number, updates: Partial<Pick<DuelSession, "outcome" | "eloDeltaPlayer1" | "eloDeltaPlayer2" | "endedAt">>): Promise<DuelSession | undefined> {
     const db = await this.getDb();
-    const dbUpdates: any = {};
+    type SessionDbUpdate = {
+      outcome?: string | null;
+      eloDeltaPlayer1?: number | null;
+      eloDeltaPlayer2?: number | null;
+      endedAt?: Date | null;
+    };
+    const dbUpdates: SessionDbUpdate = {};
     if (updates.outcome !== undefined) dbUpdates.outcome = updates.outcome;
     if (updates.eloDeltaPlayer1 !== undefined) dbUpdates.eloDeltaPlayer1 = updates.eloDeltaPlayer1;
     if (updates.eloDeltaPlayer2 !== undefined) dbUpdates.eloDeltaPlayer2 = updates.eloDeltaPlayer2;
@@ -1496,7 +1507,8 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     const existing = await this.getDuelRating(userId);
     if (existing) {
-      const dbUpdates: any = { updatedAt: new Date() };
+      type RatingDbUpdate = { updatedAt: Date; elo?: number; wins?: number; losses?: number; draws?: number };
+      const dbUpdates: RatingDbUpdate = { updatedAt: new Date() };
       if (updates.elo !== undefined) dbUpdates.elo = updates.elo;
       if (updates.wins !== undefined) dbUpdates.wins = updates.wins;
       if (updates.losses !== undefined) dbUpdates.losses = updates.losses;

@@ -1,9 +1,18 @@
 import { WebSocketServer, WebSocket } from "ws";
-import type { Server } from "http";
-import type { IncomingMessage } from "http";
+import type { Server, IncomingMessage } from "http";
+import type { Request, Response } from "express";
 import { getSessionMiddleware } from "./auth";
 import { log } from "./index";
+import { storage } from "./storage";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
+
+interface DuelWebSocket extends WebSocket {
+  userId: number;
+}
+
+type SessionIncomingMessage = IncomingMessage & {
+  session: { passport?: { user?: number } };
+};
 
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -12,7 +21,7 @@ function generateRoomCode(): string {
   return code;
 }
 
-function send(ws: WebSocket, msg: DuelServerMessage) {
+function send(ws: WebSocket, msg: DuelServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
   }
@@ -90,14 +99,7 @@ export class DuelRoomRegistry {
 
     if (room.players.size >= 2) return { success: false, error: "Room is full" };
 
-    room.players.set(userId, {
-      ws,
-      userId,
-      name,
-      avatarUrl,
-      ready: false,
-      disconnectTimer: null,
-    });
+    room.players.set(userId, { ws, userId, name, avatarUrl, ready: false, disconnectTimer: null });
     log(`[Duel] Player ${userId} joined room ${roomCode} (${room.players.size}/2)`, "duel-ws");
 
     if (room.players.size === 2) {
@@ -136,7 +138,7 @@ export class DuelRoomRegistry {
         send(p.ws, { type: "room:ready", startAt });
       }
       let seconds = 3;
-      const tick = () => {
+      const tick = (): void => {
         if (seconds <= 0) {
           room.status = "playing";
           return;
@@ -236,13 +238,13 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true });
 
   httpServer.on("upgrade", (request: IncomingMessage, socket, head) => {
-    const url = request.url || "";
+    const url = request.url ?? "";
     if (!url.startsWith("/ws/duel")) return;
 
     const sessionMiddleware = getSessionMiddleware();
-    sessionMiddleware(request as any, {} as any, () => {
-      const session = (request as any).session;
-      const userId: number | undefined = session?.passport?.user;
+    sessionMiddleware(request as unknown as Request, {} as unknown as Response, () => {
+      const sessionReq = request as SessionIncomingMessage;
+      const userId = sessionReq.session?.passport?.user;
 
       if (!userId) {
         log("[Duel] WS connection rejected: unauthenticated", "duel-ws");
@@ -251,23 +253,29 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
         return;
       }
 
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        (ws as any).userId = userId;
+      wss.handleUpgrade(request, socket, head, (rawWs) => {
+        const ws = rawWs as DuelWebSocket;
+        ws.userId = userId;
         wss.emit("connection", ws, request);
       });
     });
   });
 
-  wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
-    const userId: number = (ws as any).userId;
+  wss.on("connection", (rawWs: WebSocket) => {
+    const ws = rawWs as DuelWebSocket;
+    const userId = ws.userId;
     let currentRoomCode: string | undefined;
 
     log(`[Duel] WS connection established for user ${userId}`, "duel-ws");
 
     ws.on("message", (raw) => {
+      void handleMessage(raw.toString());
+    });
+
+    async function handleMessage(rawStr: string): Promise<void> {
       let msg: DuelClientMessage;
       try {
-        msg = JSON.parse(raw.toString()) as DuelClientMessage;
+        msg = JSON.parse(rawStr) as DuelClientMessage;
       } catch {
         send(ws, { type: "error", message: "Invalid JSON" });
         return;
@@ -276,12 +284,29 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
       switch (msg.type) {
         case "room:join": {
           const roomCode = msg.roomCode.toUpperCase();
-          const room = duelRegistry.getRoom(roomCode);
-          if (!room) {
-            send(ws, { type: "error", message: "Room not found" });
+
+          const challenge = await storage.getDuelChallengeByRoom(roomCode);
+          if (!challenge) {
+            send(ws, { type: "error", message: "Room not found or not linked to a duel challenge" });
             return;
           }
-          const result = duelRegistry.joinRoom(roomCode, userId, "Player", null, ws);
+          if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
+            log(`[Duel] Unauthorized join attempt: user ${userId} not in challenge for room ${roomCode}`, "duel-ws");
+            send(ws, { type: "error", message: "You are not a participant in this duel" });
+            return;
+          }
+
+          const room = duelRegistry.getRoom(roomCode);
+          if (!room) {
+            send(ws, { type: "error", message: "Room not found in registry" });
+            return;
+          }
+
+          const user = await storage.getUserById(userId);
+          const name = user?.name ?? "Player";
+          const avatarUrl = user?.avatarUrl ?? null;
+
+          const result = duelRegistry.joinRoom(roomCode, userId, name, avatarUrl, ws);
           if (!result.success) {
             send(ws, { type: "error", message: result.error ?? "Cannot join room" });
             return;
@@ -311,7 +336,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
         default:
           send(ws, { type: "error", message: "Unknown message type" });
       }
-    });
+    }
 
     ws.on("close", () => {
       log(`[Duel] WS closed for user ${userId}`, "duel-ws");
@@ -320,7 +345,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
       }
     });
 
-    ws.on("error", (err) => {
+    ws.on("error", (err: Error) => {
       log(`[Duel] WS error for user ${userId}: ${err.message}`, "duel-ws");
     });
   });
