@@ -32,6 +32,7 @@ import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
+import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 interface DailyChallengeResponse {
@@ -148,6 +149,8 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       const deepShellMode = seed % 2 === 0 ? "blitz" : "wrapper";
       return <DeepShellWordsGame initialMode={deepShellMode} groupSeed={seed} locked />;
     }
+    case "letter-dodge":
+      return <LetterDodgeGame groupSeed={seed} locked />;
     default:
       return null;
   }
