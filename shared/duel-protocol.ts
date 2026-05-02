@@ -31,6 +31,10 @@ export type DuelServerMessage =
       opponentName: string;
       opponentAvatarUrl: string | null;
       myLives: number;
+      /** Words this player has submitted so far (excluding the seed word). */
+      myWords: string[];
+      /** Words the opponent has submitted so far (excluding the seed word). */
+      opponentWords: string[];
       opponentLives: number;
       /** Current word in the chain (head of the chain). */
       currentWord: string;

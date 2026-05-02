@@ -60,6 +60,9 @@ export interface DuelTurnEngineInitialState {
   isMyTurn: boolean;
   myLives: number;
   opponentLives: number;
+  /** Pre-populated from server reconnect snapshot (may be empty on fresh start). */
+  myWords?: string[];
+  opponentWords?: string[];
 }
 
 export interface DuelTurnEngineProps {
@@ -128,8 +131,9 @@ export function DuelTurnEngine({
   const forfeitReasonRef = useRef<"disconnect" | "manual" | undefined>(undefined);
 
   // Per-player word tracking (refs — only needed at game-end)
-  const myWordsRef = useRef<string[]>([]);
-  const opponentWordsRef = useRef<string[]>([]);
+  // Pre-seed from reconnect snapshot if available so post-match lists are complete
+  const myWordsRef = useRef<string[]>(initialState.myWords ?? []);
+  const opponentWordsRef = useRef<string[]>(initialState.opponentWords ?? []);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameEndedRef = useRef(false);

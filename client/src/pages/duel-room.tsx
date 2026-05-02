@@ -43,6 +43,7 @@ export default function DuelRoom() {
   const { toast } = useToast();
 
   const wsRef = useRef<WebSocket | null>(null);
+  const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
@@ -123,7 +124,7 @@ export default function DuelRoom() {
           break;
 
         case "room:state":
-          // Reconnect snapshot — restore full game state
+          // Reconnect snapshot — restore full game state including per-player word history
           setOpponentId(msg.opponentId);
           setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
@@ -133,6 +134,8 @@ export default function DuelRoom() {
             isMyTurn: msg.isMyTurn,
             myLives: msg.myLives,
             opponentLives: msg.opponentLives,
+            myWords: msg.myWords,
+            opponentWords: msg.opponentWords,
           });
           setEngineKey((k) => k + 1); // remount engine with restored state
           setPhase("playing");
@@ -145,10 +148,11 @@ export default function DuelRoom() {
         case "room:countdown":
           setCountdownNum(msg.secondsLeft);
           if (msg.secondsLeft === 1) {
-            setTimeout(() => {
+            const t = setTimeout(() => {
               setCountdownNum(null);
               setPhase("playing");
             }, 1000);
+            countdownTimeoutRef.current = t;
           }
           break;
 
@@ -181,8 +185,14 @@ export default function DuelRoom() {
 
         case "player:disconnect":
           // reconnectDeadlineMs=0 is a countdown-abort signal from the server
-          // (opponent left before the game began). Reset UI to waiting state.
+          // (opponent left before the game began). Cancel the pending timeout
+          // that would transition to "playing" and reset UI to waiting state.
           if (msg.reconnectDeadlineMs === 0 && phaseRef.current === "countdown") {
+            if (countdownTimeoutRef.current !== null) {
+              clearTimeout(countdownTimeoutRef.current);
+              countdownTimeoutRef.current = null;
+            }
+            setCountdownNum(null);
             setOpponentReady(false);
             setPhase("waiting");
           } else {

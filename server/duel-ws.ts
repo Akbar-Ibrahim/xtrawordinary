@@ -59,6 +59,8 @@ type DuelRoom = {
   challengerId: number;
   /** Server-tracked lives per player (userId → lives). Populated when playing begins. */
   livesPerPlayer: Map<number, number>;
+  /** Words submitted by each player (userId → word list, excluding seed). */
+  wordsPerPlayer: Map<number, string[]>;
   /** Authoritative chain head (uppercased). Set to startWord when game starts. */
   currentWord: string;
   /** All words used so far (uppercased). */
@@ -196,6 +198,7 @@ export class DuelRoomRegistry {
       createdAt: Date.now(),
       challengerId,
       livesPerPlayer: new Map(),
+      wordsPerPlayer: new Map(),
       currentWord: startWord,
       usedWords: [startWord],
       currentTurnUserId: null,
@@ -231,6 +234,7 @@ export class DuelRoomRegistry {
       createdAt: Date.now(),
       challengerId,
       livesPerPlayer: new Map(),
+      wordsPerPlayer: new Map(),
       currentWord: startWord,
       usedWords: [startWord],
       currentTurnUserId: null,
@@ -296,6 +300,8 @@ export class DuelRoomRegistry {
           const myLives = room.livesPerPlayer.get(userId) ?? INITIAL_LIVES;
           const opponentLives = room.livesPerPlayer.get(opponent.userId) ?? INITIAL_LIVES;
           const isMyTurn = room.currentTurnUserId === userId;
+          const myWords = room.wordsPerPlayer.get(userId) ?? [];
+          const opponentWords = room.wordsPerPlayer.get(opponent.userId) ?? [];
           send(ws, {
             type: "room:state",
             phase: "playing",
@@ -304,6 +310,8 @@ export class DuelRoomRegistry {
             opponentAvatarUrl: opponent.avatarUrl,
             myLives,
             opponentLives,
+            myWords: [...myWords],
+            opponentWords: [...opponentWords],
             currentWord: room.currentWord,
             usedWords: [...room.usedWords],
             isMyTurn,
@@ -444,6 +452,8 @@ export class DuelRoomRegistry {
         // Move is valid — update authoritative state and relay to opponent
         room.currentWord = submittedWord;
         room.usedWords = [...room.usedWords, submittedWord];
+        const senderWords = room.wordsPerPlayer.get(fromUserId) ?? [];
+        room.wordsPerPlayer.set(fromUserId, [...senderWords, submittedWord]);
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
 
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
