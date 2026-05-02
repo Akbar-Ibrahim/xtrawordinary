@@ -106,6 +106,7 @@ const CUSTOM_PLAY_SLUGS = new Set([
   "letter-frequency",
   "letter-balance",
   "word-length",
+  "letter-dodge",
 ]);
 
 const LETTER_BALANCE_CATEGORIES_DETAIL = [
@@ -815,6 +816,21 @@ export default function GameDetail() {
                 locked
                 quizMode
               />
+            ) : isCustomPlay && slug === "letter-dodge" ? (
+              <LetterDodgeGame
+                initialDifficulty={(() => {
+                  const d = customPlayParams.difficulty;
+                  if (d === "advanced") return "advanced" as const;
+                  if (d !== undefined) return Math.min(5, Math.max(1, Number(d) || 1)) as 1 | 2 | 3 | 4 | 5;
+                  return undefined;
+                })()}
+                initialForbiddenLetters={customPlayParams.letters as string[] | undefined}
+                initialSurvival={customPlayParams.survival === true}
+                initialWordCount={!customPlayParams.survival ? customPlayParams.wordCount : undefined}
+                initialTimeLimit={!customPlayParams.survival ? customPlayParams.timeLimit : undefined}
+                locked
+                quizMode
+              />
             ) : GameComponent ? (
               <GameComponent groupSeed={effectiveGroupSeed} />
             ) : (
@@ -938,36 +954,91 @@ export default function GameDetail() {
                 </div>
               )}
               {slug === "letter-dodge" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Difficulty (forbidden letters)</label>
-                  <p className="text-xs text-muted-foreground">All players will face the same forbidden-letter constraint determined by this difficulty and the session seed.</p>
-                  <div className="grid gap-2">
-                    {([1, 2, 3, 4, 5, "advanced"] as const).map((d) => {
-                      const labels: Record<string | number, { name: string; desc: string }> = {
-                        1: { name: "Easy", desc: "Avoid 1 forbidden letter" },
-                        2: { name: "Medium", desc: "Avoid 2 forbidden letters" },
-                        3: { name: "Hard", desc: "Avoid 3 forbidden letters" },
-                        4: { name: "Expert", desc: "Avoid 4 forbidden letters" },
-                        5: { name: "Master", desc: "Avoid 5 forbidden letters" },
-                        advanced: { name: "Advanced", desc: "Random number of forbidden letters" },
-                      };
-                      const selected = (quizParams.difficulty ?? 3) === d;
-                      return (
-                        <Button
-                          key={String(d)}
-                          type="button"
-                          size="sm"
-                          variant={selected ? "default" : "outline"}
-                          className="w-full justify-start gap-2 h-auto py-2"
-                          onClick={() => setQuizParams(p => ({ ...p, difficulty: d }))}
-                          data-testid={`button-quiz-dodge-difficulty-${d}`}
-                        >
-                          <span className="font-semibold">{labels[d].name}</span>
-                          <span className="text-xs font-normal opacity-70">{labels[d].desc}</span>
-                        </Button>
-                      );
-                    })}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Difficulty (forbidden letters)</label>
+                    <Select
+                      value={quizParams.difficulty !== undefined ? String(quizParams.difficulty) : "auto"}
+                      onValueChange={(v) => {
+                        if (v === "auto") {
+                          setQuizParams(p => { const n = { ...p }; delete n.difficulty; delete n.letters; return n; });
+                        } else if (v === "advanced") {
+                          setQuizParams(p => ({ ...p, difficulty: "advanced" as const, letters: undefined }));
+                        } else {
+                          const c = Number(v) as 1 | 2 | 3 | 4 | 5;
+                          setQuizParams(p => ({ ...p, difficulty: c, letters: Array(c).fill("any") }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="mt-1" data-testid="select-quiz-dodge-difficulty">
+                        <SelectValue placeholder="Auto (seed-based)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (seed-based)</SelectItem>
+                        <SelectItem value="1">Easy — 1 forbidden letter</SelectItem>
+                        <SelectItem value="2">Medium — 2 forbidden letters</SelectItem>
+                        <SelectItem value="3">Hard — 3 forbidden letters</SelectItem>
+                        <SelectItem value="4">Expert — 4 forbidden letters</SelectItem>
+                        <SelectItem value="5">Master — 5 forbidden letters</SelectItem>
+                        <SelectItem value="advanced">Advanced — random count</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {typeof quizParams.difficulty === "number" && (
+                    <div>
+                      <label className="text-sm font-medium">Pin Forbidden Letters (optional)</label>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        {Array.from({ length: quizParams.difficulty }).map((_, i) => (
+                          <div key={i} className="flex flex-col items-center gap-0.5">
+                            <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                            <Select
+                              value={(quizParams.letters?.[i]) || "any"}
+                              onValueChange={(v) => setQuizParams(p => {
+                                const letters = [...(p.letters ?? Array(p.difficulty as number).fill("any"))];
+                                letters[i] = v;
+                                return { ...p, letters };
+                              })}
+                            >
+                              <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-quiz-dodge-letter-${i}`}><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="any">Any</SelectItem>
+                                {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a letter all players must avoid.</p>
+                    </div>
+                  )}
+                  {!quizParams.survival && (
+                    <>
+                      <div>
+                        <label className="text-sm font-medium">Words to submit</label>
+                        <Input
+                          type="number" min={1} max={50} placeholder="20"
+                          className="mt-1 h-8 text-sm w-24"
+                          data-testid="input-quiz-dodge-word-count"
+                          value={quizParams.wordCount ?? ""}
+                          onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time limit</label>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {[60, 90, 120, 180, 300].map(t => (
+                            <Button key={t} type="button" size="sm"
+                              variant={(quizParams.timeLimit ?? 90) === t ? "default" : "outline"}
+                              onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
+                              data-testid={`button-quiz-dodge-time-${t}`}
+                            >
+                              {t < 60 ? `${t}s` : `${t / 60}min`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
               {slug === "letter-position" && (
@@ -1528,7 +1599,7 @@ export default function GameDetail() {
                   </div>
                 );
               })()}
-              {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency") && (
+              {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency" || slug === "letter-dodge") && (
                 <div>
                   <label className="text-sm font-medium">Mode</label>
                   <div className="flex gap-2 mt-1">
@@ -1545,7 +1616,7 @@ export default function GameDetail() {
                       type="button"
                       size="sm"
                       variant={quizParams.survival ? "default" : "outline"}
-                      onClick={() => setQuizParams(p => { const n = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
+                      onClick={() => setQuizParams(p => { const n: any = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
                       data-testid="button-quiz-mode-survival"
                     >
                       Survival (8s/word)
@@ -1784,6 +1855,95 @@ export default function GameDetail() {
                             variant={(customPlayParams.timeLimit ?? 120) === t ? "default" : "outline"}
                             onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
                             data-testid={`button-custom-hunt-time-${t}`}
+                          >
+                            {t < 60 ? `${t}s` : `${t / 60}min`}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {slug === "letter-dodge" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Difficulty (forbidden letters)</label>
+                  <Select
+                    value={customPlayParams.difficulty !== undefined ? String(customPlayParams.difficulty) : "auto"}
+                    onValueChange={(v) => {
+                      if (v === "auto") {
+                        setCustomPlayParams(p => { const n = { ...p }; delete n.difficulty; delete n.letters; return n; });
+                      } else if (v === "advanced") {
+                        setCustomPlayParams(p => ({ ...p, difficulty: "advanced" as const, letters: undefined }));
+                      } else {
+                        const c = Number(v) as 1 | 2 | 3 | 4 | 5;
+                        setCustomPlayParams(p => ({ ...p, difficulty: c, letters: Array(c).fill("any") }));
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-custom-dodge-difficulty">
+                      <SelectValue placeholder="Auto (random)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto (random)</SelectItem>
+                      <SelectItem value="1">Easy — 1 forbidden letter</SelectItem>
+                      <SelectItem value="2">Medium — 2 forbidden letters</SelectItem>
+                      <SelectItem value="3">Hard — 3 forbidden letters</SelectItem>
+                      <SelectItem value="4">Expert — 4 forbidden letters</SelectItem>
+                      <SelectItem value="5">Master — 5 forbidden letters</SelectItem>
+                      <SelectItem value="advanced">Advanced — random count</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {typeof customPlayParams.difficulty === "number" && (
+                  <div>
+                    <label className="text-sm font-medium">Pin Forbidden Letters (optional)</label>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      {Array.from({ length: customPlayParams.difficulty }).map((_, i) => (
+                        <div key={i} className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                          <Select
+                            value={(customPlayParams.letters?.[i]) || "any"}
+                            onValueChange={(v) => setCustomPlayParams(p => {
+                              const letters = [...(p.letters ?? Array(p.difficulty as number).fill("any"))];
+                              letters[i] = v;
+                              return { ...p, letters };
+                            })}
+                          >
+                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-custom-dodge-letter-${i}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter to always avoid.</p>
+                  </div>
+                )}
+                {!customPlayParams.survival && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium">Words to submit</label>
+                      <Input
+                        type="number" min={1} max={50} placeholder="20"
+                        className="mt-1 h-8 text-sm w-24"
+                        data-testid="input-custom-dodge-word-count"
+                        value={customPlayParams.wordCount ?? ""}
+                        onChange={(e) => setCustomPlayParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Time limit</label>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {[60, 90, 120, 180, 300].map(t => (
+                          <Button key={t} type="button" size="sm"
+                            variant={(customPlayParams.timeLimit ?? 90) === t ? "default" : "outline"}
+                            onClick={() => setCustomPlayParams(p => ({ ...p, timeLimit: t }))}
+                            data-testid={`button-custom-dodge-time-${t}`}
                           >
                             {t < 60 ? `${t}s` : `${t / 60}min`}
                           </Button>
@@ -2096,7 +2256,7 @@ export default function GameDetail() {
                     type="button"
                     size="sm"
                     variant={customPlayParams.survival ? "default" : "outline"}
-                    onClick={() => setCustomPlayParams(p => { const n = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
+                    onClick={() => setCustomPlayParams(p => { const n: any = { ...p, survival: true }; delete n.wordCount; delete n.timeLimit; return n; })}
                     data-testid="button-custom-mode-survival"
                   >
                     Survival (8s/word)

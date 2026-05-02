@@ -46,6 +46,17 @@ function pickForbiddenLetters(count: number, rng: () => number): string[] {
   return chosen.sort();
 }
 
+function resolveForbiddenLetters(template: string[], rng: () => number): string[] {
+  const pinned = template.filter(l => l !== "any");
+  const available = [...DODGE_LETTER_POOL].filter(l => !pinned.includes(l));
+  return template.map(l => {
+    if (l !== "any") return l;
+    if (available.length === 0) return null;
+    const idx = Math.floor(rng() * available.length);
+    return available.splice(idx, 1)[0];
+  }).filter((l): l is string => l !== null).sort();
+}
+
 function getForbiddenInWord(word: string, forbidden: string[]): string[] {
   const upper = word.toUpperCase();
   return forbidden.filter((l) => upper.includes(l));
@@ -66,9 +77,22 @@ export function LetterDodgeGame({
   locked,
   quizMode,
   initialDifficulty,
-}: { groupSeed?: number; locked?: boolean; quizMode?: boolean; initialDifficulty?: DodgeDifficulty } = {}) {
+  initialSurvival,
+  initialWordCount,
+  initialTimeLimit,
+  initialForbiddenLetters,
+}: {
+  groupSeed?: number;
+  locked?: boolean;
+  quizMode?: boolean;
+  initialDifficulty?: DodgeDifficulty;
+  initialSurvival?: boolean;
+  initialWordCount?: number;
+  initialTimeLimit?: number;
+  initialForbiddenLetters?: string[];
+} = {}) {
   const { playSound } = useSound();
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const isSurvivalRef = useRef(false);
 
   const { reportResult, resetRecorded } = useGameResult({
@@ -147,16 +171,20 @@ export function LetterDodgeGame({
         seedRngRef.current = makeSeededRng(groupSeed);
       }
       const rng = seedRngRef.current ?? Math.random;
-      const config = DIFFICULTY_CONFIG[d];
-      const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
-      const letters = pickForbiddenLetters(count, rng);
-      setForbiddenLetters(letters);
+
+      if (initialForbiddenLetters && initialForbiddenLetters.length > 0) {
+        setForbiddenLetters(resolveForbiddenLetters(initialForbiddenLetters, rng));
+      } else {
+        const config = DIFFICULTY_CONFIG[d];
+        const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
+        setForbiddenLetters(pickForbiddenLetters(count, rng));
+      }
 
       setGameStatus("playing");
-      startCountdown(isSurvival ? SURVIVAL_TIME : GAME_TIME);
+      startCountdown(isSurvival ? SURVIVAL_TIME : (initialTimeLimit ?? GAME_TIME));
       setTimeout(() => inputRef.current?.focus(), 100);
     },
-    [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed]
+    [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed, initialForbiddenLetters, initialTimeLimit]
   );
 
   useEffect(() => {
@@ -232,6 +260,14 @@ export function LetterDodgeGame({
       setUserInput("");
       setFeedback({ type: "correct", message: `+${pts} pts!` });
       setTimeout(() => setFeedback(null), 800);
+
+      // End game when word count target is reached (classic mode only)
+      if (!isSurvivalRef.current && initialWordCount && foundWordsRef.current.length >= initialWordCount) {
+        stopTimer();
+        setCompletionMessage(getCompletionMessage(true));
+        setGameStatus("finished");
+        return;
+      }
 
       // Reset survival timer on correct word
       if (isSurvivalRef.current) {

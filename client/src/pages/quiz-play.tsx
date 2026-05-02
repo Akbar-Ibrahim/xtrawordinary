@@ -139,15 +139,23 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
     }
     case "letter-dodge": {
       const diffLabels: Record<string | number, string> = {
-        1: "Easy (1 forbidden letter)",
-        2: "Medium (2 forbidden letters)",
-        3: "Hard (3 forbidden letters)",
-        4: "Expert (4 forbidden letters)",
-        5: "Master (5 forbidden letters)",
-        advanced: "Advanced (random forbidden letters)",
+        1: "Easy (1)",
+        2: "Medium (2)",
+        3: "Hard (3)",
+        4: "Expert (4)",
+        5: "Master (5)",
+        advanced: "Advanced (random)",
       };
       const diff = p.difficulty ?? 3;
-      return `Letter Dodge · ${diffLabels[diff] ?? `Difficulty ${diff}`}`;
+      const pinnedLetters = Array.isArray(p.letters) ? p.letters.filter((l: string) => l && l !== "any") : [];
+      const letterInfo = pinnedLetters.length > 0 ? ` · Avoid: ${pinnedLetters.join(",")}` : "";
+      const dodgeBase = `Dodge: ${diffLabels[diff] ?? `Difficulty ${diff}`}${letterInfo}`;
+      if (!p.survival) {
+        const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "90s";
+        return `${dodgeBase} · ${wc} · ${tl}${survival}`;
+      }
+      return `${dodgeBase}${survival}`;
     }
     case "word-roots":
       return "Word roots & etymology";
@@ -237,7 +245,10 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
         v === 1 || v === 2 || v === 3 || v === 4 || v === 5 || v === "advanced";
       const dodgeDiff = params?.difficulty;
       const initialDifficulty: DodgeDifficulty = isDodgeDifficulty(dodgeDiff) ? dodgeDiff : 3;
-      return <LetterDodgeGame groupSeed={seed} locked quizMode initialDifficulty={initialDifficulty} />;
+      const initialForbiddenLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
+      const dodgeWc = !survival ? toNum(params?.wordCount) : undefined;
+      const dodgeTl = !survival ? toNum(params?.timeLimit) : undefined;
+      return <LetterDodgeGame groupSeed={seed} locked quizMode initialDifficulty={initialDifficulty} initialForbiddenLetters={initialForbiddenLetters} initialSurvival={survival} initialWordCount={dodgeWc} initialTimeLimit={dodgeTl} />;
     }
     case "word-roots":
       return <WordRootsGame groupSeed={seed} locked quizMode />;
