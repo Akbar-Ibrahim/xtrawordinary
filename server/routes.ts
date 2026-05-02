@@ -2624,6 +2624,31 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/rooms/:roomCode", requireAuth, async (req: any, res) => {
+    try {
+      const roomCode = req.params.roomCode.toUpperCase();
+      const userId = req.user.id;
+      const challenge = await storage.getDuelChallengeByRoom(roomCode);
+      if (!challenge) return res.status(404).json({ error: "Room not found" });
+      if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
+        return res.status(403).json({ error: "Not a participant" });
+      }
+      const { duelRegistry } = await import("./duel-ws");
+      const room = duelRegistry.getRoom(roomCode);
+      if (!room) return res.status(404).json({ error: "Room not active" });
+      res.json({
+        gameSlug: room.gameSlug,
+        seed: room.seed,
+        startWord: room.startWord,
+        challengerId: challenge.challengerId,
+        challengeeId: challenge.challengeeId,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch room info" });
+    }
+  });
+
   app.get("/api/duels/ratings/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);

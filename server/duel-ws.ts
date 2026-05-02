@@ -14,6 +14,16 @@ type SessionIncomingMessage = IncomingMessage & {
   session: { passport?: { user?: number } };
 };
 
+const DUEL_START_WORDS = [
+  "APPLE", "BRIDGE", "CLOUD", "DREAM", "EAGLE", "FLAME", "GRAPE", "HONEY",
+  "IMAGE", "JEWEL", "KNEEL", "LEMON", "MAPLE", "NIGHT", "OLIVE", "PEARL",
+  "QUEEN", "RIVER", "STONE", "TIGER", "ULTRA", "VAPOR", "WHALE", "XEROX",
+  "YACHT", "ZEBRA", "ANGEL", "BRAVE", "CANDY", "DANCE", "EMBER", "FROST",
+  "GLOBE", "HEART", "IVORY", "JOKER", "KNIFE", "LIGHT", "MOOSE", "NOVEL",
+  "ORBIT", "PIANO", "QUIET", "ROBIN", "SNAIL", "TOAST", "UNDER", "VIVID",
+  "WATER", "YIELD",
+];
+
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -41,9 +51,93 @@ type DuelRoom = {
   players: Map<number, RoomPlayer>;
   gameSlug: string;
   seed: number;
+  startWord: string;
   status: "waiting" | "countdown" | "playing" | "over";
   createdAt: number;
 };
+
+async function computeAndFinalizeElo(
+  room: DuelRoom,
+  winnerId: number,
+): Promise<void> {
+  const playerIds = Array.from(room.players.keys());
+  if (playerIds.length < 2) return;
+  const [id1, id2] = playerIds;
+
+  const [r1, r2] = await Promise.all([
+    storage.getDuelRating(id1),
+    storage.getDuelRating(id2),
+  ]);
+  const elo1 = r1?.elo ?? 1200;
+  const elo2 = r2?.elo ?? 1200;
+
+  const isDraw = winnerId === -1;
+  const p1wins = winnerId === id1;
+
+  const K = 32;
+  const expected1 = 1 / (1 + Math.pow(10, (elo2 - elo1) / 400));
+  const expected2 = 1 - expected1;
+  const result1 = isDraw ? 0.5 : p1wins ? 1 : 0;
+  const result2 = isDraw ? 0.5 : p1wins ? 0 : 1;
+  const delta1 = Math.round(K * (result1 - expected1));
+  const delta2 = Math.round(K * (result2 - expected2));
+
+  const challenge = await storage.getDuelChallengeByRoom(room.roomCode);
+
+  const outcome = isDraw
+    ? "draw"
+    : p1wins
+    ? "player1_wins"
+    : "player2_wins";
+
+  await Promise.all([
+    storage.upsertDuelRating(id1, {
+      elo: elo1 + delta1,
+      wins: (r1?.wins ?? 0) + (p1wins ? 1 : 0),
+      losses: (r1?.losses ?? 0) + (!isDraw && !p1wins ? 1 : 0),
+      draws: (r1?.draws ?? 0) + (isDraw ? 1 : 0),
+    }),
+    storage.upsertDuelRating(id2, {
+      elo: elo2 + delta2,
+      wins: (r2?.wins ?? 0) + (!isDraw && !p1wins ? 1 : 0),
+      losses: (r2?.losses ?? 0) + (!isDraw && p1wins ? 1 : 0),
+      draws: (r2?.draws ?? 0) + (isDraw ? 1 : 0),
+    }),
+    storage.createDuelSession({
+      roomCode: room.roomCode,
+      challengeId: challenge?.id ?? null,
+      player1Id: id1,
+      player2Id: id2,
+      gameSlug: room.gameSlug,
+      seed: room.seed,
+      outcome,
+      eloDeltaPlayer1: delta1,
+      eloDeltaPlayer2: delta2,
+      startedAt: new Date(room.createdAt).toISOString(),
+      endedAt: new Date().toISOString(),
+    }),
+  ]);
+
+  const p1 = room.players.get(id1);
+  const p2 = room.players.get(id2);
+
+  if (p1) {
+    send(p1.ws, {
+      type: "game:over",
+      outcome: isDraw ? "draw" : p1wins ? "you_win" : "you_lose",
+      eloChange: delta1,
+      newElo: elo1 + delta1,
+    });
+  }
+  if (p2) {
+    send(p2.ws, {
+      type: "game:over",
+      outcome: isDraw ? "draw" : !p1wins ? "you_win" : "you_lose",
+      eloChange: delta2,
+      newElo: elo2 + delta2,
+    });
+  }
+}
 
 export class DuelRoomRegistry {
   private rooms: Map<string, DuelRoom> = new Map();
@@ -54,11 +148,15 @@ export class DuelRoomRegistry {
       roomCode = generateRoomCode();
     } while (this.rooms.has(roomCode));
 
+    const seed = Math.floor(Math.random() * 1_000_000);
+    const startWord = DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+
     const room: DuelRoom = {
       roomCode,
       players: new Map(),
       gameSlug,
-      seed: Math.floor(Math.random() * 1_000_000),
+      seed,
+      startWord,
       status: "waiting",
       createdAt: Date.now(),
     };
@@ -176,10 +274,18 @@ export class DuelRoomRegistry {
       send(opponent.ws, { type: "player:disconnect", reconnectDeadlineMs: deadline });
     }
 
-    player.disconnectTimer = setTimeout(() => {
+    player.disconnectTimer = setTimeout(async () => {
       log(`[Duel] Player ${userId} forfeited in room ${roomCode} (timeout)`, "duel-ws");
-      if (opponent) {
-        send(opponent.ws, { type: "player:forfeited", reason: "disconnect" });
+      const currentRoom = this.rooms.get(roomCode);
+      if (!currentRoom) return;
+      const currentOpponent = this.getOpponent(currentRoom, userId);
+      if (currentOpponent) {
+        send(currentOpponent.ws, { type: "player:forfeited", reason: "disconnect" });
+        try {
+          await computeAndFinalizeElo(currentRoom, currentOpponent.userId);
+        } catch (err) {
+          log(`[Duel] ELO update failed for forfeit in room ${roomCode}: ${err}`, "duel-ws");
+        }
       }
       this.endRoom(roomCode);
     }, GRACE_MS);
@@ -194,8 +300,15 @@ export class DuelRoomRegistry {
     if (opponent) {
       send(opponent.ws, { type: "player:forfeited", reason: "manual" });
     }
+    void (async () => {
+      try {
+        await computeAndFinalizeElo(room, opponent?.userId ?? -1);
+      } catch (err) {
+        log(`[Duel] ELO update failed for manual forfeit in room ${roomCode}: ${err}`, "duel-ws");
+      }
+      this.endRoom(roomCode);
+    })();
     log(`[Duel] Player ${userId} manually forfeited room ${roomCode}`, "duel-ws");
-    this.endRoom(roomCode);
   }
 
   endRoom(roomCode: string): void {
@@ -335,6 +448,25 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             return;
           }
           duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
+          break;
+        }
+
+        case "game:end": {
+          if (!currentRoomCode) {
+            send(ws, { type: "error", message: "Not in a room" });
+            return;
+          }
+          const room = duelRegistry.getRoom(currentRoomCode);
+          if (!room) return;
+
+          try {
+            await computeAndFinalizeElo(room, msg.winnerId);
+          } catch (err) {
+            log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
+            send(ws, { type: "error", message: "Failed to finalize game" });
+          }
+          duelRegistry.endRoom(currentRoomCode);
+          currentRoomCode = undefined;
           break;
         }
 

@@ -331,6 +331,52 @@ export default function GameDetail() {
   const [wsCategory, setWsCategory] = useState("");
   const [wrSeed, setWrSeed] = useState<number>(() => Math.floor(Math.random() * 1_000_000));
 
+  const [showDuelDialog, setShowDuelDialog] = useState(false);
+  const [duelFriendId, setDuelFriendId] = useState<string>("");
+  const [pendingDuelChallengeId, setPendingDuelChallengeId] = useState<number | null>(null);
+  const [duelSendPending, setDuelSendPending] = useState(false);
+
+  const createDuelChallengeMutation = useMutation({
+    mutationFn: async (challengeeId: number) => {
+      const res = await apiRequest("POST", "/api/duels/challenges", { challengeeId, gameSlug: slug });
+      return res.json() as Promise<{ id: number; status: string; roomCode: string | null }>;
+    },
+    onSuccess: (data) => {
+      setPendingDuelChallengeId(data.id);
+      setDuelSendPending(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Could not send duel challenge.", variant: "destructive" });
+      setDuelSendPending(false);
+    },
+  });
+
+  const { data: pendingDuelData, isError: duelPollError } = useQuery<{ id: number; status: string; roomCode: string | null }>({
+    queryKey: ["/api/duels/challenges/pending", pendingDuelChallengeId],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/challenges?type=outgoing", { credentials: "include" });
+      const list = await res.json() as Array<{ id: number; status: string; roomCode: string | null }>;
+      return list.find((c) => c.id === pendingDuelChallengeId) ?? { id: pendingDuelChallengeId!, status: "pending", roomCode: null };
+    },
+    enabled: pendingDuelChallengeId !== null,
+    refetchInterval: 3000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (pendingDuelData?.status === "accepted" && pendingDuelData.roomCode) {
+      const code = pendingDuelData.roomCode;
+      setPendingDuelChallengeId(null);
+      setShowDuelDialog(false);
+      navigate(`/duel/${code}`);
+    }
+    if (pendingDuelData?.status === "declined" || pendingDuelData?.status === "cancelled" || pendingDuelData?.status === "expired") {
+      setPendingDuelChallengeId(null);
+      toast({ title: "Duel not started", description: `Challenge was ${pendingDuelData.status}.`, variant: "destructive" });
+      setShowDuelDialog(false);
+    }
+  }, [pendingDuelData]);
+
   const LP_QUIZ_MIN_WORDS = 10;
   const WL_MIN_WORDS = 10;
   const lpLetter = quizParams.letter as string | undefined;
@@ -650,6 +696,17 @@ export default function GameDetail() {
                     >
                       <Swords className="h-4 w-4" />
                       Challenge a Friend
+                    </Button>
+                  )}
+                  {isAuthenticated && user?.isPremium && friends.length > 0 && slug === "word-chain" && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                      onClick={() => { setDuelFriendId(""); setPendingDuelChallengeId(null); setShowDuelDialog(true); }}
+                      data-testid="button-duel-friend"
+                    >
+                      <Swords className="h-4 w-4" />
+                      Duel a Friend
                     </Button>
                   )}
                   {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
@@ -3199,6 +3256,77 @@ export default function GameDetail() {
               Play &amp; Send Challenge
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDuelDialog} onOpenChange={(open) => { if (!open && !pendingDuelChallengeId) { setShowDuelDialog(false); } else if (!open && pendingDuelChallengeId) { setPendingDuelChallengeId(null); setShowDuelDialog(false); } }}>
+        <DialogContent data-testid="dialog-duel-friend">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Swords className="h-5 w-5 text-violet-500" />
+              Duel a Friend
+            </DialogTitle>
+          </DialogHeader>
+          {pendingDuelChallengeId ? (
+            <div className="space-y-4 py-4">
+              <div className="text-center space-y-3">
+                <Loader2 className="h-10 w-10 mx-auto animate-spin text-violet-500" />
+                <p className="font-medium">Waiting for acceptance…</p>
+                <p className="text-sm text-muted-foreground">Your friend will see the duel invite on their Friends page.</p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    await apiRequest("PATCH", `/api/duels/challenges/${pendingDuelChallengeId}/cancel`, {});
+                  } catch {}
+                  setPendingDuelChallengeId(null);
+                  setShowDuelDialog(false);
+                }}
+                data-testid="button-cancel-duel"
+              >
+                Cancel Challenge
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Challenge a friend to a live Word Chain duel! You'll both play turn by turn in real time.
+              </p>
+              <div>
+                <label className="text-sm font-medium">Friend</label>
+                <Select value={duelFriendId} onValueChange={setDuelFriendId}>
+                  <SelectTrigger data-testid="select-duel-friend">
+                    <SelectValue placeholder="Select a friend" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {friends.map((f) => (
+                      <SelectItem key={f.friendUser.id} value={String(f.friendUser.id)}>
+                        <span className="flex items-center gap-2">
+                          <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-5 w-5" />
+                          {f.friendUser.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={!duelFriendId || createDuelChallengeMutation.isPending}
+                onClick={() => {
+                  if (!duelFriendId) return;
+                  setDuelSendPending(true);
+                  createDuelChallengeMutation.mutate(parseInt(duelFriendId));
+                }}
+                data-testid="button-send-duel"
+              >
+                {createDuelChallengeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+                Send Duel Challenge
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

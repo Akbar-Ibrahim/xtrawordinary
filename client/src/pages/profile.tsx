@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
@@ -108,6 +108,16 @@ export default function Profile() {
     if (gameSlug === "letter-balance-survival") return "Letter Balance (Survival)";
     return gameSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
+
+  const { data: duelRating } = useQuery<{ userId: number; rating: number; wins: number; losses: number; draws: number }>({
+    queryKey: ["/api/duels/ratings", userId],
+    queryFn: async () => {
+      const res = await fetch(`/api/duels/ratings/${userId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: userId > 0,
+  });
 
   const { data: myQuizzes = [], isLoading: myQuizzesLoading } = useQuery<QuizSessionWithCount[]>({
     queryKey: ["/api/quiz-sessions/my"],
@@ -283,6 +293,28 @@ export default function Profile() {
             </Card>
           ))}
         </div>
+
+        {duelRating && (
+          <Card className="border-violet-300 dark:border-violet-700" data-testid="card-duel-elo">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Swords className="h-5 w-5 text-violet-500" />
+                  <div>
+                    <p className="font-semibold text-sm">Word Chain Duel</p>
+                    <p className="text-xs text-muted-foreground">Rated ELO</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-violet-600 dark:text-violet-400" data-testid="text-duel-elo">{duelRating.rating}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {duelRating.wins}W · {duelRating.losses}L · {duelRating.draws}D
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="pt-4">

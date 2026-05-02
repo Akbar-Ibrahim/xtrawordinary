@@ -1,7 +1,8 @@
 export type DuelClientMessage =
   | { type: "room:join"; roomCode: string }
   | { type: "room:ready" }
-  | { type: "game:move"; payload: unknown };
+  | { type: "game:move"; payload: unknown }
+  | { type: "game:end"; winnerId: number };
 
 export type DuelServerMessage =
   | {

@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2 } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Zap } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
-import type { Game, FriendChallenge } from "@shared/schema";
+import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS } from "@shared/schema";
 
 
@@ -35,7 +35,7 @@ interface SearchResult {
   avatarUrl: string | null;
 }
 
-const VALID_TABS = ["friends", "requests", "challenges"] as const;
+const VALID_TABS = ["friends", "requests", "challenges", "duels"] as const;
 type TabValue = typeof VALID_TABS[number];
 
 function getTabFromSearch(): TabValue {
@@ -75,6 +75,39 @@ export default function Friends() {
   const { data: challenges = [] } = useQuery<FriendChallenge[]>({
     queryKey: ["/api/challenges"],
     enabled: isAuthenticated,
+  });
+
+  const { data: incomingDuels = [] } = useQuery<DuelChallenge[]>({
+    queryKey: ["/api/duels/challenges/incoming"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json() as DuelChallenge[];
+      return data.filter((d) => d.status === "pending");
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 10000,
+  });
+
+  const acceptDuelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("PATCH", `/api/duels/challenges/${id}/accept`, {});
+      return res.json() as Promise<{ roomCode: string }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/duels/challenges/incoming"] });
+      navigate(`/duel/${data.roomCode}`);
+    },
+    onError: () => toast({ title: "Error", description: "Could not accept duel.", variant: "destructive" }),
+  });
+
+  const declineDuelMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/duels/challenges/${id}/decline`, {}),
+    onSuccess: () => {
+      toast({ title: "Duel declined" });
+      queryClient.invalidateQueries({ queryKey: ["/api/duels/challenges/incoming"] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not decline duel.", variant: "destructive" }),
   });
 
   const { data: games = [] } = useQuery<Game[]>({ queryKey: ["/api/games"] });
@@ -258,8 +291,8 @@ export default function Friends() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="friends" data-testid="tab-friends">
               Friends {friends.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{friends.length}</Badge>}
             </TabsTrigger>
@@ -271,6 +304,11 @@ export default function Friends() {
                 <Badge variant="destructive" className="ml-1 text-xs">{pendingForMe.length}</Badge>
               )}{unseenCompleted.length > 0 && (
                 <Badge className="ml-1 text-xs bg-primary text-primary-foreground">NEW</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="duels" data-testid="tab-duels">
+              Duels {incomingDuels.length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">{incomingDuels.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -344,6 +382,66 @@ export default function Friends() {
                           <Button size="sm" variant="outline" onClick={() => declineMutation.mutate(r.id)} data-testid={`button-decline-${r.id}`}>
                             <X className="h-4 w-4" />
                           </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="duels">
+            <Card>
+              <CardContent className="pt-6">
+                {incomingDuels.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground" data-testid="text-no-duels">
+                    <Swords className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No incoming duel challenges.</p>
+                    <p className="text-sm mt-1">Go to Word Chain and press "Duel a Friend" to challenge someone!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {incomingDuels.map((d) => (
+                      <div
+                        key={d.id}
+                        className="rounded-lg border border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20 p-4"
+                        data-testid={`row-duel-${d.id}`}
+                      >
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-3">
+                            <Swords className="h-5 w-5 text-violet-500 shrink-0" />
+                            <div>
+                              <p className="font-semibold text-sm">
+                                Word Chain Duel
+                              </p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Waiting for your response
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="gap-1 bg-violet-600 hover:bg-violet-700 text-white"
+                              onClick={() => acceptDuelMutation.mutate(d.id)}
+                              disabled={acceptDuelMutation.isPending || declineDuelMutation.isPending}
+                              data-testid={`button-accept-duel-${d.id}`}
+                            >
+                              {acceptDuelMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                              Accept
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => declineDuelMutation.mutate(d.id)}
+                              disabled={acceptDuelMutation.isPending || declineDuelMutation.isPending}
+                              data-testid={`button-decline-duel-${d.id}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
