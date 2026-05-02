@@ -505,6 +505,8 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
   "definition-match",
   "word-roots",
   "progressive-reveal",
+  "anagram-solver",
+  "word-scramble",
 ]);
 
 // ==================== CHALLENGES ====================
