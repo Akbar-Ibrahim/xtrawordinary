@@ -1409,7 +1409,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           const forfeitWinnerId = forfeitOpponent?.userId ?? -1;
           log(`[Duel] User ${userId} forfeited room ${currentRoomCode}. Winner: ${forfeitWinnerId}`, "duel-ws");
           try {
-            await finalizeGame(forfeitRoom, forfeitWinnerId);
+            await finalizeGame(forfeitRoom, forfeitWinnerId, true);
           } catch (err) {
             log(`[Duel] ELO finalization error on forfeit in room ${currentRoomCode}: ${err}`, "duel-ws");
           }

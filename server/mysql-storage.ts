@@ -1393,8 +1393,8 @@ export class MySQLStorage implements IStorage {
       gameSlug: row.gameSlug,
       seed: row.seed,
       format: (row.format as "turn" | "race") ?? "turn",
-      raceTarget: (row as any).raceTarget ?? null,
-      raceTimeLimit: (row as any).raceTimeLimit ?? null,
+      raceTarget: row.raceTarget ?? null,
+      raceTimeLimit: row.raceTimeLimit ?? null,
       outcome: (row.outcome as DuelSession["outcome"]) ?? null,
       eloDeltaPlayer1: row.eloDeltaPlayer1 ?? null,
       eloDeltaPlayer2: row.eloDeltaPlayer2 ?? null,
@@ -1517,7 +1517,7 @@ export class MySQLStorage implements IStorage {
       eloDeltaPlayer2: data.eloDeltaPlayer2 ?? null,
       startedAt: data.startedAt ? new Date(data.startedAt) : new Date(),
       endedAt: data.endedAt ? new Date(data.endedAt) : null,
-    } as any);
+    });
     const rows = await db.select().from(schema.duelSessions).where(eq(schema.duelSessions.id, result[0].insertId)).limit(1);
     return this.mapDuelSession(rows[0]);
   }

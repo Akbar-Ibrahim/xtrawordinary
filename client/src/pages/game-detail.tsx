@@ -3259,7 +3259,7 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setDuelFormat("turn"); setDuelRaceTarget(15); setDuelRaceTimeLimit(300); } }}>
+      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setDuelFormat(DUEL_RACE_SLUGS.has(slug) && !DUEL_TURN_SLUGS.has(slug) ? "race" : "turn"); setDuelRaceTarget(15); setDuelRaceTimeLimit(300); } }}>
         <DialogContent data-testid="dialog-duel-friend">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -3285,8 +3285,8 @@ export default function GameDetail() {
               </button>
             </div>
 
-            {/* Format selector — only show if game supports both or race-only */}
-            {slug && (DUEL_TURN_SLUGS.has(slug) || DUEL_RACE_SLUGS.has(slug)) && (
+            {/* Format selector — only show when game supports both turn AND race */}
+            {slug && DUEL_TURN_SLUGS.has(slug) && DUEL_RACE_SLUGS.has(slug) && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Format</p>
                 <div className="flex gap-2">
