@@ -498,9 +498,7 @@ export default function GroupDetail() {
                   </CardHeader>
                   <CardContent>
                     <p className="font-medium">{GAME_NAMES[activeRound.gameSlug] || activeRound.gameSlug}</p>
-                    {getLfLettersSummary(activeRound) && (
-                      <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-round-letters-active">Letters: {getLfLettersSummary(activeRound)}</p>
-                    )}
+                    {(() => { const s = getLfLettersSummary(activeRound); return s ? <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-round-letters-active">Letters: {s}</p> : null; })()}
                     <div className="mb-3" />
                     {activeRound.closesAt && (
                       <p className="text-sm text-muted-foreground mb-3">
@@ -564,9 +562,7 @@ export default function GroupDetail() {
                               <CardContent className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
                                 <div>
                                   <p className="font-medium">{GAME_NAMES[round.gameSlug] || round.gameSlug}</p>
-                                  {getLfLettersSummary(round) && (
-                                    <p className="text-xs text-primary/70" data-testid={`text-round-letters-${round.id}`}>Letters: {getLfLettersSummary(round)}</p>
-                                  )}
+                                  {(() => { const s = getLfLettersSummary(round); return s ? <p className="text-xs text-primary/70" data-testid={`text-round-letters-${round.id}`}>Letters: {s}</p> : null; })()}
                                   <p className="text-xs text-muted-foreground">{new Date(round.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center gap-2">

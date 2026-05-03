@@ -69,7 +69,7 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-type GroupGameConfig = { initialLetters?: string[]; category?: string; level?: number; consonantCount?: number };
+type GroupGameConfig = { initialLetters?: string[]; letters?: string[]; category?: string; level?: number; consonantCount?: number };
 
 function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfig | null): React.ReactNode {
   switch (slug) {
