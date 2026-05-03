@@ -34,6 +34,8 @@ export interface DuelInputProps {
   disabled: boolean;
   feedback: string | null;
   clearFeedback: () => void;
+  /** Optional: called each time the user types a character (race mode typing indicator). */
+  onTyping?: () => void;
 }
 
 export interface DuelDisplayProps {

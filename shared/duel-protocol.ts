@@ -5,7 +5,9 @@ export type DuelClientMessage =
   /** Signal that the game has ended. The server derives the winner from
    *  authoritative life counts — no winnerId needed from the client. */
   | { type: "game:end" }
-  | { type: "game:forfeit" };
+  | { type: "game:forfeit" }
+  /** Race: notify server the player is actively typing (relayed to opponent). */
+  | { type: "race:typing" };
 
 export type DuelFormat = "turn" | "race";
 
@@ -72,4 +74,6 @@ export type DuelServerMessage =
   | { type: "player:reconnect" }
   | { type: "player:forfeited"; reason: "disconnect" | "manual" }
   | { type: "challenge:cancelled"; reason: "declined" | "cancelled" | "expired" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /** Race: relayed to the opponent when a player sends race:typing. */
+  | { type: "race:typing"; userId: number };

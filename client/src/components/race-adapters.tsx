@@ -59,7 +59,7 @@ function remainingPool(startPool: string, usedWords: string[]): string {
 
 const VOWELS = new Set("AEIOU");
 
-function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, placeholder, skipDuplicateCheck }: DuelInputProps & { placeholder: string; skipDuplicateCheck?: boolean }) {
+function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, onTyping, placeholder, skipDuplicateCheck }: DuelInputProps & { placeholder: string; skipDuplicateCheck?: boolean }) {
   const [value, setValue] = useState("");
   const handleSubmit = () => {
     const upper = value.toUpperCase().trim();
@@ -74,7 +74,11 @@ function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clear
       <div className="flex gap-2">
         <Input
           value={value}
-          onChange={(e) => { setValue(e.target.value.toUpperCase()); clearFeedback(); }}
+          onChange={(e) => {
+            setValue(e.target.value.toUpperCase());
+            clearFeedback();
+            if (e.target.value) onTyping?.();
+          }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder={placeholder}
           className="font-mono uppercase"

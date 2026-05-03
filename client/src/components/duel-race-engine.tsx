@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { UserAvatar } from "@/components/user-avatar";
 import { Timer, WifiOff, Loader2, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import type { DuelGameAdapter, GameResult } from "@/components/duel-turn-engine";
 
@@ -63,13 +63,17 @@ export function DuelRaceEngine({
   const [done, setDone] = useState(false);
   const [disconnectSecsLeft, setDisconnectSecsLeft] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(initialState.raceTimeLimitMs);
+  const [opponentIsTyping, setOpponentIsTyping] = useState(false);
 
   const disconnectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevMsgRef = useRef<DuelServerMessage | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(Date.now());
+  const opponentTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Track the last optimistically appended word so we can roll it back on server error. */
   const pendingWordRef = useRef<string | null>(null);
+  /** Throttle typing events — track last sent time. */
+  const lastTypingSentRef = useRef<number>(0);
 
   // Countdown timer display
   useEffect(() => {
@@ -105,6 +109,24 @@ export function DuelRaceEngine({
         } else {
           setOpponentCount(msg.count);
           opponentCountRef.current = msg.count;
+          // Clear typing indicator when a word is confirmed
+          setOpponentIsTyping(false);
+          if (opponentTypingTimeoutRef.current) {
+            clearTimeout(opponentTypingTimeoutRef.current);
+            opponentTypingTimeoutRef.current = null;
+          }
+        }
+        break;
+      }
+
+      case "race:typing": {
+        if (msg.userId !== userId) {
+          setOpponentIsTyping(true);
+          // Auto-clear after 3 s of no additional typing signal
+          if (opponentTypingTimeoutRef.current) clearTimeout(opponentTypingTimeoutRef.current);
+          opponentTypingTimeoutRef.current = setTimeout(() => {
+            setOpponentIsTyping(false);
+          }, 3000);
         }
         break;
       }
@@ -190,7 +212,17 @@ export function DuelRaceEngine({
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
+    if (opponentTypingTimeoutRef.current) clearTimeout(opponentTypingTimeoutRef.current);
   }, []);
+
+  const handleTyping = useCallback(() => {
+    if (done) return;
+    const now = Date.now();
+    // Throttle: send at most one typing event per 800 ms
+    if (now - lastTypingSentRef.current < 800) return;
+    lastTypingSentRef.current = now;
+    sendWs({ type: "race:typing" });
+  }, [done, sendWs]);
 
   const handleSubmit = useCallback((word: string) => {
     if (done) return;
@@ -225,6 +257,8 @@ export function DuelRaceEngine({
   const timePct = initialState.raceTimeLimitMs > 0
     ? Math.min(100, (timeLeft / initialState.raceTimeLimitMs) * 100)
     : 100;
+
+  const delta = myCount - opponentCount;
 
   return (
     <div className="space-y-3">
@@ -279,22 +313,54 @@ export function DuelRaceEngine({
                 {myCount}/{raceTarget}
               </Badge>
             </div>
-            <Progress value={myPct} className="h-2 [&>div]:bg-green-500" />
+            <Progress value={myPct} className="h-2 [&>div]:bg-green-500 [&>div]:transition-all [&>div]:duration-500" />
           </CardContent>
         </Card>
         {/* Opponent */}
         <Card>
           <CardContent className="py-3 px-4 space-y-2">
-            <div className="flex items-center gap-2">
-              <UserAvatar name={opponentName} avatarUrl={opponentAvatarUrl} className="h-6 w-6 text-xs" />
-              <span className="text-xs font-medium truncate max-w-[80px]">{opponentName || "Opponent"}</span>
-              <Badge variant="outline" className="ml-auto text-xs tabular-nums" data-testid="text-opp-count">
+            <div className="flex items-center gap-2 min-w-0">
+              <UserAvatar name={opponentName} avatarUrl={opponentAvatarUrl} className="h-6 w-6 text-xs shrink-0" />
+              <span className="text-xs font-medium truncate max-w-[60px]">{opponentName || "Opponent"}</span>
+              <Badge variant="outline" className="ml-auto text-xs tabular-nums shrink-0" data-testid="text-opp-count">
                 {opponentCount}/{raceTarget}
               </Badge>
             </div>
-            <Progress value={oppPct} className="h-2 [&>div]:bg-blue-500" />
+            <Progress value={oppPct} className="h-2 [&>div]:bg-blue-500 [&>div]:transition-all [&>div]:duration-500" />
+            {/* Typing indicator */}
+            <AnimatePresence>
+              {opponentIsTyping && (
+                <motion.p
+                  key="typing"
+                  initial={{ opacity: 0, y: 2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 2 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-[10px] text-muted-foreground flex items-center gap-1"
+                  data-testid="text-opponent-typing"
+                >
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  typing…
+                </motion.p>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Delta indicator */}
+      <div className="flex justify-center" data-testid="text-race-delta">
+        {delta === 0 ? (
+          <span className="text-xs text-muted-foreground font-medium">Tied</span>
+        ) : delta > 0 ? (
+          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+            +{delta} word{delta !== 1 ? "s" : ""} ahead
+          </span>
+        ) : (
+          <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+            {Math.abs(delta)} word{Math.abs(delta) !== 1 ? "s" : ""} behind
+          </span>
+        )}
       </div>
 
       {/* Game display (constraint) */}
@@ -320,6 +386,7 @@ export function DuelRaceEngine({
             disabled: done,
             feedback,
             clearFeedback: () => setFeedback(null),
+            onTyping: handleTyping,
           })}
         </CardContent>
       </Card>

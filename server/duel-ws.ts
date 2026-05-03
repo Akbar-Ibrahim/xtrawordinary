@@ -1301,6 +1301,8 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
     const ws = rawWs as DuelWebSocket;
     const userId = ws.userId;
     let currentRoomCode: string | undefined;
+    /** Server-side throttle: track last time race:typing was relayed for this connection. */
+    let lastTypingRelayedAt = 0;
 
     log(`[Duel] WS connection established for user ${userId}`, "duel-ws");
 
@@ -1443,6 +1445,21 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
           }
           currentRoomCode = undefined;
+          break;
+        }
+
+        case "race:typing": {
+          if (!currentRoomCode) break;
+          const typingRoom = duelRegistry.getRoom(currentRoomCode);
+          if (!typingRoom || typingRoom.status !== "playing" || typingRoom.format !== "race") break;
+          // Server-side rate limit: relay at most once per 500 ms per connection
+          const now = Date.now();
+          if (now - lastTypingRelayedAt < 500) break;
+          lastTypingRelayedAt = now;
+          const typingOpponent = duelRegistry.getOpponent(typingRoom, userId);
+          if (typingOpponent) {
+            send(typingOpponent.ws, { type: "race:typing", userId });
+          }
           break;
         }
 
