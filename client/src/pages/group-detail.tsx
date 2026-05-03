@@ -190,10 +190,11 @@ function getLfLettersSummary(round: GroupRound): string | null {
   if (round.gameSlug !== "letter-frequency" || !round.gameConfig) return null;
   try {
     const cfg = JSON.parse(round.gameConfig);
-    if (!Array.isArray(cfg.initialLetters) || cfg.initialLetters.length === 0) return null;
-    const pinned = cfg.initialLetters.filter((l: string) => l !== "any");
+    const letters: string[] = cfg.initialLetters ?? cfg.letters ?? [];
+    if (!Array.isArray(letters) || letters.length === 0) return null;
+    const pinned = letters.filter((l: string) => l !== "any");
     if (pinned.length === 0) return null;
-    const anyCount = cfg.initialLetters.filter((l: string) => l === "any").length;
+    const anyCount = letters.filter((l: string) => l === "any").length;
     const parts = [...pinned];
     if (anyCount > 0) parts.push(`+${anyCount} random`);
     return parts.join(", ");

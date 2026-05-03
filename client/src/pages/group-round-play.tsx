@@ -96,8 +96,9 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfi
       return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked />;
     }
     case "letter-frequency": {
-      if (gameConfig?.initialLetters && gameConfig.initialLetters.length >= 2) {
-        return <LetterFrequencyGame initialChallenge="multi" initialLetters={gameConfig.initialLetters} groupSeed={seed} locked />;
+      const lfLetters = gameConfig?.initialLetters ?? gameConfig?.letters;
+      if (lfLetters && lfLetters.length >= 2) {
+        return <LetterFrequencyGame initialChallenge="multi" initialLetters={lfLetters} groupSeed={seed} locked />;
       }
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
