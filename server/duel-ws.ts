@@ -482,17 +482,31 @@ export class DuelRoomRegistry {
         this.armTurnTimer(room);
 
       } else if (p.type === "timeout") {
-        // Client-reported timeout — accept if server timer hasn't already fired.
-        // Re-arm server timer for the next player's turn.
+        // Client-reported timeout — life deduction is fully server-authoritative.
+        // The client's `lives` field is intentionally ignored to prevent
+        // forged payloads from skipping the life cost.
+        const currentLives = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
+        const newLives = Math.max(0, currentLives - 1);
+        room.livesPerPlayer.set(fromUserId, newLives);
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
-        if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+
+        // Relay authoritative payload with server-computed lives to opponent
+        const authoritativeTimeout = { type: "timeout", lives: newLives };
+        if (opponent) send(opponent.ws, { type: "opponent:move", payload: authoritativeTimeout });
+
         this.armTurnTimer(room);
+
+        if (newLives <= 0 && !room.finalized) {
+          return { triggered: true, winnerId: opponent?.userId ?? -1 };
+        }
+        return { triggered: false };
       } else {
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
       }
 
-      // --- Lives tracking: accept only non-increasing values ---
-      if (typeof p.lives === "number") {
+      // --- Lives tracking for word moves: accept only non-increasing values ---
+      // (Timeout path handled above and returns early, so this only runs for words/other)
+      if (typeof p.lives === "number" && p.type !== "timeout") {
         const current = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
         const serverLives = Math.min(current, p.lives);
         room.livesPerPlayer.set(fromUserId, serverLives);
