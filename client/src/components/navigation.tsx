@@ -86,8 +86,8 @@ export function Navigation() {
         const roomCode = c.roomCode;
 
         toast({
-          title: `${opponentName} accepted your challenge!`,
-          description: `Your ${gameName} duel is ready.`,
+          title: `${opponentName} accepted your ${gameName} challenge!`,
+          description: "Your duel room is ready.",
           action: roomCode ? (
             <ToastAction
               altText="Go to Room"
@@ -135,8 +135,13 @@ export function Navigation() {
   function handleUserMenuClick() {
     if (firstUnseenRoom) {
       suppressNextDropdownOpen.current = true;
-      unseenRef.current.clear();
-      setUnseenCount(0);
+      for (const [id, rc] of unseenRef.current.entries()) {
+        if (rc === firstUnseenRoom) {
+          unseenRef.current.delete(id);
+          break;
+        }
+      }
+      setUnseenCount(unseenRef.current.size);
       navigate(`/duel/${firstUnseenRoom}`);
     }
   }
