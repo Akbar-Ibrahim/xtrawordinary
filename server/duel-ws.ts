@@ -572,6 +572,16 @@ export class DuelRoomRegistry {
         room.countdownStartAt = null;
       }
 
+      // Reset ready flags for ALL remaining players so that when the
+      // disconnecting player (or a new opponent) rejoins, both sides must
+      // explicitly click Ready again before countdown can begin.
+      // Without this, a remaining player whose ready=true would auto-satisfy
+      // allReady() as soon as the rejoining player clicks Ready once, causing
+      // an unintended auto-start that violates the "both confirm ready" rule.
+      for (const p of Array.from(room.players.values())) {
+        p.ready = false;
+      }
+
       // Notify remaining player in both waiting and countdown cases so their
       // UI can reset opponent presence and ready state.
       if (opponent) {
