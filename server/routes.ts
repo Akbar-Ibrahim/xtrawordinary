@@ -2619,6 +2619,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/open/count", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const challenges = await storage.getOpenDuelChallenges(userId);
+      res.json({ count: challenges.length });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to count open duel challenges" });
+    }
+  });
+
   app.get("/api/duels/open", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;

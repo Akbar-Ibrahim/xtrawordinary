@@ -185,6 +185,8 @@ export interface IStorage {
   acceptOpenDuelChallenge(id: number, challengeeId: number): Promise<DuelChallenge | null>;
   getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]>;
   getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]>;
+  /** Marks all pending open challenges whose expiresAt has passed as 'expired'. Returns count expired. */
+  expireOpenChallenges(): Promise<number>;
 
   createDuelSession(data: InsertDuelSession): Promise<DuelSession>;
   getDuelSession(id: number): Promise<DuelSession | undefined>;

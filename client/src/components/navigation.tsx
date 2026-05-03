@@ -37,6 +37,13 @@ export function Navigation() {
   });
   const unreadCount = unreadData?.count ?? 0;
 
+  const { data: openDuelCountData } = useQuery<{ count: number }>({
+    queryKey: ["/api/duels/open/count"],
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+  const openDuelCount = openDuelCountData?.count ?? 0;
+
   const { data: incomingDuels = [] } = useQuery<{ id: number; status: string }[]>({
     queryKey: ["/api/duels/challenges/incoming"],
     queryFn: async () => {
@@ -151,15 +158,24 @@ export function Navigation() {
             {navLinks.map((link) => {
               const isActive = location === link.href;
               const Icon = link.icon;
+              const isDuels = link.href === "/duels";
               return (
                 <Link key={link.href} href={link.href}>
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
-                    className="gap-2"
+                    className="gap-2 relative"
                     data-testid={`link-nav-${link.label.toLowerCase()}`}
                   >
                     <Icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{link.label}</span>
+                    {isDuels && openDuelCount > 0 && (
+                      <span
+                        className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
+                        data-testid="badge-open-duels-count"
+                      >
+                        {openDuelCount > 99 ? "99+" : openDuelCount}
+                      </span>
+                    )}
                   </Button>
                 </Link>
               );

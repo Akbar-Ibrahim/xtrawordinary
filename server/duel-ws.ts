@@ -404,6 +404,14 @@ export class DuelRoomRegistry {
       }
     };
     setInterval(sweep, SWEEP_INTERVAL_MS).unref?.();
+
+    // Expire open challenges whose expiresAt has passed (runs every 30 min).
+    const expireChallenges = () => {
+      storage.expireOpenChallenges().then((n) => {
+        if (n > 0) log(`[Duel] Expired ${n} open challenge(s)`, "duel-ws");
+      }).catch(() => {});
+    };
+    setInterval(expireChallenges, SWEEP_INTERVAL_MS).unref?.();
   }
 
   createRoom(

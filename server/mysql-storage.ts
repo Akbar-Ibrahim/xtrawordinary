@@ -1500,6 +1500,18 @@ export class MySQLStorage implements IStorage {
     return rows.map((r: typeof schema.duelChallenges.$inferSelect) => this.mapDuelChallenge(r));
   }
 
+  async expireOpenChallenges(): Promise<number> {
+    const db = await this.getDb();
+    const result = await db.update(schema.duelChallenges)
+      .set({ status: "expired" })
+      .where(and(
+        eq(schema.duelChallenges.status, "pending"),
+        isNull(schema.duelChallenges.challengeeId),
+        sql`${schema.duelChallenges.expiresAt} IS NOT NULL AND ${schema.duelChallenges.expiresAt} < NOW()`,
+      ));
+    return result[0].affectedRows ?? 0;
+  }
+
   async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
     const db = await this.getDb();
     const result = await db.insert(schema.duelSessions).values({

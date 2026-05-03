@@ -116,6 +116,7 @@ export default function DuelRoom() {
 
   // ── Game result (shown in 'over' phase) ────────────────────────────────────
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
+  const [rematchPending, setRematchPending] = useState(false);
 
   // ── Latest message for engines ──────────────────────────────────────────────
   const [latestGameMessage, setLatestGameMessage] = useState<DuelServerMessage | null>(null);
@@ -373,6 +374,41 @@ export default function DuelRoom() {
     setGameResult(result);
     setPhase("over");
   }, []);
+
+  const handleRematch = useCallback(async () => {
+    if (!opponentId || !roomInfo) return;
+    setRematchPending(true);
+    try {
+      const body: Record<string, unknown> = {
+        challengeeId: opponentId,
+        gameSlug: roomInfo.gameSlug,
+        format: roomFormat,
+      };
+      if (roomFormat === "race") {
+        body.raceTarget = raceTarget;
+        body.raceTimeLimit = Math.round(raceTimeLimitMs / 1000);
+      }
+      const res = await fetch("/api/duels/challenges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Failed to create rematch");
+      }
+      const data = await res.json();
+      navigate(`/duel/${data.roomCode}`);
+    } catch (err) {
+      toast({
+        title: "Rematch failed",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+      setRematchPending(false);
+    }
+  }, [opponentId, roomInfo, roomFormat, raceTarget, raceTimeLimitMs, navigate, toast]);
 
   // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
@@ -691,10 +727,24 @@ export default function DuelRoom() {
                   </div>
                 )}
 
-                <div className="flex gap-3 justify-center pt-1">
+                <div className="flex flex-wrap gap-3 justify-center pt-1">
                   <Link href="/friends">
                     <Button variant="outline" data-testid="button-back-friends">Back to Friends</Button>
                   </Link>
+                  {opponentId && (
+                    <Button
+                      variant="secondary"
+                      onClick={handleRematch}
+                      disabled={rematchPending}
+                      data-testid="button-rematch"
+                    >
+                      {rematchPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating…</>
+                      ) : (
+                        <><Swords className="h-4 w-4 mr-2" />Rematch</>
+                      )}
+                    </Button>
+                  )}
                   <Link href={`/games/${roomInfo?.gameSlug ?? "word-chain"}`}>
                     <Button data-testid="button-play-again">
                       Play Again

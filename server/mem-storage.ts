@@ -1410,6 +1410,23 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  async expireOpenChallenges(): Promise<number> {
+    const now = new Date();
+    let count = 0;
+    for (const c of this.duelChallenges) {
+      if (
+        c.status === "pending" &&
+        c.challengeeId === null &&
+        c.expiresAt != null &&
+        new Date(c.expiresAt) < now
+      ) {
+        c.status = "expired";
+        count++;
+      }
+    }
+    return count;
+  }
+
   async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
     const session: DuelSession = {
       ...data,
