@@ -13,10 +13,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
+import { PremiumBanner } from "@/components/premium-banner";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Info, Star, Search } from "lucide-react";
+import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Star, Search, Trophy, BarChart3 } from "lucide-react";
 import type { Group } from "@shared/schema";
+
+const SIGNUP_PERKS = [
+  { icon: Users, label: "Create or join groups", desc: "Start your own crew or use an invite code to join one." },
+  { icon: Trophy, label: "Compete in group rounds", desc: "Play shared game rounds and see how you stack up against your group." },
+  { icon: BarChart3, label: "Track group leaderboards", desc: "Follow everyone's scores and climb the rankings over time." },
+  { icon: Plus, label: "Invite anyone with a code", desc: "Share a private invite link — no account needed to get started." },
+];
 
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
@@ -27,10 +35,11 @@ interface GroupsResponse {
 }
 
 export default function Groups() {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [authOpen, setAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -76,9 +85,14 @@ export default function Groups() {
     },
   });
 
+  function openAuth(tab: "signin" | "signup") {
+    setAuthInitialTab(tab);
+    setAuthOpen(true);
+  }
+
   function requireAuthThen(action: () => void) {
     if (!isAuthenticated) {
-      setAuthOpen(true);
+      openAuth("signup");
     } else {
       action();
     }
@@ -115,16 +129,61 @@ export default function Groups() {
         </div>
 
         {!isAuthenticated && (
-          <Card className="mb-6 border-primary/30 bg-primary/5">
-            <CardContent className="p-4 flex items-center gap-3 flex-wrap">
-              <Info className="h-5 w-5 text-primary shrink-0" />
-              <p className="text-sm flex-1">Sign in to create groups, join with a code, and track your scores.</p>
-              <Button size="sm" onClick={() => setAuthOpen(true)} data-testid="button-signin-groups">
-                <LogIn className="h-4 w-4 mr-1.5" />
-                Sign In to Get Started
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="space-y-4 mb-6">
+            <Card className="border-primary/30 dark:border-primary/40 bg-primary/5 dark:bg-primary/10" data-testid="card-guest-signup-cta">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">Play with your crew</p>
+                    <p className="text-xs text-muted-foreground">Create a free account to unlock the full groups experience.</p>
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 mb-5">
+                  {SIGNUP_PERKS.map(({ icon: Icon, label, desc }) => (
+                    <li key={label} className="flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <Icon className="h-3 w-3 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium">{label}</span>
+                        <span className="text-xs text-muted-foreground ml-1.5">{desc}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={() => openAuth("signup")}
+                    data-testid="button-guest-create-account"
+                  >
+                    <Star className="h-4 w-4" />
+                    Create Free Account
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openAuth("signin")}
+                    data-testid="button-guest-signin"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <PremiumBanner variant="card" />
+          </div>
+        )}
+
+        {isAuthenticated && !user?.isPremium && (
+          <div className="mb-6">
+            <PremiumBanner variant="banner" />
+          </div>
         )}
 
         {isLoading ? (
@@ -209,7 +268,7 @@ export default function Groups() {
         )}
       </motion.div>
 
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} initialTab={authInitialTab} />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
