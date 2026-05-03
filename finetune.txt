@@ -46,13 +46,29 @@ GROUP VS GROUP CHALLENGES
    Build after Huddle and Team Race are stable.
 
 ────────────────────────────────────────────────────────────
-DAILY & STREAKS
+SOCIAL & COMMUNITY
 ────────────────────────────────────────────────────────────
 
-6. Daily Duel
-   A single shared puzzle every day where everyone's matched against the
-   same seed, building a daily all-time leaderboard. Fits naturally
-   alongside the existing daily challenge.
+6. Full In-App Notification System
+   The current bell icon (lightweight build) unifies duel challenges,
+   accepted duel rooms, and friend challenge unread counts using existing
+   data sources — but group invites, comment replies, and group round
+   events are still invisible.
+
+   Full build scope:
+   - New `notifications` table (MemStorage + MySQLStorage required).
+     Columns: id, userId, type, title, body, linkUrl, readAt, createdAt.
+   - Server-side notification creation wired into all meaningful events:
+       • Group invite received
+       • Comment reply on a game or group round
+       • Group round started / ended
+       • Duel challenge accepted (supplement existing WS alert)
+       • Friend challenge result (supplement existing count)
+   - Bell icon panel becomes a proper notification centre: real unread
+     count badge, mark individual as read on click, "Mark all read"
+     button, notification history (last 30).
+   - Lightweight bell remains as the UI shell — just needs the backend
+     wired up and the panel expanded.
 
 ────────────────────────────────────────────────────────────
 NEW DUEL GAMES
@@ -98,6 +114,6 @@ PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
   1. Duel Spectator Mode         — natural next step for the mature duel system
-  2. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
-  3. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
-  4. Daily Duel                  — builds daily habit alongside existing challenge
+  2. Full Notification System    — ties all social features together properly
+  3. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
+  4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
