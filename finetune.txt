@@ -88,6 +88,25 @@ SOCIAL & COMMUNITY
     notification bell in the nav with a dropdown would surface these
     without disruption.
 
+    Current state: notifications are fragmented — duel challenge alerts
+    live in the Duels lobby, friend challenge unread counts require
+    visiting Friends, and group/comment events are invisible entirely.
+    The nav already combines counts into a dot badge but has no panel.
+
+    Two build scopes:
+
+    Lightweight (small — ~half day):
+    Unify existing data sources (duel alerts, friend challenge unread
+    count) into a single bell icon dropdown in the nav. No new DB tables.
+    Quick win, but group/comment events remain uncovered.
+
+    Full system (medium — 1–2 days):
+    New `notifications` table (MemStorage + MySQLStorage required).
+    Server-side notification creation on all meaningful events: group
+    invites, comment replies, group round starts/ends, duel accepted,
+    friend challenge result. Bell icon with a real panel, mark-as-read
+    support, and notification history. Covers everything properly.
+
 ────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
