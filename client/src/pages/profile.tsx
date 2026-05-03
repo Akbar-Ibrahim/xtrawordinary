@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
@@ -114,6 +114,27 @@ export default function Profile() {
     queryFn: async () => {
       const res = await fetch(`/api/duels/ratings/${userId}`, { credentials: "include" });
       if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: userId > 0,
+  });
+
+  type DuelHistoryEntry = {
+    id: number;
+    roomCode: string;
+    opponentId: number;
+    opponentName: string;
+    outcome: "win" | "loss" | "draw" | null;
+    eloDelta: number | null;
+    startedAt: string;
+    endedAt: string | null;
+  };
+
+  const { data: duelHistory = [], isLoading: duelHistoryLoading } = useQuery<DuelHistoryEntry[]>({
+    queryKey: ["/api/duels/sessions", userId],
+    queryFn: async () => {
+      const res = await fetch(`/api/duels/sessions/${userId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch duel history");
       return res.json();
     },
     enabled: userId > 0,
@@ -319,23 +340,29 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-4">
             <Tabs defaultValue="stats">
-              <TabsList className="w-full grid grid-cols-4" data-testid="tabs-profile-sections">
+              <TabsList className="w-full grid grid-cols-5" data-testid="tabs-profile-sections">
                 <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
-                  <Gamepad2 className="h-4 w-4" /> Game Stats
+                  <Gamepad2 className="h-4 w-4" /> <span className="hidden sm:inline">Game Stats</span>
                 </TabsTrigger>
                 <TabsTrigger value="quizzes" className="flex items-center gap-1.5" data-testid="tab-my-quizzes">
-                  <GraduationCap className="h-4 w-4" /> {isOwnProfile ? "My Quizzes" : "Quizzes"}
+                  <GraduationCap className="h-4 w-4" /> <span className="hidden sm:inline">{isOwnProfile ? "My Quizzes" : "Quizzes"}</span>
                   {quizzes.length > 0 && (
                     <Badge variant="secondary" className="ml-1 text-xs">{quizzes.length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="rankings" className="flex items-center gap-1.5" data-testid="tab-rankings">
-                  <Trophy className="h-4 w-4" /> Rankings
+                  <Trophy className="h-4 w-4" /> <span className="hidden sm:inline">Rankings</span>
                 </TabsTrigger>
                 <TabsTrigger value="achievements" className="flex items-center gap-1.5" data-testid="tab-achievements">
-                  <Award className="h-4 w-4" /> Achievements
+                  <Award className="h-4 w-4" /> <span className="hidden sm:inline">Achievements</span>
                   {profile.achievements.length > 0 && (
                     <Badge variant="secondary" className="ml-1 text-xs">{profile.achievements.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="duels" className="flex items-center gap-1.5" data-testid="tab-duels">
+                  <Swords className="h-4 w-4" /> <span className="hidden sm:inline">Duels</span>
+                  {duelHistory.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 text-xs">{duelHistory.length}</Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
@@ -512,6 +539,72 @@ export default function Profile() {
                         {a.achievementId.replace(/_/g, " ")}
                       </Badge>
                     ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="duels" className="mt-4">
+                {duelHistoryLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                  </div>
+                ) : duelHistory.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium mb-1">No duels played yet</p>
+                    <p className="text-sm">Challenge friends to a Word Chain Duel to get started.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {duelHistory.map((duel) => {
+                      const outcomeLabel = duel.outcome === "win" ? "Win" : duel.outcome === "loss" ? "Loss" : duel.outcome === "draw" ? "Draw" : "In Progress";
+                      const outcomeBadgeVariant = duel.outcome === "win" ? "default" : duel.outcome === "loss" ? "destructive" : "secondary";
+                      const outcomeBadgeClass = duel.outcome === "win" ? "bg-green-500 hover:bg-green-500 text-white border-0" : "";
+                      const eloDeltaPositive = duel.eloDelta !== null && duel.eloDelta > 0;
+                      const eloDeltaNegative = duel.eloDelta !== null && duel.eloDelta < 0;
+                      const date = duel.endedAt ? new Date(duel.endedAt) : new Date(duel.startedAt);
+                      return (
+                        <div
+                          key={duel.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                          data-testid={`row-duel-${duel.id}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant={outcomeBadgeVariant}
+                              className={`w-16 justify-center shrink-0 ${outcomeBadgeClass}`}
+                              data-testid={`badge-duel-outcome-${duel.id}`}
+                            >
+                              {outcomeLabel}
+                            </Badge>
+                            <div>
+                              <p className="font-medium text-sm" data-testid={`text-duel-opponent-${duel.id}`}>
+                                vs {duel.opponentName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {date.toLocaleDateString(undefined, { dateStyle: "medium" })}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0" data-testid={`text-duel-elo-delta-${duel.id}`}>
+                            {duel.eloDelta !== null ? (
+                              <>
+                                {eloDeltaPositive && <TrendingUp className="h-4 w-4 text-green-500" />}
+                                {eloDeltaNegative && <TrendingDown className="h-4 w-4 text-red-500" />}
+                                {!eloDeltaPositive && !eloDeltaNegative && <Minus className="h-4 w-4 text-muted-foreground" />}
+                                <span className={`text-sm font-semibold ${eloDeltaPositive ? "text-green-500" : eloDeltaNegative ? "text-red-500" : "text-muted-foreground"}`}>
+                                  {eloDeltaPositive ? "+" : ""}{duel.eloDelta}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </TabsContent>

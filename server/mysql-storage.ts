@@ -1504,6 +1504,14 @@ export class MySQLStorage implements IStorage {
     return this.getDuelSession(id);
   }
 
+  async getDuelSessionsForUser(userId: number): Promise<DuelSession[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.duelSessions)
+      .where(or(eq(schema.duelSessions.player1Id, userId), eq(schema.duelSessions.player2Id, userId)))
+      .orderBy(desc(schema.duelSessions.startedAt));
+    return rows.map((r: typeof schema.duelSessions.$inferSelect) => this.mapDuelSession(r));
+  }
+
   async getDuelRating(userId: number): Promise<DuelRating | undefined> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.duelRatings).where(eq(schema.duelRatings.userId, userId)).limit(1);

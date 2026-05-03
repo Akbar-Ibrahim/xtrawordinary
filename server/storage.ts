@@ -189,6 +189,8 @@ export interface IStorage {
 
   getDuelRating(userId: number): Promise<DuelRating | undefined>;
   upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating>;
+
+  getDuelSessionsForUser(userId: number): Promise<DuelSession[]>;
 }
 
 export { MemStorage } from "./mem-storage";

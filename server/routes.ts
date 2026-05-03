@@ -2716,5 +2716,49 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/sessions/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid userId" });
+      const sessions = await storage.getDuelSessionsForUser(userId);
+      const opponentIds = [...new Set(sessions.map(s => s.player1Id === userId ? s.player2Id : s.player1Id))];
+      const opponentUsers = await Promise.all(opponentIds.map(id => storage.getUserById(id)));
+      const opponentMap = new Map<number, string>();
+      opponentUsers.forEach(user => { if (user) opponentMap.set(user.id, user.name); });
+      const result = sessions.map(s => {
+        const isPlayer1 = s.player1Id === userId;
+        const opponentId = isPlayer1 ? s.player2Id : s.player1Id;
+        const eloDelta = isPlayer1 ? s.eloDeltaPlayer1 : s.eloDeltaPlayer2;
+        let outcome: "win" | "loss" | "draw" | null = null;
+        if (s.outcome) {
+          if (s.outcome === "draw") {
+            outcome = "draw";
+          } else if (
+            (isPlayer1 && (s.outcome === "player1_wins" || s.outcome === "forfeit_player2")) ||
+            (!isPlayer1 && (s.outcome === "player2_wins" || s.outcome === "forfeit_player1"))
+          ) {
+            outcome = "win";
+          } else {
+            outcome = "loss";
+          }
+        }
+        return {
+          id: s.id,
+          roomCode: s.roomCode,
+          opponentId,
+          opponentName: opponentMap.get(opponentId) ?? "Unknown",
+          outcome,
+          eloDelta,
+          startedAt: s.startedAt,
+          endedAt: s.endedAt,
+        };
+      });
+      res.json(result);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch duel sessions" });
+    }
+  });
+
   return httpServer;
 }

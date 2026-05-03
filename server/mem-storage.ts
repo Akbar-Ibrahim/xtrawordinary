@@ -1407,6 +1407,12 @@ export class MemStorage implements IStorage {
     return this.duelRatings.find(r => r.userId === userId);
   }
 
+  async getDuelSessionsForUser(userId: number): Promise<DuelSession[]> {
+    return this.duelSessions
+      .filter(s => s.player1Id === userId || s.player2Id === userId)
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  }
+
   async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> {
     let rating = this.duelRatings.find(r => r.userId === userId);
     if (rating) {
