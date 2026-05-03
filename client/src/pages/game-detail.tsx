@@ -1724,8 +1724,8 @@ export default function GameDetail() {
               {slug === "letter-balance" && (() => {
                 const isStructural = lbMode === "structural";
                 const structuralCats = [
-                  { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2,3,4,5,6,7] as number[] },
-                  { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2,3,4,5,6,7] as number[] },
+                  { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2,3,4,5,6,7,"advanced"] as (number | "advanced")[] },
+                  { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2,3,4,5,6,7,"advanced"] as (number | "advanced")[] },
                   { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
                   { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
                   { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
@@ -1888,14 +1888,15 @@ export default function GameDetail() {
                             <div className="flex gap-1 mt-1 flex-wrap">
                               {selectedCat.levels.map(lv => (
                                 <Button
-                                  key={lv}
+                                  key={String(lv)}
                                   type="button"
                                   size="sm"
                                   variant={quizParams.level === lv ? "default" : "outline"}
+                                  className={lv === "advanced" ? "bg-gradient-to-r from-primary to-accent text-primary-foreground border-0" : ""}
                                   onClick={() => setQuizParams(p => ({ ...p, level: lv }))}
                                   data-testid={`button-lb-level-${lv}`}
                                 >
-                                  {lv}
+                                  {lv === "advanced" ? "Advanced" : lv}
                                 </Button>
                               ))}
                             </div>

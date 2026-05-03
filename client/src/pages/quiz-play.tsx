@@ -135,7 +135,7 @@ function getVariantSummary(slug: string, seed: number, params?: Record<string, a
         const v = level - p.consonantCount;
         return `${catName} · ${level}L / ${p.consonantCount}C / ${v}V${survival}`;
       }
-      return level !== undefined ? `${catName} · Level ${level}${survival}` : `${catName}${survival}`;
+      return level !== undefined ? `${catName} · ${level === "advanced" ? "Advanced" : `Level ${level}`}${survival}` : `${catName}${survival}`;
     }
     case "letter-pool": {
       const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
