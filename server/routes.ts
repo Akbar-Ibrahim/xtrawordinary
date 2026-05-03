@@ -2583,7 +2583,8 @@ export async function registerRoutes(
         }),
       );
       res.json(enriched);
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch duel challenges:", err);
       res.status(500).json({ error: "Failed to fetch duel challenges" });
     }
   });

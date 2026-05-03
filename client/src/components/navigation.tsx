@@ -26,6 +26,19 @@ export function Navigation() {
   });
   const unreadCount = unreadData?.count ?? 0;
 
+  const { data: incomingDuels = [] } = useQuery<{ id: number; status: string }[]>({
+    queryKey: ["/api/duels/challenges/incoming"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json() as { id: number; status: string }[];
+      return data.filter((d) => d.status === "pending");
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 10000,
+  });
+  const incomingDuelCount = incomingDuels.length;
+
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
@@ -113,11 +126,11 @@ export function Navigation() {
                         Premium
                       </span>
                     )}
-                    {unreadCount > 0 && (
+                    {(unreadCount > 0 || incomingDuelCount > 0) && (
                       <span
                         className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
                         data-testid="dot-challenge-notification"
-                        aria-label={`${unreadCount} challenge notification${unreadCount !== 1 ? "s" : ""}`}
+                        aria-label={`${unreadCount + incomingDuelCount} notification${unreadCount + incomingDuelCount !== 1 ? "s" : ""}`}
                       />
                     )}
                   </Button>
@@ -132,11 +145,11 @@ export function Navigation() {
                       My Profile
                     </DropdownMenuItem>
                   </Link>
-                  <Link href={unreadCount > 0 ? "/friends?tab=challenges" : "/friends"}>
+                  <Link href={unreadCount > 0 ? "/friends?tab=challenges" : incomingDuelCount > 0 ? "/friends?tab=duels" : "/friends"}>
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
-                      {unreadCount > 0 && (
+                      {(unreadCount > 0 || incomingDuelCount > 0) && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
                       )}
                     </DropdownMenuItem>

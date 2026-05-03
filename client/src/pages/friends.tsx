@@ -419,11 +419,12 @@ export default function Friends() {
                               name={d.challengerName ?? "?"}
                               avatarUrl={d.challengerAvatarUrl ?? null}
                               className="h-10 w-10 text-sm shrink-0"
+                              data-testid={`avatar-challenger-${d.id}`}
                             />
                             <div>
                               <p className="font-semibold text-sm flex items-center gap-1.5">
                                 <Swords className="h-4 w-4 text-violet-500" />
-                                {d.challengerName ?? "Someone"} challenged you!
+                                <span data-testid={`text-challenger-name-${d.id}`}>{d.challengerName ?? "Someone"}</span> challenged you!
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Word Chain Duel · Waiting for your response
