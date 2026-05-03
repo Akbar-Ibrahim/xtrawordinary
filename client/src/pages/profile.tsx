@@ -555,7 +555,7 @@ export default function Profile() {
                   <div className="text-center py-6 text-muted-foreground">
                     <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
                     <p className="font-medium mb-1">No duels played yet</p>
-                    <p className="text-sm">Challenge friends to a Duel to get started.</p>
+                    <p className="text-sm">Duel a Friend to get started.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
