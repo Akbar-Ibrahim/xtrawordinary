@@ -2809,9 +2809,10 @@ export async function registerRoutes(
       if (isNaN(userId)) return res.status(400).json({ error: "Invalid userId" });
       const rating = await storage.getDuelRating(userId);
       if (!rating) {
-        return res.json({ userId, elo: 1200, wins: 0, losses: 0, draws: 0 });
+        return res.json({ userId, elo: 1200, wins: 0, losses: 0, draws: 0, rank: null, totalPlayers: 0 });
       }
-      res.json(rating);
+      const rankContext = await storage.getDuelRankContext(userId);
+      res.json({ ...rating, rank: rankContext?.rank ?? null, totalPlayers: rankContext?.totalPlayers ?? 0 });
     } catch {
       res.status(500).json({ error: "Failed to fetch duel rating" });
     }

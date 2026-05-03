@@ -109,7 +109,7 @@ export default function Profile() {
     return gameSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  const { data: duelRating } = useQuery<{ userId: number; elo: number; wins: number; losses: number; draws: number }>({
+  const { data: duelRating } = useQuery<{ userId: number; elo: number; wins: number; losses: number; draws: number; rank: number | null; totalPlayers: number }>({
     queryKey: ["/api/duels/ratings", userId],
     queryFn: async () => {
       const res = await fetch(`/api/duels/ratings/${userId}`, { credentials: "include" });
@@ -118,6 +118,10 @@ export default function Profile() {
     },
     enabled: userId > 0,
   });
+
+  const hasDuelActivity = duelRating ? (duelRating.wins + duelRating.losses + duelRating.draws > 0) : false;
+  const duelRank = duelRating?.rank ?? null;
+  const totalDuelPlayers = duelRating?.totalPlayers ?? 0;
 
   type DuelHistoryEntry = {
     id: number;
@@ -318,7 +322,7 @@ export default function Profile() {
           ))}
         </div>
 
-        {duelRating && (duelRating.wins + duelRating.losses + duelRating.draws > 0) && (
+        {duelRating && hasDuelActivity && (
           <Card className="border-violet-300 dark:border-violet-700" data-testid="card-duel-elo">
             <CardContent className="py-4 px-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
@@ -337,6 +341,16 @@ export default function Profile() {
                       <> · {Math.round((duelRating.wins / (duelRating.wins + duelRating.losses)) * 100)}% win rate</>
                     )}
                   </p>
+                  {duelRank !== null && totalDuelPlayers > 0 && (
+                    <Link href="/duels/leaderboard">
+                      <span
+                        className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                        data-testid="link-duel-rank"
+                      >
+                        #{duelRank} of {totalDuelPlayers} players
+                      </span>
+                    </Link>
+                  )}
                 </div>
               </div>
             </CardContent>

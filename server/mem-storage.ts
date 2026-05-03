@@ -1511,4 +1511,11 @@ export class MemStorage implements IStorage {
     this.duelRatings.push(rating);
     return rating;
   }
+
+  async getDuelRankContext(userId: number): Promise<{ rank: number; totalPlayers: number } | null> {
+    const all = await this.getDuelLeaderboard(Number.MAX_SAFE_INTEGER);
+    const entry = all.find(e => e.userId === userId);
+    if (!entry) return null;
+    return { rank: entry.rank, totalPlayers: all.length };
+  }
 }

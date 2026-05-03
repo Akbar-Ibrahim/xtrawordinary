@@ -196,6 +196,7 @@ export interface IStorage {
   getDuelRating(userId: number): Promise<DuelRating | undefined>;
   upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating>;
   getDuelLeaderboard(limit?: number, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>>;
+  getDuelRankContext(userId: number): Promise<{ rank: number; totalPlayers: number } | null>;
 
   getDuelSessionsForUser(userId: number): Promise<DuelSession[]>;
 }

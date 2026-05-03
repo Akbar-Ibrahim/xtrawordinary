@@ -1653,4 +1653,11 @@ export class MySQLStorage implements IStorage {
     });
     return this.getDuelRating(userId) as Promise<DuelRating>;
   }
+
+  async getDuelRankContext(userId: number): Promise<{ rank: number; totalPlayers: number } | null> {
+    const all = await this.getDuelLeaderboard(1_000_000);
+    const entry = all.find(e => e.userId === userId);
+    if (!entry) return null;
+    return { rank: entry.rank, totalPlayers: all.length };
+  }
 }
