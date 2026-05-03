@@ -2518,8 +2518,17 @@ export async function registerRoutes(
       }
       // challengeeId is optional — null means an open challenge anyone can accept
       const targetId: number | null = challengeeId != null ? Number(challengeeId) : null;
-      if (targetId !== null && targetId === challengerId) {
-        return res.status(400).json({ error: "Cannot challenge yourself" });
+      if (targetId !== null) {
+        if (!Number.isFinite(targetId) || targetId <= 0 || !Number.isInteger(targetId)) {
+          return res.status(400).json({ error: "Invalid challengeeId" });
+        }
+        if (targetId === challengerId) {
+          return res.status(400).json({ error: "Cannot challenge yourself" });
+        }
+        const targetUser = await storage.getUserById(targetId);
+        if (!targetUser) {
+          return res.status(404).json({ error: "Target player not found" });
+        }
       }
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
@@ -2590,7 +2599,12 @@ export async function registerRoutes(
   app.get("/api/duels/open", requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const gameSlug = req.query.gameSlug as string | undefined;
+      const rawSlug = req.query.gameSlug as string | undefined;
+      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance"]);
+      if (rawSlug && !DUEL_ALLOWED_SLUGS.has(rawSlug)) {
+        return res.status(400).json({ error: "Invalid gameSlug filter" });
+      }
+      const gameSlug = rawSlug;
       const challenges = await storage.getOpenDuelChallenges(userId, gameSlug);
       const enriched = await Promise.all(
         challenges.map(async (c) => {
