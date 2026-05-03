@@ -31,12 +31,14 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     queryKey: seeded
       ? ["/api/games/progressive-reveal/words", groupSeed]
       : ["/api/games/progressive-reveal/words"],
-    queryFn: seeded
-      ? async () => {
-          const r = await fetch(`/api/games/progressive-reveal/words?seed=${groupSeed}`, { credentials: "include" });
-          return r.json();
-        }
-      : undefined,
+    queryFn: async () => {
+      const url = seeded
+        ? `/api/games/progressive-reveal/words?seed=${groupSeed}`
+        : `/api/games/progressive-reveal/words`;
+      const r = await fetch(url, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status}`);
+      return r.json();
+    },
     enabled: !hasCustomWords,
     refetchOnMount: seeded ? false : "always",
     gcTime: seeded ? Infinity : 0,
