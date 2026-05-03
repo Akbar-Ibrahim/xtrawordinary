@@ -7,7 +7,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -248,6 +248,12 @@ export function Navigation() {
                       {(unreadCount > 0 || incomingDuelCount > 0 || unseenCount > 0) && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
                       )}
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/my-quizzes">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-my-quizzes">
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      My Quizzes
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/groups">

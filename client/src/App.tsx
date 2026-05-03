@@ -28,6 +28,7 @@ import GroupRoundPlay from "@/pages/group-round-play";
 import QuizPlay from "@/pages/quiz-play";
 import QuizResults from "@/pages/quiz-results";
 import CreateQuiz from "@/pages/create-quiz";
+import MyQuizzes from "@/pages/my-quizzes";
 import DuelRoom from "@/pages/duel-room";
 import DuelLobby from "@/pages/duel-lobby";
 import NotFound from "@/pages/not-found";
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/quiz/:code/results" component={QuizResults} />
       <Route path="/quiz/:code" component={QuizPlay} />
       <Route path="/create-quiz" component={CreateQuiz} />
+      <Route path="/my-quizzes" component={MyQuizzes} />
       <Route path="/duels" component={DuelLobby} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
       <Route component={NotFound} />
