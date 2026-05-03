@@ -357,7 +357,7 @@ export default function DuelRoom() {
 
       <div className="flex items-center gap-3 mb-6">
         <Swords className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Word Chain Duel</h1>
+        <h1 className="text-2xl font-bold">{roomInfo ? `${roomInfo.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")} Duel` : "Duel"}</h1>
         {roomCode && (
           <Badge variant="outline" className="font-mono text-xs ml-auto" data-testid="text-room-code">
             {roomCode}

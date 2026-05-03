@@ -124,6 +124,7 @@ export default function Profile() {
     roomCode: string;
     opponentId: number;
     opponentName: string;
+    gameSlug: string;
     outcome: "win" | "loss" | "draw" | null;
     eloDelta: number | null;
     startedAt: string;
@@ -554,7 +555,7 @@ export default function Profile() {
                   <div className="text-center py-6 text-muted-foreground">
                     <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
                     <p className="font-medium mb-1">No duels played yet</p>
-                    <p className="text-sm">Challenge friends to a Word Chain Duel to get started.</p>
+                    <p className="text-sm">Challenge friends to a Duel to get started.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -584,7 +585,7 @@ export default function Profile() {
                                 vs {duel.opponentName}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {date.toLocaleDateString(undefined, { dateStyle: "medium" })}
+                                {formatGameName(duel.gameSlug)} · {date.toLocaleDateString(undefined, { dateStyle: "medium" })}
                               </p>
                             </div>
                           </div>

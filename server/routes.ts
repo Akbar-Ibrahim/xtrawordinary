@@ -2747,6 +2747,7 @@ export async function registerRoutes(
           roomCode: s.roomCode,
           opponentId,
           opponentName: opponentMap.get(opponentId) ?? "Unknown",
+          gameSlug: s.gameSlug,
           outcome,
           eloDelta,
           startedAt: s.startedAt,

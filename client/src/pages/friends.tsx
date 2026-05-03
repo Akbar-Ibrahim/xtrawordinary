@@ -426,8 +426,8 @@ export default function Friends() {
                                 <Swords className="h-4 w-4 text-violet-500" />
                                 <span data-testid={`text-challenger-name-${d.id}`}>{d.challengerName ?? "Someone"}</span> challenged you!
                               </p>
-                              <p className="text-xs text-muted-foreground">
-                                Word Chain Duel · Waiting for your response
+                              <p className="text-xs text-muted-foreground" data-testid={`text-duel-game-${d.id}`}>
+                                {d.gameSlug ? d.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Word Chain"} Duel · Waiting for your response
                               </p>
                             </div>
                           </div>
