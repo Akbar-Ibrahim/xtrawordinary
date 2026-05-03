@@ -316,21 +316,24 @@ export default function Profile() {
           ))}
         </div>
 
-        {duelRating && (
+        {duelRating && (duelRating.wins + duelRating.losses + duelRating.draws > 0) && (
           <Card className="border-violet-300 dark:border-violet-700" data-testid="card-duel-elo">
             <CardContent className="py-4 px-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
                   <Swords className="h-5 w-5 text-violet-500" />
                   <div>
-                    <p className="font-semibold text-sm">Word Chain Duel</p>
-                    <p className="text-xs text-muted-foreground">Rated ELO</p>
+                    <p className="font-semibold text-sm">Duel Rating</p>
+                    <p className="text-xs text-muted-foreground">Rated ELO · {duelRating.wins + duelRating.losses + duelRating.draws} matches</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-black text-violet-600 dark:text-violet-400" data-testid="text-duel-elo">{duelRating.elo}</p>
                   <p className="text-xs text-muted-foreground">
                     {duelRating.wins}W · {duelRating.losses}L · {duelRating.draws}D
+                    {duelRating.wins + duelRating.losses > 0 && (
+                      <> · {Math.round((duelRating.wins / (duelRating.wins + duelRating.losses)) * 100)}% win rate</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -582,7 +585,10 @@ export default function Profile() {
                             </Badge>
                             <div>
                               <p className="font-medium text-sm" data-testid={`text-duel-opponent-${duel.id}`}>
-                                vs {duel.opponentName}
+                                vs{" "}
+                                <Link href={`/profile/${duel.opponentId}`}>
+                                  <span className="hover:underline cursor-pointer">{duel.opponentName}</span>
+                                </Link>
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {formatGameName(duel.gameSlug)} · {date.toLocaleDateString(undefined, { dateStyle: "medium" })}

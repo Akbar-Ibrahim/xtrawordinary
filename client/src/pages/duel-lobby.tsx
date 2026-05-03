@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Swords, Loader2, RefreshCw, Users, Clock, ArrowRight, Zap, Trophy, UserPlus, BarChart3, Star } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,18 @@ interface OpenChallenge {
   message: string | null;
   roomCode: string | null;
   createdAt: string;
+}
+
+interface DuelHistoryEntry {
+  id: number;
+  roomCode: string;
+  opponentId: number;
+  opponentName: string;
+  gameSlug: string;
+  outcome: "win" | "loss" | "draw" | null;
+  eloDelta: number | null;
+  startedAt: string;
+  endedAt: string | null;
 }
 
 const ALL_GAME_LABELS: Record<string, string> = {
@@ -125,6 +138,7 @@ export default function DuelLobby() {
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
+  const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
 
   const { data: allGames = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -160,6 +174,17 @@ export default function DuelLobby() {
     },
     enabled: isAuthenticated,
     refetchInterval: 15000,
+  });
+
+  const { data: duelHistory = [], isLoading: historyLoading } = useQuery<DuelHistoryEntry[]>({
+    queryKey: ["/api/duels/sessions", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/duels/sessions/${user.id}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAuthenticated && !!user?.id,
   });
 
   const joinMutation = useMutation({
@@ -238,14 +263,41 @@ export default function DuelLobby() {
 
       <Separator />
 
-      {/* ── Open Challenges ── */}
+      {/* ── Open Challenges / My Duels ── */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            Open Challenges
-          </h2>
-          {isAuthenticated && (
+          {isAuthenticated ? (
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1" data-testid="toggle-lobby-tab">
+              <button
+                onClick={() => setLobbyTab("challenges")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "challenges" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="tab-open-challenges"
+              >
+                <Users className="h-3.5 w-3.5" />
+                Open Challenges
+                {openChallenges.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{openChallenges.length}</Badge>
+                )}
+              </button>
+              <button
+                onClick={() => setLobbyTab("my-duels")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "my-duels" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid="tab-my-duels"
+              >
+                <History className="h-3.5 w-3.5" />
+                My Duels
+                {duelHistory.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{duelHistory.length}</Badge>
+                )}
+              </button>
+            </div>
+          ) : (
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              Open Challenges
+            </h2>
+          )}
+          {isAuthenticated && lobbyTab === "challenges" && (
             <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} data-testid="button-refresh-lobby">
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
@@ -305,7 +357,7 @@ export default function DuelLobby() {
             {/* Premium teaser for guests */}
             <PremiumBanner variant="card" />
           </div>
-        ) : (
+        ) : lobbyTab === "challenges" ? (
           <>
             {/* Premium teaser for free signed-in users */}
             {!user?.isPremium && (
@@ -380,6 +432,77 @@ export default function DuelLobby() {
                         </Button>
                       </CardContent>
                     </Card>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── My Duels tab ── */
+          <>
+            {historyLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-16 w-full rounded-lg" />
+              </div>
+            ) : duelHistory.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  <Swords className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium text-sm">No duel history yet.</p>
+                  <p className="text-xs mt-1">Play a duel from the game list above to see your matches here.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {duelHistory.slice(0, 50).map((duel) => {
+                  const isWin = duel.outcome === "win";
+                  const isLoss = duel.outcome === "loss";
+                  const isDraw = duel.outcome === "draw";
+                  const outcomeLabel = isWin ? "Win" : isLoss ? "Loss" : isDraw ? "Draw" : "—";
+                  const eloDeltaPos = duel.eloDelta !== null && duel.eloDelta > 0;
+                  const eloDeltaNeg = duel.eloDelta !== null && duel.eloDelta < 0;
+                  const date = duel.endedAt ? new Date(duel.endedAt) : new Date(duel.startedAt);
+                  return (
+                    <div
+                      key={duel.id}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                      data-testid={`row-duel-history-${duel.id}`}
+                    >
+                      <Badge
+                        variant={isWin ? "default" : isLoss ? "destructive" : "secondary"}
+                        className={`w-14 justify-center shrink-0 text-xs ${isWin ? "bg-green-500 hover:bg-green-500 text-white border-0" : ""}`}
+                        data-testid={`badge-duel-outcome-${duel.id}`}
+                      >
+                        {outcomeLabel}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          vs{" "}
+                          <Link href={`/profile/${duel.opponentId}`}>
+                            <span className="hover:underline cursor-pointer">{duel.opponentName}</span>
+                          </Link>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {ALL_GAME_LABELS[duel.gameSlug] ?? duel.gameSlug} · {timeAgo(date.toISOString())}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0" data-testid={`text-elo-delta-${duel.id}`}>
+                        {duel.eloDelta !== null ? (
+                          <>
+                            {eloDeltaPos && <TrendingUp className="h-3.5 w-3.5 text-green-500" />}
+                            {eloDeltaNeg && <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
+                            {!eloDeltaPos && !eloDeltaNeg && <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+                            <span className={`text-sm font-semibold ${eloDeltaPos ? "text-green-500" : eloDeltaNeg ? "text-red-500" : "text-muted-foreground"}`}>
+                              {eloDeltaPos ? "+" : ""}{duel.eloDelta}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
