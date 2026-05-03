@@ -340,6 +340,7 @@ export default function GameDetail() {
   const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
   const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
+  const [duelWordLength, setDuelWordLength] = useState<4 | 5 | 6>(5);
 
   const { data: duelUserResults = [], isFetching: duelSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
     queryKey: ["/api/users/search", duelSearch],
@@ -353,9 +354,14 @@ export default function GameDetail() {
     staleTime: 10000,
   });
 
+  const isLadderRushDuel = slug === "ladder-rush" || slug === "ladder-rush-double";
+  const duelGameSlug = isLadderRushDuel
+    ? (slug === "ladder-rush-double" ? `ladder-rush-double-${duelWordLength}` : `ladder-rush-${duelWordLength}`)
+    : slug;
+
   const createDuelChallengeMutation = useMutation({
     mutationFn: async (challengeeId: number | null) => {
-      const body: Record<string, unknown> = { gameSlug: slug, format: duelFormat };
+      const body: Record<string, unknown> = { gameSlug: duelGameSlug, format: duelFormat };
       if (challengeeId !== null) body.challengeeId = challengeeId;
       if (duelFormat === "race") {
         body.raceTarget = duelRaceTarget;
@@ -698,7 +704,7 @@ export default function GameDetail() {
                       Challenge a Friend
                     </Button>
                   )}
-                  {isAuthenticated && user?.isPremium && slug && DUEL_GAME_SLUGS.has(slug) && (
+                  {isAuthenticated && user?.isPremium && slug && (DUEL_GAME_SLUGS.has(slug) || slug === "ladder-rush" || slug === "ladder-rush-double") && (
                     <Button
                       variant="outline"
                       className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"
@@ -3307,6 +3313,24 @@ export default function GameDetail() {
                   >
                     ⚡ Race
                   </button>
+                </div>
+              </div>
+            )}
+            {/* Word-length picker — only shown for Ladder Rush games */}
+            {isLadderRushDuel && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Word Length</p>
+                <div className="flex gap-2">
+                  {([4, 5, 6] as const).map((len) => (
+                    <button
+                      key={len}
+                      className={`flex-1 text-sm font-medium px-3 py-2 rounded-md border transition-colors ${duelWordLength === len ? "bg-violet-100 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300" : "border-border text-muted-foreground hover:text-foreground"}`}
+                      onClick={() => setDuelWordLength(len)}
+                      data-testid={`button-word-length-${len}`}
+                    >
+                      {len} letters {len === 4 ? "(Easy)" : len === 5 ? "(Medium)" : "(Hard)"}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

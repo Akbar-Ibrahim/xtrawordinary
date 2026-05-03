@@ -4,7 +4,7 @@ import type { Request, Response } from "express";
 import { getSessionMiddleware } from "./auth";
 import { log } from "./index";
 import { storage } from "./storage";
-import { wordDictSet } from "./game-data";
+import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 
 interface DuelWebSocket extends WebSocket {
@@ -126,6 +126,16 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     }
     case "letter-balance":
       return DUEL_BALANCE_CONSTRAINTS[seed % DUEL_BALANCE_CONSTRAINTS.length];
+    // ── Ladder Rush duel games (turn-based) ──
+    case "ladder-rush-4":
+    case "ladder-rush-double-4":
+      return ladderRushStartWords[4][seed % ladderRushStartWords[4].length];
+    case "ladder-rush-5":
+    case "ladder-rush-double-5":
+      return ladderRushStartWords[5][seed % ladderRushStartWords[5].length];
+    case "ladder-rush-6":
+    case "ladder-rush-double-6":
+      return ladderRushStartWords[6][seed % ladderRushStartWords[6].length];
     // ── Race-only games ──
     case "word-scramble": {
       const scrambleWord = RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length];
@@ -152,6 +162,25 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     default:
       return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
   }
+}
+
+/** Check whether two same-length words differ by exactly n letter positions (by frequency). */
+function isNLetterDiff(a: string, b: string, n: number): boolean {
+  if (a.length !== b.length) return false;
+  const freqA: Record<string, number> = {};
+  const freqB: Record<string, number> = {};
+  for (const c of a) freqA[c] = (freqA[c] ?? 0) + 1;
+  for (const c of b) freqB[c] = (freqB[c] ?? 0) + 1;
+  let added = 0, removed = 0;
+  for (const c of Object.keys(freqA)) {
+    const diff = (freqB[c] ?? 0) - freqA[c];
+    if (diff < 0) removed -= diff;
+  }
+  for (const c of Object.keys(freqB)) {
+    const diff = freqB[c] - (freqA[c] ?? 0);
+    if (diff > 0) added += diff;
+  }
+  return added === n && removed === n;
 }
 
 /** Check whether a word can be formed from a multiset of letters (pool). */
@@ -441,7 +470,7 @@ export class DuelRoomRegistry {
       livesPerPlayer: new Map(),
       wordsPerPlayer: new Map(),
       currentWord: startWord,
-      usedWords: gameSlug === "word-chain" ? [startWord] : [],
+      usedWords: (gameSlug === "word-chain" || gameSlug.startsWith("ladder-rush")) ? [startWord.toUpperCase()] : [],
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
@@ -496,7 +525,7 @@ export class DuelRoomRegistry {
       livesPerPlayer: new Map(),
       wordsPerPlayer: new Map(),
       currentWord: startWord,
-      usedWords: gameSlug === "word-chain" ? [startWord] : [],
+      usedWords: (gameSlug === "word-chain" || gameSlug.startsWith("ladder-rush")) ? [startWord.toUpperCase()] : [],
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
@@ -764,7 +793,7 @@ export class DuelRoomRegistry {
 
         // Move is valid — update authoritative state and relay to opponent
         const slug = room.gameSlug;
-        if (slug === "word-chain") room.currentWord = submittedWord;
+        if (slug === "word-chain" || slug.startsWith("ladder-rush")) room.currentWord = submittedWord;
         room.usedWords = [...room.usedWords, submittedWord];
         const senderWords = room.wordsPerPlayer.get(fromUserId) ?? [];
         room.wordsPerPlayer.set(fromUserId, [...senderWords, submittedWord]);
@@ -840,6 +869,18 @@ export class DuelRoomRegistry {
       if (actual !== count) {
         const typeName = type === "V" ? "vowel" : "consonant";
         return `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
+      }
+    } else if (slug.startsWith("ladder-rush")) {
+      const isDouble = slug.includes("double");
+      const swapCount = isDouble ? 2 : 1;
+      const expectedLen = parseInt(slug[slug.length - 1], 10);
+      if (submittedWord.length !== expectedLen) {
+        return `Word must be exactly ${expectedLen} letters long`;
+      }
+      if (!isNLetterDiff(room.currentWord, submittedWord, swapCount)) {
+        return swapCount === 1
+          ? "Word must differ from the previous word by exactly 1 letter"
+          : "Word must differ from the previous word by exactly 2 letters";
       }
     } else {
       // word-chain

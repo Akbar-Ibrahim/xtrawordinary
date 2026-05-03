@@ -519,6 +519,12 @@ export const DUEL_TURN_SLUGS = new Set([
   "letter-frequency",
   "letter-position",
   "letter-balance",
+  "ladder-rush-4",
+  "ladder-rush-5",
+  "ladder-rush-6",
+  "ladder-rush-double-4",
+  "ladder-rush-double-5",
+  "ladder-rush-double-6",
 ]);
 
 /** Games supporting the simultaneous race format (excludes word-chain). */
