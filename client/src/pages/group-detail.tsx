@@ -195,9 +195,8 @@ function getLfLettersSummary(round: GroupRound): string | null {
     const pinned = letters.filter((l: string) => l !== "any");
     if (pinned.length === 0) return null;
     const anyCount = letters.filter((l: string) => l === "any").length;
-    const parts = [...pinned];
-    if (anyCount > 0) parts.push(`+${anyCount} random`);
-    return parts.join(", ");
+    const base = pinned.join(", ");
+    return anyCount > 0 ? `${base} + ${anyCount} random` : base;
   } catch {
     return null;
   }
@@ -302,6 +301,7 @@ export default function GroupDetail() {
       setClosesAt("");
       setRoundLetterCount(2);
       setRoundLetters(["any", "any"]);
+      setRoundFreqEnabled(false);
       setRoundLbMode("random");
       setRoundLbLevel(undefined);
       setRoundLbConsonantCount(undefined);
