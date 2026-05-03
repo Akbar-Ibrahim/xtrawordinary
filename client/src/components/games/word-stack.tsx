@@ -70,6 +70,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const seededQueueRef = useRef<WordStackPuzzle[]>([]);
 
   const isBuildUp = selectedChallenge === "build-up";
 
@@ -104,27 +105,41 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   };
 
   const selectNewPuzzle = useCallback(() => {
-    const availablePuzzles = activePuzzles.filter((p) => !usedPuzzles.has(p.targetWord));
-    if (availablePuzzles.length === 0) {
+    let nextPuzzle: WordStackPuzzle | undefined;
+
+    if (seededQueueRef.current.length > 0) {
+      nextPuzzle = seededQueueRef.current.shift();
+    } else {
+      const availablePuzzles = activePuzzles.filter((p) => !usedPuzzles.has(p.targetWord));
+      if (availablePuzzles.length === 0) {
+        setCompletionMessage(getCompletionMessage(true));
+        setGameStatus("complete");
+        return;
+      }
+      nextPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
+    }
+
+    if (!nextPuzzle) {
       setCompletionMessage(getCompletionMessage(true));
       setGameStatus("complete");
       return;
     }
-    const randomPuzzle = availablePuzzles[Math.floor(Math.random() * availablePuzzles.length)];
-    setCurrentPuzzle(randomPuzzle);
+
+    setCurrentPuzzle(nextPuzzle);
     if (isBuildUp) {
       setStack([]);
     } else {
-      setStack([randomPuzzle.targetWord.toUpperCase()]);
+      setStack([nextPuzzle.targetWord.toUpperCase()]);
     }
     setUserInput("");
     setShowHint(false);
-    setUsedPuzzles((prev) => new Set(Array.from(prev).concat(randomPuzzle.targetWord)));
+    setUsedPuzzles((prev) => new Set(Array.from(prev).concat(nextPuzzle!.targetWord)));
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedPuzzles, activePuzzles, isBuildUp]);
 
   const initGame = useCallback((challenge: ChallengeType) => {
     if (!challenge || puzzles.length === 0) return;
+    seededQueueRef.current = [];
     resetRecorded();
     setSelectedChallenge(challenge);
     setActivePuzzles(puzzles);
@@ -150,8 +165,16 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     if (groupSeed !== undefined && puzzles.length > 0 && gameStatus === "selecting") {
       const rng = makeSeededRng(groupSeed);
       const challengeType: ChallengeType = rng() < 0.5 ? "build-up" : "break-down";
-      const puzzleIndex = Math.floor(rng() * puzzles.length);
-      const seededPuzzle = puzzles[puzzleIndex];
+
+      const shuffled = [...puzzles];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      const [seededPuzzle, ...rest] = shuffled;
+      seededQueueRef.current = rest;
+
       resetRecorded();
       setSelectedChallenge(challengeType);
       setActivePuzzles(puzzles);

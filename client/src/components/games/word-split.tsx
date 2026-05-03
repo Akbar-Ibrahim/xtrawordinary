@@ -124,8 +124,12 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const seededQueueRef = useRef<WordSplitPuzzle[]>([]);
 
   const selectPuzzle = useCallback((puzzleList: WordSplitPuzzle[], used: Set<string>) => {
+    if (seededQueueRef.current.length > 0) {
+      return seededQueueRef.current.shift() ?? null;
+    }
     const available = puzzleList.filter(p => !used.has(p.targetWord));
     if (available.length === 0) return null;
     return available[Math.floor(Math.random() * available.length)];
@@ -142,6 +146,8 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
 
   const startGame = useCallback((diff: Difficulty) => {
     if (puzzles.length === 0) return;
+
+    seededQueueRef.current = [];
 
     const config = DIFFICULTY_CONFIG[diff];
     const filtered = puzzles.filter(
@@ -179,7 +185,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       const config = DIFFICULTY_CONFIG[diff];
       const filtered = puzzles.filter(p => p.targetWord.length >= config.minLength && p.targetWord.length <= config.maxLength);
       const puzzleList = filtered.length > 0 ? filtered : puzzles;
-      const seededPuzzle = puzzleList[Math.floor(rng() * puzzleList.length)];
+
+      const shuffled = [...puzzleList];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+
+      const [seededPuzzle, ...rest] = shuffled;
+      seededQueueRef.current = rest;
+
       setDifficulty(diff);
       setActivePuzzles(puzzleList);
       setScore(0);
