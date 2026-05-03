@@ -289,21 +289,35 @@ export function DuelTurnEngine({
       }
 
       // --- Server rejected a move (e.g. dictionary miss) ---
-      // Rollback optimistic state, deduct 0.5s, restore turn
+      // Rollback optimistic state, deduct 0.5s, restore turn.
+      // Exception: "not your turn" errors mean we are out-of-sync — do NOT
+      // restore the turn, as that would give the player a turn they shouldn't
+      // have (race between client timeout report and server turn advance).
       case "error": {
+        const isOutOfTurnError =
+          latestMessage.message?.toLowerCase().includes("not your turn");
+
         if (rollbackRef.current) {
           const { currentWord: prev, usedWords: prevUsed } = rollbackRef.current;
-          // Remove the word we speculatively added to myWordsRef
           myWordsRef.current = myWordsRef.current.slice(0, -1);
           setCurrentWord(prev);
           setUsedWords(prevUsed);
           rollbackRef.current = null;
         }
         setFeedback(latestMessage.message);
-        // Resume timer without resetting, minus the 0.5s penalty
-        setTimerLeft((prev) => Math.max(0.5, prev - 0.5));
-        resetClockOnNextStartRef.current = false; // preserve penalised timerLeft
-        setIsMyTurn(true); // triggers useEffect → startTimer (no reset)
+
+        if (isOutOfTurnError) {
+          // Out-of-turn error: clear local turn state and wait for the server
+          // to send opponent:move which will correctly grant us the next turn.
+          stopTimer();
+          setIsMyTurn(false);
+        } else {
+          // Normal rejection (wrong letter, duplicate, unknown word):
+          // deduct 0.5s and resume timer so the player can try again.
+          setTimerLeft((prev) => Math.max(0.5, prev - 0.5));
+          resetClockOnNextStartRef.current = false; // preserve penalised timerLeft
+          setIsMyTurn(true); // triggers useEffect → startTimer (no reset)
+        }
         break;
       }
 
