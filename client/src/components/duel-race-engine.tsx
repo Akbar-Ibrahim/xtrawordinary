@@ -55,6 +55,8 @@ export function DuelRaceEngine({
 }: DuelRaceEngineProps) {
   const [myCount, setMyCount] = useState(initialState.myCount);
   const [opponentCount, setOpponentCount] = useState(initialState.opponentCount);
+  const myCountRef = useRef(initialState.myCount);
+  const opponentCountRef = useRef(initialState.opponentCount);
   const [myWords, setMyWords] = useState<string[]>(initialState.myWords);
   const [opponentWords, setOpponentWords] = useState<string[]>(initialState.opponentWords);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -97,10 +99,12 @@ export function DuelRaceEngine({
       case "race:progress": {
         if (msg.userId === userId) {
           setMyCount(msg.count);
+          myCountRef.current = msg.count;
           // Server confirmed the move — clear pending so rollback won't fire
           pendingWordRef.current = null;
         } else {
           setOpponentCount(msg.count);
+          opponentCountRef.current = msg.count;
         }
         break;
       }
@@ -117,6 +121,8 @@ export function DuelRaceEngine({
           newElo: msg.newElo ?? 1000,
           myWords: myW,
           opponentWords: oppW,
+          myFinalCount: myCountRef.current,
+          opponentFinalCount: opponentCountRef.current,
         });
         break;
       }

@@ -72,7 +72,7 @@ export default function Friends() {
   const [duelGameSlug, setDuelGameSlug] = useState("");
   const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
-  const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(120);
+  const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
 
   const { data: friends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
     queryKey: ["/api/friends"],
@@ -658,7 +658,7 @@ export default function Friends() {
                 </Select>
               </div>
 
-              {duelGameSlug && (DUEL_TURN_SLUGS.has(duelGameSlug) || DUEL_RACE_SLUGS.has(duelGameSlug)) && (
+              {duelGameSlug && DUEL_TURN_SLUGS.has(duelGameSlug) && DUEL_RACE_SLUGS.has(duelGameSlug) && (
                 <div>
                   <label className="text-sm font-medium">Format</label>
                   <div className="flex gap-2 mt-1.5">
@@ -710,10 +710,8 @@ export default function Friends() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[60, 90, 120, 180, 300].map((n) => (
-                          <SelectItem key={n} value={String(n)}>
-                            {n < 60 ? `${n}s` : `${n / 60} min${n > 60 ? "s" : ""}`}
-                          </SelectItem>
+                        {[{ v: 180, label: "3 min" }, { v: 300, label: "5 min" }, { v: 600, label: "10 min" }].map(({ v, label }) => (
+                          <SelectItem key={v} value={String(v)}>{label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

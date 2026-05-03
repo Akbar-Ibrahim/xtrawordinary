@@ -173,6 +173,20 @@ function isSubsequenceOf(word: string, base: string): boolean {
   return true;
 }
 
+/**
+ * True if b can be obtained from a by inserting or deleting exactly one letter at any position.
+ * (edit distance = 1 using only insertions/deletions, no substitutions)
+ */
+function differsByOneLetter(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) !== 1) return false;
+  const [shorter, longer] = a.length < b.length ? [a, b] : [b, a];
+  let si = 0;
+  for (let li = 0; li < longer.length; li++) {
+    if (si < shorter.length && longer[li] === shorter[si]) si++;
+  }
+  return si === shorter.length;
+}
+
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -909,9 +923,12 @@ export class DuelRoomRegistry {
         return `Word letters must appear in order within "${room.startWord}"`;
       }
     } else if (slug === "word-split") {
-      // Substring: word must be a contiguous part of the compound target
-      if (!room.startWord.includes(word)) {
-        return `Word must be a part of "${room.startWord}"`;
+      // Sequential cursor: word must exactly match the compound from the player's current position
+      const totalCovered = myWords.reduce((sum, w) => sum + w.length, 0);
+      const splitPos = totalCovered % room.startWord.length;
+      const remaining = room.startWord.slice(splitPos);
+      if (!remaining.startsWith(word)) {
+        return `Word must match the next letters of "${room.startWord}" (position ${splitPos + 1}: "${remaining.slice(0, 6)}...")`;
       }
     } else if (slug === "no-repeats") {
       const minLen = parseInt(room.startWord, 10);
@@ -925,11 +942,12 @@ export class DuelRoomRegistry {
         return `Word must be an anagram of "${room.startWord}"`;
       }
     } else if (slug === "word-stack") {
-      // Each word must differ by ±1 letter in length from the player's previous word
+      // Each word must be obtainable from the previous by adding or removing exactly one letter
+      // at any position (not just a length change — a letter must align as a subsequence).
       const prevWord = myWords.length > 0 ? myWords[myWords.length - 1] : room.startWord;
-      const prevLen = prevWord.length;
-      if (word.length !== prevLen - 1 && word.length !== prevLen + 1) {
-        return `Word must be ${prevLen - 1} or ${prevLen + 1} letters (±1 from your last word)`;
+      if (!differsByOneLetter(word, prevWord)) {
+        const prevLen = prevWord.length;
+        return `Word must differ from "${prevWord}" by adding or removing exactly one letter (±1 at any position)`;
       }
     } else if (slug === "definition-match") {
       const categoryWords = DEFINITION_CATEGORIES[room.startWord] ?? new Set<string>();

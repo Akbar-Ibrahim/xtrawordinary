@@ -14,6 +14,17 @@ import type {
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
+/** True if b can be obtained from a by adding or removing exactly one letter at any position. */
+function differsByOneLetter(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) !== 1) return false;
+  const [shorter, longer] = a.length < b.length ? [a, b] : [b, a];
+  let si = 0;
+  for (let li = 0; li < longer.length; li++) {
+    if (si < shorter.length && longer[li] === shorter[si]) si++;
+  }
+  return si === shorter.length;
+}
+
 function canFormFromPool(word: string, pool: string): boolean {
   const counts: Record<string, number> = {};
   for (const c of pool.toUpperCase()) counts[c] = (counts[c] ?? 0) + 1;
@@ -198,22 +209,19 @@ export const anagramSolverRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-stack ────────────────────────────────────────────────────────────────
 
 export const wordStackRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word ±1 letters from your last…",
+  placeholder: "Add or remove one letter from your last word…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    // currentWord is the seed/starting word; each new word must differ by ±1 from the previous
-    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord;
-    const prevLen = prevWord.length;
-    if (upper.length !== prevLen - 1 && upper.length !== prevLen + 1) {
-      return `Word must be ${prevLen - 1} or ${prevLen + 1} letters (±1 from your last word)`;
+    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord.toUpperCase();
+    if (!differsByOneLetter(upper, prevWord)) {
+      return `Word must be obtainable from "${prevWord}" by adding or removing exactly one letter at any position`;
     }
     return null;
   },
   renderGameDisplay({ currentWord, usedWords }) {
-    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord;
-    const prevLen = prevWord.length;
+    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord.toUpperCase();
     return (
       <div className="text-center space-y-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Word Stack</p>
@@ -221,7 +229,7 @@ export const wordStackRaceAdapter: DuelGameAdapter = makeAdapter({
           {prevWord}
         </p>
         <p className="text-xs text-muted-foreground">
-          Next word must be <strong>{prevLen - 1}</strong> or <strong>{prevLen + 1}</strong> letters (±1 from previous)
+          Add or remove <strong>one letter</strong> at any position to form a new word
         </p>
       </div>
     );
@@ -301,31 +309,40 @@ export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-split ────────────────────────────────────────────────────────────────
 
 export const wordSplitRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word that's part of the compound word…",
+  placeholder: "Type the next slice of the compound word…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
-    if (usedWords.includes(upper)) return "You already used that word";
-    if (!currentWord.toUpperCase().includes(upper)) {
-      return `Word must be a contiguous part of "${currentWord}"`;
+    const compound = currentWord.toUpperCase();
+    // Compute where the player's cursor is (total letters covered so far, looping)
+    const totalCovered = usedWords.reduce((sum, w) => sum + w.length, 0);
+    const splitPos = totalCovered % compound.length;
+    const remaining = compound.slice(splitPos);
+    if (!remaining.startsWith(upper)) {
+      return `Next slice must start at position ${splitPos + 1}: expected "${remaining.slice(0, upper.length || 4)}…"`;
+    }
+    if (splitPos + upper.length > compound.length) {
+      return `Word extends past the end of "${compound}"`;
     }
     return null;
   },
-  renderGameDisplay({ currentWord }) {
+  renderGameDisplay({ currentWord, usedWords }) {
     const compound = currentWord.toUpperCase();
-    const mid = Math.ceil(compound.length / 2);
-    const part1 = compound.slice(0, mid);
-    const part2 = compound.slice(mid);
+    const totalCovered = usedWords.reduce((sum, w) => sum + w.length, 0);
+    const splitPos = totalCovered % compound.length;
+    const covered = compound.slice(0, splitPos);
+    const cursor = compound[splitPos] ?? "";
+    const rest = compound.slice(splitPos + 1);
     return (
       <div className="text-center space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Compound Word</p>
-        <p className="text-3xl font-black text-primary font-mono tracking-widest" data-testid="text-current-word">
-          <span>{part1}</span>
-          <span className="text-muted-foreground">·</span>
-          <span>{part2}</span>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Split the compound word</p>
+        <p className="text-3xl font-black font-mono tracking-widest" data-testid="text-current-word">
+          <span className="text-muted-foreground/40">{covered}</span>
+          <span className="text-primary underline underline-offset-4">{cursor}</span>
+          <span className="text-foreground">{rest}</span>
         </p>
         <p className="text-xs text-muted-foreground">
-          Submit words that are <strong>substrings</strong> of <strong>{compound}</strong>
+          Submit a word starting at the <strong>underlined letter</strong> (cursor loops after full coverage)
         </p>
       </div>
     );

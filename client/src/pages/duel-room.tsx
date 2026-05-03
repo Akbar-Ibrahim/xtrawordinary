@@ -607,6 +607,29 @@ export default function DuelRoom() {
                   )}
                 </div>
 
+                {isRace && gameResult.myFinalCount != null && (
+                  <div className="rounded-lg border bg-muted/30 px-4 py-3" data-testid="section-race-counts">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide text-center mb-2">Final Scores</p>
+                    <div className="flex justify-center gap-8">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-0.5 truncate max-w-[90px]">{user?.name ?? "You"}</p>
+                        <p className="text-3xl font-black text-green-600" data-testid="text-my-final-count">
+                          {gameResult.myFinalCount}
+                          <span className="text-sm font-normal text-muted-foreground"> / {raceTarget}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center text-muted-foreground font-bold text-lg">vs</div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground mb-0.5 truncate max-w-[90px]">{opponentName || "Opponent"}</p>
+                        <p className="text-3xl font-black text-blue-600" data-testid="text-opp-final-count">
+                          {gameResult.opponentFinalCount ?? 0}
+                          <span className="text-sm font-normal text-muted-foreground"> / {raceTarget}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-center gap-8">
                   <div className="text-center">
                     <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">ELO change</p>

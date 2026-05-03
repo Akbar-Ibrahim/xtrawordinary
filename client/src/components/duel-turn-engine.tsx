@@ -52,6 +52,9 @@ export interface GameResult {
   myWords: string[];
   /** Words submitted by the opponent (excluding the seed word). */
   opponentWords: string[];
+  /** Race-mode final counts (undefined in turn-based). */
+  myFinalCount?: number;
+  opponentFinalCount?: number;
 }
 
 export interface DuelTurnEngineInitialState {
