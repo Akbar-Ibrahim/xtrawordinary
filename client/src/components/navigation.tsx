@@ -269,6 +269,12 @@ export function Navigation() {
                     aria-label={`Notifications${totalNotificationCount > 0 ? ` (${totalNotificationCount})` : ""}`}
                     data-testid="button-notifications-bell"
                   >
+                    {dbUnreadCount > 0 && !bellOpen && (
+                      <span
+                        className="bell-pulse-ring pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 rounded-full border-2 border-red-500"
+                        aria-hidden="true"
+                      />
+                    )}
                     <Bell className="h-5 w-5" />
                     {totalNotificationCount > 0 && (
                       <span
