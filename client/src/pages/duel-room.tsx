@@ -124,7 +124,13 @@ export default function DuelRoom() {
           break;
 
         case "room:state":
-          // Reconnect snapshot — restore full game state including per-player word history
+          // Reconnect snapshot — restore full game state including per-player word history.
+          // IMPORTANT: clear latestGameMessage BEFORE bumping engineKey so the new engine
+          // instance never sees the pre-reconnect message on its first render cycle.
+          // Without this, the remounted engine (prevMsgRef=null) would immediately
+          // re-process the last stale message, duplicating opponent:move side-effects
+          // (wrong turn, duplicate used word, incorrect life count).
+          setLatestGameMessage(null);
           setOpponentId(msg.opponentId);
           setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
