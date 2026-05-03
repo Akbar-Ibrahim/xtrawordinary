@@ -25,17 +25,23 @@ const DUEL_START_WORDS = [
   "WATER", "YIELD",
 ];
 
-/** Target letters used for Letter Hunt and Letter Frequency duels. */
+/** Target letters used for Letter Hunt, Letter Frequency, and Letter Position duels. */
 const DUEL_HUNT_LETTERS = ["R", "T", "L", "S", "N", "M", "B", "D", "F", "G", "P", "C"];
 /** Word-length targets (as strings) used for Word Length duels. */
 const DUEL_WORD_LENGTHS = ["4", "5", "6", "7"];
+/** Letter Balance constraints: N vowels ("NV") or N consonants ("NC"). Counts 2-4. */
+const DUEL_BALANCE_CONSTRAINTS = ["2V", "3V", "4V", "2C", "3C", "4C"];
+/** Positions used for Letter Position duels (2–5). */
+const DUEL_POSITIONS = [2, 3, 4, 5];
 
 /**
  * Returns the game-specific constraint string stored in `startWord` for a room.
- * - word-chain      → a seed word (e.g. "APPLE")
- * - letter-hunt     → a target letter (e.g. "R")
- * - letter-frequency→ a target letter (e.g. "T")
- * - word-length     → a target length string (e.g. "5")
+ * - word-chain       → a seed word (e.g. "APPLE")
+ * - letter-hunt      → a target letter (e.g. "R")
+ * - letter-frequency → a target letter (e.g. "T")
+ * - word-length      → a target length string (e.g. "5")
+ * - letter-position  → "LETTER:POSITION" (e.g. "R:3")
+ * - letter-balance   → "NV" or "NC" (e.g. "3V" = exactly 3 vowels)
  */
 function getDuelGameInit(gameSlug: string, seed: number): string {
   switch (gameSlug) {
@@ -44,6 +50,13 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
       return DUEL_HUNT_LETTERS[seed % DUEL_HUNT_LETTERS.length];
     case "word-length":
       return DUEL_WORD_LENGTHS[seed % DUEL_WORD_LENGTHS.length];
+    case "letter-position": {
+      const letter = DUEL_HUNT_LETTERS[seed % DUEL_HUNT_LETTERS.length];
+      const position = DUEL_POSITIONS[(seed >> 4) % DUEL_POSITIONS.length];
+      return `${letter}:${position}`;
+    }
+    case "letter-balance":
+      return DUEL_BALANCE_CONSTRAINTS[seed % DUEL_BALANCE_CONSTRAINTS.length];
     default:
       return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
   }
@@ -506,6 +519,27 @@ export class DuelRoomRegistry {
           const targetLen = parseInt(room.startWord, 10);
           if (submittedWord.length !== targetLen) {
             return { triggered: false, error: `Word must be exactly ${targetLen} letters long` };
+          }
+        } else if (slug === "letter-position") {
+          const [targetLetter, posStr] = room.startWord.split(":");
+          const pos = parseInt(posStr, 10);
+          if (submittedWord.length < pos) {
+            return { triggered: false, error: `Word must have at least ${pos} letters` };
+          }
+          if (submittedWord[pos - 1] !== targetLetter.toUpperCase()) {
+            return { triggered: false, error: `Letter at position ${pos} must be "${targetLetter}"` };
+          }
+        } else if (slug === "letter-balance") {
+          const constraint = room.startWord; // e.g. "3V" or "4C"
+          const count = parseInt(constraint.slice(0, -1), 10);
+          const type = constraint.slice(-1); // "V" or "C"
+          const VOWELS = "AEIOU";
+          const actual = type === "V"
+            ? submittedWord.split("").filter(c => VOWELS.includes(c)).length
+            : submittedWord.split("").filter(c => !VOWELS.includes(c) && /[A-Z]/.test(c)).length;
+          if (actual !== count) {
+            const typeName = type === "V" ? "vowel" : "consonant";
+            return { triggered: false, error: `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}` };
           }
         } else {
           // word-chain: starting-letter constraint

@@ -16,6 +16,8 @@ import { wordChainDuelAdapter } from "@/components/games/word-chain-duel-adapter
 import { letterHuntDuelAdapter } from "@/components/games/letter-hunt-duel-adapter";
 import { wordLengthDuelAdapter } from "@/components/games/word-length-duel-adapter";
 import { letterFrequencyDuelAdapter } from "@/components/games/letter-frequency-duel-adapter";
+import { letterPositionDuelAdapter } from "@/components/games/letter-position-duel-adapter";
+import { letterBalanceDuelAdapter } from "@/components/games/letter-balance-duel-adapter";
 import type { DuelGameAdapter } from "@/components/duel-turn-engine";
 
 function getAdapterForSlug(gameSlug: string): DuelGameAdapter {
@@ -23,6 +25,8 @@ function getAdapterForSlug(gameSlug: string): DuelGameAdapter {
     case "letter-hunt":      return letterHuntDuelAdapter;
     case "word-length":      return wordLengthDuelAdapter;
     case "letter-frequency": return letterFrequencyDuelAdapter;
+    case "letter-position":  return letterPositionDuelAdapter;
+    case "letter-balance":   return letterBalanceDuelAdapter;
     default:                 return wordChainDuelAdapter;
   }
 }

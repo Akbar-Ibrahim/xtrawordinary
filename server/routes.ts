@@ -2508,7 +2508,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "challengeeId and gameSlug are required" });
       }
       // Allowlist: games that support the turn-based duel format
-      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency"]);
+      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance"]);
       if (!DUEL_ALLOWED_SLUGS.has(gameSlug)) {
         return res.status(400).json({ error: "That game does not support duels" });
       }

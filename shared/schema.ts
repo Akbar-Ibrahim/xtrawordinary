@@ -516,6 +516,8 @@ export const DUEL_GAME_SLUGS = new Set([
   "letter-hunt",
   "word-length",
   "letter-frequency",
+  "letter-position",
+  "letter-balance",
 ]);
 
 export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired", "completed"]);
