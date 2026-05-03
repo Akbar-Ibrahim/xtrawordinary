@@ -2792,9 +2792,11 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/duels/leaderboard", async (_req, res) => {
+  app.get("/api/duels/leaderboard", async (req, res) => {
     try {
-      const entries = await storage.getDuelLeaderboard(100);
+      const rawFormat = req.query.format;
+      const format = rawFormat === "turn" || rawFormat === "race" ? rawFormat : undefined;
+      const entries = await storage.getDuelLeaderboard(100, format);
       res.json(entries);
     } catch {
       res.status(500).json({ error: "Failed to fetch duel leaderboard" });

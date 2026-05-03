@@ -1461,8 +1461,17 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
   }
 
-  async getDuelLeaderboard(limit = 100): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
-    const sorted = [...this.duelRatings].sort((a, b) => b.elo - a.elo).slice(0, limit);
+  async getDuelLeaderboard(limit = 100, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+    let ratings = [...this.duelRatings];
+    if (format) {
+      const userIdsInFormat = new Set(
+        this.duelSessions
+          .filter(s => s.format === format)
+          .flatMap(s => [s.player1Id, s.player2Id])
+      );
+      ratings = ratings.filter(r => userIdsInFormat.has(r.userId));
+    }
+    const sorted = ratings.sort((a, b) => b.elo - a.elo).slice(0, limit);
     return sorted.map((r, i) => {
       const user = this.users.find(u => u.id === r.userId);
       const total = r.wins + r.losses + r.draws;

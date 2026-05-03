@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Swords, Trophy, TrendingUp, Minus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
+
+type FormatFilter = "overall" | "turn" | "race";
 
 interface LeaderboardEntry {
   rank: number;
@@ -31,13 +34,22 @@ function RankMedal({ rank }: { rank: number }) {
   );
 }
 
+const FORMAT_OPTIONS: { value: FormatFilter; label: string }[] = [
+  { value: "overall", label: "Overall" },
+  { value: "turn", label: "Turn-Based" },
+  { value: "race", label: "Race" },
+];
+
 export default function DuelLeaderboard() {
   const { user, isAuthenticated } = useAuth();
+  const [format, setFormat] = useState<FormatFilter>("overall");
+
+  const queryParam = format !== "overall" ? `?format=${format}` : "";
 
   const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/duels/leaderboard"],
+    queryKey: ["/api/duels/leaderboard", format],
     queryFn: async () => {
-      const res = await fetch("/api/duels/leaderboard", { credentials: "include" });
+      const res = await fetch(`/api/duels/leaderboard${queryParam}`, { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
     },
@@ -58,6 +70,28 @@ export default function DuelLeaderboard() {
           <h1 className="text-2xl font-bold">Duel Rankings</h1>
           <p className="text-sm text-muted-foreground">Top 100 players by ELO rating</p>
         </div>
+      </div>
+
+      {/* Format filter toggle */}
+      <div className="space-y-1.5">
+        <div className="flex gap-2" data-testid="filter-format">
+          {FORMAT_OPTIONS.map(opt => (
+            <Button
+              key={opt.value}
+              variant={format === opt.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFormat(opt.value)}
+              data-testid={`button-filter-${opt.value}`}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+        {format !== "overall" && (
+          <p className="text-xs text-muted-foreground" data-testid="text-filter-note">
+            Showing players who have competed in {format === "turn" ? "Turn-Based" : "Race"} duels, ranked by their overall ELO rating.
+          </p>
+        )}
       </div>
 
       {/* Current user's standing (if signed in and ranked) */}
@@ -95,7 +129,11 @@ export default function DuelLeaderboard() {
           <CardContent className="py-14 text-center text-muted-foreground">
             <Swords className="h-10 w-10 mx-auto mb-3 opacity-25" />
             <p className="font-medium">No rankings yet.</p>
-            <p className="text-sm mt-1">Complete a duel to appear on the leaderboard.</p>
+            <p className="text-sm mt-1">
+              {format === "overall"
+                ? "Complete a duel to appear on the leaderboard."
+                : `No players have completed a ${format === "turn" ? "Turn-Based" : "Race"} duel yet.`}
+            </p>
             <Link href="/duels">
               <Button className="mt-4 gap-2" data-testid="button-go-duel">
                 <Swords className="h-4 w-4" />

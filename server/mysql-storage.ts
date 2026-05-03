@@ -1581,9 +1581,9 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.mapDuelRating(rows[0]) : undefined;
   }
 
-  async getDuelLeaderboard(limit = 100): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+  async getDuelLeaderboard(limit = 100, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
     const db = await this.getDb();
-    const rows = await db
+    let query = db
       .select({
         userId: schema.duelRatings.userId,
         displayName: schema.users.name,
@@ -1595,8 +1595,26 @@ export class MySQLStorage implements IStorage {
       })
       .from(schema.duelRatings)
       .innerJoin(schema.users, eq(schema.duelRatings.userId, schema.users.id))
-      .orderBy(desc(schema.duelRatings.elo))
-      .limit(limit);
+      .$dynamic();
+
+    if (format) {
+      const playedInFormat = db
+        .selectDistinct({ userId: schema.duelSessions.player1Id })
+        .from(schema.duelSessions)
+        .where(eq(schema.duelSessions.format, format));
+      const playedInFormat2 = db
+        .selectDistinct({ userId: schema.duelSessions.player2Id })
+        .from(schema.duelSessions)
+        .where(eq(schema.duelSessions.format, format));
+      query = query.where(
+        or(
+          inArray(schema.duelRatings.userId, playedInFormat),
+          inArray(schema.duelRatings.userId, playedInFormat2),
+        )
+      );
+    }
+
+    const rows = await query.orderBy(desc(schema.duelRatings.elo)).limit(limit);
     return rows.map((r, i) => {
       const total = r.wins + r.losses + r.draws;
       return {
