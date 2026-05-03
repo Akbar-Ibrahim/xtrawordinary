@@ -69,7 +69,7 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-type GroupGameConfig = { letters?: string[]; category?: string; level?: number; consonantCount?: number };
+type GroupGameConfig = { initialLetters?: string[]; category?: string; level?: number; consonantCount?: number };
 
 function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfig | null): React.ReactNode {
   switch (slug) {
@@ -96,8 +96,8 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfi
       return <LetterBalanceGame initialChallenge={{ category: cat, level }} groupSeed={seed} locked />;
     }
     case "letter-frequency": {
-      if (gameConfig?.letters && gameConfig.letters.length >= 2) {
-        return <LetterFrequencyGame initialChallenge="multi" initialLetters={gameConfig.letters} groupSeed={seed} locked />;
+      if (gameConfig?.initialLetters && gameConfig.initialLetters.length >= 2) {
+        return <LetterFrequencyGame initialChallenge="multi" initialLetters={gameConfig.initialLetters} groupSeed={seed} locked />;
       }
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
       return <LetterFrequencyGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;

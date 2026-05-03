@@ -190,10 +190,10 @@ function getLfLettersSummary(round: GroupRound): string | null {
   if (round.gameSlug !== "letter-frequency" || !round.gameConfig) return null;
   try {
     const cfg = JSON.parse(round.gameConfig);
-    if (!Array.isArray(cfg.letters) || cfg.letters.length === 0) return null;
-    const pinned = cfg.letters.filter((l: string) => l !== "any");
+    if (!Array.isArray(cfg.initialLetters) || cfg.initialLetters.length === 0) return null;
+    const pinned = cfg.initialLetters.filter((l: string) => l !== "any");
     if (pinned.length === 0) return null;
-    const anyCount = cfg.letters.filter((l: string) => l === "any").length;
+    const anyCount = cfg.initialLetters.filter((l: string) => l === "any").length;
     const parts = [...pinned];
     if (anyCount > 0) parts.push(`+${anyCount} random`);
     return parts.join(", ");
@@ -215,6 +215,7 @@ export default function GroupDetail() {
   const [closesAt, setClosesAt] = useState("");
   const [roundLetterCount, setRoundLetterCount] = useState<2 | 3 | 4>(2);
   const [roundLetters, setRoundLetters] = useState<string[]>(["any", "any"]);
+  const [roundFreqEnabled, setRoundFreqEnabled] = useState(false);
   const [roundLbMode, setRoundLbMode] = useState<"random" | "locked">("random");
   const [roundLbLevel, setRoundLbLevel] = useState<number | undefined>(undefined);
   const [roundLbConsonantCount, setRoundLbConsonantCount] = useState<number | undefined>(undefined);
@@ -284,8 +285,8 @@ export default function GroupDetail() {
         gameSlug: selectedSlug === "random" ? undefined : selectedSlug,
         closesAt: closesAt ? new Date(closesAt).toISOString() : undefined,
       };
-      if (selectedSlug === "letter-frequency") {
-        body.gameConfig = { letters: roundLetters };
+      if (selectedSlug === "letter-frequency" && roundFreqEnabled) {
+        body.gameConfig = { initialLetters: roundLetters };
       }
       if (selectedSlug === "letter-balance" && roundLbMode === "locked" && roundLbLevel !== undefined && roundLbConsonantCount !== undefined) {
         body.gameConfig = { category: "locked_balance", level: roundLbLevel, consonantCount: roundLbConsonantCount };
@@ -715,6 +716,7 @@ export default function GroupDetail() {
           setClosesAt("");
           setRoundLetterCount(2);
           setRoundLetters(["any", "any"]);
+          setRoundFreqEnabled(false);
         }
       }}>
         <DialogContent>
@@ -806,51 +808,70 @@ export default function GroupDetail() {
             )}
             {selectedSlug === "letter-frequency" && (
               <div className="space-y-2 rounded-md border border-border p-3">
-                <label className="text-sm font-medium">Pin Letters <span className="text-muted-foreground font-normal">(optional)</span></label>
-                <div className="flex gap-1">
-                  {([2, 3, 4] as const).map(n => (
-                    <Button
-                      key={n}
-                      type="button"
-                      size="sm"
-                      variant={roundLetterCount === n ? "default" : "outline"}
-                      onClick={() => {
-                        setRoundLetterCount(n);
-                        setRoundLetters(prev => {
-                          const next = n > prev.length
-                            ? [...prev, ...Array(n - prev.length).fill("any")]
-                            : prev.slice(0, n);
-                          return next;
-                        });
-                      }}
-                      data-testid={`button-round-freq-multi-count-${n}`}
-                    >
-                      {n} letters
-                    </Button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Multi-Letter Mode <span className="text-muted-foreground font-normal">(pin letters)</span></label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={roundFreqEnabled}
+                    onClick={() => setRoundFreqEnabled(v => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${roundFreqEnabled ? "bg-primary" : "bg-input"}`}
+                    data-testid="toggle-round-freq-enabled"
+                  >
+                    <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${roundFreqEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                  </button>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {Array.from({ length: roundLetterCount }).map((_, i) => (
-                    <div key={i} className="flex flex-col items-center gap-0.5">
-                      <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
-                      <Select
-                        value={roundLetters[i] || "any"}
-                        onValueChange={(v) => setRoundLetters(prev => {
-                          const next = [...prev];
-                          next[i] = v;
-                          return next;
-                        })}
-                      >
-                        <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-round-freq-multi-${i}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="any">Any</SelectItem>
-                          {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                {roundFreqEnabled && (
+                  <>
+                    <div className="flex gap-1">
+                      {([2, 3, 4] as const).map(n => (
+                        <Button
+                          key={n}
+                          type="button"
+                          size="sm"
+                          variant={roundLetterCount === n ? "default" : "outline"}
+                          onClick={() => {
+                            setRoundLetterCount(n);
+                            setRoundLetters(prev => {
+                              const next = n > prev.length
+                                ? [...prev, ...Array(n - prev.length).fill("any")]
+                                : prev.slice(0, n);
+                              return next;
+                            });
+                          }}
+                          data-testid={`button-round-freq-multi-count-${n}`}
+                        >
+                          {n} letters
+                        </Button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">Each slot can be "Any" or a specific letter. All members will play with the same pinned letters.</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {Array.from({ length: roundLetterCount }).map((_, i) => (
+                        <div key={i} className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
+                          <Select
+                            value={roundLetters[i] || "any"}
+                            onValueChange={(v) => setRoundLetters(prev => {
+                              const next = [...prev];
+                              next[i] = v;
+                              return next;
+                            })}
+                          >
+                            <SelectTrigger className="w-16 h-8 text-sm" data-testid={`select-round-freq-multi-${i}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any</SelectItem>
+                              {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Each slot can be "Any" or a specific letter. All members will play with the same pinned letters.</p>
+                  </>
+                )}
+                {!roundFreqEnabled && (
+                  <p className="text-xs text-muted-foreground">Enable to pin specific letters for all members. Off = each member gets a seeded random challenge.</p>
+                )}
               </div>
             )}
             <div className="space-y-1">
@@ -866,7 +887,7 @@ export default function GroupDetail() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); setRoundLetterCount(2); setRoundLetters(["any", "any"]); setRoundLbMode("random"); setRoundLbLevel(undefined); setRoundLbConsonantCount(undefined); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setCreateRoundOpen(false); setClosesAt(""); setRoundLetterCount(2); setRoundLetters(["any", "any"]); setRoundFreqEnabled(false); setRoundLbMode("random"); setRoundLbLevel(undefined); setRoundLbConsonantCount(undefined); }}>Cancel</Button>
             <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending || (selectedSlug === "letter-balance" && roundLbMode === "locked" && (!roundLbLevel || !roundLbConsonantCount))} data-testid="button-create-round-submit">
               {createRoundMutation.isPending ? "Creating..." : "Start Round"}
             </Button>
