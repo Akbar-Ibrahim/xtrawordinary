@@ -1724,6 +1724,8 @@ export default function GameDetail() {
               {slug === "letter-balance" && (() => {
                 const isStructural = lbMode === "structural";
                 const structuralCats = [
+                  { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2,3,4,5,6,7] as number[] },
+                  { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2,3,4,5,6,7] as number[] },
                   { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
                   { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
                   { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
