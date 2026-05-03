@@ -124,8 +124,10 @@ export default function Profile() {
     roomCode: string;
     opponentId: number;
     opponentName: string;
+    opponentAvatarUrl: string | null;
     gameSlug: string;
     outcome: "win" | "loss" | "draw" | null;
+    isForfeit: boolean;
     eloDelta: number | null;
     startedAt: string;
     endedAt: string | null;
@@ -563,9 +565,16 @@ export default function Profile() {
                 ) : (
                   <div className="space-y-2">
                     {duelHistory.map((duel) => {
-                      const outcomeLabel = duel.outcome === "win" ? "Win" : duel.outcome === "loss" ? "Loss" : duel.outcome === "draw" ? "Draw" : "In Progress";
-                      const outcomeBadgeVariant = duel.outcome === "win" ? "default" : duel.outcome === "loss" ? "destructive" : "secondary";
-                      const outcomeBadgeClass = duel.outcome === "win" ? "bg-green-500 hover:bg-green-500 text-white border-0" : "";
+                      const isForfeit = duel.isForfeit;
+                      const outcomeLabel = duel.outcome === "win"
+                        ? (isForfeit ? "Forfeit" : "Win")
+                        : duel.outcome === "loss"
+                        ? (isForfeit ? "Forfeit" : "Loss")
+                        : duel.outcome === "draw" ? "Draw" : "In Progress";
+                      const outcomeBadgeVariant: "default" | "destructive" | "secondary" = (duel.outcome === "win" || isForfeit) ? "default" : duel.outcome === "loss" ? "destructive" : "secondary";
+                      const outcomeBadgeClass = duel.outcome === "win"
+                        ? (isForfeit ? "bg-orange-500 hover:bg-orange-500 text-white border-0" : "bg-green-500 hover:bg-green-500 text-white border-0")
+                        : isForfeit ? "bg-orange-500 hover:bg-orange-500 text-white border-0" : "";
                       const eloDeltaPositive = duel.eloDelta !== null && duel.eloDelta > 0;
                       const eloDeltaNegative = duel.eloDelta !== null && duel.eloDelta < 0;
                       const date = duel.endedAt ? new Date(duel.endedAt) : new Date(duel.startedAt);
@@ -583,6 +592,7 @@ export default function Profile() {
                             >
                               {outcomeLabel}
                             </Badge>
+                            <UserAvatar name={duel.opponentName} avatarUrl={duel.opponentAvatarUrl} className="h-8 w-8 shrink-0 text-xs" />
                             <div>
                               <p className="font-medium text-sm" data-testid={`text-duel-opponent-${duel.id}`}>
                                 vs{" "}

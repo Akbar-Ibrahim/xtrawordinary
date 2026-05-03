@@ -44,8 +44,10 @@ interface DuelHistoryEntry {
   roomCode: string;
   opponentId: number;
   opponentName: string;
+  opponentAvatarUrl: string | null;
   gameSlug: string;
   outcome: "win" | "loss" | "draw" | null;
+  isForfeit: boolean;
   eloDelta: number | null;
   startedAt: string;
   endedAt: string | null;
@@ -464,6 +466,14 @@ export default function DuelLobby() {
                   const eloDeltaPos = duel.eloDelta !== null && duel.eloDelta > 0;
                   const eloDeltaNeg = duel.eloDelta !== null && duel.eloDelta < 0;
                   const date = duel.endedAt ? new Date(duel.endedAt) : new Date(duel.startedAt);
+                  const isForfeit = duel.isForfeit;
+                  const badgeClass = isWin
+                    ? "bg-green-500 hover:bg-green-500 text-white border-0"
+                    : isForfeit
+                    ? "bg-orange-500 hover:bg-orange-500 text-white border-0"
+                    : "";
+                  const badgeVariant: "default" | "destructive" | "secondary" = isWin || isForfeit ? "default" : isLoss ? "destructive" : "secondary";
+                  const label = isWin ? (isForfeit ? "Forfeit" : "Win") : isLoss ? (isForfeit ? "Forfeit" : "Loss") : isDraw ? "Draw" : "—";
                   return (
                     <div
                       key={duel.id}
@@ -471,12 +481,13 @@ export default function DuelLobby() {
                       data-testid={`row-duel-history-${duel.id}`}
                     >
                       <Badge
-                        variant={isWin ? "default" : isLoss ? "destructive" : "secondary"}
-                        className={`w-14 justify-center shrink-0 text-xs ${isWin ? "bg-green-500 hover:bg-green-500 text-white border-0" : ""}`}
+                        variant={badgeVariant}
+                        className={`w-16 justify-center shrink-0 text-xs ${badgeClass}`}
                         data-testid={`badge-duel-outcome-${duel.id}`}
                       >
-                        {outcomeLabel}
+                        {label}
                       </Badge>
+                      <UserAvatar name={duel.opponentName} avatarUrl={duel.opponentAvatarUrl} className="h-8 w-8 shrink-0 text-xs" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">
                           vs{" "}

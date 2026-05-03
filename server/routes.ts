@@ -2802,12 +2802,13 @@ export async function registerRoutes(
       const sessions = await storage.getDuelSessionsForUser(userId);
       const opponentIds = [...new Set(sessions.map(s => s.player1Id === userId ? s.player2Id : s.player1Id))];
       const opponentUsers = await Promise.all(opponentIds.map(id => storage.getUserById(id)));
-      const opponentMap = new Map<number, string>();
-      opponentUsers.forEach(user => { if (user) opponentMap.set(user.id, user.name); });
+      const opponentMap = new Map<number, { name: string; avatarUrl: string | null }>();
+      opponentUsers.forEach(user => { if (user) opponentMap.set(user.id, { name: user.name, avatarUrl: user.avatarUrl }); });
       const result = sessions.map(s => {
         const isPlayer1 = s.player1Id === userId;
         const opponentId = isPlayer1 ? s.player2Id : s.player1Id;
         const eloDelta = isPlayer1 ? s.eloDeltaPlayer1 : s.eloDeltaPlayer2;
+        const isForfeit = s.outcome === "forfeit_player1" || s.outcome === "forfeit_player2";
         let outcome: "win" | "loss" | "draw" | null = null;
         if (s.outcome) {
           if (s.outcome === "draw") {
@@ -2821,13 +2822,16 @@ export async function registerRoutes(
             outcome = "loss";
           }
         }
+        const opponent = opponentMap.get(opponentId);
         return {
           id: s.id,
           roomCode: s.roomCode,
           opponentId,
-          opponentName: opponentMap.get(opponentId) ?? "Unknown",
+          opponentName: opponent?.name ?? "Unknown",
+          opponentAvatarUrl: opponent?.avatarUrl ?? null,
           gameSlug: s.gameSlug,
           outcome,
+          isForfeit,
           eloDelta,
           startedAt: s.startedAt,
           endedAt: s.endedAt,
