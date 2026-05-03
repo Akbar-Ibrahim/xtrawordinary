@@ -1,0 +1,62 @@
+NEXT STEPS — xtraWordinary
+
+────────────────────────────────────────────────────────────
+DUEL SYSTEM DEPTH
+────────────────────────────────────────────────────────────
+
+1. Duel Tournaments
+   A bracket-style mini-tournament where 4–8 players sign up, get seeded
+   by ELO, and play single-elimination rounds. The platform already has
+   rooms, ELO, and lobby infrastructure; this would be the crown jewel
+   of the duel system.
+
+2. Duel Achievements
+   The platform has 19 achievement definitions but none are duel-specific.
+   Milestones like "Win 10 duels", "Achieve 1400 ELO", "Win 5 races in a
+   row" would motivate competitive play.
+
+────────────────────────────────────────────────────────────
+DAILY & STREAKS
+────────────────────────────────────────────────────────────
+
+3. Daily Duel
+   A single shared puzzle every day where everyone's matched against the
+   same seed, building a daily all-time leaderboard. Fits naturally
+   alongside the existing daily challenge.
+
+4. Streak Visualization on the Stats Page
+   The streak system exists in the backend but the stats page could show
+   a heatmap calendar (like GitHub contributions) to make streaks feel
+   more satisfying.
+
+────────────────────────────────────────────────────────────
+DISCOVERY & ONBOARDING
+────────────────────────────────────────────────────────────
+
+5. Game Search and Filtering on the Home Page
+   With 23 games, new users may feel overwhelmed. A search bar, difficulty
+   filter, and "popular this week" sort would help them find games they
+   enjoy faster.
+
+6. Improved Onboarding Flow
+   New users currently land on the home grid with no guidance. A short
+   "pick your first game" wizard or a welcome banner for new accounts
+   would reduce drop-off.
+
+────────────────────────────────────────────────────────────
+SOCIAL & COMMUNITY
+────────────────────────────────────────────────────────────
+
+7. In-App Notifications Panel
+   Friend requests, group invites, challenge results, and comment replies
+   currently require the user to navigate to the right page. A
+   notification bell in the nav with a dropdown would surface these
+   without disruption.
+
+────────────────────────────────────────────────────────────
+PRIORITY ORDER (highest user impact first)
+────────────────────────────────────────────────────────────
+
+  1. Duel Achievements   — makes recent duel investment pay off in engagement
+  2. In-App Notifications Panel — ties all social features together
+  3. Game Search / Filtering — helps new users find games faster
