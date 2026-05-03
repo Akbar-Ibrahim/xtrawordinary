@@ -673,15 +673,17 @@ export default function GameDetail() {
                       Challenge a Friend
                     </Button>
                   )}
-                  {isAuthenticated && user?.isPremium && friends.length > 0 && slug === "word-chain" && (
+                  {isAuthenticated && user?.isPremium && slug === "word-chain" && (
                     <Button
                       variant="outline"
-                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 disabled:opacity-50"
                       onClick={() => { setDuelFriendId(""); setShowDuelDialog(true); }}
+                      disabled={friends.length === 0}
+                      title={friends.length === 0 ? "Add friends to start a duel" : undefined}
                       data-testid="button-duel-friend"
                     >
                       <Swords className="h-4 w-4" />
-                      Duel a Friend
+                      {friends.length === 0 ? "Duel a Friend (no friends yet)" : "Duel a Friend"}
                     </Button>
                   )}
                   {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (

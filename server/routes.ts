@@ -2598,10 +2598,10 @@ export async function registerRoutes(
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
         await storage.updateDuelChallengeStatus(id, "expired");
-        // Clean up the pre-created room so it does not leak in memory
+        // Notify any challenger in the waiting room, then close the room
         if (challenge.roomCode) {
           const { duelRegistry } = await import("./duel-ws");
-          duelRegistry.endRoom(challenge.roomCode);
+          duelRegistry.notifyChallengeCancelled(challenge.roomCode, "expired");
         }
         return res.status(410).json({ error: "Challenge has expired" });
       }
@@ -2633,10 +2633,10 @@ export async function registerRoutes(
       if (challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "declined");
-      // Close the pre-created room so stale-room play is impossible
+      // Notify any challenger already in the waiting room, then close the room
       if (challenge.roomCode) {
         const { duelRegistry } = await import("./duel-ws");
-        duelRegistry.endRoom(challenge.roomCode);
+        duelRegistry.notifyChallengeCancelled(challenge.roomCode, "declined");
       }
       res.json(updated);
     } catch {
@@ -2653,10 +2653,10 @@ export async function registerRoutes(
       if (challenge.challengerId !== userId) return res.status(403).json({ error: "Only the challenger can cancel" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "cancelled");
-      // Close the pre-created room so stale-room play is impossible
+      // Notify any challenger already in the waiting room, then close the room
       if (challenge.roomCode) {
         const { duelRegistry } = await import("./duel-ws");
-        duelRegistry.endRoom(challenge.roomCode);
+        duelRegistry.notifyChallengeCancelled(challenge.roomCode, "cancelled");
       }
       res.json(updated);
     } catch {

@@ -646,6 +646,22 @@ export class DuelRoomRegistry {
     this.endRoom(roomCode);
   }
 
+  /** Notify all connected players in a room that the challenge was externally
+   *  cancelled/declined/expired, then close the room. Called from REST routes
+   *  so the challenger in the waiting room gets an immediate terminal event
+   *  rather than waiting until disconnect/error. */
+  notifyChallengeCancelled(
+    roomCode: string,
+    reason: "declined" | "cancelled" | "expired",
+  ): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+    for (const p of Array.from(room.players.values())) {
+      send(p.ws, { type: "challenge:cancelled", reason });
+    }
+    this.endRoom(roomCode);
+  }
+
   endRoom(roomCode: string): void {
     const room = this.rooms.get(roomCode);
     if (!room) return;

@@ -201,6 +201,19 @@ export default function DuelRoom() {
           setLatestGameMessage(msg);
           break;
 
+        case "challenge:cancelled":
+          // Server closed the room because the challengee declined/cancelled/expired.
+          // Show a clear error so the challenger doesn't see a stale waiting room.
+          setErrorMsg(
+            msg.reason === "declined"
+              ? "Your friend declined the duel challenge."
+              : msg.reason === "cancelled"
+              ? "The duel challenge was cancelled."
+              : "The duel challenge has expired.",
+          );
+          setPhase("error");
+          break;
+
         case "player:disconnect":
           // reconnectDeadlineMs=0 means the opponent left before the game began
           // (waiting or countdown phase). Reset ALL opponent presence + readiness

@@ -53,4 +53,5 @@ export type DuelServerMessage =
   | { type: "player:disconnect"; reconnectDeadlineMs: number }
   | { type: "player:reconnect" }
   | { type: "player:forfeited"; reason: "disconnect" | "manual" }
+  | { type: "challenge:cancelled"; reason: "declined" | "cancelled" | "expired" }
   | { type: "error"; message: string };
