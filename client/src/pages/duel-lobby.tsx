@@ -210,34 +210,39 @@ export default function DuelLobby() {
     onSettled: () => setJoiningId(null),
   });
 
-  const cancelMutation = useMutation({
+  const cancelMutation = useMutation<
+    unknown,
+    Error,
+    number,
+    { prevAll: OpenChallenge[] | undefined; prevFiltered: OpenChallenge[] | undefined }
+  >({
     mutationFn: async (challengeId: number) => {
       const res = await apiRequest("PATCH", `/api/duels/challenges/${challengeId}/cancel`, {});
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+        const body = await res.json().catch(() => ({})) as { error?: string };
         throw new Error(body.error ?? "Failed to cancel");
       }
       return res.json();
     },
     onMutate: async (challengeId: number) => {
       await queryClient.cancelQueries({ queryKey: ["/api/duels/open"] });
-      const prev = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open"]);
+      const prevAll = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open"]);
+      const prevFiltered = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open", gameFilter]);
       queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open"], (old) =>
         old ? old.filter((c) => c.id !== challengeId) : []
       );
       queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open", gameFilter], (old) =>
         old ? old.filter((c) => c.id !== challengeId) : []
       );
-      return { prev };
+      return { prevAll, prevFiltered };
     },
     onSuccess: () => {
       toast({ title: "Challenge cancelled", description: "Your open challenge has been removed from the lobby." });
     },
-    onError: (err: any, _challengeId, ctx: any) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(["/api/duels/open"], ctx.prev);
-      }
-      toast({ title: "Could not cancel", description: err?.message ?? "Try again.", variant: "destructive" });
+    onError: (err, _challengeId, ctx) => {
+      if (ctx?.prevAll) queryClient.setQueryData(["/api/duels/open"], ctx.prevAll);
+      if (ctx?.prevFiltered) queryClient.setQueryData(["/api/duels/open", gameFilter], ctx.prevFiltered);
+      toast({ title: "Could not cancel", description: err.message ?? "Try again.", variant: "destructive" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] });
@@ -468,7 +473,7 @@ export default function DuelLobby() {
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : openChallenges.length === 0 ? (
+            ) : openChallenges.filter((c) => c.challengerId !== user?.id).length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-3 opacity-30" />
@@ -478,7 +483,7 @@ export default function DuelLobby() {
               </Card>
             ) : (
               <div className="space-y-3">
-                {openChallenges.map((c) => {
+                {openChallenges.filter((c) => c.challengerId !== user?.id).map((c) => {
                   const isJoining = joiningId === c.id && joinMutation.isPending;
                   return (
                     <Card key={c.id} data-testid={`card-open-challenge-${c.id}`} className="border border-violet-200 dark:border-violet-900">
