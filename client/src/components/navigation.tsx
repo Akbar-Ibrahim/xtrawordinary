@@ -2,12 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastAction } from "@/components/ui/toast";
 import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -19,6 +20,16 @@ function slugToTitle(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
+type IncomingDuelChallenge = {
+  id: number;
+  status: string;
+  gameSlug: string;
+  challengerId: number;
+  challengerName: string | null;
+  challengerAvatarUrl: string | null;
+  roomCode: string | null;
+};
+
 export function Navigation() {
   const [location, navigate] = useLocation();
   const { theme, toggleTheme } = useTheme();
@@ -26,6 +37,7 @@ export function Navigation() {
   const { user, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const suppressNextDropdownOpen = useRef(false);
   const { toast } = useToast();
   const { unseenChallenges, unseenCount, newlyAccepted, dismiss: dismissDuelNotification } = useDuelNotifications();
@@ -44,12 +56,12 @@ export function Navigation() {
   });
   const openDuelCount = openDuelCountData?.count ?? 0;
 
-  const { data: incomingDuels = [] } = useQuery<{ id: number; status: string }[]>({
+  const { data: incomingDuels = [] } = useQuery<IncomingDuelChallenge[]>({
     queryKey: ["/api/duels/challenges/incoming"],
     queryFn: async () => {
       const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
       if (!res.ok) return [];
-      const data = await res.json() as { id: number; status: string }[];
+      const data = await res.json() as IncomingDuelChallenge[];
       return data.filter((d) => d.status === "pending");
     },
     enabled: isAuthenticated,
@@ -219,6 +231,145 @@ export function Navigation() {
               )}
             </Button>
 
+            {isAuthenticated && (
+              <Popover open={bellOpen} onOpenChange={setBellOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                    aria-label={`Notifications${totalNotificationCount > 0 ? ` (${totalNotificationCount})` : ""}`}
+                    data-testid="button-notifications-bell"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {totalNotificationCount > 0 && (
+                      <span
+                        className="absolute top-1 right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none"
+                        data-testid="badge-notification-count"
+                      >
+                        {totalNotificationCount > 99 ? "99+" : totalNotificationCount}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0" data-testid="panel-notifications">
+                  <div className="flex items-center justify-between px-4 py-3 border-b">
+                    <span className="font-semibold text-sm">Notifications</span>
+                    {totalNotificationCount > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {totalNotificationCount} new
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto">
+                    {totalNotificationCount === 0 ? (
+                      <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                        <CheckCheck className="h-8 w-8 opacity-40" />
+                        <p className="text-sm">You're all caught up!</p>
+                      </div>
+                    ) : (
+                      <div className="py-1">
+                        {incomingDuels.length > 0 && (
+                          <div>
+                            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Duel Challenges
+                            </p>
+                            {incomingDuels.map((challenge) => (
+                              <button
+                                key={challenge.id}
+                                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                                onClick={() => {
+                                  setBellOpen(false);
+                                  navigate("/friends?tab=duels");
+                                }}
+                                data-testid={`notification-duel-challenge-${challenge.id}`}
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+                                  <Swords className="h-4 w-4 text-violet-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium leading-snug">
+                                    {challenge.challengerName ?? "Someone"} challenged you
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {slugToTitle(challenge.gameSlug)} · Tap to view
+                                  </p>
+                                </div>
+                                <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {unseenChallenges.length > 0 && (
+                          <div>
+                            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Duel Rooms Ready
+                            </p>
+                            {unseenChallenges.map((c) => (
+                              <button
+                                key={c.id}
+                                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                                onClick={() => {
+                                  dismissDuelNotification(c.id);
+                                  setBellOpen(false);
+                                  navigate(`/duel/${c.roomCode}`);
+                                }}
+                                data-testid={`notification-duel-room-${c.id}`}
+                              >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
+                                  <Swords className="h-4 w-4 text-accent" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium leading-snug">
+                                    {c.challengeeName ?? "Someone"} accepted your challenge
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {slugToTitle(c.gameSlug)} · Room is ready
+                                  </p>
+                                </div>
+                                <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {unreadCount > 0 && (
+                          <div>
+                            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Friend Challenges
+                            </p>
+                            <button
+                              className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                              onClick={() => {
+                                setBellOpen(false);
+                                navigate("/friends?tab=challenges");
+                              }}
+                              data-testid="notification-friend-challenges"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                                <Trophy className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium leading-snug">
+                                  {unreadCount} unread challenge {unreadCount === 1 ? "result" : "results"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Tap to see how you did
+                                </p>
+                              </div>
+                              <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
             <PremiumBanner variant="nav" />
 
             {isAuthenticated && user ? (
@@ -237,13 +388,6 @@ export function Navigation() {
                         <Crown className="h-3 w-3" />
                         Premium
                       </span>
-                    )}
-                    {totalNotificationCount > 0 && (
-                      <span
-                        className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
-                        data-testid="dot-challenge-notification"
-                        aria-label={`${totalNotificationCount} notification${totalNotificationCount !== 1 ? "s" : ""}`}
-                      />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
