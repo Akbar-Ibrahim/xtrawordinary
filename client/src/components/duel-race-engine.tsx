@@ -170,7 +170,11 @@ export function DuelRaceEngine({
         if (pendingWordRef.current !== null) {
           const rejected = pendingWordRef.current;
           pendingWordRef.current = null;
-          setMyWords((prev) => prev.filter((w) => w !== rejected));
+          setMyWords((prev) => {
+            const idx = prev.lastIndexOf(rejected);
+            if (idx === -1) return prev;
+            return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+          });
         }
         setFeedback(msg.message);
         setTimeout(() => setFeedback(null), 3000);
