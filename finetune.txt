@@ -10,12 +10,7 @@ DUEL SYSTEM DEPTH
    rooms, ELO, and lobby infrastructure; this would be the crown jewel
    of the duel system.
 
-2. Duel Achievements
-   The platform has 19 achievement definitions but none are duel-specific.
-   Milestones like "Win 10 duels", "Achieve 1400 ELO", "Win 5 races in a
-   row" would motivate competitive play.
-
-3. Duel Spectator Mode
+2. Duel Spectator Mode
    Players set a duel as Public or Private when issuing the challenge.
    Spectators join the same real-time room in read-only mode and see the
    live word feed, timer, and lives. Spectator emoji reactions (👀 🔥 😬)
@@ -28,7 +23,7 @@ DUEL SYSTEM DEPTH
 GROUP VS GROUP CHALLENGES
 ────────────────────────────────────────────────────────────
 
-4. Huddle Mode (Phase 1)
+3. Huddle Mode (Phase 1)
    Two groups challenge each other to a synchronous game session.
    One designated typist per group; the rest shout answers. Both groups
    start at the same time via the existing mutual-Ready + countdown flow.
@@ -36,7 +31,7 @@ GROUP VS GROUP CHALLENGES
    Entry point: "Challenge Another Group" on the Group detail page.
    No new game logic needed — same engine as 1v1 duels.
 
-5. Team Race Mode (Phase 2)
+4. Team Race Mode (Phase 2)
    Every group member joins on their own device. Members play
    simultaneously; answers are pooled and de-duplicated for the team.
    Real-time team score feed shows both groups' aggregate tallies live.
@@ -45,7 +40,7 @@ GROUP VS GROUP CHALLENGES
    Design questions to resolve: player cap, score normalisation for
    unequal group sizes, quorum (min members needed to start).
 
-6. Relay Mode (Phase 3)
+5. Relay Mode (Phase 3)
    Teams rotate which member is the active typist each round — each
    member gets a turn. Works for turn-based games.
    Build after Huddle and Team Race are stable.
@@ -54,25 +49,16 @@ GROUP VS GROUP CHALLENGES
 DAILY & STREAKS
 ────────────────────────────────────────────────────────────
 
-7. Daily Duel
+6. Daily Duel
    A single shared puzzle every day where everyone's matched against the
    same seed, building a daily all-time leaderboard. Fits naturally
    alongside the existing daily challenge.
 
 ────────────────────────────────────────────────────────────
-DISCOVERY & ONBOARDING
-────────────────────────────────────────────────────────────
-
-8. Improved Onboarding Flow
-   New users currently land on the home grid with no guidance. A short
-   "pick your first game" wizard or a welcome banner for new accounts
-   would reduce drop-off.
-
-────────────────────────────────────────────────────────────
 NEW DUEL GAMES
 ────────────────────────────────────────────────────────────
 
-9. Ladder Rush Duel & Ladder Rush: Double Swap Duel
+7. Ladder Rush Duel & Ladder Rush: Double Swap Duel
    Turn-based duel format for both Ladder Rush games. Both players share
    a single word chain: Player A enters a word, Player B must respond
    with a valid word that differs by exactly 1 letter (or 2 for Double
@@ -112,7 +98,6 @@ PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
   1. Duel Spectator Mode         — natural next step for the mature duel system
-  2. Duel Achievements           — makes duel investment pay off in engagement
-  3. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
-  4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
-  5. Improved Onboarding         — reduces drop-off for new users
+  2. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
+  3. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
+  4. Daily Duel                  — builds daily habit alongside existing challenge

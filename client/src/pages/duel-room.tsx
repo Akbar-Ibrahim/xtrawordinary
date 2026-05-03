@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react";
+import { recordDuelResult } from "@/lib/game-stats";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
 import type { GameResult, DuelTurnEngineInitialState } from "@/components/duel-turn-engine";
@@ -373,7 +374,17 @@ export default function DuelRoom() {
   const handleGameOver = useCallback((result: GameResult) => {
     setGameResult(result);
     setPhase("over");
-  }, []);
+
+    const isRace = (roomInfo?.format ?? "turn") === "race";
+    const newAchievements = recordDuelResult(result.outcome, isRace);
+    for (const ach of newAchievements) {
+      toast({
+        title: "Achievement Unlocked! 🏆",
+        description: `${ach.title} — ${ach.description}`,
+        duration: 5000,
+      });
+    }
+  }, [roomInfo, toast]);
 
   const handleRematch = useCallback(async () => {
     if (!opponentId || !roomInfo) return;

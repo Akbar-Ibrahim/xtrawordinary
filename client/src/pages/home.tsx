@@ -6,12 +6,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game } from "@shared/schema";
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
 import { PremiumBanner } from "@/components/premium-banner";
+
+const ONBOARDED_KEY = "xw_onboarded";
+
+const STARTER_GAMES = [
+  { slug: "word-scramble", label: "Word Scramble", blurb: "Unscramble letters into words", difficulty: "easy", color: "hsl(142, 69%, 45%)" },
+  { slug: "word-chain",    label: "Word Chain",    blurb: "Each word starts where the last ended", difficulty: "medium", color: "hsl(221, 83%, 58%)" },
+  { slug: "anagram-solver", label: "Anagram Solver", blurb: "Find all hidden words in the set", difficulty: "hard", color: "hsl(340, 82%, 55%)" },
+];
 
 interface DailyChallengeResponse {
   date: string;
@@ -43,6 +51,21 @@ export default function Home() {
   const [favorites, setFavorites] = useState(() => loadFavorites());
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all");
+
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try {
+      return !localStorage.getItem(ONBOARDED_KEY);
+    } catch {
+      return false;
+    }
+  });
+
+  const dismissWelcome = useCallback(() => {
+    try {
+      localStorage.setItem(ONBOARDED_KEY, "1");
+    } catch {}
+    setShowWelcome(false);
+  }, []);
 
   const handleFavoriteChange = useCallback(() => {
     setFavorites(loadFavorites());
@@ -126,6 +149,68 @@ export default function Home() {
               Daily challenges, leaderboards, and word games to obsess over.
             </p>
           </motion.div>
+
+          <AnimatePresence>
+            {showWelcome && !hasPlayed && (
+              <motion.div
+                key="welcome-banner"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.35 }}
+                className="mb-8"
+              >
+                <Card className="border-primary/25 bg-primary/5 relative overflow-hidden" data-testid="card-welcome-banner">
+                  <CardContent className="p-5 sm:p-6">
+                    <button
+                      onClick={dismissWelcome}
+                      className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
+                      aria-label="Dismiss welcome banner"
+                      data-testid="button-dismiss-welcome"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0 pr-4">
+                        <h3 className="font-bold text-base mb-1">Welcome to xtraWordinary!</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          25 word games. Daily challenges. 1-on-1 duels. Pick a game below to get started — it's free to play.
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                          {STARTER_GAMES.map((g) => (
+                            <Link key={g.slug} href={`/game/${g.slug}`} onClick={dismissWelcome}>
+                              <div
+                                className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                                data-testid={`card-starter-${g.slug}`}
+                              >
+                                <div
+                                  className="h-2.5 w-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: g.color }}
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold truncate">{g.label}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{g.blurb}</p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+
+                        <Button size="sm" variant="ghost" onClick={dismissWelcome} className="text-xs text-muted-foreground h-auto py-1 px-2" data-testid="button-welcome-skip">
+                          I'll browse on my own
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {hasPlayed && (
             <motion.div

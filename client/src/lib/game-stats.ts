@@ -3,6 +3,78 @@ const STREAK_KEY = "wordplay_streak";
 const ACHIEVEMENTS_KEY = "wordplay_achievements";
 const FAVORITES_KEY = "wordplay_favorites";
 const DAILY_CHALLENGE_KEY = "wordplay_daily_challenge";
+const DUEL_STATS_KEY = "wordplay_duel_stats";
+
+export interface DuelStats {
+  wins: number;
+  losses: number;
+  raceWins: number;
+  consecutiveWins: number;
+}
+
+export function loadDuelStats(): DuelStats {
+  try {
+    const raw = localStorage.getItem(DUEL_STATS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { wins: 0, losses: 0, raceWins: 0, consecutiveWins: 0 };
+}
+
+function saveDuelStats(ds: DuelStats): void {
+  try {
+    localStorage.setItem(DUEL_STATS_KEY, JSON.stringify(ds));
+  } catch {}
+}
+
+export function recordDuelResult(
+  outcome: "you_win" | "you_lose" | "draw" | "forfeit",
+  isRace: boolean
+): Achievement[] {
+  const ds = loadDuelStats();
+  const won = outcome === "you_win" || outcome === "forfeit";
+
+  if (won) {
+    ds.wins++;
+    ds.consecutiveWins++;
+    if (isRace) ds.raceWins++;
+  } else if (outcome === "you_lose") {
+    ds.losses++;
+    ds.consecutiveWins = 0;
+  } else {
+    ds.consecutiveWins = 0;
+  }
+
+  saveDuelStats(ds);
+  return checkDuelAchievements(ds);
+}
+
+function checkDuelAchievements(ds: DuelStats): Achievement[] {
+  const achievements = loadAchievements();
+  const newlyUnlocked: Achievement[] = [];
+
+  const conditions: Record<string, boolean> = {
+    duel_first_win: ds.wins >= 1,
+    duel_ten_wins: ds.wins >= 10,
+    duel_fifty_wins: ds.wins >= 50,
+    duel_five_streak: ds.consecutiveWins >= 5,
+    duel_race_win: ds.raceWins >= 1,
+    duel_ten_race_wins: ds.raceWins >= 10,
+  };
+
+  for (const achievement of achievements) {
+    if (achievement.unlockedAt) continue;
+    if (conditions[achievement.id]) {
+      achievement.unlockedAt = Date.now();
+      newlyUnlocked.push({ ...achievement });
+    }
+  }
+
+  if (newlyUnlocked.length > 0) {
+    saveAchievements(achievements);
+  }
+
+  return newlyUnlocked;
+}
 
 export interface GameRecord {
   slug: string;
@@ -322,6 +394,42 @@ export const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlockedAt">[] = [
     title: "Clean Sweep",
     description: "Clear the entire grid in Word Sweep",
     icon: "Grid3X3",
+  },
+  {
+    id: "duel_first_win",
+    title: "First Blood",
+    description: "Win your first duel",
+    icon: "Swords",
+  },
+  {
+    id: "duel_ten_wins",
+    title: "Duel Veteran",
+    description: "Win 10 duels",
+    icon: "Shield",
+  },
+  {
+    id: "duel_fifty_wins",
+    title: "Duel Master",
+    description: "Win 50 duels",
+    icon: "Crown",
+  },
+  {
+    id: "duel_five_streak",
+    title: "On Fire",
+    description: "Win 5 duels in a row",
+    icon: "Flame",
+  },
+  {
+    id: "duel_race_win",
+    title: "Speed Demon",
+    description: "Win your first race duel",
+    icon: "Zap",
+  },
+  {
+    id: "duel_ten_race_wins",
+    title: "Racer",
+    description: "Win 10 race duels",
+    icon: "Timer",
   },
 ];
 
