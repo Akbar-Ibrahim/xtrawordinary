@@ -310,7 +310,7 @@ export default function DuelLobby() {
             {/* Premium teaser for free signed-in users */}
             {!user?.isPremium && (
               <div className="mb-4">
-                <PremiumBanner variant="banner" />
+                <PremiumBanner variant="card" />
               </div>
             )}
 
