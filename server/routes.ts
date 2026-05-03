@@ -2294,7 +2294,7 @@ export async function registerRoutes(
             const commenterName = (req.user as any).name as string;
             let replyLinkUrl: string | null = null;
             if (targetType === "game") {
-              replyLinkUrl = `/games/${targetId}`;
+              replyLinkUrl = `/game/${targetId}`;
             } else if (targetType === "group_round") {
               const roundId = parseInt(String(targetId));
               const round = await storage.getGroupRound(roundId).catch(() => null);
