@@ -1052,7 +1052,7 @@ export default function GameDetail() {
                 />
               );
             })() : GameComponent ? (
-              <GameComponent groupSeed={effectiveGroupSeed} />
+              <GameComponent groupSeed={effectiveGroupSeed} locked={isSenderMode || isReceiverMode} />
             ) : (
               <Card>
                 <CardContent className="p-8 text-center">
