@@ -2,21 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { apiRequest } from "@/lib/queryClient";
 import type { PublicUser } from "@shared/schema";
 
-// ⚠️ DEV TESTING BYPASS — flip to false when done testing
-const DEV_BYPASS = true;
-const DEV_USER: PublicUser = {
-  id: 9999,
-  email: "dev@test.local",
-  name: "Dev Tester",
-  googleId: null,
-  emailVerified: true,
-  avatarUrl: null,
-  isAdmin: true,
-  isBanned: false,
-  isPremium: true,
-  createdAt: new Date().toISOString(),
-};
-
 interface AuthContextType {
   user: PublicUser | null;
   isLoading: boolean;
@@ -83,25 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = useCallback(() => {
     window.location.href = "/api/auth/google";
   }, []);
-
-  if (DEV_BYPASS) {
-    return (
-      <AuthContext.Provider
-        value={{
-          user: DEV_USER,
-          isLoading: false,
-          isAuthenticated: true,
-          login: async () => ({}),
-          register: async () => ({}),
-          logout: async () => {},
-          loginWithGoogle: () => {},
-          refreshUser: async () => {},
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
-    );
-  }
 
   return (
     <AuthContext.Provider
