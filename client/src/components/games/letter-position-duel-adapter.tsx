@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 import type {
   DuelGameAdapter,
   DuelInputProps,
@@ -130,13 +131,35 @@ function LetterPositionInput({
   );
 }
 
-function LetterPositionDisplay({ currentWord, usedWords }: DuelDisplayProps) {
+function LetterPositionDisplay({ currentWord, usedWords, isMyTurn }: DuelDisplayProps) {
   const { letter, position } = parseConstraint(currentWord);
   const ordinal = ["", "1st", "2nd", "3rd", "4th", "5th"][position] ?? `${position}th`;
   return (
-    <div className="text-center space-y-2">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide">Position Master</p>
-      <div className="flex items-center justify-center gap-3">
+    <div className="text-center space-y-3">
+      <div className="flex items-center justify-center gap-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Position Master</p>
+        {isMyTurn ? (
+          <span
+            className="inline-flex items-center rounded-full bg-primary/10 border border-primary/30 px-2 py-0.5 text-xs font-semibold text-primary"
+            data-testid="label-your-turn"
+          >
+            Your turn
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center rounded-full bg-muted border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+            data-testid="label-waiting"
+          >
+            Opponent's turn
+          </span>
+        )}
+      </div>
+
+      {/* Constraint box — always high contrast so players can track the rule at a glance */}
+      <div
+        className="rounded-xl border-2 border-primary bg-primary/5 py-4 px-6 flex items-center justify-center gap-4"
+        data-testid="box-constraint"
+      >
         <p
           className="text-5xl font-black text-primary tracking-widest"
           data-testid="text-current-word"
@@ -144,10 +167,11 @@ function LetterPositionDisplay({ currentWord, usedWords }: DuelDisplayProps) {
           {letter}
         </p>
         <div className="text-left">
-          <p className="text-sm font-semibold text-muted-foreground">at position</p>
-          <p className="text-3xl font-black">{position}</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">at position</p>
+          <p className="text-4xl font-black">{position}</p>
         </div>
       </div>
+
       <p className="text-xs text-muted-foreground">
         Submit words where the <strong>{ordinal} letter is "{letter}"</strong>
       </p>

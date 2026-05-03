@@ -493,7 +493,10 @@ export function DuelTurnEngine({
               clearFeedback: () => setFeedback(null),
             })
           ) : (
-            <div className="text-center text-sm text-muted-foreground py-2 flex items-center justify-center gap-2">
+            <div
+              className="text-center text-sm text-muted-foreground py-2 flex items-center justify-center gap-2"
+              data-testid="label-waiting-generic"
+            >
               <Loader2 className="h-4 w-4 animate-spin" />
               Waiting for {opponentName}…
             </div>

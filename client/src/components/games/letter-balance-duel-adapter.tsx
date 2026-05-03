@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 import type {
   DuelGameAdapter,
   DuelInputProps,
@@ -137,22 +138,48 @@ function LetterBalanceInput({
   );
 }
 
-function LetterBalanceDisplay({ currentWord, usedWords }: DuelDisplayProps) {
+function LetterBalanceDisplay({ currentWord, usedWords, isMyTurn }: DuelDisplayProps) {
   const { count, type } = parseConstraint(currentWord);
   const typeName = type === "V" ? "Vowel" : "Consonant";
   const typeColor = type === "V" ? "text-blue-500" : "text-orange-500";
+  const typeBorder = type === "V" ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : "border-orange-400 bg-orange-50 dark:bg-orange-950/20";
   return (
-    <div className="text-center space-y-2">
-      <p className="text-xs text-muted-foreground uppercase tracking-wide">Letter Balance</p>
+    <div className="text-center space-y-3">
       <div className="flex items-center justify-center gap-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Letter Balance</p>
+        {isMyTurn ? (
+          <span
+            className="inline-flex items-center rounded-full bg-primary/10 border border-primary/30 px-2 py-0.5 text-xs font-semibold text-primary"
+            data-testid="label-your-turn"
+          >
+            Your turn
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center rounded-full bg-muted border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
+            data-testid="label-waiting"
+          >
+            Opponent's turn
+          </span>
+        )}
+      </div>
+
+      {/* Constraint box — always high contrast so players can track the rule at a glance */}
+      <div
+        className={`rounded-xl border-2 py-4 px-6 flex items-center justify-center gap-3 ${typeBorder}`}
+        data-testid="box-constraint"
+      >
         <p
           className={`text-5xl font-black ${typeColor}`}
           data-testid="text-current-word"
         >
           {count}
         </p>
-        <p className={`text-2xl font-bold ${typeColor}`}>{typeName}{count !== 1 ? "s" : ""}</p>
+        <p className={`text-2xl font-bold ${typeColor}`}>
+          {typeName}{count !== 1 ? "s" : ""}
+        </p>
       </div>
+
       <p className="text-xs text-muted-foreground">
         Submit words with <strong>exactly {count} {typeName.toLowerCase()}{count !== 1 ? "s" : ""}</strong>
       </p>
