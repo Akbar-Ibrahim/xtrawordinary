@@ -180,7 +180,9 @@ export interface IStorage {
   getDuelChallenge(id: number): Promise<DuelChallenge | undefined>;
   getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined>;
   updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string, seed?: number | null, startWord?: string | null): Promise<DuelChallenge | undefined>;
+  updateDuelChallengeChallengee(id: number, challengeeId: number): Promise<DuelChallenge | undefined>;
   getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]>;
+  getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]>;
 
   createDuelSession(data: InsertDuelSession): Promise<DuelSession>;
   getDuelSession(id: number): Promise<DuelSession | undefined>;

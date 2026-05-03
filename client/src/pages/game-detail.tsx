@@ -333,10 +333,28 @@ export default function GameDetail() {
 
   const [showDuelDialog, setShowDuelDialog] = useState(false);
   const [duelFriendId, setDuelFriendId] = useState<string>("");
+  const [duelTab, setDuelTab] = useState<"targeted" | "open">("targeted");
+  const [duelSearch, setDuelSearch] = useState("");
+  const [duelSearchInput, setDuelSearchInput] = useState("");
+  const [duelSearchId, setDuelSearchId] = useState<number | null>(null);
+
+  const { data: duelUserResults = [], isFetching: duelSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
+    queryKey: ["/api/users/search", duelSearch],
+    queryFn: async () => {
+      if (!duelSearch.trim()) return [];
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(duelSearch.trim())}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!duelSearch.trim() && showDuelDialog,
+    staleTime: 10000,
+  });
 
   const createDuelChallengeMutation = useMutation({
-    mutationFn: async (challengeeId: number) => {
-      const res = await apiRequest("POST", "/api/duels/challenges", { challengeeId, gameSlug: slug });
+    mutationFn: async (challengeeId: number | null) => {
+      const body: Record<string, unknown> = { gameSlug: slug };
+      if (challengeeId !== null) body.challengeeId = challengeeId;
+      const res = await apiRequest("POST", "/api/duels/challenges", body);
       return res.json() as Promise<{ id: number; status: string; roomCode: string | null }>;
     },
     onSuccess: (data) => {
@@ -676,14 +694,12 @@ export default function GameDetail() {
                   {isAuthenticated && user?.isPremium && slug && DUEL_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
-                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 disabled:opacity-50"
-                      onClick={() => { setDuelFriendId(""); setShowDuelDialog(true); }}
-                      disabled={friends.length === 0}
-                      title={friends.length === 0 ? "Add friends to start a duel" : undefined}
+                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"
+                      onClick={() => { setDuelFriendId(""); setDuelTab("targeted"); setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setShowDuelDialog(true); }}
                       data-testid="button-duel-friend"
                     >
                       <Swords className="h-4 w-4" />
-                      {friends.length === 0 ? "Duel a Friend (no friends yet)" : "Duel a Friend"}
+                      Duel a Player
                     </Button>
                   )}
                   {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
@@ -3236,48 +3252,96 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDuelDialog} onOpenChange={setShowDuelDialog}>
+      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); } }}>
         <DialogContent data-testid="dialog-duel-friend">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Swords className="h-5 w-5 text-violet-500" />
-              Duel a Friend
+              Duel a Player
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Challenge a friend to a live Word Chain duel! You'll be taken to the waiting room immediately — your friend accepts from their Friends page.
-            </p>
-            <div>
-              <label className="text-sm font-medium">Friend</label>
-              <Select value={duelFriendId} onValueChange={setDuelFriendId}>
-                <SelectTrigger data-testid="select-duel-friend">
-                  <SelectValue placeholder="Select a friend" />
-                </SelectTrigger>
-                <SelectContent>
-                  {friends.map((f) => (
-                    <SelectItem key={f.friendUser.id} value={String(f.friendUser.id)}>
-                      <span className="flex items-center gap-2">
-                        <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-5 w-5" />
-                        {f.friendUser.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex gap-2 border-b pb-2">
+              <button
+                className={`text-sm font-medium px-3 py-1 rounded-md transition-colors ${duelTab === "targeted" ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setDuelTab("targeted")}
+                data-testid="tab-duel-targeted"
+              >
+                Challenge a Player
+              </button>
+              <button
+                className={`text-sm font-medium px-3 py-1 rounded-md transition-colors ${duelTab === "open" ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setDuelTab("open")}
+                data-testid="tab-duel-open"
+              >
+                Open Challenge
+              </button>
             </div>
-            <Button
-              className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
-              disabled={!duelFriendId || createDuelChallengeMutation.isPending}
-              onClick={() => {
-                if (!duelFriendId) return;
-                createDuelChallengeMutation.mutate(parseInt(duelFriendId));
-              }}
-              data-testid="button-send-duel"
-            >
-              {createDuelChallengeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-              Send Duel Challenge
-            </Button>
+
+            {duelTab === "targeted" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Search by username to challenge any player directly.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search username…"
+                    value={duelSearchInput}
+                    onChange={(e) => setDuelSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { setDuelSearch(duelSearchInput); setDuelSearchId(null); } }}
+                    data-testid="input-duel-search"
+                  />
+                  <Button variant="outline" size="sm" onClick={() => { setDuelSearch(duelSearchInput); setDuelSearchId(null); }} disabled={!duelSearchInput.trim()}>
+                    {duelSearchFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                  </Button>
+                </div>
+                {duelSearch && duelUserResults.length > 0 && (
+                  <div className="space-y-1 max-h-40 overflow-y-auto border rounded-md p-1">
+                    {duelUserResults.map((u) => (
+                      <button
+                        key={u.id}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm hover:bg-muted transition-colors ${duelSearchId === u.id ? "bg-violet-100 dark:bg-violet-900/30" : ""}`}
+                        onClick={() => setDuelSearchId(u.id)}
+                        data-testid={`option-duel-user-${u.id}`}
+                      >
+                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6" />
+                        {u.name}
+                        {duelSearchId === u.id && <span className="ml-auto text-violet-600 text-xs">Selected</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {duelSearch && !duelSearchFetching && duelUserResults.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">No users found for "{duelSearch}"</p>
+                )}
+                <Button
+                  className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                  disabled={!duelSearchId || createDuelChallengeMutation.isPending}
+                  onClick={() => { if (duelSearchId !== null) createDuelChallengeMutation.mutate(duelSearchId); }}
+                  data-testid="button-send-duel"
+                >
+                  {createDuelChallengeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+                  Send Challenge
+                </Button>
+              </div>
+            )}
+
+            {duelTab === "open" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Post an open challenge visible in the Duel Lobby — anyone can join!
+                </p>
+                <Button
+                  className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                  disabled={createDuelChallengeMutation.isPending}
+                  onClick={() => createDuelChallengeMutation.mutate(null)}
+                  data-testid="button-post-open-duel"
+                >
+                  {createDuelChallengeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+                  Post Open Challenge
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -2504,8 +2504,8 @@ export async function registerRoutes(
   app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
       const { challengeeId, gameSlug, message } = req.body;
-      if (!challengeeId || !gameSlug) {
-        return res.status(400).json({ error: "challengeeId and gameSlug are required" });
+      if (!gameSlug) {
+        return res.status(400).json({ error: "gameSlug is required" });
       }
       // Allowlist: games that support the turn-based duel format
       const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance"]);
@@ -2516,12 +2516,10 @@ export async function registerRoutes(
       if (!req.user.isPremium) {
         return res.status(403).json({ error: "Duels require a Premium account." });
       }
-      if (challengerId === challengeeId) {
+      // challengeeId is optional — null means an open challenge anyone can accept
+      const targetId: number | null = challengeeId != null ? Number(challengeeId) : null;
+      if (targetId !== null && targetId === challengerId) {
         return res.status(400).json({ error: "Cannot challenge yourself" });
-      }
-      const friendship = await storage.getFriendship(challengerId, challengeeId);
-      if (!friendship || friendship.status !== "accepted") {
-        return res.status(403).json({ error: "You can only challenge friends" });
       }
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
@@ -2530,7 +2528,7 @@ export async function registerRoutes(
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const challenge = await storage.createDuelChallenge({
         challengerId,
-        challengeeId,
+        challengeeId: targetId,
         gameSlug,
         message: message ?? null,
         status: "pending",
@@ -2541,13 +2539,13 @@ export async function registerRoutes(
       });
       const [challenger, challengee] = await Promise.all([
         storage.getUserById(challengerId),
-        storage.getUserById(challengeeId),
+        targetId != null ? storage.getUserById(targetId) : Promise.resolve(undefined),
       ]);
       res.status(201).json({
         ...challenge,
         roomCode,
         challengerName: challenger?.name,
-        challengeeName: challengee?.name,
+        challengeeName: challengee?.name ?? null,
         challengerAvatarUrl: challenger?.avatarUrl ?? null,
         challengeeAvatarUrl: challengee?.avatarUrl ?? null,
       });
@@ -2571,7 +2569,7 @@ export async function registerRoutes(
         challenges.map(async (c) => {
           const [challenger, challengee] = await Promise.all([
             storage.getUserById(c.challengerId),
-            storage.getUserById(c.challengeeId),
+            c.challengeeId != null ? storage.getUserById(c.challengeeId) : Promise.resolve(undefined),
           ]);
           return {
             ...c,
@@ -2589,13 +2587,38 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/open", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const gameSlug = req.query.gameSlug as string | undefined;
+      const challenges = await storage.getOpenDuelChallenges(userId, gameSlug);
+      const enriched = await Promise.all(
+        challenges.map(async (c) => {
+          const challenger = await storage.getUserById(c.challengerId);
+          return {
+            ...c,
+            challengerName: challenger?.name ?? null,
+            challengerAvatarUrl: challenger?.avatarUrl ?? null,
+          };
+        }),
+      );
+      res.json(enriched);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch open duel challenges" });
+    }
+  });
+
   app.patch("/api/duels/challenges/:id/accept", requireAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.id;
       const challenge = await storage.getDuelChallenge(id);
       if (!challenge) return res.status(404).json({ error: "Challenge not found" });
-      if (challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
+      // Open challenge: anyone except the challenger can accept; set them as challengee
+      const isOpen = challenge.challengeeId === null;
+      if (!isOpen && challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
+      if (isOpen && challenge.challengerId === userId) return res.status(400).json({ error: "Cannot accept your own open challenge" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
         await storage.updateDuelChallengeStatus(id, "expired");
@@ -2606,6 +2629,10 @@ export async function registerRoutes(
         }
         return res.status(410).json({ error: "Challenge has expired" });
       }
+      // For open challenges: assign the acceptor as challengee
+      if (isOpen) {
+        await storage.updateDuelChallengeChallengee(id, userId);
+      }
       // Room should have been pre-created at challenge send time.
       // If missing (legacy challenge), create it now and update the existing row
       // with roomCode + seed/startWord so restart restoration is deterministic.
@@ -2614,11 +2641,10 @@ export async function registerRoutes(
         const { duelRegistry } = await import("./duel-ws");
         const created = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
         roomCode = created.roomCode;
-        // Update the existing challenge row with the new room metadata (no duplicate)
         await storage.updateDuelChallengeStatus(id, challenge.status as DuelChallengeStatus, created.roomCode, created.seed, created.startWord);
       }
       const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
-      res.json(updated);
+      res.json({ ...updated, roomCode });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to accept challenge" });
@@ -2671,10 +2697,10 @@ export async function registerRoutes(
       const userId = req.user.id;
       const challenge = await storage.getDuelChallengeByRoom(roomCode);
       if (!challenge) return res.status(404).json({ error: "Room not found" });
-      if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
+      if (challenge.challengerId !== userId && challenge.challengeeId !== userId && challenge.challengeeId !== null) {
         return res.status(403).json({ error: "Not a participant" });
       }
-      // Block entry for non-playable statuses (including completed — duel is over)
+      // Reject complete/terminal statuses
       if (
         challenge.status === "declined" ||
         challenge.status === "cancelled" ||

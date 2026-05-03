@@ -1379,6 +1379,24 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
+  async updateDuelChallengeChallengee(id: number, challengeeId: number): Promise<DuelChallenge | undefined> {
+    const challenge = this.duelChallenges.find(c => c.id === id);
+    if (!challenge) return undefined;
+    challenge.challengeeId = challengeeId;
+    return challenge;
+  }
+
+  async getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> {
+    return this.duelChallenges
+      .filter(c =>
+        c.challengeeId === null &&
+        c.status === "pending" &&
+        c.challengerId !== excludeUserId &&
+        (!gameSlug || c.gameSlug === gameSlug),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   async createDuelSession(data: InsertDuelSession): Promise<DuelSession> {
     const session: DuelSession = {
       ...data,

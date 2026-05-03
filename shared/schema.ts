@@ -526,7 +526,7 @@ export type DuelChallengeStatus = z.infer<typeof duelChallengeStatusSchema>;
 export const duelChallengeSchema = z.object({
   id: z.number(),
   challengerId: z.number(),
-  challengeeId: z.number(),
+  challengeeId: z.number().nullable(),
   gameSlug: z.string(),
   message: z.string().nullable(),
   status: duelChallengeStatusSchema,

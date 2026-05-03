@@ -308,7 +308,7 @@ export const quizSessionScores = mysqlTable("quiz_session_scores", {
 export const duelChallenges = mysqlTable("duel_challenges", {
   id: int("id").primaryKey().autoincrement(),
   challengerId: int("challenger_id").notNull(),
-  challengeeId: int("challengee_id").notNull(),
+  challengeeId: int("challengee_id"),
   gameSlug: varchar("game_slug", { length: 100 }).notNull(),
   message: text("message"),
   status: varchar("status", { length: 20 }).notNull().default("pending"),

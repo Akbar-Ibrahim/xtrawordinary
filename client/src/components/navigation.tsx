@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
@@ -143,6 +143,12 @@ export function Navigation() {
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-profile">
                       <User className="h-4 w-4 mr-2" />
                       My Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/duels">
+                    <DropdownMenuItem className="cursor-pointer" data-testid="link-duel-lobby">
+                      <Swords className="h-4 w-4 mr-2" />
+                      Duel Lobby
                     </DropdownMenuItem>
                   </Link>
                   <Link href={unreadCount > 0 ? "/friends?tab=challenges" : incomingDuelCount > 0 ? "/friends?tab=duels" : "/friends"}>

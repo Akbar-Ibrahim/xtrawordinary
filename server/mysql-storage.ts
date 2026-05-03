@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql, and, or, like, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
 import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
@@ -1452,6 +1452,26 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     const rows = await db.select().from(schema.duelChallenges)
       .where(or(eq(schema.duelChallenges.challengerId, userId), eq(schema.duelChallenges.challengeeId, userId)))
+      .orderBy(desc(schema.duelChallenges.createdAt));
+    return rows.map((r: typeof schema.duelChallenges.$inferSelect) => this.mapDuelChallenge(r));
+  }
+
+  async updateDuelChallengeChallengee(id: number, challengeeId: number): Promise<DuelChallenge | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.duelChallenges).set({ challengeeId }).where(eq(schema.duelChallenges.id, id));
+    return this.getDuelChallenge(id);
+  }
+
+  async getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> {
+    const db = await this.getDb();
+    const conditions: any[] = [
+      isNull(schema.duelChallenges.challengeeId),
+      eq(schema.duelChallenges.status, "pending"),
+      ne(schema.duelChallenges.challengerId, excludeUserId),
+    ];
+    if (gameSlug) conditions.push(eq(schema.duelChallenges.gameSlug, gameSlug));
+    const rows = await db.select().from(schema.duelChallenges)
+      .where(and(...conditions))
       .orderBy(desc(schema.duelChallenges.createdAt));
     return rows.map((r: typeof schema.duelChallenges.$inferSelect) => this.mapDuelChallenge(r));
   }
