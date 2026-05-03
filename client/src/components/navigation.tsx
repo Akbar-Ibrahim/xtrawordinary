@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ToastAction } from "@/components/ui/toast";
 import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
@@ -11,13 +12,27 @@ import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { PremiumBanner } from "@/components/premium-banner";
+import { useToast } from "@/hooks/use-toast";
+
+type OutgoingChallenge = {
+  id: number;
+  status: string;
+  gameSlug: string;
+  roomCode: string | null;
+  challengeeName: string | null;
+};
+
+function slugToTitle(slug: string): string {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 export function Navigation() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
   const { user, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const { toast } = useToast();
 
   const { data: unreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number }>({
     queryKey: ["/api/challenges/unread-count"],
@@ -38,6 +53,77 @@ export function Navigation() {
     refetchInterval: 10000,
   });
   const incomingDuelCount = incomingDuels.length;
+
+  const { data: outgoingChallenges = [] } = useQuery<OutgoingChallenge[]>({
+    queryKey: ["/api/duels/challenges/outgoing"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/challenges?type=outgoing", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json() as Promise<OutgoingChallenge[]>;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 10000,
+  });
+
+  const prevStatusMapRef = useRef<Map<number, string>>(new Map());
+  const unseenRef = useRef<Map<number, string | null>>(new Map());
+  const [unseenCount, setUnseenCount] = useState(0);
+
+  useEffect(() => {
+    const prevMap = prevStatusMapRef.current;
+    let changed = false;
+
+    for (const c of outgoingChallenges) {
+      const prev = prevMap.get(c.id);
+      if (prev === "pending" && c.status === "accepted" && !unseenRef.current.has(c.id)) {
+        unseenRef.current.set(c.id, c.roomCode);
+        changed = true;
+
+        const gameName = slugToTitle(c.gameSlug);
+        const opponentName = c.challengeeName ?? "Someone";
+        const roomCode = c.roomCode;
+
+        toast({
+          title: `${opponentName} accepted your challenge!`,
+          description: `Your ${gameName} duel is ready.`,
+          action: roomCode ? (
+            <ToastAction
+              altText="Go to Room"
+              onClick={() => {
+                unseenRef.current.delete(c.id);
+                setUnseenCount(unseenRef.current.size);
+                navigate(`/duel/${roomCode}`);
+              }}
+            >
+              Go to Room
+            </ToastAction>
+          ) : undefined,
+        });
+      }
+    }
+
+    prevStatusMapRef.current = new Map(outgoingChallenges.map((c) => [c.id, c.status]));
+
+    if (changed) {
+      setUnseenCount(unseenRef.current.size);
+    }
+  }, [outgoingChallenges]);
+
+  useEffect(() => {
+    const match = /^\/duel\/(.+)$/.exec(location);
+    if (!match) return;
+    const roomCode = match[1];
+    let changed = false;
+    for (const [id, rc] of unseenRef.current.entries()) {
+      if (rc === roomCode) {
+        unseenRef.current.delete(id);
+        changed = true;
+      }
+    }
+    if (changed) setUnseenCount(unseenRef.current.size);
+  }, [location]);
+
+  const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount;
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
@@ -127,11 +213,11 @@ export function Navigation() {
                         Premium
                       </span>
                     )}
-                    {(unreadCount > 0 || incomingDuelCount > 0) && (
+                    {totalNotificationCount > 0 && (
                       <span
                         className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-background"
                         data-testid="dot-challenge-notification"
-                        aria-label={`${unreadCount + incomingDuelCount} notification${unreadCount + incomingDuelCount !== 1 ? "s" : ""}`}
+                        aria-label={`${totalNotificationCount} notification${totalNotificationCount !== 1 ? "s" : ""}`}
                       />
                     )}
                   </Button>
