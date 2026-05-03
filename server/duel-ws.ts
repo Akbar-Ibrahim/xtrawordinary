@@ -532,22 +532,32 @@ export class DuelRoomRegistry {
     const opponent = this.getOpponent(room, userId);
 
     // Only start forfeit countdown and notify opponent if the game is active.
-    // Pre-game disconnects (waiting/countdown) simply remove the player without
-    // triggering ELO/session side-effects or confusing in-game overlays.
+    // Pre-game disconnects (waiting/countdown) remove the player, reset room
+    // state, and notify the remaining player so they are not left in a stale
+    // "opponent joined and ready" state.
     if (room.status !== "playing") {
+      const priorStatus = room.status;
       room.players.delete(userId);
-      // If disconnect happened mid-countdown, reset room to waiting so the
-      // remaining player can see the "opponent left" state and re-ready properly.
-      if (room.status === "countdown") {
+
+      if (priorStatus === "countdown") {
+        // Cancel pending turn timer in case countdown already triggered it
+        if (room.turnTimeoutTimer !== null) {
+          clearTimeout(room.turnTimeoutTimer);
+          room.turnTimeoutTimer = null;
+        }
         room.status = "waiting";
         room.livesPerPlayer.clear();
         room.currentTurnUserId = null;
         room.countdownStartAt = null;
-        if (opponent) {
-          send(opponent.ws, { type: "player:disconnect", reconnectDeadlineMs: 0 });
-        }
       }
-      log(`[Duel] Player ${userId} disconnected from room ${roomCode} (phase: ${room.status}) — no forfeit`, "duel-ws");
+
+      // Notify remaining player in both waiting and countdown cases so their
+      // UI can reset opponent presence and ready state.
+      if (opponent) {
+        send(opponent.ws, { type: "player:disconnect", reconnectDeadlineMs: 0 });
+      }
+
+      log(`[Duel] Player ${userId} disconnected from room ${roomCode} (phase: ${priorStatus}) — no forfeit`, "duel-ws");
       return;
     }
 
