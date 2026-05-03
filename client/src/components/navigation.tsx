@@ -32,6 +32,8 @@ export function Navigation() {
   const { soundEnabled, toggleSound } = useSound();
   const { user, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const suppressNextDropdownOpen = useRef(false);
   const { toast } = useToast();
 
   const { data: unreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number }>({
@@ -125,6 +127,37 @@ export function Navigation() {
 
   const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount;
 
+  const firstUnseenRoom: string | null =
+    unseenCount > 0
+      ? ([...unseenRef.current.values()].find((rc): rc is string => rc != null) ?? null)
+      : null;
+
+  function handleUserMenuClick() {
+    if (firstUnseenRoom) {
+      suppressNextDropdownOpen.current = true;
+      unseenRef.current.clear();
+      setUnseenCount(0);
+      navigate(`/duel/${firstUnseenRoom}`);
+    }
+  }
+
+  function handleDropdownOpenChange(open: boolean) {
+    if (suppressNextDropdownOpen.current && open) {
+      suppressNextDropdownOpen.current = false;
+      return;
+    }
+    setDropdownOpen(open);
+  }
+
+  const friendsHref =
+    firstUnseenRoom
+      ? `/duel/${firstUnseenRoom}`
+      : unreadCount > 0
+      ? "/friends?tab=challenges"
+      : incomingDuelCount > 0
+      ? "/friends?tab=duels"
+      : "/friends";
+
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
@@ -202,9 +235,14 @@ export function Navigation() {
             <PremiumBanner variant="nav" />
 
             {isAuthenticated && user ? (
-              <DropdownMenu>
+              <DropdownMenu open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 relative" data-testid="button-user-menu">
+                  <Button
+                    variant="ghost"
+                    className="gap-2 relative"
+                    data-testid="button-user-menu"
+                    onClick={handleUserMenuClick}
+                  >
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="h-6 w-6 text-[10px]" />
                     <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
                     {user.isPremium && (
@@ -232,11 +270,11 @@ export function Navigation() {
                       My Profile
                     </DropdownMenuItem>
                   </Link>
-                  <Link href={unreadCount > 0 ? "/friends?tab=challenges" : incomingDuelCount > 0 ? "/friends?tab=duels" : "/friends"}>
+                  <Link href={friendsHref}>
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
-                      {(unreadCount > 0 || incomingDuelCount > 0) && (
+                      {(unreadCount > 0 || incomingDuelCount > 0 || unseenCount > 0) && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
                       )}
                     </DropdownMenuItem>
