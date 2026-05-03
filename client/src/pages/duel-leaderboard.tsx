@@ -152,12 +152,12 @@ export default function DuelLeaderboard() {
                           <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
                           {entry.winRate}%
                         </Badge>
-                      ) : entry.winRate > 0 ? (
+                      ) : (
                         <Badge className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-0">
                           <Minus className="h-2.5 w-2.5 mr-0.5" />
                           {entry.winRate}%
                         </Badge>
-                      ) : null}
+                      )}
                     </div>
                   </div>
 
