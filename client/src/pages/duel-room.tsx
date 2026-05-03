@@ -196,18 +196,23 @@ export default function DuelRoom() {
           break;
 
         case "player:disconnect":
-          // reconnectDeadlineMs=0 is a countdown-abort signal from the server
-          // (opponent left before the game began). Cancel the pending timeout
-          // that would transition to "playing" and reset UI to waiting state.
-          if (msg.reconnectDeadlineMs === 0 && phaseRef.current === "countdown") {
+          // reconnectDeadlineMs=0 means the opponent left before the game began
+          // (waiting or countdown phase). Reset ALL opponent presence + readiness
+          // so the UI returns to a true "waiting for opponent" state.
+          if (msg.reconnectDeadlineMs === 0) {
             if (countdownTimeoutRef.current !== null) {
               clearTimeout(countdownTimeoutRef.current);
               countdownTimeoutRef.current = null;
             }
-            setCountdownNum(null);
+            setOpponentId(null);
+            setOpponentName("");
+            setOpponentAvatarUrl(null);
             setOpponentReady(false);
+            setMeReady(false);
+            setCountdownNum(null);
             setPhase("waiting");
           } else {
+            // In-game disconnect: pass to DuelTurnEngine to show reconnect overlay
             setLatestGameMessage(msg);
           }
           break;
