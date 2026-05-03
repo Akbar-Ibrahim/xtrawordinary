@@ -71,28 +71,31 @@ function FormatBadge({ slug }: { slug: string }) {
     return <Badge className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0">Both</Badge>;
   }
   if (isTurn) {
-    return <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0">Turn</Badge>;
+    return <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0">⚔️ Turn-Based</Badge>;
   }
-  return <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">Race</Badge>;
+  return <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">⚡ Race</Badge>;
 }
 
 function DuelGameCard({ game }: { game: Game }) {
   return (
-    <Link href={`/game/${game.slug}`}>
-      <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-duel-game-${game.slug}`}>
-        <CardContent className="p-3 flex items-center gap-3">
-          <GameIcon game={game} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <p className="font-semibold text-sm truncate">{game.name}</p>
-              <FormatBadge slug={game.slug} />
-            </div>
-            <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
+    <Card className="h-full" data-testid={`card-duel-game-${game.slug}`}>
+      <CardContent className="p-3 flex items-center gap-3">
+        <GameIcon game={game} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="font-semibold text-sm truncate">{game.name}</p>
+            <FormatBadge slug={game.slug} />
           </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </CardContent>
-      </Card>
-    </Link>
+          <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
+        </div>
+        <Link href={`/game/${game.slug}`}>
+          <Button size="sm" variant="secondary" className="shrink-0 gap-1.5" data-testid={`button-play-duel-${game.slug}`}>
+            <Swords className="h-3.5 w-3.5" />
+            Play
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
   );
 }
 
