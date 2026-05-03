@@ -14,9 +14,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell } from "lucide-react";
 import { motion } from "framer-motion";
-import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
+import { Switch } from "@/components/ui/switch";
+import type { UserGameStats, UserAchievement, Game, QuizSession, NotificationType } from "@shared/schema";
+import { NOTIFICATION_TYPE_LABELS } from "@shared/schema";
 
 type QuizSessionWithCount = QuizSession & { playerCount: number };
 
@@ -145,6 +147,38 @@ export default function Profile() {
       return res.json();
     },
     enabled: userId > 0,
+  });
+
+  const { data: notifPrefs, isLoading: notifPrefsLoading } = useQuery<Record<NotificationType, boolean>>({
+    queryKey: ["/api/notification-preferences"],
+    queryFn: async () => {
+      const res = await fetch("/api/notification-preferences", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch preferences");
+      return res.json();
+    },
+    enabled: isOwnProfile && isAuthenticated,
+  });
+
+  const updateNotifPref = useMutation({
+    mutationFn: ({ type, enabled }: { type: NotificationType; enabled: boolean }) =>
+      apiRequest("PATCH", `/api/notification-preferences/${type}`, { enabled }),
+    onMutate: async ({ type, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/notification-preferences"] });
+      const previous = queryClient.getQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"]);
+      queryClient.setQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"], (old) =>
+        old ? { ...old, [type]: enabled } : old
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(["/api/notification-preferences"], ctx.previous);
+      }
+      toast({ title: "Failed to update preference", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+    },
   });
 
   const { data: myQuizzes = [], isLoading: myQuizzesLoading } = useQuery<QuizSessionWithCount[]>({
@@ -360,7 +394,7 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-4">
             <Tabs defaultValue="stats">
-              <TabsList className="w-full grid grid-cols-5" data-testid="tabs-profile-sections">
+              <TabsList className={`w-full grid ${isOwnProfile ? "grid-cols-6" : "grid-cols-5"}`} data-testid="tabs-profile-sections">
                 <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
                   <Gamepad2 className="h-4 w-4" /> <span className="hidden sm:inline">Game Stats</span>
                 </TabsTrigger>
@@ -385,6 +419,11 @@ export default function Profile() {
                     <Badge variant="secondary" className="ml-1 text-xs">{duelHistory.length}</Badge>
                   )}
                 </TabsTrigger>
+                {isOwnProfile && (
+                  <TabsTrigger value="settings" className="flex items-center gap-1.5" data-testid="tab-settings">
+                    <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Settings</span>
+                  </TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent value="stats" className="mt-4">
@@ -562,6 +601,48 @@ export default function Profile() {
                   </div>
                 )}
               </TabsContent>
+
+              {isOwnProfile && (
+                <TabsContent value="settings" className="mt-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-sm mb-1">Notification Preferences</h3>
+                      <p className="text-xs text-muted-foreground mb-4">Choose which in-app notifications you receive. All types are enabled by default.</p>
+                    </div>
+                    {notifPrefsLoading ? (
+                      <div className="space-y-3">
+                        {[1,2,3,4,5,6].map(i => (
+                          <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                            <Skeleton className="h-4 w-48" />
+                            <Skeleton className="h-6 w-11 rounded-full" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(Object.entries(NOTIFICATION_TYPE_LABELS) as [NotificationType, string][]).map(([type, label]) => {
+                          const enabled = notifPrefs ? notifPrefs[type] : true;
+                          return (
+                            <div
+                              key={type}
+                              className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                              data-testid={`row-notif-pref-${type}`}
+                            >
+                              <span className="text-sm font-medium">{label}</span>
+                              <Switch
+                                checked={enabled}
+                                onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
+                                data-testid={`switch-notif-pref-${type}`}
+                                aria-label={`Toggle ${label}`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              )}
 
               <TabsContent value="duels" className="mt-4">
                 {duelHistoryLoading ? (

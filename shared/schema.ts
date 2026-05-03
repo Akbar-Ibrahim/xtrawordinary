@@ -662,6 +662,25 @@ export type Notification = z.infer<typeof notificationSchema>;
 export const insertNotificationSchema = notificationSchema.omit({ id: true, createdAt: true, readAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
+// ==================== NOTIFICATION PREFERENCES ====================
+
+export const notificationPreferenceSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  type: notificationTypeSchema,
+  enabled: z.boolean(),
+});
+export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
+
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  group_join: "New member joined your group",
+  comment_reply: "Replies to your comments",
+  group_round_start: "New group round started",
+  duel_accepted: "Duel challenge accepted",
+  duel_challenge_received: "You've been challenged to a duel",
+  friend_challenge_result: "Friend challenge results",
+};
+
 // ==================== CHALLENGES ====================
 
 export const SEEDED_GAME_SLUGS = new Set([

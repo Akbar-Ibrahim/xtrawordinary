@@ -8,7 +8,7 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
-import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -18,6 +18,16 @@ import { seededShuffle } from "./seeded-rng";
 
 const isLocalMode = process.env.DEV_MODE === "LOCAL";
 const dataSource = isLocalMode ? storage : externalApi;
+
+async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
+  try {
+    const prefs = await storage.getNotificationPreferences(data.userId);
+    if (!prefs[data.type]) return;
+    await storage.createNotification(data);
+  } catch (err) {
+    console.error("[notification]", err);
+  }
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -1390,13 +1400,13 @@ export async function registerRoutes(
         try {
           const receiverName = (req.user as any).name as string;
           const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-          storage.createNotification({
+          createNotificationIfEnabled({
             userId: challenge.senderId,
             type: "friend_challenge_result",
             title: "Challenge result ready",
             body: `${receiverName} completed your ${gameTitle} challenge`,
             linkUrl: "/friends?tab=challenges",
-          }).catch((err) => console.error("[notification]", err));
+          });
         } catch {}
       }
       res.json(updated);
@@ -1716,13 +1726,13 @@ export async function registerRoutes(
         const joinerName = (req.user as any).name as string;
         for (const m of allMembers) {
           if (m.userId !== userId && (m.role === "owner" || m.role === "admin")) {
-            storage.createNotification({
+            createNotificationIfEnabled({
               userId: m.userId,
               type: "group_join",
               title: "New member joined your group",
               body: `${joinerName} joined "${group.name}"`,
               linkUrl: `/groups/${group.id}`,
-            }).catch((err) => console.error("[notification]", err));
+            });
           }
         }
       } catch {}
@@ -1751,13 +1761,13 @@ export async function registerRoutes(
         const joinerName = (req.user as any).name as string;
         for (const m of allMembers) {
           if (m.userId !== userId && (m.role === "owner" || m.role === "admin")) {
-            storage.createNotification({
+            createNotificationIfEnabled({
               userId: m.userId,
               type: "group_join",
               title: "New member joined your group",
               body: `${joinerName} joined "${group.name}"`,
               linkUrl: `/groups/${groupId}`,
-            }).catch((err) => console.error("[notification]", err));
+            });
           }
         }
       } catch {}
@@ -1975,13 +1985,13 @@ export async function registerRoutes(
         const gameTitle = slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         for (const m of members) {
           if (m.userId !== userId) {
-            storage.createNotification({
+            createNotificationIfEnabled({
               userId: m.userId,
               type: "group_round_start",
               title: "New group round started",
               body: `${creatorName} started a ${gameTitle} round in "${group?.name ?? "your group"}"`,
               linkUrl: `/groups/${groupId}`,
-            }).catch((err) => console.error("[notification]", err));
+            });
           }
         }
       } catch {}
@@ -2300,13 +2310,13 @@ export async function registerRoutes(
               const round = await storage.getGroupRound(roundId).catch(() => null);
               if (round) replyLinkUrl = `/groups/${round.groupId}`;
             }
-            storage.createNotification({
+            createNotificationIfEnabled({
               userId: parent.userId,
               type: "comment_reply",
               title: "Someone replied to your comment",
               body: `${commenterName}: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}"`,
               linkUrl: replyLinkUrl,
-            }).catch((err) => console.error("[notification]", err));
+            });
           }
         } catch {}
       }
@@ -2666,13 +2676,13 @@ export async function registerRoutes(
       // Notify the specific challengee that they received a duel challenge
       if (targetId !== null && challengee) {
         const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-        storage.createNotification({
+        createNotificationIfEnabled({
           userId: targetId,
           type: "duel_challenge_received",
           title: "You've been challenged to a duel!",
           body: `${challenger?.name ?? "Someone"} challenged you to a ${gameTitle} duel`,
           linkUrl: "/friends?tab=duels",
-        }).catch((err) => console.error("[notification]", err));
+        });
       }
       res.status(201).json({
         ...challenge,
@@ -2801,13 +2811,13 @@ export async function registerRoutes(
       try {
         const accepterName = (req.user as any).name as string;
         const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-        storage.createNotification({
+        createNotificationIfEnabled({
           userId: challenge.challengerId,
           type: "duel_accepted",
           title: "Duel challenge accepted!",
           body: `${accepterName} accepted your ${gameTitle} duel`,
           linkUrl: roomCode ? `/duel/${roomCode}` : "/duels",
-        }).catch((err) => console.error("[notification]", err));
+        });
       } catch {}
       res.json({ ...updated, roomCode });
     } catch (err) {
@@ -2977,6 +2987,31 @@ export async function registerRoutes(
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to fetch duel sessions" });
+    }
+  });
+
+  // ==================== NOTIFICATION PREFERENCES ====================
+
+  app.get("/api/notification-preferences", requireAuth, async (req, res) => {
+    try {
+      const prefs = await storage.getNotificationPreferences(req.user!.id);
+      res.json(prefs);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.patch("/api/notification-preferences/:type", requireAuth, async (req, res) => {
+    try {
+      const type = req.params.type;
+      const parsed = notificationTypeSchema.safeParse(type);
+      if (!parsed.success) return res.status(400).json({ error: "Invalid notification type" });
+      const { enabled } = req.body;
+      if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled must be a boolean" });
+      await storage.setNotificationPreference(req.user!.id, parsed.data, enabled);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Failed to update notification preference" });
     }
   });
 
