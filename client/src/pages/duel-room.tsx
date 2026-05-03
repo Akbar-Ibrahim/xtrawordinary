@@ -113,7 +113,16 @@ export default function DuelRoom() {
         case "room:joined":
           // opponentId/Name may be null when the challenger joins first (no opponent yet).
           // A second room:joined arrives when the opponent joins, filling in their details.
-          if (msg.opponentId !== null) setOpponentId(msg.opponentId);
+          // When opponent fields are null (first join / fresh room), explicitly reset any
+          // stale opponent state so navigating between rooms never shows leftover identity.
+          if (msg.opponentId !== null) {
+            setOpponentId(msg.opponentId);
+          } else {
+            setOpponentId(null);
+            setOpponentName("");
+            setOpponentAvatarUrl(null);
+            setOpponentReady(false);
+          }
           if (msg.opponentName !== null) setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
           setPhase("waiting");
