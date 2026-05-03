@@ -1462,6 +1462,21 @@ export class MySQLStorage implements IStorage {
     return this.getDuelChallenge(id);
   }
 
+  async acceptOpenDuelChallenge(id: number, challengeeId: number): Promise<DuelChallenge | null> {
+    const db = await this.getDb();
+    // Single conditional UPDATE: only applies when challengeeId IS NULL and status = 'pending'
+    const result = await db.update(schema.duelChallenges)
+      .set({ challengeeId, status: "accepted" })
+      .where(and(
+        eq(schema.duelChallenges.id, id),
+        isNull(schema.duelChallenges.challengeeId),
+        eq(schema.duelChallenges.status, "pending"),
+      ));
+    // affectedRows = 0 means it was already taken
+    if (result[0].affectedRows === 0) return null;
+    return this.getDuelChallenge(id) as Promise<DuelChallenge>;
+  }
+
   async getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> {
     const db = await this.getDb();
     const conditions: any[] = [

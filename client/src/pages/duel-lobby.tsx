@@ -5,12 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Swords, Loader2, RefreshCw, Users } from "lucide-react";
+import { Swords, Loader2, RefreshCw, Users, Clock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
 import { DUEL_GAME_SLUGS } from "@shared/schema";
+
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 interface OpenChallenge {
   id: number;
@@ -128,7 +138,13 @@ export default function DuelLobby() {
                 <CardContent className="flex items-center gap-4 py-4">
                   <UserAvatar name={c.challengerName ?? "?"} avatarUrl={c.challengerAvatarUrl} className="h-10 w-10 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{c.challengerName ?? "Unknown player"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">{c.challengerName ?? "Unknown player"}</p>
+                      <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
+                        <Clock className="h-3 w-3" />
+                        {timeAgo(c.createdAt)}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge variant="secondary" className="text-xs shrink-0">
                         {GAME_LABELS[c.gameSlug] ?? c.gameSlug}

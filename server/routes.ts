@@ -2629,13 +2629,8 @@ export async function registerRoutes(
         }
         return res.status(410).json({ error: "Challenge has expired" });
       }
-      // For open challenges: assign the acceptor as challengee
-      if (isOpen) {
-        await storage.updateDuelChallengeChallengee(id, userId);
-      }
       // Room should have been pre-created at challenge send time.
-      // If missing (legacy challenge), create it now and update the existing row
-      // with roomCode + seed/startWord so restart restoration is deterministic.
+      // If missing (legacy challenge), create it now and persist metadata.
       let roomCode = challenge.roomCode;
       if (!roomCode) {
         const { duelRegistry } = await import("./duel-ws");
@@ -2643,7 +2638,16 @@ export async function registerRoutes(
         roomCode = created.roomCode;
         await storage.updateDuelChallengeStatus(id, challenge.status as DuelChallengeStatus, created.roomCode, created.seed, created.startWord);
       }
-      const updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
+      let updated: DuelChallenge | undefined | null;
+      if (isOpen) {
+        // Atomic accept: sets challengeeId + status in one operation to prevent race conditions
+        updated = await storage.acceptOpenDuelChallenge(id, userId);
+        if (!updated) {
+          return res.status(409).json({ error: "This open challenge was already taken by another player" });
+        }
+      } else {
+        updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
+      }
       res.json({ ...updated, roomCode });
     } catch (err) {
       console.error(err);

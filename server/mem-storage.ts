@@ -1386,6 +1386,16 @@ export class MemStorage implements IStorage {
     return challenge;
   }
 
+  async acceptOpenDuelChallenge(id: number, challengeeId: number): Promise<DuelChallenge | null> {
+    const challenge = this.duelChallenges.find(c => c.id === id);
+    if (!challenge) return null;
+    // Atomic guard: only claim if still open+pending
+    if (challenge.challengeeId !== null || challenge.status !== "pending") return null;
+    challenge.challengeeId = challengeeId;
+    challenge.status = "accepted";
+    return challenge;
+  }
+
   async getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> {
     return this.duelChallenges
       .filter(c =>

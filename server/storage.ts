@@ -181,6 +181,8 @@ export interface IStorage {
   getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined>;
   updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string, seed?: number | null, startWord?: string | null): Promise<DuelChallenge | undefined>;
   updateDuelChallengeChallengee(id: number, challengeeId: number): Promise<DuelChallenge | undefined>;
+  /** Atomically assign challengeeId + accept an open challenge. Returns null if already taken by someone else. */
+  acceptOpenDuelChallenge(id: number, challengeeId: number): Promise<DuelChallenge | null>;
   getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]>;
   getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]>;
 

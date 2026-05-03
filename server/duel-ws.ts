@@ -889,9 +889,27 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: "Room not found or not linked to a duel challenge" });
             return;
           }
-          if (challenge.challengerId !== userId && challenge.challengeeId !== userId) {
+          const isOpenChallenge = challenge.challengeeId === null;
+          // Non-open challenge: must be a named participant
+          if (!isOpenChallenge && challenge.challengerId !== userId && challenge.challengeeId !== userId) {
             send(ws, { type: "error", message: "You are not a participant in this duel" });
             return;
+          }
+          // Open challenge: challenger is always allowed; a stranger joining becomes the challengee atomically
+          if (isOpenChallenge && challenge.challengerId !== userId) {
+            if (challenge.status !== "pending") {
+              send(ws, { type: "error", message: "This open challenge is no longer available" });
+              return;
+            }
+            // Atomically claim the open challenge so only one joiner wins the race
+            const claimed = await storage.acceptOpenDuelChallenge(challenge.id, userId);
+            if (!claimed) {
+              send(ws, { type: "error", message: "This open challenge was just taken by another player" });
+              return;
+            }
+            // Re-fetch updated challenge so downstream code sees the accepted state
+            const refreshed = await storage.getDuelChallengeByRoom(roomCode);
+            if (refreshed) Object.assign(challenge, refreshed);
           }
           // Reject entry for non-playable statuses (including completed — duel is over)
           if (
@@ -903,8 +921,8 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: `This challenge has been ${challenge.status}` });
             return;
           }
-          // Challengee must have explicitly accepted before being allowed into the room
-          if (challenge.challengeeId === userId && challenge.status === "pending") {
+          // Named challengee must have explicitly accepted before being allowed into the room
+          if (!isOpenChallenge && challenge.challengeeId === userId && challenge.status === "pending") {
             send(ws, { type: "error", message: "You must accept the challenge before entering the room" });
             return;
           }
