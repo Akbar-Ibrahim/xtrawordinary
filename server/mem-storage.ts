@@ -1461,6 +1461,25 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
   }
 
+  async getDuelLeaderboard(limit = 100): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+    const sorted = [...this.duelRatings].sort((a, b) => b.elo - a.elo).slice(0, limit);
+    return sorted.map((r, i) => {
+      const user = this.users.find(u => u.id === r.userId);
+      const total = r.wins + r.losses + r.draws;
+      return {
+        rank: i + 1,
+        userId: r.userId,
+        displayName: user?.name ?? `User #${r.userId}`,
+        avatarUrl: user?.avatarUrl ?? null,
+        elo: r.elo,
+        wins: r.wins,
+        losses: r.losses,
+        draws: r.draws,
+        winRate: total > 0 ? Math.round((r.wins / total) * 100) : 0,
+      };
+    });
+  }
+
   async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> {
     let rating = this.duelRatings.find(r => r.userId === userId);
     if (rating) {

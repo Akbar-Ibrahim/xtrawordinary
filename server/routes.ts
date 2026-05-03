@@ -2792,6 +2792,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/leaderboard", async (_req, res) => {
+    try {
+      const entries = await storage.getDuelLeaderboard(100);
+      res.json(entries);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch duel leaderboard" });
+    }
+  });
+
   app.get("/api/duels/ratings/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);

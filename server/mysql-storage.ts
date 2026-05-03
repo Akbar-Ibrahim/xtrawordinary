@@ -1581,6 +1581,38 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.mapDuelRating(rows[0]) : undefined;
   }
 
+  async getDuelLeaderboard(limit = 100): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+    const db = await this.getDb();
+    const rows = await db
+      .select({
+        userId: schema.duelRatings.userId,
+        displayName: schema.users.name,
+        avatarUrl: schema.users.avatarUrl,
+        elo: schema.duelRatings.elo,
+        wins: schema.duelRatings.wins,
+        losses: schema.duelRatings.losses,
+        draws: schema.duelRatings.draws,
+      })
+      .from(schema.duelRatings)
+      .innerJoin(schema.users, eq(schema.duelRatings.userId, schema.users.id))
+      .orderBy(desc(schema.duelRatings.elo))
+      .limit(limit);
+    return rows.map((r, i) => {
+      const total = r.wins + r.losses + r.draws;
+      return {
+        rank: i + 1,
+        userId: r.userId,
+        displayName: r.displayName,
+        avatarUrl: r.avatarUrl,
+        elo: r.elo,
+        wins: r.wins,
+        losses: r.losses,
+        draws: r.draws,
+        winRate: total > 0 ? Math.round((r.wins / total) * 100) : 0,
+      };
+    });
+  }
+
   async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> {
     const db = await this.getDb();
     const existing = await this.getDuelRating(userId);

@@ -31,6 +31,7 @@ import CreateQuiz from "@/pages/create-quiz";
 import MyQuizzes from "@/pages/my-quizzes";
 import DuelRoom from "@/pages/duel-room";
 import DuelLobby from "@/pages/duel-lobby";
+import DuelLeaderboard from "@/pages/duel-leaderboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/create-quiz" component={CreateQuiz} />
       <Route path="/my-quizzes" component={MyQuizzes} />
       <Route path="/duels" component={DuelLobby} />
+      <Route path="/duels/leaderboard" component={DuelLeaderboard} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
       <Route component={NotFound} />
     </Switch>

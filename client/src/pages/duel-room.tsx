@@ -728,6 +728,12 @@ export default function DuelRoom() {
                 )}
 
                 <div className="flex flex-wrap gap-3 justify-center pt-1">
+                  <Link href="/duels/leaderboard">
+                    <Button variant="outline" className="gap-1.5" data-testid="button-see-rankings">
+                      <Trophy className="h-4 w-4" />
+                      See Rankings
+                    </Button>
+                  </Link>
                   <Link href="/friends">
                     <Button variant="outline" data-testid="button-back-friends">Back to Friends</Button>
                   </Link>

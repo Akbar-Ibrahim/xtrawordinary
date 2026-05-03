@@ -353,10 +353,18 @@ export default function DuelLobby() {
     <div className="container mx-auto max-w-3xl px-4 py-8 space-y-10">
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Swords className="h-7 w-7 text-violet-500" />
-        <div>
-          <h1 className="text-2xl font-bold">Duels</h1>
+      <div className="flex items-start gap-3">
+        <Swords className="h-7 w-7 text-violet-500 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">Duels</h1>
+            <Link href="/duels/leaderboard">
+              <Button variant="outline" size="sm" className="gap-1.5 text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/40" data-testid="button-duel-rankings">
+                <Trophy className="h-3.5 w-3.5" />
+                Rankings
+              </Button>
+            </Link>
+          </div>
           <p className="text-sm text-muted-foreground">Challenge a friend or join an open duel — turn-based or simultaneous race.</p>
         </div>
       </div>
