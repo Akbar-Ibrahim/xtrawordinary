@@ -42,6 +42,7 @@ export function Navigation() {
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
+    { href: "/duels", label: "Duels", icon: Swords },
     { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },
@@ -143,12 +144,6 @@ export function Navigation() {
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-profile">
                       <User className="h-4 w-4 mr-2" />
                       My Profile
-                    </DropdownMenuItem>
-                  </Link>
-                  <Link href="/duels">
-                    <DropdownMenuItem className="cursor-pointer" data-testid="link-duel-lobby">
-                      <Swords className="h-4 w-4 mr-2" />
-                      Duel Lobby
                     </DropdownMenuItem>
                   </Link>
                   <Link href={unreadCount > 0 ? "/friends?tab=challenges" : incomingDuelCount > 0 ? "/friends?tab=duels" : "/friends"}>
