@@ -1710,16 +1710,22 @@ export async function registerRoutes(
       if (existing) return res.status(409).json({ error: "Already a member" });
       await storage.addGroupMember(group.id, userId, "member");
       await storage.logGroupActivity(group.id, userId, "joined", { name: (req.user as any).name });
-      // Notify group owner that someone joined
-      if (group.createdById && group.createdById !== userId) {
-        storage.createNotification({
-          userId: group.createdById,
-          type: "group_join",
-          title: "New member joined your group",
-          body: `${(req.user as any).name} joined "${group.name}"`,
-          linkUrl: `/groups/${group.id}`,
-        }).catch(() => {});
-      }
+      // Notify all owners + admins (excluding the joiner) that someone joined
+      try {
+        const allMembers = await storage.getGroupMembers(group.id);
+        const joinerName = (req.user as any).name as string;
+        for (const m of allMembers) {
+          if (m.userId !== userId && (m.role === "owner" || m.role === "admin")) {
+            storage.createNotification({
+              userId: m.userId,
+              type: "group_join",
+              title: "New member joined your group",
+              body: `${joinerName} joined "${group.name}"`,
+              linkUrl: `/groups/${group.id}`,
+            }).catch(() => {});
+          }
+        }
+      } catch {}
       res.json(group);
     } catch {
       res.status(500).json({ error: "Failed to join group" });
@@ -1739,16 +1745,22 @@ export async function registerRoutes(
       if (existing) return res.status(409).json({ error: "Already a member" });
       await storage.addGroupMember(groupId, userId, "member");
       await storage.logGroupActivity(groupId, userId, "joined", { name: (req.user as any).name });
-      // Notify group owner that someone joined
-      if (group.createdById && group.createdById !== userId) {
-        storage.createNotification({
-          userId: group.createdById,
-          type: "group_join",
-          title: "New member joined your group",
-          body: `${(req.user as any).name} joined "${group.name}"`,
-          linkUrl: `/groups/${groupId}`,
-        }).catch(() => {});
-      }
+      // Notify all owners + admins (excluding the joiner) that someone joined
+      try {
+        const allMembers = await storage.getGroupMembers(groupId);
+        const joinerName = (req.user as any).name as string;
+        for (const m of allMembers) {
+          if (m.userId !== userId && (m.role === "owner" || m.role === "admin")) {
+            storage.createNotification({
+              userId: m.userId,
+              type: "group_join",
+              title: "New member joined your group",
+              body: `${joinerName} joined "${group.name}"`,
+              linkUrl: `/groups/${groupId}`,
+            }).catch(() => {});
+          }
+        }
+      } catch {}
       res.json(group);
     } catch {
       res.status(500).json({ error: "Failed to join group" });
@@ -2280,12 +2292,20 @@ export async function registerRoutes(
           const parent = flat.find(c => c.id === resolvedParentId);
           if (parent && parent.userId !== userId) {
             const commenterName = (req.user as any).name as string;
+            let replyLinkUrl: string | null = null;
+            if (targetType === "game") {
+              replyLinkUrl = `/games/${targetId}`;
+            } else if (targetType === "group_round") {
+              const roundId = parseInt(String(targetId));
+              const round = await storage.getGroupRound(roundId).catch(() => null);
+              if (round) replyLinkUrl = `/groups/${round.groupId}`;
+            }
             storage.createNotification({
               userId: parent.userId,
               type: "comment_reply",
               title: "Someone replied to your comment",
               body: `${commenterName}: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}"`,
-              linkUrl: targetType === "game" ? `/games/${targetId}` : null,
+              linkUrl: replyLinkUrl,
             }).catch(() => {});
           }
         } catch {}
@@ -2643,6 +2663,17 @@ export async function registerRoutes(
         storage.getUserById(challengerId),
         targetId != null ? storage.getUserById(targetId) : Promise.resolve(undefined),
       ]);
+      // Notify the specific challengee that they received a duel challenge
+      if (targetId !== null && challengee) {
+        const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        storage.createNotification({
+          userId: targetId,
+          type: "duel_challenge_received",
+          title: "You've been challenged to a duel!",
+          body: `${challenger?.name ?? "Someone"} challenged you to a ${gameTitle} duel`,
+          linkUrl: "/friends?tab=duels",
+        }).catch(() => {});
+      }
       res.status(201).json({
         ...challenge,
         roomCode,

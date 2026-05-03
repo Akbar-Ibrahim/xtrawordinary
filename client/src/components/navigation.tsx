@@ -22,21 +22,12 @@ function slugToTitle(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-type IncomingDuelChallenge = {
-  id: number;
-  status: string;
-  gameSlug: string;
-  challengerId: number;
-  challengerName: string | null;
-  challengerAvatarUrl: string | null;
-  roomCode: string | null;
-};
-
 const NOTIF_ICONS: Record<string, React.ReactNode> = {
   group_join: <UserPlus className="h-4 w-4 text-emerald-500" />,
   comment_reply: <MessageSquare className="h-4 w-4 text-sky-500" />,
   group_round_start: <PlayCircle className="h-4 w-4 text-violet-500" />,
   duel_accepted: <Swords className="h-4 w-4 text-orange-500" />,
+  duel_challenge_received: <Swords className="h-4 w-4 text-violet-500" />,
   friend_challenge_result: <Trophy className="h-4 w-4 text-primary" />,
 };
 
@@ -45,6 +36,7 @@ const NOTIF_BG: Record<string, string> = {
   comment_reply: "bg-sky-500/10",
   group_round_start: "bg-violet-500/10",
   duel_accepted: "bg-orange-500/10",
+  duel_challenge_received: "bg-violet-500/10",
   friend_challenge_result: "bg-primary/10",
 };
 
@@ -70,13 +62,7 @@ export function Navigation() {
   const { toast } = useToast();
   const { unseenChallenges, unseenCount, newlyAccepted, dismiss: dismissDuelNotification } = useDuelNotifications();
 
-  const { data: unreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number }>({
-    queryKey: ["/api/challenges/unread-count"],
-    enabled: isAuthenticated,
-    refetchInterval: 60000,
-  });
-  const unreadCount = unreadData?.count ?? 0;
-
+  // Legacy: open duel count badge on Duels nav link
   const { data: openDuelCountData } = useQuery<{ count: number }>({
     queryKey: ["/api/duels/open/count"],
     enabled: isAuthenticated,
@@ -84,19 +70,7 @@ export function Navigation() {
   });
   const openDuelCount = openDuelCountData?.count ?? 0;
 
-  const { data: incomingDuels = [] } = useQuery<IncomingDuelChallenge[]>({
-    queryKey: ["/api/duels/challenges/incoming"],
-    queryFn: async () => {
-      const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
-      if (!res.ok) return [];
-      const data = await res.json() as IncomingDuelChallenge[];
-      return data.filter((d) => d.status === "pending");
-    },
-    enabled: isAuthenticated,
-    refetchInterval: 10000,
-  });
-  const incomingDuelCount = incomingDuels.length;
-
+  // Primary notification feed (DB-backed)
   const { data: dbNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: isAuthenticated,
@@ -134,6 +108,7 @@ export function Navigation() {
     }
   }, [isAuthenticated]);
 
+  // WS supplement: toast when challenger's duel room is accepted
   useEffect(() => {
     for (const c of newlyAccepted) {
       if (!prevToastedRef.current.has(c.id)) {
@@ -160,7 +135,8 @@ export function Navigation() {
     }
   }, [newlyAccepted]);
 
-  const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount + dbUnreadCount;
+  // Total badge = DB unread + WS unseen (transient duel rooms ready, not yet in DB)
+  const totalNotificationCount = dbUnreadCount + unseenCount;
 
   const firstUnseenRoom: string | null =
     unseenCount > 0
@@ -184,15 +160,6 @@ export function Navigation() {
     setDropdownOpen(open);
   }
 
-  const friendsHref =
-    firstUnseenRoom
-      ? `/duel/${firstUnseenRoom}`
-      : unreadCount > 0
-      ? "/friends?tab=challenges"
-      : incomingDuelCount > 0
-      ? "/friends?tab=duels"
-      : "/friends";
-
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
@@ -202,11 +169,7 @@ export function Navigation() {
     { href: "/achievements", label: "Badges", icon: Award },
   ];
 
-  const hasAnyNotifications =
-    incomingDuels.length > 0 ||
-    unseenChallenges.length > 0 ||
-    unreadCount > 0 ||
-    dbNotifications.length > 0;
+  const hasPanelItems = dbNotifications.length > 0 || unseenChallenges.length > 0;
 
   return (
     <>
@@ -318,7 +281,7 @@ export function Navigation() {
                 <PopoverContent align="end" className="w-80 p-0" data-testid="panel-notifications">
                   <div className="flex items-center justify-between px-4 py-3 border-b">
                     <span className="font-semibold text-sm">Notifications</span>
-                    {(dbUnreadCount > 0 || totalNotificationCount > 0) && (
+                    {dbUnreadCount > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -334,45 +297,14 @@ export function Navigation() {
                   </div>
 
                   <div className="max-h-96 overflow-y-auto">
-                    {!hasAnyNotifications ? (
+                    {!hasPanelItems ? (
                       <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
                         <CheckCheck className="h-8 w-8 opacity-40" />
                         <p className="text-sm">You're all caught up!</p>
                       </div>
                     ) : (
                       <div className="py-1">
-                        {incomingDuels.length > 0 && (
-                          <div>
-                            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Duel Challenges
-                            </p>
-                            {incomingDuels.map((challenge) => (
-                              <button
-                                key={challenge.id}
-                                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
-                                onClick={() => {
-                                  setBellOpen(false);
-                                  navigate("/friends?tab=duels");
-                                }}
-                                data-testid={`notification-duel-challenge-${challenge.id}`}
-                              >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-                                  <Swords className="h-4 w-4 text-violet-500" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium leading-snug">
-                                    {challenge.challengerName ?? "Someone"} challenged you
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {slugToTitle(challenge.gameSlug)} · Tap to view
-                                  </p>
-                                </div>
-                                <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
+                        {/* WS supplement: transient duel rooms that are ready */}
                         {unseenChallenges.length > 0 && (
                           <div>
                             <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -381,7 +313,7 @@ export function Navigation() {
                             {unseenChallenges.map((c) => (
                               <button
                                 key={c.id}
-                                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
+                                className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3 bg-muted/20"
                                 onClick={() => {
                                   dismissDuelNotification(c.id);
                                   setBellOpen(false);
@@ -389,8 +321,8 @@ export function Navigation() {
                                 }}
                                 data-testid={`notification-duel-room-${c.id}`}
                               >
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                                  <Swords className="h-4 w-4 text-accent" />
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
+                                  <Swords className="h-4 w-4 text-orange-500" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium leading-snug">
@@ -406,38 +338,10 @@ export function Navigation() {
                           </div>
                         )}
 
-                        {unreadCount > 0 && (
-                          <div>
-                            <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Friend Challenges
-                            </p>
-                            <button
-                              className="w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3"
-                              onClick={() => {
-                                setBellOpen(false);
-                                navigate("/friends?tab=challenges");
-                              }}
-                              data-testid="notification-friend-challenges"
-                            >
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <Trophy className="h-4 w-4 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium leading-snug">
-                                  {unreadCount} unread challenge {unreadCount === 1 ? "result" : "results"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Tap to see how you did
-                                </p>
-                              </div>
-                              <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
-                            </button>
-                          </div>
-                        )}
-
+                        {/* Primary DB-backed notification feed */}
                         {dbNotifications.length > 0 && (
                           <div>
-                            {(incomingDuels.length > 0 || unseenChallenges.length > 0 || unreadCount > 0) && (
+                            {unseenChallenges.length > 0 && (
                               <div className="mx-4 my-1 border-t" />
                             )}
                             {dbNotifications.map((notif) => {
@@ -507,11 +411,11 @@ export function Navigation() {
                       My Profile
                     </DropdownMenuItem>
                   </Link>
-                  <Link href={friendsHref}>
+                  <Link href="/friends">
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
-                      {(unreadCount > 0 || incomingDuelCount > 0 || unseenCount > 0) && (
+                      {unseenCount > 0 && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
                       )}
                     </DropdownMenuItem>

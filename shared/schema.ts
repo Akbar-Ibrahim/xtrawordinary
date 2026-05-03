@@ -642,6 +642,7 @@ export const notificationTypeSchema = z.enum([
   "comment_reply",
   "group_round_start",
   "duel_accepted",
+  "duel_challenge_received",
   "friend_challenge_result",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
