@@ -214,34 +214,31 @@ export default function DuelLobby() {
     unknown,
     Error,
     number,
-    { prevAll: OpenChallenge[] | undefined; prevFiltered: OpenChallenge[] | undefined }
+    { prevAll: OpenChallenge[] | undefined; prevFiltered: OpenChallenge[] | undefined; filterKey: string }
   >({
     mutationFn: async (challengeId: number) => {
       const res = await apiRequest("PATCH", `/api/duels/challenges/${challengeId}/cancel`, {});
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? "Failed to cancel");
-      }
       return res.json();
     },
     onMutate: async (challengeId: number) => {
+      const filterKey = gameFilter;
       await queryClient.cancelQueries({ queryKey: ["/api/duels/open"] });
       const prevAll = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open"]);
-      const prevFiltered = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open", gameFilter]);
+      const prevFiltered = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open", filterKey]);
       queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open"], (old) =>
         old ? old.filter((c) => c.id !== challengeId) : []
       );
-      queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open", gameFilter], (old) =>
+      queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open", filterKey], (old) =>
         old ? old.filter((c) => c.id !== challengeId) : []
       );
-      return { prevAll, prevFiltered };
+      return { prevAll, prevFiltered, filterKey };
     },
     onSuccess: () => {
       toast({ title: "Challenge cancelled", description: "Your open challenge has been removed from the lobby." });
     },
     onError: (err, _challengeId, ctx) => {
       if (ctx?.prevAll) queryClient.setQueryData(["/api/duels/open"], ctx.prevAll);
-      if (ctx?.prevFiltered) queryClient.setQueryData(["/api/duels/open", gameFilter], ctx.prevFiltered);
+      if (ctx?.prevFiltered) queryClient.setQueryData(["/api/duels/open", ctx.filterKey], ctx.prevFiltered);
       toast({ title: "Could not cancel", description: err.message ?? "Try again.", variant: "destructive" });
     },
     onSettled: () => {
