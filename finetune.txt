@@ -15,16 +15,51 @@ DUEL SYSTEM DEPTH
    Milestones like "Win 10 duels", "Achieve 1400 ELO", "Win 5 races in a
    row" would motivate competitive play.
 
+3. Duel Spectator Mode
+   Players set a duel as Public or Private when issuing the challenge.
+   Spectators join the same real-time room in read-only mode and see the
+   live word feed, timer, and lives. Spectator emoji reactions (👀 🔥 😬)
+   flash briefly on screen for both players. A spectator count is shown
+   to both players (e.g. "👁 4 watching"). A "Live Now" section on the
+   Duels lobby shows ongoing public duels that friends are in.
+   Builds on the existing WebSocket / DuelRoomRegistry infrastructure.
+
+────────────────────────────────────────────────────────────
+GROUP VS GROUP CHALLENGES
+────────────────────────────────────────────────────────────
+
+4. Huddle Mode (Phase 1)
+   Two groups challenge each other to a synchronous game session.
+   One designated typist per group; the rest shout answers. Both groups
+   start at the same time via the existing mutual-Ready + countdown flow.
+   Same puzzle/seed given to both sides. Works for ALL duel games.
+   Entry point: "Challenge Another Group" on the Group detail page.
+   No new game logic needed — same engine as 1v1 duels.
+
+5. Team Race Mode (Phase 2)
+   Every group member joins on their own device. Members play
+   simultaneously; answers are pooled and de-duplicated for the team.
+   Real-time team score feed shows both groups' aggregate tallies live.
+   Works for simultaneous race games: Anagram Solver, No Repeats, Word
+   Stack, Letter Pool, Word Maker, Word Split, Word Scramble.
+   Design questions to resolve: player cap, score normalisation for
+   unequal group sizes, quorum (min members needed to start).
+
+6. Relay Mode (Phase 3)
+   Teams rotate which member is the active typist each round — each
+   member gets a turn. Works for turn-based games.
+   Build after Huddle and Team Race are stable.
+
 ────────────────────────────────────────────────────────────
 DAILY & STREAKS
 ────────────────────────────────────────────────────────────
 
-3. Daily Duel
+7. Daily Duel
    A single shared puzzle every day where everyone's matched against the
    same seed, building a daily all-time leaderboard. Fits naturally
    alongside the existing daily challenge.
 
-4. Streak Visualization on the Stats Page
+8. Streak Visualization on the Stats Page
    The streak system exists in the backend but the stats page could show
    a heatmap calendar (like GitHub contributions) to make streaks feel
    more satisfying.
@@ -33,30 +68,32 @@ DAILY & STREAKS
 DISCOVERY & ONBOARDING
 ────────────────────────────────────────────────────────────
 
-5. Game Search and Filtering on the Home Page
+9. Game Search and Filtering on the Home Page
    With 23 games, new users may feel overwhelmed. A search bar, difficulty
    filter, and "popular this week" sort would help them find games they
    enjoy faster.
 
-6. Improved Onboarding Flow
-   New users currently land on the home grid with no guidance. A short
-   "pick your first game" wizard or a welcome banner for new accounts
-   would reduce drop-off.
+10. Improved Onboarding Flow
+    New users currently land on the home grid with no guidance. A short
+    "pick your first game" wizard or a welcome banner for new accounts
+    would reduce drop-off.
 
 ────────────────────────────────────────────────────────────
 SOCIAL & COMMUNITY
 ────────────────────────────────────────────────────────────
 
-7. In-App Notifications Panel
-   Friend requests, group invites, challenge results, and comment replies
-   currently require the user to navigate to the right page. A
-   notification bell in the nav with a dropdown would surface these
-   without disruption.
+11. In-App Notifications Panel
+    Friend requests, group invites, challenge results, and comment replies
+    currently require the user to navigate to the right page. A
+    notification bell in the nav with a dropdown would surface these
+    without disruption.
 
 ────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
-  1. Duel Achievements   — makes recent duel investment pay off in engagement
-  2. In-App Notifications Panel — ties all social features together
-  3. Game Search / Filtering — helps new users find games faster
+  1. Duel Spectator Mode      — natural next step for the mature duel system
+  2. Duel Achievements        — makes duel investment pay off in engagement
+  3. Group vs Group (Huddle)  — big social/competitive hook, reuses duel engine
+  4. In-App Notifications     — ties all social features together
+  5. Game Search / Filtering  — helps new users find games faster
