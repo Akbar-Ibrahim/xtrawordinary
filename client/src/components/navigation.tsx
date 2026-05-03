@@ -164,6 +164,18 @@ export function Navigation() {
                 </Link>
               );
             })}
+            {isAuthenticated && (
+              <Link href="/create-quiz">
+                <Button
+                  variant={location === "/create-quiz" ? "secondary" : "ghost"}
+                  className="gap-2"
+                  data-testid="link-nav-create-quiz"
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  <span className="hidden sm:inline">Create Quiz</span>
+                </Button>
+              </Link>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -242,12 +254,6 @@ export function Navigation() {
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-groups">
                       <Users className="h-4 w-4 mr-2" />
                       Groups
-                    </DropdownMenuItem>
-                  </Link>
-                  <Link href="/create-quiz">
-                    <DropdownMenuItem className="cursor-pointer" data-testid="link-create-quiz">
-                      <GraduationCap className="h-4 w-4 mr-2" />
-                      Create Quiz
                     </DropdownMenuItem>
                   </Link>
                   {user.isAdmin && (
