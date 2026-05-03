@@ -395,7 +395,7 @@ export default function Friends() {
                               setDuelGameSlug("");
                               setDuelFormat("turn");
                               setDuelRaceTarget(15);
-                              setDuelRaceTimeLimit(120);
+                              setDuelRaceTimeLimit(300);
                               setDuelDialogOpen(true);
                             }}
                             data-testid={`button-duel-${f.friendUser.id}`}

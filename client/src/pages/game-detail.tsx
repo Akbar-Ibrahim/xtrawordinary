@@ -3259,7 +3259,7 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setDuelFormat(DUEL_RACE_SLUGS.has(slug) && !DUEL_TURN_SLUGS.has(slug) ? "race" : "turn"); setDuelRaceTarget(15); setDuelRaceTimeLimit(300); } }}>
+      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); const defaultFmt = DUEL_RACE_SLUGS.has(slug) && !DUEL_TURN_SLUGS.has(slug) ? "race" : "turn"; if (open) { setDuelFormat(defaultFmt); } else { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setDuelFormat(defaultFmt); setDuelRaceTarget(15); setDuelRaceTimeLimit(300); } }}>
         <DialogContent data-testid="dialog-duel-friend">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
