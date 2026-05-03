@@ -1507,7 +1507,11 @@ export class MySQLStorage implements IStorage {
       .where(and(
         eq(schema.duelChallenges.status, "pending"),
         isNull(schema.duelChallenges.challengeeId),
-        sql`${schema.duelChallenges.expiresAt} IS NOT NULL AND ${schema.duelChallenges.expiresAt} < NOW()`,
+        sql`(
+          (${schema.duelChallenges.expiresAt} IS NOT NULL AND ${schema.duelChallenges.expiresAt} < NOW())
+          OR
+          (${schema.duelChallenges.expiresAt} IS NULL AND ${schema.duelChallenges.createdAt} < DATE_SUB(NOW(), INTERVAL 24 HOUR))
+        )`,
       ));
     return result[0].affectedRows ?? 0;
   }

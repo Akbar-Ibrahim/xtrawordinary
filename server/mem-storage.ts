@@ -1412,14 +1412,14 @@ export class MemStorage implements IStorage {
 
   async expireOpenChallenges(): Promise<number> {
     const now = new Date();
+    const fallbackMs = 24 * 60 * 60 * 1000;
     let count = 0;
     for (const c of this.duelChallenges) {
-      if (
-        c.status === "pending" &&
-        c.challengeeId === null &&
-        c.expiresAt != null &&
-        new Date(c.expiresAt) < now
-      ) {
+      if (c.status !== "pending" || c.challengeeId !== null) continue;
+      const deadline = c.expiresAt
+        ? new Date(c.expiresAt)
+        : new Date(new Date(c.createdAt).getTime() + fallbackMs);
+      if (deadline < now) {
         c.status = "expired";
         count++;
       }
