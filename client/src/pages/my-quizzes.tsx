@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { QuizSession } from "@shared/schema";
 import { useState } from "react";
+import { getVariantSummary } from "@/lib/variant-summary";
 
 type EnrichedSession = QuizSession & { playerCount: number };
 
@@ -155,9 +156,21 @@ export default function MyQuizzes() {
                           {closed ? "Closed" : "Open"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <p className="text-sm text-muted-foreground mb-1">
                         {slugToTitle(session.gameSlug)}
                       </p>
+                      {(() => {
+                        const summary = getVariantSummary(session.gameSlug, 0, session.params as Record<string, any>);
+                        return summary ? (
+                          <p className="text-xs text-muted-foreground mb-2" data-testid={`text-quiz-settings-${session.id}`}>
+                            {summary}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mb-2" data-testid={`text-quiz-settings-${session.id}`}>
+                            Standard rules
+                          </p>
+                        );
+                      })()}
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1" data-testid={`text-quiz-players-${session.id}`}>
                           <Users className="h-3 w-3" />
