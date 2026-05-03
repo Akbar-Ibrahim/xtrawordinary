@@ -324,6 +324,14 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
         if (CHALLENGE_CONFIG[challenge].changesPerWord) {
           setConstraint(generateConstraint(challenge, seedRngRef.current, initialLetterRef.current));
         }
+        if (challenge === "multi") {
+          const rng = seedRngRef.current ?? Math.random;
+          if (initialLettersRef.current && initialLettersRef.current.length > 0) {
+            setMultiConstraint({ letters: resolveMultiLetters(initialLettersRef.current, rng), minCount: 2 });
+          } else {
+            setMultiConstraint(generateMultiLetterConstraint(rng));
+          }
+        }
         if (isSurvivalRef.current) {
           startTimer(true);
         }
