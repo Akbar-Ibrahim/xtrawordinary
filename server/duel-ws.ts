@@ -188,6 +188,27 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
 export class DuelRoomRegistry {
   private rooms: Map<string, DuelRoom> = new Map();
 
+  constructor() {
+    // Sweep stale "waiting" rooms (created >2 h ago with no active players)
+    // every 30 minutes so unclaimed pre-created rooms don't accumulate.
+    const SWEEP_INTERVAL_MS = 30 * 60 * 1000;
+    const STALE_WAITING_MS  = 2 * 60 * 60 * 1000; // 2 hours
+    const sweep = () => {
+      const now = Date.now();
+      for (const [code, room] of Array.from(this.rooms.entries())) {
+        if (
+          room.status === "waiting" &&
+          room.players.size === 0 &&
+          now - room.createdAt > STALE_WAITING_MS
+        ) {
+          this.rooms.delete(code);
+          log(`[Duel] Swept stale waiting room ${code}`, "duel-ws");
+        }
+      }
+    };
+    setInterval(sweep, SWEEP_INTERVAL_MS).unref?.();
+  }
+
   createRoom(gameSlug: string, challengerId: number): { roomCode: string; seed: number; startWord: string } {
     let roomCode: string;
     do {

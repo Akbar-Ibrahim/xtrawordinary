@@ -2593,6 +2593,11 @@ export async function registerRoutes(
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
         await storage.updateDuelChallengeStatus(id, "expired");
+        // Clean up the pre-created room so it does not leak in memory
+        if (challenge.roomCode) {
+          const { duelRegistry } = await import("./duel-ws");
+          duelRegistry.endRoom(challenge.roomCode);
+        }
         return res.status(410).json({ error: "Challenge has expired" });
       }
       // Room should have been pre-created at challenge send time.
