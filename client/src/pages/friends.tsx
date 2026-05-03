@@ -17,6 +17,11 @@ import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS } from "@shared/schema";
 
+type EnrichedDuelChallenge = DuelChallenge & {
+  challengerName: string | null;
+  challengerAvatarUrl: string | null;
+};
+
 
 interface FriendEntry {
   id: number;
@@ -77,12 +82,12 @@ export default function Friends() {
     enabled: isAuthenticated,
   });
 
-  const { data: incomingDuels = [] } = useQuery<DuelChallenge[]>({
+  const { data: incomingDuels = [] } = useQuery<EnrichedDuelChallenge[]>({
     queryKey: ["/api/duels/challenges/incoming"],
     queryFn: async () => {
       const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
       if (!res.ok) return [];
-      const data = await res.json() as DuelChallenge[];
+      const data = await res.json() as EnrichedDuelChallenge[];
       return data.filter((d) => d.status === "pending");
     },
     enabled: isAuthenticated,
@@ -410,14 +415,18 @@ export default function Friends() {
                       >
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div className="flex items-center gap-3">
-                            <Swords className="h-5 w-5 text-violet-500 shrink-0" />
+                            <UserAvatar
+                              name={d.challengerName ?? "?"}
+                              avatarUrl={d.challengerAvatarUrl ?? null}
+                              className="h-10 w-10 text-sm shrink-0"
+                            />
                             <div>
-                              <p className="font-semibold text-sm">
-                                Word Chain Duel
+                              <p className="font-semibold text-sm flex items-center gap-1.5">
+                                <Swords className="h-4 w-4 text-violet-500" />
+                                {d.challengerName ?? "Someone"} challenged you!
                               </p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                Waiting for your response
+                              <p className="text-xs text-muted-foreground">
+                                Word Chain Duel · Waiting for your response
                               </p>
                             </div>
                           </div>

@@ -2507,6 +2507,11 @@ export async function registerRoutes(
       if (!challengeeId || !gameSlug) {
         return res.status(400).json({ error: "challengeeId and gameSlug are required" });
       }
+      // Allowlist: only word-chain duels are supported in the current release
+      const DUEL_ALLOWED_SLUGS = new Set(["word-chain"]);
+      if (!DUEL_ALLOWED_SLUGS.has(gameSlug)) {
+        return res.status(400).json({ error: "Duels are only available for Word Chain at this time" });
+      }
       const challengerId = req.user.id;
       if (!req.user.isPremium) {
         return res.status(403).json({ error: "Duels require a Premium account." });
