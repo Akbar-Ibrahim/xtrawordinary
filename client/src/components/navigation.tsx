@@ -13,15 +13,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useToast } from "@/hooks/use-toast";
-
-type OutgoingChallenge = {
-  id: number;
-  challengeeId: number | null;
-  status: string;
-  gameSlug: string;
-  roomCode: string | null;
-  challengeeName: string | null;
-};
+import { useDuelNotifications } from "@/lib/duel-notifications-context";
 
 function slugToTitle(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -36,6 +28,7 @@ export function Navigation() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const suppressNextDropdownOpen = useRef(false);
   const { toast } = useToast();
+  const { unseenChallenges, unseenCount, newlyAccepted, dismiss: dismissDuelNotification } = useDuelNotifications();
 
   const { data: unreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number }>({
     queryKey: ["/api/challenges/unread-count"],
@@ -57,101 +50,52 @@ export function Navigation() {
   });
   const incomingDuelCount = incomingDuels.length;
 
-  const { data: outgoingChallenges = [] } = useQuery<OutgoingChallenge[]>({
-    queryKey: ["/api/duels/challenges/outgoing"],
-    queryFn: async () => {
-      const res = await fetch("/api/duels/challenges?type=outgoing", { credentials: "include" });
-      if (!res.ok) return [];
-      return res.json() as Promise<OutgoingChallenge[]>;
-    },
-    enabled: isAuthenticated,
-    refetchInterval: 10000,
-  });
-
-  const prevMapRef = useRef<Map<number, { status: string; challengeeId: number | null }>>(new Map());
-  const unseenRef = useRef<Map<number, string | null>>(new Map());
-  const [unseenCount, setUnseenCount] = useState(0);
+  const prevToastedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!isAuthenticated) {
-      unseenRef.current.clear();
-      setUnseenCount(0);
-      prevMapRef.current.clear();
+      prevToastedRef.current.clear();
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const prevMap = prevMapRef.current;
-    let changed = false;
-
-    for (const c of outgoingChallenges) {
-      const prev = prevMap.get(c.id);
-      const wasOpen = prev?.challengeeId === null;
-      if (prev?.status === "pending" && c.status === "accepted" && wasOpen && !unseenRef.current.has(c.id)) {
-        unseenRef.current.set(c.id, c.roomCode);
-        changed = true;
-
+    for (const c of newlyAccepted) {
+      if (!prevToastedRef.current.has(c.id)) {
+        prevToastedRef.current.add(c.id);
         const gameName = slugToTitle(c.gameSlug);
         const opponentName = c.challengeeName ?? "Someone";
         const roomCode = c.roomCode;
-
         toast({
           title: `${opponentName} accepted your ${gameName} challenge!`,
           description: "Your duel room is ready.",
-          action: roomCode ? (
+          action: (
             <ToastAction
               altText="Go to Room"
               onClick={() => {
-                unseenRef.current.delete(c.id);
-                setUnseenCount(unseenRef.current.size);
+                dismissDuelNotification(c.id);
                 navigate(`/duel/${roomCode}`);
               }}
             >
               Go to Room
             </ToastAction>
-          ) : undefined,
+          ),
         });
       }
     }
-
-    prevMapRef.current = new Map(outgoingChallenges.map((c) => [c.id, { status: c.status, challengeeId: c.challengeeId }]));
-
-    if (changed) {
-      setUnseenCount(unseenRef.current.size);
-    }
-  }, [outgoingChallenges]);
-
-  useEffect(() => {
-    const match = /^\/duel\/(.+)$/.exec(location);
-    if (!match) return;
-    const roomCode = match[1];
-    let changed = false;
-    for (const [id, rc] of unseenRef.current.entries()) {
-      if (rc === roomCode) {
-        unseenRef.current.delete(id);
-        changed = true;
-      }
-    }
-    if (changed) setUnseenCount(unseenRef.current.size);
-  }, [location]);
+  }, [newlyAccepted]);
 
   const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount;
 
   const firstUnseenRoom: string | null =
     unseenCount > 0
-      ? ([...unseenRef.current.values()].find((rc): rc is string => rc != null) ?? null)
+      ? (unseenChallenges.find((c) => c.roomCode != null)?.roomCode ?? null)
       : null;
 
   function handleUserMenuClick() {
     if (firstUnseenRoom) {
       suppressNextDropdownOpen.current = true;
-      for (const [id, rc] of unseenRef.current.entries()) {
-        if (rc === firstUnseenRoom) {
-          unseenRef.current.delete(id);
-          break;
-        }
-      }
-      setUnseenCount(unseenRef.current.size);
+      const match = unseenChallenges.find((c) => c.roomCode === firstUnseenRoom);
+      if (match) dismissDuelNotification(match.id);
       navigate(`/duel/${firstUnseenRoom}`);
     }
   }

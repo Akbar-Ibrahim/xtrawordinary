@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History, X } from "lucide-react";
+import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History, X, Bell, ChevronDown, ChevronUp } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuthModal } from "@/components/auth-modal";
 import { PremiumBanner } from "@/components/premium-banner";
+import { useDuelNotifications } from "@/lib/duel-notifications-context";
+import type { UnseenChallenge } from "@/lib/duel-notifications-context";
 import { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
 
@@ -132,6 +134,101 @@ function DuelGameCard({ game, waitingCount = 0 }: { game: Game; waitingCount?: n
   );
 }
 
+function DuelNotificationsPanel({
+  challenges,
+  onDismiss,
+  onDismissAll,
+}: {
+  challenges: UnseenChallenge[];
+  onDismiss: (id: number) => void;
+  onDismissAll: () => void;
+}) {
+  const [, navigate] = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (challenges.length === 0) return null;
+
+  return (
+    <div
+      className="rounded-xl border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/30 overflow-hidden"
+      data-testid="panel-duel-notifications"
+    >
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-green-100/60 dark:bg-green-900/30">
+        <Bell className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+        <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex-1">
+          My Duel Notifications
+          <Badge className="ml-2 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 border-0 text-xs px-1.5 py-0">
+            {challenges.length}
+          </Badge>
+        </p>
+        <button
+          onClick={onDismissAll}
+          className="text-xs text-green-700 dark:text-green-300 hover:underline shrink-0"
+          data-testid="button-dismiss-all-notifications"
+        >
+          Dismiss all
+        </button>
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100"
+          data-testid="button-toggle-notifications"
+          aria-label={collapsed ? "Expand notifications" : "Collapse notifications"}
+        >
+          {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {!collapsed && (
+        <div className="divide-y divide-green-200 dark:divide-green-800">
+          {challenges.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center gap-3 px-4 py-3"
+              data-testid={`row-duel-notification-${c.id}`}
+            >
+              <UserAvatar
+                name={c.challengeeName ?? "?"}
+                avatarUrl={c.challengeeAvatarUrl ?? null}
+                className="h-8 w-8 shrink-0 text-xs"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100 truncate">
+                  {c.challengeeName ?? "Your opponent"} accepted your challenge!
+                </p>
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug} · Room ready
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  className="gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs h-7 px-2.5"
+                  onClick={() => {
+                    onDismiss(c.id);
+                    navigate(`/duel/${c.roomCode}`);
+                  }}
+                  data-testid={`button-join-room-notification-${c.id}`}
+                >
+                  <Swords className="h-3.5 w-3.5" />
+                  Join Room
+                </Button>
+                <button
+                  onClick={() => onDismiss(c.id)}
+                  className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-100"
+                  data-testid={`button-dismiss-notification-${c.id}`}
+                  aria-label="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DuelLobby() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -141,6 +238,7 @@ export default function DuelLobby() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
   const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
+  const { unseenChallenges, dismiss: dismissNotification, dismissAll: dismissAllNotifications } = useDuelNotifications();
 
   const { data: allGames = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -262,6 +360,15 @@ export default function DuelLobby() {
           <p className="text-sm text-muted-foreground">Challenge a friend or join an open duel — turn-based or simultaneous race.</p>
         </div>
       </div>
+
+      {/* ── Duel Notifications Panel ── */}
+      {isAuthenticated && (
+        <DuelNotificationsPanel
+          challenges={unseenChallenges}
+          onDismiss={dismissNotification}
+          onDismissAll={dismissAllNotifications}
+        />
+      )}
 
       {/* ── Game Directory ── */}
       <section>

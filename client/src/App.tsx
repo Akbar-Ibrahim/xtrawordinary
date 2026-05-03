@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { SoundProvider } from "@/lib/sound-provider";
 import { AuthProvider } from "@/lib/auth-context";
+import { DuelNotificationsProvider } from "@/lib/duel-notifications-context";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import Home from "@/pages/home";
@@ -66,6 +67,7 @@ function App() {
       <AuthProvider>
         <ThemeProvider>
           <SoundProvider>
+            <DuelNotificationsProvider>
             <TooltipProvider>
             <div className="min-h-screen bg-background flex flex-col">
               <Navigation />
@@ -76,6 +78,7 @@ function App() {
             </div>
             <Toaster />
             </TooltipProvider>
+            </DuelNotificationsProvider>
           </SoundProvider>
         </ThemeProvider>
       </AuthProvider>
