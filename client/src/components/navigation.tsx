@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type OutgoingChallenge = {
   id: number;
+  challengeeId: number | null;
   status: string;
   gameSlug: string;
   roomCode: string | null;
@@ -67,17 +68,26 @@ export function Navigation() {
     refetchInterval: 10000,
   });
 
-  const prevStatusMapRef = useRef<Map<number, string>>(new Map());
+  const prevMapRef = useRef<Map<number, { status: string; challengeeId: number | null }>>(new Map());
   const unseenRef = useRef<Map<number, string | null>>(new Map());
   const [unseenCount, setUnseenCount] = useState(0);
 
   useEffect(() => {
-    const prevMap = prevStatusMapRef.current;
+    if (!isAuthenticated) {
+      unseenRef.current.clear();
+      setUnseenCount(0);
+      prevMapRef.current.clear();
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const prevMap = prevMapRef.current;
     let changed = false;
 
     for (const c of outgoingChallenges) {
       const prev = prevMap.get(c.id);
-      if (prev === "pending" && c.status === "accepted" && !unseenRef.current.has(c.id)) {
+      const wasOpen = prev?.challengeeId === null;
+      if (prev?.status === "pending" && c.status === "accepted" && wasOpen && !unseenRef.current.has(c.id)) {
         unseenRef.current.set(c.id, c.roomCode);
         changed = true;
 
@@ -104,7 +114,7 @@ export function Navigation() {
       }
     }
 
-    prevStatusMapRef.current = new Map(outgoingChallenges.map((c) => [c.id, c.status]));
+    prevMapRef.current = new Map(outgoingChallenges.map((c) => [c.id, { status: c.status, challengeeId: c.challengeeId }]));
 
     if (changed) {
       setUnseenCount(unseenRef.current.size);
