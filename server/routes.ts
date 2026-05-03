@@ -2504,14 +2504,31 @@ export async function registerRoutes(
 
   app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
-      const { challengeeId, gameSlug, message } = req.body;
+      const { challengeeId, gameSlug, message, format, raceTarget, raceTimeLimit } = req.body;
       if (!gameSlug) {
         return res.status(400).json({ error: "gameSlug is required" });
       }
-      // Allowlist: games that support the turn-based duel format
-      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance"]);
-      if (!DUEL_ALLOWED_SLUGS.has(gameSlug)) {
+      const { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } = await import("@shared/schema");
+      if (!DUEL_GAME_SLUGS.has(gameSlug)) {
         return res.status(400).json({ error: "That game does not support duels" });
+      }
+      // Validate format-game compatibility
+      const duelFormat: "turn" | "race" = format === "race" ? "race" : "turn";
+      if (duelFormat === "turn" && !DUEL_TURN_SLUGS.has(gameSlug)) {
+        return res.status(400).json({ error: "That game does not support the turn-based format" });
+      }
+      if (duelFormat === "race" && !DUEL_RACE_SLUGS.has(gameSlug)) {
+        return res.status(400).json({ error: "That game does not support the race format" });
+      }
+      const validRaceTargets = [5, 10, 15, 20, 25];
+      const parsedRaceTarget = raceTarget != null ? Number(raceTarget) : 15;
+      if (!validRaceTargets.includes(parsedRaceTarget)) {
+        return res.status(400).json({ error: "raceTarget must be 5, 10, 15, 20, or 25" });
+      }
+      const validTimeLimits = [180, 300, 600];
+      const parsedRaceTimeLimit = raceTimeLimit != null ? Number(raceTimeLimit) : 300;
+      if (!validTimeLimits.includes(parsedRaceTimeLimit)) {
+        return res.status(400).json({ error: "raceTimeLimit must be 180, 300, or 600 seconds" });
       }
       const challengerId = req.user.id;
       if (!req.user.isPremium) {
@@ -2533,7 +2550,9 @@ export async function registerRoutes(
       }
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
-      const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(gameSlug, challengerId);
+      const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
+        gameSlug, challengerId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit,
+      );
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const challenge = await storage.createDuelChallenge({
@@ -2546,6 +2565,9 @@ export async function registerRoutes(
         roomCode,
         seed: roomSeed,
         startWord: roomStartWord,
+        format: duelFormat,
+        raceTarget: parsedRaceTarget,
+        raceTimeLimit: parsedRaceTimeLimit,
       });
       const [challenger, challengee] = await Promise.all([
         storage.getUserById(challengerId),
@@ -2601,8 +2623,8 @@ export async function registerRoutes(
     try {
       const userId = req.user.id;
       const rawSlug = req.query.gameSlug as string | undefined;
-      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance"]);
-      if (rawSlug && !DUEL_ALLOWED_SLUGS.has(rawSlug)) {
+      const { DUEL_GAME_SLUGS } = await import("@shared/schema");
+      if (rawSlug && !DUEL_GAME_SLUGS.has(rawSlug)) {
         return res.status(400).json({ error: "Invalid gameSlug filter" });
       }
       const gameSlug = rawSlug;
@@ -2733,13 +2755,25 @@ export async function registerRoutes(
       // persisted challenge metadata so accepted/pending challenges remain reachable.
       const room =
         duelRegistry.getRoom(roomCode) ??
-        duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId, challenge.seed, challenge.startWord);
+        duelRegistry.restoreRoom(
+          roomCode,
+          challenge.gameSlug,
+          challenge.challengerId,
+          challenge.seed,
+          challenge.startWord,
+          (challenge.format as "turn" | "race") ?? "turn",
+          challenge.raceTarget ?? 15,
+          challenge.raceTimeLimit ?? 300,
+        );
       res.json({
         gameSlug: room.gameSlug,
         seed: room.seed,
         startWord: room.startWord,
         challengerId: challenge.challengerId,
         challengeeId: challenge.challengeeId,
+        format: room.format,
+        raceTarget: room.raceTarget,
+        raceTimeLimitMs: room.raceTimeLimitMs,
       });
     } catch (err) {
       console.error(err);

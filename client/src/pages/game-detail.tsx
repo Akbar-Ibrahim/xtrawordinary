@@ -34,7 +34,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
-import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -337,6 +337,9 @@ export default function GameDetail() {
   const [duelSearch, setDuelSearch] = useState("");
   const [duelSearchInput, setDuelSearchInput] = useState("");
   const [duelSearchId, setDuelSearchId] = useState<number | null>(null);
+  const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
+  const [duelRaceTarget, setDuelRaceTarget] = useState(15);
+  const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
 
   const { data: duelUserResults = [], isFetching: duelSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
     queryKey: ["/api/users/search", duelSearch],
@@ -352,8 +355,12 @@ export default function GameDetail() {
 
   const createDuelChallengeMutation = useMutation({
     mutationFn: async (challengeeId: number | null) => {
-      const body: Record<string, unknown> = { gameSlug: slug };
+      const body: Record<string, unknown> = { gameSlug: slug, format: duelFormat };
       if (challengeeId !== null) body.challengeeId = challengeeId;
+      if (duelFormat === "race") {
+        body.raceTarget = duelRaceTarget;
+        body.raceTimeLimit = duelRaceTimeLimit;
+      }
       const res = await apiRequest("POST", "/api/duels/challenges", body);
       return res.json() as Promise<{ id: number; status: string; roomCode: string | null }>;
     },
@@ -3252,7 +3259,7 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); } }}>
+      <Dialog open={showDuelDialog} onOpenChange={(open) => { setShowDuelDialog(open); if (!open) { setDuelSearch(""); setDuelSearchInput(""); setDuelSearchId(null); setDuelFormat("turn"); setDuelRaceTarget(15); setDuelRaceTimeLimit(300); } }}>
         <DialogContent data-testid="dialog-duel-friend">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -3277,6 +3284,73 @@ export default function GameDetail() {
                 Open Challenge
               </button>
             </div>
+
+            {/* Format selector — only show if game supports both or race-only */}
+            {slug && (DUEL_TURN_SLUGS.has(slug) || DUEL_RACE_SLUGS.has(slug)) && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Format</p>
+                <div className="flex gap-2">
+                  {DUEL_TURN_SLUGS.has(slug) && (
+                    <button
+                      className={`flex-1 text-sm font-medium px-3 py-2 rounded-md border transition-colors ${duelFormat === "turn" ? "bg-violet-100 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300" : "border-border text-muted-foreground hover:text-foreground"}`}
+                      onClick={() => setDuelFormat("turn")}
+                      data-testid="button-format-turn"
+                    >
+                      ⚔️ Turn-Based
+                    </button>
+                  )}
+                  {DUEL_RACE_SLUGS.has(slug) && (
+                    <button
+                      className={`flex-1 text-sm font-medium px-3 py-2 rounded-md border transition-colors ${duelFormat === "race" ? "bg-violet-100 dark:bg-violet-900/30 border-violet-400 text-violet-700 dark:text-violet-300" : "border-border text-muted-foreground hover:text-foreground"}`}
+                      onClick={() => { setDuelFormat("race"); if (!DUEL_TURN_SLUGS.has(slug)) setDuelFormat("race"); }}
+                      data-testid="button-format-race"
+                    >
+                      ⚡ Race
+                    </button>
+                  )}
+                </div>
+                {duelFormat === "turn" && (
+                  <p className="text-xs text-muted-foreground">Players alternate turns. First to run out of lives loses.</p>
+                )}
+                {duelFormat === "race" && (
+                  <>
+                    <p className="text-xs text-muted-foreground">Both players submit simultaneously. First to reach the target wins!</p>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <p className="text-xs font-medium mb-1">Target words</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {[5, 10, 15, 20, 25].map((n) => (
+                            <button
+                              key={n}
+                              className={`text-xs px-2 py-1 rounded border transition-colors ${duelRaceTarget === n ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                              onClick={() => setDuelRaceTarget(n)}
+                              data-testid={`button-race-target-${n}`}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">Time limit</p>
+                        <div className="flex gap-1 flex-wrap">
+                          {[{ v: 180, l: "3m" }, { v: 300, l: "5m" }, { v: 600, l: "10m" }].map(({ v, l }) => (
+                            <button
+                              key={v}
+                              className={`text-xs px-2 py-1 rounded border transition-colors ${duelRaceTimeLimit === v ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                              onClick={() => setDuelRaceTimeLimit(v)}
+                              data-testid={`button-race-time-${v}`}
+                            >
+                              {l}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {duelTab === "targeted" && (
               <div className="space-y-3">

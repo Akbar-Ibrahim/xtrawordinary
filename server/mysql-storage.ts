@@ -1375,6 +1375,9 @@ export class MySQLStorage implements IStorage {
       roomCode: row.roomCode ?? null,
       seed: row.seed ?? null,
       startWord: row.startWord ?? null,
+      format: (row.format as "turn" | "race") ?? "turn",
+      raceTarget: row.raceTarget ?? null,
+      raceTimeLimit: row.raceTimeLimit ?? null,
       createdAt: MySQLStorage.tsToIso(row.createdAt)!,
       expiresAt: MySQLStorage.tsToIso(row.expiresAt),
     };
@@ -1389,6 +1392,7 @@ export class MySQLStorage implements IStorage {
       player2Id: row.player2Id,
       gameSlug: row.gameSlug,
       seed: row.seed,
+      format: (row.format as "turn" | "race") ?? "turn",
       outcome: (row.outcome as DuelSession["outcome"]) ?? null,
       eloDeltaPlayer1: row.eloDeltaPlayer1 ?? null,
       eloDeltaPlayer2: row.eloDeltaPlayer2 ?? null,
@@ -1421,6 +1425,9 @@ export class MySQLStorage implements IStorage {
       roomCode: data.roomCode ?? null,
       seed: data.seed ?? null,
       startWord: data.startWord ?? null,
+      format: data.format ?? "turn",
+      raceTarget: data.raceTarget ?? null,
+      raceTimeLimit: data.raceTimeLimit ?? null,
     });
     const rows = await db.select().from(schema.duelChallenges).where(eq(schema.duelChallenges.id, result[0].insertId)).limit(1);
     return this.mapDuelChallenge(rows[0]);
@@ -1500,6 +1507,7 @@ export class MySQLStorage implements IStorage {
       player2Id: data.player2Id,
       gameSlug: data.gameSlug,
       seed: data.seed,
+      format: data.format ?? "turn",
       outcome: data.outcome ?? null,
       eloDeltaPlayer1: data.eloDeltaPlayer1 ?? null,
       eloDeltaPlayer2: data.eloDeltaPlayer2 ?? null,

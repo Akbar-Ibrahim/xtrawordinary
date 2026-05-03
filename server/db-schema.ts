@@ -316,6 +316,12 @@ export const duelChallenges = mysqlTable("duel_challenges", {
   /** Persisted so restoreRoom is deterministic after process restart. */
   seed: int("seed"),
   startWord: varchar("start_word", { length: 60 }),
+  /** "turn" or "race" */
+  format: varchar("format", { length: 10 }).notNull().default("turn"),
+  /** Target word count for race format (e.g. 15 = first to 15 wins). */
+  raceTarget: int("race_target"),
+  /** Race time limit in seconds (fallback winner-by-count if no one hits target). */
+  raceTimeLimit: int("race_time_limit"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -333,6 +339,8 @@ export const duelSessions = mysqlTable("duel_sessions", {
   player2Id: int("player2_id").notNull(),
   gameSlug: varchar("game_slug", { length: 100 }).notNull(),
   seed: int("seed").notNull(),
+  /** "turn" or "race" */
+  format: varchar("format", { length: 10 }).notNull().default("turn"),
   outcome: varchar("outcome", { length: 30 }),
   eloDeltaPlayer1: int("elo_delta_player1"),
   eloDeltaPlayer2: int("elo_delta_player2"),

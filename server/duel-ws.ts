@@ -34,6 +34,44 @@ const DUEL_BALANCE_CONSTRAINTS = ["2V", "3V", "4V", "2C", "3C", "4C"];
 /** Positions used for Letter Position duels (2–5). */
 const DUEL_POSITIONS = [2, 3, 4, 5];
 
+// ── Race-format game constants ─────────────────────────────────────────────
+
+/** Letter pools for word-scramble / word-maker / letter-pool / word-split race modes.
+ *  Each string contains the available letters for the round. */
+const RACE_SCRAMBLE_POOLS = [
+  "PLANETS", "GARDENS", "FICTION", "HORIZON",
+  "CABINET", "WINDOWS", "MONSTER", "CHAPTER",
+  "PYRAMID", "DIGITAL", "BLANKET", "COMFORT",
+];
+const RACE_ANAGRAM_WORDS = [
+  "STONE", "TRACE", "PARTS", "SNARE", "TEARS",
+  "REINS", "NOTES", "STEAM", "STARE", "PEARS",
+  "CRATE", "RATES", "TALES", "LEAST", "EARNS",
+];
+const RACE_LETTER_POOLS = [
+  "RSTLNEAIOUM", "GRIMSTONAED", "BLAKETROUND", "FLOWERSCAPE",
+  "AEIOUPLMNST", "PRINTEDCARS", "SHAKEGROUND", "CLOUDSTREAM",
+];
+const RACE_MAKER_WORDS = [
+  "PLANETS", "HISTORY", "CABINET", "TRADING",
+  "BLANKET", "CHAPTER", "MYSTERY", "DRAGONS",
+  "PARKING", "COUNTRY", "GARDENS", "WINTERS",
+];
+const RACE_SPLIT_WORDS = [
+  "SUNFLOWER", "STARLIGHT", "BLACKBIRD", "FIREWORKS",
+  "AFTERNOON", "BUTTERFLY", "MOONLIGHT", "SNOWFLAKE",
+  "CLASSROOM", "FOOTPRINT", "HANDCRAFT", "DAYDREAMS",
+];
+
+/** Category word sets for definition-match race mode. */
+const DEFINITION_CATEGORIES: Record<string, Set<string>> = {
+  ANIMALS:  new Set(["DOG","CAT","BEAR","LION","WOLF","BIRD","FISH","FROG","DEER","GOAT","HAWK","MOLE","PONY","SWAN","CRAB","EEL","EMU","YAK","COD","RAM","EWE","APE","OX","BAT","ANT","BEE","COW","HEN","OWL","FOX","ELK","ASS","GNU","PIG","RAT"]),
+  COLORS:   new Set(["RED","BLUE","PINK","GOLD","GREY","TEAL","LIME","ROSE","PLUM","CYAN","JADE","RUBY","AMBER","CORAL","CREAM","OLIVE","ONYX","SAGE","TAN","NAVY","AQUA","PUCE","ECRU","FAWN","RUST"]),
+  FOODS:    new Set(["RICE","BEAN","CORN","SOUP","CAKE","MILK","BEEF","PORK","LAMB","TOFU","SALT","LIME","PLUM","PEAR","KALE","BEET","YAM","FIG","RYE","OAT","HAM","COD","NUT","PEA","EGG","JAM","TEA","RUM"]),
+  SPORTS:   new Set(["GOLF","POLO","RACE","BIKE","SKI","SURF","DIVE","BOWL","JUDO","YOGA","SAIL","HUNT","FISH","HIKE","LUGE","CURL","SWIM","SPAR","RIDE","TROT","JUMP","LEAP","FENC","SLED"]),
+  SCIENCE:  new Set(["ATOM","BOND","CELL","GENE","MASS","WAVE","HEAT","ACID","BASE","SALT","IRON","ZINC","GOLD","LEAD","NEON","LENS","VOLT","WATT","OHMS","FLUX","BEAM","CORE","MOLE","NODE","ROCK","SOIL","COAL"]),
+};
+
 /**
  * Returns the game-specific constraint string stored in `startWord` for a room.
  * - word-chain       → a seed word (e.g. "APPLE")
@@ -42,6 +80,15 @@ const DUEL_POSITIONS = [2, 3, 4, 5];
  * - word-length      → a target length string (e.g. "5")
  * - letter-position  → "LETTER:POSITION" (e.g. "R:3")
  * - letter-balance   → "NV" or "NC" (e.g. "3V" = exactly 3 vowels)
+ * Race-only games:
+ * - word-scramble    → 7-letter pool string (e.g. "PLANETS")
+ * - no-repeats       → min-length string (e.g. "5")
+ * - anagram-solver   → seed word (e.g. "STONE")
+ * - word-stack       → starting word length string (e.g. "4")
+ * - letter-pool      → 11-letter pool string (e.g. "RSTLNEAIOUM")
+ * - word-maker       → base word (e.g. "PLANETS")
+ * - word-split       → compound word pool (e.g. "SUNFLOWER")
+ * - definition-match → category tag (e.g. "ANIMALS")
  */
 function getDuelGameInit(gameSlug: string, seed: number): string {
   switch (gameSlug) {
@@ -57,9 +104,41 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     }
     case "letter-balance":
       return DUEL_BALANCE_CONSTRAINTS[seed % DUEL_BALANCE_CONSTRAINTS.length];
+    // ── Race-only games ──
+    case "word-scramble":
+      return RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length].toUpperCase();
+    case "no-repeats":
+      // min length 4–6 driven by seed
+      return String(4 + (seed % 3));
+    case "anagram-solver":
+      return RACE_ANAGRAM_WORDS[seed % RACE_ANAGRAM_WORDS.length].toUpperCase();
+    case "word-stack":
+      // starting word length: 4 or 5
+      return String(4 + (seed % 2));
+    case "letter-pool":
+      return RACE_LETTER_POOLS[seed % RACE_LETTER_POOLS.length].toUpperCase();
+    case "word-maker":
+      return RACE_MAKER_WORDS[seed % RACE_MAKER_WORDS.length].toUpperCase();
+    case "word-split":
+      return RACE_SPLIT_WORDS[seed % RACE_SPLIT_WORDS.length].toUpperCase();
+    case "definition-match": {
+      const cats = ["ANIMALS", "COLORS", "FOODS", "SPORTS", "SCIENCE"];
+      return cats[seed % cats.length];
+    }
     default:
       return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
   }
+}
+
+/** Check whether a word can be formed from a multiset of letters (pool). */
+function canFormFromPool(word: string, pool: string): boolean {
+  const counts: Record<string, number> = {};
+  for (const c of pool.toUpperCase()) counts[c] = (counts[c] ?? 0) + 1;
+  for (const c of word.toUpperCase()) {
+    if (!counts[c] || counts[c] <= 0) return false;
+    counts[c]--;
+  }
+  return true;
 }
 
 function generateRoomCode(): string {
@@ -100,9 +179,9 @@ type DuelRoom = {
   wordsPerPlayer: Map<number, string[]>;
   /** Authoritative chain head (uppercased). Set to startWord when game starts. */
   currentWord: string;
-  /** All words used so far (uppercased). */
+  /** All words used so far (uppercased). Turn-based only. */
   usedWords: string[];
-  /** Whose turn it currently is. null until game starts. */
+  /** Whose turn it currently is. null until game starts; null for race format. */
   currentTurnUserId: number | null;
   /** Ensures ELO/session is written exactly once. */
   finalized: boolean;
@@ -110,6 +189,19 @@ type DuelRoom = {
   countdownStartAt: number | null;
   /** Server-side authoritative turn expiry timer; cleared on each valid move. */
   turnTimeoutTimer: ReturnType<typeof setTimeout> | null;
+  // ── Race format fields ──────────────────────────────────────────────────
+  /** "turn" (default alternating turns) or "race" (simultaneous, first to target wins). */
+  format: "turn" | "race";
+  /** Race: first player to reach this word count wins. Default 15. */
+  raceTarget: number;
+  /** Race: time limit in ms; winner by count when time expires. */
+  raceTimeLimitMs: number;
+  /** Race: per-player valid word counts (userId → count). */
+  countsPerPlayer: Map<number, number>;
+  /** Race: server-side timer handle for the time-limit fallback. */
+  raceTimerHandle: ReturnType<typeof setTimeout> | null;
+  /** Timestamp (ms) when race started; used to broadcast remaining time. */
+  raceStartedAt: number | null;
 };
 
 const INITIAL_LIVES = 3;
@@ -193,6 +285,7 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
       player2Id: id2,
       gameSlug: room.gameSlug,
       seed: room.seed,
+      format: room.format,
       outcome,
       eloDeltaPlayer1: delta1,
       eloDeltaPlayer2: delta2,
@@ -246,7 +339,13 @@ export class DuelRoomRegistry {
     setInterval(sweep, SWEEP_INTERVAL_MS).unref?.();
   }
 
-  createRoom(gameSlug: string, challengerId: number): { roomCode: string; seed: number; startWord: string } {
+  createRoom(
+    gameSlug: string,
+    challengerId: number,
+    format: "turn" | "race" = "turn",
+    raceTarget = 15,
+    raceTimeLimitSecs = 300,
+  ): { roomCode: string; seed: number; startWord: string } {
     let roomCode: string;
     do {
       roomCode = generateRoomCode();
@@ -272,9 +371,15 @@ export class DuelRoomRegistry {
       finalized: false,
       countdownStartAt: null,
       turnTimeoutTimer: null,
+      format,
+      raceTarget,
+      raceTimeLimitMs: raceTimeLimitSecs * 1000,
+      countsPerPlayer: new Map(),
+      raceTimerHandle: null,
+      raceStartedAt: null,
     };
     this.rooms.set(roomCode, room);
-    log(`[Duel] Room ${roomCode} created for game ${gameSlug}`, "duel-ws");
+    log(`[Duel] Room ${roomCode} created for game ${gameSlug} (format: ${format})`, "duel-ws");
     return { roomCode, seed, startWord };
   }
 
@@ -293,6 +398,9 @@ export class DuelRoomRegistry {
     challengerId: number,
     persistedSeed?: number | null,
     persistedStartWord?: string | null,
+    format: "turn" | "race" = "turn",
+    raceTarget = 15,
+    raceTimeLimitSecs = 300,
   ): DuelRoom {
     const existing = this.rooms.get(roomCode);
     if (existing) return existing;
@@ -316,6 +424,12 @@ export class DuelRoomRegistry {
       finalized: false,
       countdownStartAt: null,
       turnTimeoutTimer: null,
+      format,
+      raceTarget,
+      raceTimeLimitMs: raceTimeLimitSecs * 1000,
+      countsPerPlayer: new Map(),
+      raceTimerHandle: null,
+      raceStartedAt: null,
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} restored from challenge metadata`, "duel-ws");
@@ -355,6 +469,9 @@ export class DuelRoomRegistry {
           opponentId: opponent?.userId ?? null,
           opponentName: opponent?.name ?? null,
           opponentAvatarUrl: opponent?.avatarUrl ?? null,
+          format: room.format,
+          raceTarget: room.raceTarget,
+          raceTimeLimitMs: room.raceTimeLimitMs,
         });
         // If opponent had already marked ready, replay that signal so UI stays in sync
         if (opponent?.ready) {
@@ -367,7 +484,7 @@ export class DuelRoomRegistry {
           const elapsedMs = room.countdownStartAt ? Date.now() - room.countdownStartAt : 3000;
           const startAt = (room.countdownStartAt ?? Date.now()) + 3000;
           const secondsLeft = Math.max(1, Math.ceil((3000 - elapsedMs) / 1000));
-          send(ws, { type: "room:ready", startAt });
+          send(ws, { type: "room:ready", startAt, format: room.format, raceTarget: room.raceTarget, raceTimeLimitMs: room.raceTimeLimitMs });
           send(ws, { type: "room:countdown", secondsLeft });
         }
       } else if (room.status === "playing") {
@@ -378,12 +495,21 @@ export class DuelRoomRegistry {
           const isMyTurn = room.currentTurnUserId === userId;
           const myWords = room.wordsPerPlayer.get(userId) ?? [];
           const opponentWords = room.wordsPerPlayer.get(opponent.userId) ?? [];
+          const myCount = room.countsPerPlayer.get(userId) ?? 0;
+          const opponentCount = room.countsPerPlayer.get(opponent.userId) ?? 0;
           send(ws, {
             type: "room:state",
             phase: "playing",
             opponentId: opponent.userId,
             opponentName: opponent.name,
             opponentAvatarUrl: opponent.avatarUrl,
+            format: room.format,
+            raceTarget: room.raceTarget,
+            raceTimeLimitMs: room.raceStartedAt
+              ? Math.max(0, room.raceTimeLimitMs - (Date.now() - room.raceStartedAt))
+              : room.raceTimeLimitMs,
+            myCount,
+            opponentCount,
             myLives,
             opponentLives,
             myWords: [...myWords],
@@ -412,6 +538,9 @@ export class DuelRoomRegistry {
         opponentId: null,
         opponentName: null,
         opponentAvatarUrl: null,
+        format: room.format,
+        raceTarget: room.raceTarget,
+        raceTimeLimitMs: room.raceTimeLimitMs,
       });
     } else if (room.players.size === 2) {
       // Second player joined — notify both with each other's info
@@ -422,6 +551,9 @@ export class DuelRoomRegistry {
         opponentId: p2.userId,
         opponentName: p2.name,
         opponentAvatarUrl: p2.avatarUrl,
+        format: room.format,
+        raceTarget: room.raceTarget,
+        raceTimeLimitMs: room.raceTimeLimitMs,
       });
       send(p2.ws, {
         type: "room:joined",
@@ -429,6 +561,9 @@ export class DuelRoomRegistry {
         opponentId: p1.userId,
         opponentName: p1.name,
         opponentAvatarUrl: p1.avatarUrl,
+        format: room.format,
+        raceTarget: room.raceTarget,
+        raceTimeLimitMs: room.raceTimeLimitMs,
       });
     }
 
@@ -453,25 +588,31 @@ export class DuelRoomRegistry {
       room.status = "countdown";
       for (const pid of Array.from(room.players.keys())) {
         room.livesPerPlayer.set(pid, INITIAL_LIVES);
+        room.countsPerPlayer.set(pid, 0);
       }
       // Initialize authoritative game state
       room.currentWord = room.startWord;
       room.usedWords = [room.startWord.toUpperCase()];
-      room.currentTurnUserId = room.challengerId;
+      // Turn-based: challenger goes first. Race: no turn ownership.
+      room.currentTurnUserId = room.format === "turn" ? room.challengerId : null;
 
       const startAt = Date.now() + 3000;
       room.countdownStartAt = Date.now();
       for (const p of Array.from(room.players.values())) {
-        send(p.ws, { type: "room:ready", startAt });
+        send(p.ws, { type: "room:ready", startAt, format: room.format, raceTarget: room.raceTarget, raceTimeLimitMs: room.raceTimeLimitMs });
       }
       let seconds = 3;
       const tick = (): void => {
-        // Abort if a disconnect or other transition already moved room out of countdown
         if (room.status !== "countdown") return;
         if (seconds <= 0) {
           room.status = "playing";
-          // Arm server-side turn timer now that the game is live
-          this.armTurnTimer(room);
+          if (room.format === "turn") {
+            this.armTurnTimer(room);
+          } else {
+            // Race: arm the time-limit fallback timer
+            room.raceStartedAt = Date.now();
+            this.armRaceTimer(room);
+          }
           return;
         }
         for (const p of Array.from(room.players.values())) {
@@ -494,6 +635,13 @@ export class DuelRoomRegistry {
     const room = this.rooms.get(roomCode);
     if (!room || room.status !== "playing") return { triggered: false };
 
+    // ── Race format handling ──────────────────────────────────────────────────
+    if (room.format === "race") {
+      return this.relayRaceMove(room, fromUserId, payload);
+    }
+
+    // ── Turn-based handling ───────────────────────────────────────────────────
+
     // --- Turn enforcement ---
     if (room.currentTurnUserId !== null && room.currentTurnUserId !== fromUserId) {
       log(`[Duel] Rejected out-of-turn move from user ${fromUserId} in room ${roomCode}`, "duel-ws");
@@ -509,45 +657,8 @@ export class DuelRoomRegistry {
         const submittedWord = p.word.toUpperCase().trim();
 
         // --- Game-specific constraint check ---
-        const slug = room.gameSlug;
-        if (slug === "letter-hunt" || slug === "letter-frequency") {
-          const targetLetter = room.startWord.toUpperCase();
-          if (!submittedWord.includes(targetLetter)) {
-            return { triggered: false, error: `Word must contain the letter "${targetLetter}"` };
-          }
-        } else if (slug === "word-length") {
-          const targetLen = parseInt(room.startWord, 10);
-          if (submittedWord.length !== targetLen) {
-            return { triggered: false, error: `Word must be exactly ${targetLen} letters long` };
-          }
-        } else if (slug === "letter-position") {
-          const [targetLetter, posStr] = room.startWord.split(":");
-          const pos = parseInt(posStr, 10);
-          if (submittedWord.length < pos) {
-            return { triggered: false, error: `Word must have at least ${pos} letters` };
-          }
-          if (submittedWord[pos - 1] !== targetLetter.toUpperCase()) {
-            return { triggered: false, error: `Letter at position ${pos} must be "${targetLetter}"` };
-          }
-        } else if (slug === "letter-balance") {
-          const constraint = room.startWord; // e.g. "3V" or "4C"
-          const count = parseInt(constraint.slice(0, -1), 10);
-          const type = constraint.slice(-1); // "V" or "C"
-          const VOWELS = "AEIOU";
-          const actual = type === "V"
-            ? submittedWord.split("").filter(c => VOWELS.includes(c)).length
-            : submittedWord.split("").filter(c => !VOWELS.includes(c) && /[A-Z]/.test(c)).length;
-          if (actual !== count) {
-            const typeName = type === "V" ? "vowel" : "consonant";
-            return { triggered: false, error: `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}` };
-          }
-        } else {
-          // word-chain: starting-letter constraint
-          const requiredLetter = room.currentWord[room.currentWord.length - 1];
-          if (!submittedWord.startsWith(requiredLetter)) {
-            return { triggered: false, error: `Word must start with "${requiredLetter}"` };
-          }
-        }
+        const constraintError = this.checkTurnConstraint(room, submittedWord);
+        if (constraintError) return { triggered: false, error: constraintError };
 
         // --- Duplicate constraint ---
         if (room.usedWords.includes(submittedWord)) {
@@ -560,8 +671,7 @@ export class DuelRoomRegistry {
         }
 
         // Move is valid — update authoritative state and relay to opponent
-        // For word-chain, currentWord advances to the new word.
-        // For other games, currentWord holds the static constraint and never changes.
+        const slug = room.gameSlug;
         if (slug === "word-chain") room.currentWord = submittedWord;
         room.usedWords = [...room.usedWords, submittedWord];
         const senderWords = room.wordsPerPlayer.get(fromUserId) ?? [];
@@ -570,19 +680,14 @@ export class DuelRoomRegistry {
 
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
 
-        // Re-arm server turn timer for the next player
         this.armTurnTimer(room);
 
       } else if (p.type === "timeout") {
-        // Client-reported timeout — life deduction is fully server-authoritative.
-        // The client's `lives` field is intentionally ignored to prevent
-        // forged payloads from skipping the life cost.
         const currentLives = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
         const newLives = Math.max(0, currentLives - 1);
         room.livesPerPlayer.set(fromUserId, newLives);
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
 
-        // Relay authoritative payload with server-computed lives to opponent
         const authoritativeTimeout = { type: "timeout", lives: newLives };
         if (opponent) send(opponent.ws, { type: "opponent:move", payload: authoritativeTimeout });
 
@@ -596,8 +701,6 @@ export class DuelRoomRegistry {
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
       }
 
-      // --- Lives tracking for word moves: accept only non-increasing values ---
-      // (Timeout path handled above and returns early, so this only runs for words/other)
       if (typeof p.lives === "number" && p.type !== "timeout") {
         const current = room.livesPerPlayer.get(fromUserId) ?? INITIAL_LIVES;
         const serverLives = Math.min(current, p.lives);
@@ -610,6 +713,167 @@ export class DuelRoomRegistry {
     }
 
     return { triggered: false };
+  }
+
+  /** Server-side constraint check for turn-based games. Returns an error string or null. */
+  private checkTurnConstraint(room: DuelRoom, submittedWord: string): string | null {
+    const slug = room.gameSlug;
+    if (slug === "letter-hunt" || slug === "letter-frequency") {
+      const targetLetter = room.startWord.toUpperCase();
+      if (!submittedWord.includes(targetLetter)) {
+        return `Word must contain the letter "${targetLetter}"`;
+      }
+    } else if (slug === "word-length") {
+      const targetLen = parseInt(room.startWord, 10);
+      if (submittedWord.length !== targetLen) {
+        return `Word must be exactly ${targetLen} letters long`;
+      }
+    } else if (slug === "letter-position") {
+      const [targetLetter, posStr] = room.startWord.split(":");
+      const pos = parseInt(posStr, 10);
+      if (submittedWord.length < pos) {
+        return `Word must have at least ${pos} letters`;
+      }
+      if (submittedWord[pos - 1] !== targetLetter.toUpperCase()) {
+        return `Letter at position ${pos} must be "${targetLetter}"`;
+      }
+    } else if (slug === "letter-balance") {
+      const constraint = room.startWord;
+      const count = parseInt(constraint.slice(0, -1), 10);
+      const type = constraint.slice(-1);
+      const VOWELS = "AEIOU";
+      const actual = type === "V"
+        ? submittedWord.split("").filter(c => VOWELS.includes(c)).length
+        : submittedWord.split("").filter(c => !VOWELS.includes(c) && /[A-Z]/.test(c)).length;
+      if (actual !== count) {
+        const typeName = type === "V" ? "vowel" : "consonant";
+        return `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
+      }
+    } else {
+      // word-chain
+      const requiredLetter = room.currentWord[room.currentWord.length - 1];
+      if (!submittedWord.startsWith(requiredLetter)) {
+        return `Word must start with "${requiredLetter}"`;
+      }
+    }
+    return null;
+  }
+
+  /** Handle a move in race format: per-player duplicate check, constraint check, count update. */
+  private relayRaceMove(
+    room: DuelRoom,
+    fromUserId: number,
+    payload: unknown,
+  ): { triggered: boolean; winnerId?: number; error?: string } {
+    if (payload === null || typeof payload !== "object") return { triggered: false };
+    const p = payload as { type?: string; word?: string };
+    if (p.type !== "word" || typeof p.word !== "string") return { triggered: false };
+
+    const submittedWord = p.word.toUpperCase().trim();
+    if (!submittedWord) return { triggered: false };
+
+    // --- Per-player duplicate check (each player has own word pool) ---
+    const myWords = room.wordsPerPlayer.get(fromUserId) ?? [];
+    if (myWords.includes(submittedWord)) {
+      return { triggered: false, error: "You already used that word" };
+    }
+
+    // --- Game-specific constraint check ---
+    const slug = room.gameSlug;
+    const constraintError = this.checkRaceConstraint(room, submittedWord, myWords, fromUserId);
+    if (constraintError) return { triggered: false, error: constraintError };
+
+    // --- Dictionary check (skip for definition-match which uses fixed sets) ---
+    if (slug !== "definition-match") {
+      if (!wordDictSet.has(submittedWord.toLowerCase())) {
+        return { triggered: false, error: `"${submittedWord}" is not a valid word` };
+      }
+    }
+
+    // Move is valid — update per-player state
+    room.wordsPerPlayer.set(fromUserId, [...myWords, submittedWord]);
+    const newCount = (room.countsPerPlayer.get(fromUserId) ?? 0) + 1;
+    room.countsPerPlayer.set(fromUserId, newCount);
+
+    // Broadcast progress to both players
+    for (const p2 of Array.from(room.players.values())) {
+      send(p2.ws, { type: "race:progress", userId: fromUserId, count: newCount });
+    }
+
+    log(`[Duel] Race move: user ${fromUserId} in room ${room.roomCode} → count ${newCount}/${room.raceTarget}`, "duel-ws");
+
+    // Check win condition
+    if (newCount >= room.raceTarget) {
+      return { triggered: true, winnerId: fromUserId };
+    }
+
+    return { triggered: false };
+  }
+
+  /** Game-specific constraint check for race format. Returns error string or null. */
+  private checkRaceConstraint(room: DuelRoom, word: string, myWords: string[], userId: number): string | null {
+    const slug = room.gameSlug;
+    // Existing 5 games in race mode use their same constraint
+    if (slug === "letter-hunt" || slug === "letter-frequency") {
+      const targetLetter = room.startWord.toUpperCase();
+      if (!word.includes(targetLetter)) {
+        return `Word must contain the letter "${targetLetter}"`;
+      }
+    } else if (slug === "word-length") {
+      const targetLen = parseInt(room.startWord, 10);
+      if (word.length !== targetLen) {
+        return `Word must be exactly ${targetLen} letters long`;
+      }
+    } else if (slug === "letter-position") {
+      const [targetLetter, posStr] = room.startWord.split(":");
+      const pos = parseInt(posStr, 10);
+      if (word.length < pos) return `Word must have at least ${pos} letters`;
+      if (word[pos - 1] !== targetLetter.toUpperCase()) {
+        return `Letter at position ${pos} must be "${targetLetter}"`;
+      }
+    } else if (slug === "letter-balance") {
+      const constraint = room.startWord;
+      const count = parseInt(constraint.slice(0, -1), 10);
+      const type = constraint.slice(-1);
+      const VOWELS = "AEIOU";
+      const actual = type === "V"
+        ? word.split("").filter(c => VOWELS.includes(c)).length
+        : word.split("").filter(c => !VOWELS.includes(c) && /[A-Z]/.test(c)).length;
+      if (actual !== count) {
+        const typeName = type === "V" ? "vowel" : "consonant";
+        return `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
+      }
+    } else if (slug === "word-scramble" || slug === "letter-pool" || slug === "word-maker" || slug === "word-split") {
+      // Pool-based: word must be formable from the pool letters
+      if (!canFormFromPool(word, room.startWord)) {
+        return "Word must only use letters from the pool";
+      }
+    } else if (slug === "no-repeats") {
+      const minLen = parseInt(room.startWord, 10);
+      if (word.length < minLen) return `Word must be at least ${minLen} letters long`;
+      const letterSet = new Set(word.split(""));
+      if (letterSet.size !== word.length) return "Word must have no repeated letters";
+    } else if (slug === "anagram-solver") {
+      const seedSorted = room.startWord.split("").sort().join("");
+      const wordSorted = word.split("").sort().join("");
+      if (wordSorted !== seedSorted) {
+        return `Word must be an anagram of "${room.startWord}"`;
+      }
+    } else if (slug === "word-stack") {
+      const baseLen = parseInt(room.startWord, 10);
+      const playerWordCount = myWords.length;
+      const expectedLen = playerWordCount % 2 === 0 ? baseLen : baseLen + 1;
+      if (word.length !== expectedLen) {
+        return `Word must be exactly ${expectedLen} letters long`;
+      }
+    } else if (slug === "definition-match") {
+      const categoryWords = DEFINITION_CATEGORIES[room.startWord] ?? new Set<string>();
+      if (!categoryWords.has(word)) {
+        const catName = room.startWord.charAt(0) + room.startWord.slice(1).toLowerCase();
+        return `"${word}" is not in the ${catName} category`;
+      }
+    }
+    return null;
   }
 
   handleDisconnect(roomCode: string, userId: number): void {
@@ -632,15 +896,20 @@ export class DuelRoomRegistry {
       room.players.delete(userId);
 
       if (priorStatus === "countdown") {
-        // Cancel pending turn timer in case countdown already triggered it
         if (room.turnTimeoutTimer !== null) {
           clearTimeout(room.turnTimeoutTimer);
           room.turnTimeoutTimer = null;
         }
+        if (room.raceTimerHandle !== null) {
+          clearTimeout(room.raceTimerHandle);
+          room.raceTimerHandle = null;
+        }
         room.status = "waiting";
         room.livesPerPlayer.clear();
+        room.countsPerPlayer.clear();
         room.currentTurnUserId = null;
         room.countdownStartAt = null;
+        room.raceStartedAt = null;
       }
 
       // Reset ready flags for ALL remaining players so that when the
@@ -741,11 +1010,47 @@ export class DuelRoomRegistry {
       clearTimeout(room.turnTimeoutTimer);
       room.turnTimeoutTimer = null;
     }
+    if (room.raceTimerHandle !== null) {
+      clearTimeout(room.raceTimerHandle);
+      room.raceTimerHandle = null;
+    }
     for (const p of Array.from(room.players.values())) {
       if (p.disconnectTimer) clearTimeout(p.disconnectTimer);
     }
     this.rooms.delete(roomCode);
     log(`[Duel] Room ${roomCode} closed`, "duel-ws");
+  }
+
+  /**
+   * Arms the race time-limit fallback timer.
+   * When it fires, the player with more valid words wins (or draw if tied).
+   */
+  private armRaceTimer(room: DuelRoom): void {
+    if (room.raceTimerHandle !== null) {
+      clearTimeout(room.raceTimerHandle);
+      room.raceTimerHandle = null;
+    }
+    if (room.finalized || room.raceTimeLimitMs <= 0) return;
+
+    room.raceTimerHandle = setTimeout(async () => {
+      if (room.finalized || room.status !== "playing") return;
+      const entries = Array.from(room.countsPerPlayer.entries());
+      if (entries.length < 2) return;
+      const [a, b] = entries;
+      let winnerId: number;
+      if (a[1] === b[1]) {
+        winnerId = -1; // draw
+      } else {
+        winnerId = a[1] > b[1] ? a[0] : b[0];
+      }
+      log(`[Duel] Race time limit reached in room ${room.roomCode}. Counts: ${a[0]}=${a[1]}, ${b[0]}=${b[1]}. Winner: ${winnerId}`, "duel-ws");
+      try {
+        await finalizeGame(room, winnerId);
+      } catch (err) {
+        log(`[Duel] ELO finalization error in race room ${room.roomCode}: ${err}`, "duel-ws");
+      }
+      this.endRoom(room.roomCode);
+    }, room.raceTimeLimitMs);
   }
 
   /**
@@ -803,7 +1108,7 @@ export class DuelRoomRegistry {
     }, TURN_DURATION_MS);
   }
 
-  private getOpponent(room: DuelRoom, userId: number): RoomPlayer | undefined {
+  getOpponent(room: DuelRoom, userId: number): RoomPlayer | undefined {
     for (const [id, player] of Array.from(room.players.entries())) {
       if (id !== userId) return player;
     }
@@ -930,7 +1235,16 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           // Restore room lazily if missing after a process restart
           const room =
             duelRegistry.getRoom(roomCode) ??
-            duelRegistry.restoreRoom(roomCode, challenge.gameSlug, challenge.challengerId, challenge.seed, challenge.startWord);
+            duelRegistry.restoreRoom(
+              roomCode,
+              challenge.gameSlug,
+              challenge.challengerId,
+              challenge.seed,
+              challenge.startWord,
+              (challenge.format as "turn" | "race") ?? "turn",
+              challenge.raceTarget ?? 15,
+              challenge.raceTimeLimit ?? 300,
+            );
 
           const user = await storage.getUserById(userId);
           const name = user?.name ?? "Player";
@@ -996,6 +1310,27 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           } catch (err) {
             log(`[Duel] ELO finalization error in room ${currentRoomCode}: ${err}`, "duel-ws");
           }
+          currentRoomCode = undefined;
+          break;
+        }
+
+        case "game:forfeit": {
+          if (!currentRoomCode) break;
+          const forfeitRoom = duelRegistry.getRoom(currentRoomCode);
+          if (!forfeitRoom || forfeitRoom.finalized) {
+            currentRoomCode = undefined;
+            break;
+          }
+          // Manual forfeit: opponent wins
+          const forfeitOpponent = duelRegistry.getOpponent(forfeitRoom, userId);
+          const forfeitWinnerId = forfeitOpponent?.userId ?? -1;
+          log(`[Duel] User ${userId} forfeited room ${currentRoomCode}. Winner: ${forfeitWinnerId}`, "duel-ws");
+          try {
+            await finalizeGame(forfeitRoom, forfeitWinnerId);
+          } catch (err) {
+            log(`[Duel] ELO finalization error on forfeit in room ${currentRoomCode}: ${err}`, "duel-ws");
+          }
+          duelRegistry.endRoom(currentRoomCode);
           currentRoomCode = undefined;
           break;
         }

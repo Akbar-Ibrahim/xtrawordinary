@@ -511,13 +511,37 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
 
 // ==================== DUELS ====================
 
-export const DUEL_GAME_SLUGS = new Set([
+/** Games supporting the turn-based format (including word-chain). */
+export const DUEL_TURN_SLUGS = new Set([
   "word-chain",
   "letter-hunt",
   "word-length",
   "letter-frequency",
   "letter-position",
   "letter-balance",
+]);
+
+/** Games supporting the simultaneous race format (excludes word-chain). */
+export const DUEL_RACE_SLUGS = new Set([
+  "letter-hunt",
+  "word-length",
+  "letter-frequency",
+  "letter-position",
+  "letter-balance",
+  "word-scramble",
+  "no-repeats",
+  "anagram-solver",
+  "word-stack",
+  "letter-pool",
+  "word-maker",
+  "word-split",
+  "definition-match",
+]);
+
+/** Union of all duel-enabled games (both formats). */
+export const DUEL_GAME_SLUGS = new Set([
+  ...Array.from(DUEL_TURN_SLUGS),
+  ...Array.from(DUEL_RACE_SLUGS),
 ]);
 
 export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired", "completed"]);
@@ -534,6 +558,12 @@ export const duelChallengeSchema = z.object({
   /** Persisted seed so restoreRoom is deterministic after process restart. */
   seed: z.number().nullable().optional(),
   startWord: z.string().nullable().optional(),
+  /** "turn" or "race" — defaults to "turn" */
+  format: z.enum(["turn", "race"]).optional().default("turn"),
+  /** Target word count for race format */
+  raceTarget: z.number().nullable().optional(),
+  /** Race time limit in seconds */
+  raceTimeLimit: z.number().nullable().optional(),
   createdAt: z.string(),
   expiresAt: z.string().nullable(),
   challengerName: z.string().optional(),
@@ -572,6 +602,7 @@ export const duelSessionSchema = z.object({
   player2Id: z.number(),
   gameSlug: z.string(),
   seed: z.number(),
+  format: z.enum(["turn", "race"]).optional().default("turn"),
   outcome: duelSessionOutcomeSchema.nullable(),
   eloDeltaPlayer1: z.number().nullable(),
   eloDeltaPlayer2: z.number().nullable(),

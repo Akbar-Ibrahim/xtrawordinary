@@ -4,7 +4,10 @@ export type DuelClientMessage =
   | { type: "game:move"; payload: unknown }
   /** Signal that the game has ended. The server derives the winner from
    *  authoritative life counts — no winnerId needed from the client. */
-  | { type: "game:end" };
+  | { type: "game:end" }
+  | { type: "game:forfeit" };
+
+export type DuelFormat = "turn" | "race";
 
 export type DuelServerMessage =
   | {
@@ -15,10 +18,16 @@ export type DuelServerMessage =
       /** null when waiting for opponent */
       opponentName: string | null;
       opponentAvatarUrl: string | null;
+      /** Format of the duel room ("turn" or "race") */
+      format: DuelFormat;
+      /** Target word count for race format */
+      raceTarget: number;
+      /** Race time limit in milliseconds */
+      raceTimeLimitMs: number;
     }
   /** Sent to the *other* player when one player clicks "Ready" */
   | { type: "room:player_ready"; userId: number }
-  | { type: "room:ready"; startAt: number }
+  | { type: "room:ready"; startAt: number; format: DuelFormat; raceTarget: number; raceTimeLimitMs: number }
   | { type: "room:countdown"; secondsLeft: number }
   /**
    * Sent to a reconnecting player so the client can restore its phase.
@@ -30,6 +39,13 @@ export type DuelServerMessage =
       opponentId: number;
       opponentName: string;
       opponentAvatarUrl: string | null;
+      format: DuelFormat;
+      raceTarget: number;
+      raceTimeLimitMs: number;
+      /** Race: this player's word count */
+      myCount: number;
+      /** Race: opponent's word count */
+      opponentCount: number;
       myLives: number;
       /** Words this player has submitted so far (excluding the seed word). */
       myWords: string[];
@@ -38,12 +54,14 @@ export type DuelServerMessage =
       opponentLives: number;
       /** Current word in the chain (head of the chain). */
       currentWord: string;
-      /** All words used so far (uppercased). */
+      /** All words used so far (uppercased). Turn-based only. */
       usedWords: string[];
       /** Whether it is the reconnecting player's turn. */
       isMyTurn: boolean;
     }
   | { type: "opponent:move"; payload: unknown }
+  /** Broadcast to both players after each valid race move */
+  | { type: "race:progress"; userId: number; count: number }
   | {
       type: "game:over";
       outcome: "you_win" | "you_lose" | "draw" | "forfeit";

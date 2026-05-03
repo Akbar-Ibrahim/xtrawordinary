@@ -12,12 +12,24 @@ import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
 import type { GameResult, DuelTurnEngineInitialState } from "@/components/duel-turn-engine";
+import { DuelRaceEngine } from "@/components/duel-race-engine";
+import type { DuelRaceEngineInitialState } from "@/components/duel-race-engine";
 import { wordChainDuelAdapter } from "@/components/games/word-chain-duel-adapter";
 import { letterHuntDuelAdapter } from "@/components/games/letter-hunt-duel-adapter";
 import { wordLengthDuelAdapter } from "@/components/games/word-length-duel-adapter";
 import { letterFrequencyDuelAdapter } from "@/components/games/letter-frequency-duel-adapter";
 import { letterPositionDuelAdapter } from "@/components/games/letter-position-duel-adapter";
 import { letterBalanceDuelAdapter } from "@/components/games/letter-balance-duel-adapter";
+import {
+  wordScrambleRaceAdapter,
+  noRepeatsRaceAdapter,
+  anagramSolverRaceAdapter,
+  wordStackRaceAdapter,
+  letterPoolRaceAdapter,
+  wordMakerRaceAdapter,
+  wordSplitRaceAdapter,
+  definitionMatchRaceAdapter,
+} from "@/components/race-adapters";
 import type { DuelGameAdapter } from "@/components/duel-turn-engine";
 
 function getAdapterForSlug(gameSlug: string): DuelGameAdapter {
@@ -27,6 +39,14 @@ function getAdapterForSlug(gameSlug: string): DuelGameAdapter {
     case "letter-frequency": return letterFrequencyDuelAdapter;
     case "letter-position":  return letterPositionDuelAdapter;
     case "letter-balance":   return letterBalanceDuelAdapter;
+    case "word-scramble":    return wordScrambleRaceAdapter;
+    case "no-repeats":       return noRepeatsRaceAdapter;
+    case "anagram-solver":   return anagramSolverRaceAdapter;
+    case "word-stack":       return wordStackRaceAdapter;
+    case "letter-pool":      return letterPoolRaceAdapter;
+    case "word-maker":       return wordMakerRaceAdapter;
+    case "word-split":       return wordSplitRaceAdapter;
+    case "definition-match": return definitionMatchRaceAdapter;
     default:                 return wordChainDuelAdapter;
   }
 }
@@ -48,6 +68,9 @@ interface RoomInfo {
   startWord: string;
   challengerId: number;
   challengeeId: number;
+  format?: "turn" | "race";
+  raceTarget?: number;
+  raceTimeLimitMs?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -61,32 +84,40 @@ export default function DuelRoom() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Server-issued startAt timestamp (epoch ms) for clock-aligned countdown display
   const countdownStartAtRef = useRef<number | null>(null);
 
   // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
   const [errorMsg, setErrorMsg] = useState("");
-  // Ref keeps handleServerMessage from capturing a stale phase value
   const phaseRef = useRef<Phase>("connecting");
 
   // ── Room / opponent metadata ────────────────────────────────────────────────
   const [opponentId, setOpponentId] = useState<number | null>(null);
   const [opponentName, setOpponentName] = useState("");
   const [opponentAvatarUrl, setOpponentAvatarUrl] = useState<string | null>(null);
+
+  // ── Race format metadata (set from WS messages) ─────────────────────────────
+  const [roomFormat, setRoomFormat] = useState<"turn" | "race">("turn");
+  const [raceTarget, setRaceTarget] = useState(15);
+  const [raceTimeLimitMs, setRaceTimeLimitMs] = useState(300_000);
+
   // ── Waiting room ready state ────────────────────────────────────────────────
   const [meReady, setMeReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
   const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
-  // ── DuelTurnEngine initial state (set on first play or reconnect) ───────────
-  const [engineKey, setEngineKey] = useState(0); // bump to remount engine on reconnect
+  // ── DuelTurnEngine initial state ────────────────────────────────────────────
+  const [engineKey, setEngineKey] = useState(0);
   const [engineInitState, setEngineInitState] = useState<DuelTurnEngineInitialState | null>(null);
+
+  // ── DuelRaceEngine initial state ────────────────────────────────────────────
+  const [raceEngineKey, setRaceEngineKey] = useState(0);
+  const [raceInitState, setRaceInitState] = useState<DuelRaceEngineInitialState | null>(null);
 
   // ── Game result (shown in 'over' phase) ────────────────────────────────────
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
 
-  // ── Latest message for DuelTurnEngine ──────────────────────────────────────
+  // ── Latest message for engines ──────────────────────────────────────────────
   const [latestGameMessage, setLatestGameMessage] = useState<DuelServerMessage | null>(null);
 
   // ── REST query for room metadata ───────────────────────────────────────────
@@ -104,7 +135,6 @@ export default function DuelRoom() {
     retry: false,
   });
 
-  // Transition to terminal error UI if room fetch fails (404/403/410)
   useEffect(() => {
     if (roomFetchError) {
       setErrorMsg(roomFetchError.message);
@@ -112,7 +142,6 @@ export default function DuelRoom() {
     }
   }, [roomFetchError]);
 
-  // Keep phaseRef current so handleServerMessage never sees a stale phase
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   const sendWs = useCallback((msg: DuelClientMessage) => {
@@ -126,12 +155,7 @@ export default function DuelRoom() {
   const handleServerMessage = useCallback(
     (msg: DuelServerMessage) => {
       switch (msg.type) {
-        // ── Room-phase messages ──────────────────────────────────────────────
         case "room:joined":
-          // opponentId/Name may be null when the challenger joins first (no opponent yet).
-          // A second room:joined arrives when the opponent joins, filling in their details.
-          // When opponent fields are null (first join / fresh room), explicitly reset any
-          // stale opponent state so navigating between rooms never shows leftover identity.
           if (msg.opponentId !== null) {
             setOpponentId(msg.opponentId);
           } else {
@@ -142,6 +166,9 @@ export default function DuelRoom() {
           }
           if (msg.opponentName !== null) setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
+          if (msg.format) setRoomFormat(msg.format);
+          if (msg.raceTarget) setRaceTarget(msg.raceTarget);
+          if (msg.raceTimeLimitMs) setRaceTimeLimitMs(msg.raceTimeLimitMs);
           setPhase("waiting");
           break;
 
@@ -149,45 +176,55 @@ export default function DuelRoom() {
           setOpponentReady(true);
           break;
 
-        case "room:state":
-          // Reconnect snapshot — restore full game state including per-player word history.
-          // IMPORTANT: clear latestGameMessage BEFORE bumping engineKey so the new engine
-          // instance never sees the pre-reconnect message on its first render cycle.
-          // Without this, the remounted engine (prevMsgRef=null) would immediately
-          // re-process the last stale message, duplicating opponent:move side-effects
-          // (wrong turn, duplicate used word, incorrect life count).
+        case "room:state": {
           setLatestGameMessage(null);
           setOpponentId(msg.opponentId);
           setOpponentName(msg.opponentName);
           setOpponentAvatarUrl(msg.opponentAvatarUrl);
-          setEngineInitState({
-            currentWord: msg.currentWord,
-            usedWords: msg.usedWords,
-            isMyTurn: msg.isMyTurn,
-            myLives: msg.myLives,
-            opponentLives: msg.opponentLives,
-            myWords: msg.myWords,
-            opponentWords: msg.opponentWords,
-          });
-          setEngineKey((k) => k + 1); // remount engine with restored state
+          const fmt = msg.format ?? "turn";
+          setRoomFormat(fmt);
+          if (msg.raceTarget) setRaceTarget(msg.raceTarget);
+          if (msg.raceTimeLimitMs) setRaceTimeLimitMs(msg.raceTimeLimitMs);
+
+          if (fmt === "race") {
+            setRaceInitState({
+              myCount: msg.myCount ?? 0,
+              opponentCount: msg.opponentCount ?? 0,
+              myWords: msg.myWords ?? [],
+              opponentWords: msg.opponentWords ?? [],
+              raceTimeLimitMs: msg.raceTimeLimitMs ?? 300_000,
+            });
+            setRaceEngineKey((k) => k + 1);
+          } else {
+            setEngineInitState({
+              currentWord: msg.currentWord,
+              usedWords: msg.usedWords,
+              isMyTurn: msg.isMyTurn,
+              myLives: msg.myLives,
+              opponentLives: msg.opponentLives,
+              myWords: msg.myWords,
+              opponentWords: msg.opponentWords,
+            });
+            setEngineKey((k) => k + 1);
+          }
           setPhase("playing");
           break;
+        }
 
         case "room:ready":
-          // Store server's startAt for clock-aligned countdown display
           countdownStartAtRef.current = msg.startAt;
+          if (msg.format) setRoomFormat(msg.format);
+          if (msg.raceTarget) setRaceTarget(msg.raceTarget);
+          if (msg.raceTimeLimitMs) setRaceTimeLimitMs(msg.raceTimeLimitMs);
           setPhase("countdown");
           break;
 
         case "room:countdown": {
-          // Derive display number from server's startAt when available for
-          // accurate sync under network latency rather than raw server ticks.
           const displayNum = countdownStartAtRef.current
             ? Math.max(1, Math.ceil((countdownStartAtRef.current - Date.now()) / 1000))
             : msg.secondsLeft;
           setCountdownNum(displayNum);
           if (msg.secondsLeft === 1) {
-            // Schedule playing-phase transition based on actual time remaining
             const msToPlay = countdownStartAtRef.current
               ? Math.max(0, countdownStartAtRef.current - Date.now())
               : 1000;
@@ -201,9 +238,6 @@ export default function DuelRoom() {
         }
 
         case "error":
-          // During active play forward to the engine so it can rollback the
-          // optimistic word update, apply the 0.5s time penalty, and restore turn.
-          // Read phaseRef (not closed-over phase) so we always see the live value.
           if (phaseRef.current === "playing") {
             setLatestGameMessage(msg);
           } else if (
@@ -211,7 +245,6 @@ export default function DuelRoom() {
             phaseRef.current === "lobby" ||
             phaseRef.current === "waiting"
           ) {
-            // Terminal pre-game error (e.g. completed/declined challenge) — show error screen
             setErrorMsg(msg.message);
             setPhase("error");
           } else {
@@ -219,7 +252,7 @@ export default function DuelRoom() {
           }
           break;
 
-        // ── Game-phase messages → forwarded to DuelTurnEngine ────────────────
+        case "race:progress":
         case "opponent:move":
         case "player:reconnect":
         case "player:forfeited":
@@ -228,8 +261,6 @@ export default function DuelRoom() {
           break;
 
         case "challenge:cancelled":
-          // Server closed the room because the challengee declined/cancelled/expired.
-          // Show a clear error so the challenger doesn't see a stale waiting room.
           setErrorMsg(
             msg.reason === "declined"
               ? "Your friend declined the duel challenge."
@@ -241,9 +272,6 @@ export default function DuelRoom() {
           break;
 
         case "player:disconnect":
-          // reconnectDeadlineMs=0 means the opponent left before the game began
-          // (waiting or countdown phase). Reset ALL opponent presence + readiness
-          // so the UI returns to a true "waiting for opponent" state.
           if (msg.reconnectDeadlineMs === 0) {
             if (countdownTimeoutRef.current !== null) {
               clearTimeout(countdownTimeoutRef.current);
@@ -257,7 +285,6 @@ export default function DuelRoom() {
             setCountdownNum(null);
             setPhase("waiting");
           } else {
-            // In-game disconnect: pass to DuelTurnEngine to show reconnect overlay
             setLatestGameMessage(msg);
           }
           break;
@@ -266,20 +293,31 @@ export default function DuelRoom() {
     [toast],
   );
 
-  // ── Set initial engine state when room info + phase arrive ─────────────────
+  // ── Set initial engine state when room info + phase arrive (fresh start) ────
   useEffect(() => {
-    if (phase === "playing" && roomInfo && user && !engineInitState) {
-      const isFirst = user.id === roomInfo.challengerId;
-      const isWordChain = roomInfo.gameSlug === "word-chain";
-      setEngineInitState({
-        currentWord: roomInfo.startWord,
-        usedWords: isWordChain ? [roomInfo.startWord.toUpperCase()] : [],
-        isMyTurn: isFirst,
-        myLives: 3,
-        opponentLives: 3,
-      });
+    if (phase === "playing" && roomInfo && user) {
+      const fmt = roomInfo.format ?? "turn";
+      if (fmt === "race" && !raceInitState) {
+        setRaceInitState({
+          myCount: 0,
+          opponentCount: 0,
+          myWords: [],
+          opponentWords: [],
+          raceTimeLimitMs: roomInfo.raceTimeLimitMs ?? 300_000,
+        });
+      } else if (fmt === "turn" && !engineInitState) {
+        const isFirst = user.id === roomInfo.challengerId;
+        const isWordChain = roomInfo.gameSlug === "word-chain";
+        setEngineInitState({
+          currentWord: roomInfo.startWord,
+          usedWords: isWordChain ? [roomInfo.startWord.toUpperCase()] : [],
+          isMyTurn: isFirst,
+          myLives: 3,
+          opponentLives: 3,
+        });
+      }
     }
-  }, [phase, roomInfo, user, engineInitState]);
+  }, [phase, roomInfo, user, engineInitState, raceInitState]);
 
   // ── WebSocket setup ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -331,13 +369,10 @@ export default function DuelRoom() {
     sendWs({ type: "room:ready" });
   };
 
-  const handleGameOver = useCallback(
-    (result: GameResult) => {
-      setGameResult(result);
-      setPhase("over");
-    },
-    [],
-  );
+  const handleGameOver = useCallback((result: GameResult) => {
+    setGameResult(result);
+    setPhase("over");
+  }, []);
 
   // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
@@ -348,6 +383,10 @@ export default function DuelRoom() {
       </div>
     );
   }
+
+  const adapter = getAdapterForSlug(roomInfo?.gameSlug ?? "word-chain");
+  const startWord = roomInfo?.startWord ?? "";
+  const isRace = roomFormat === "race";
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -361,10 +400,19 @@ export default function DuelRoom() {
 
       <div className="flex items-center gap-3 mb-6">
         <Swords className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">{roomInfo ? `${roomInfo.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")} Duel` : "Duel"}</h1>
+        <h1 className="text-2xl font-bold">
+          {roomInfo
+            ? `${roomInfo.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")} ${isRace ? "Race" : "Duel"}`
+            : "Duel"}
+        </h1>
         {roomCode && (
           <Badge variant="outline" className="font-mono text-xs ml-auto" data-testid="text-room-code">
             {roomCode}
+          </Badge>
+        )}
+        {isRace && (
+          <Badge variant="secondary" className="text-xs gap-1" data-testid="badge-race-format">
+            ⚡ Race to {raceTarget}
           </Badge>
         )}
       </div>
@@ -405,6 +453,13 @@ export default function DuelRoom() {
                 <p className="text-center text-muted-foreground text-sm font-medium uppercase tracking-wide">
                   Waiting Room
                 </p>
+                {isRace && (
+                  <div className="flex justify-center">
+                    <Badge variant="secondary" className="text-xs gap-1.5" data-testid="badge-race-info">
+                      ⚡ Race Format — first to {raceTarget} words wins
+                    </Badge>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/50" data-testid="card-player-me">
                     <UserAvatar name={user?.name ?? "You"} avatarUrl={user?.avatarUrl} className="h-14 w-14 text-lg" />
@@ -476,9 +531,9 @@ export default function DuelRoom() {
           </motion.div>
         )}
 
-        {/* ── Playing ───────────────────────────────────────────────────── */}
-        {phase === "playing" && engineInitState && (
-          <motion.div key="playing" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+        {/* ── Playing (Turn) ─────────────────────────────────────────────── */}
+        {phase === "playing" && !isRace && engineInitState && (
+          <motion.div key="playing-turn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <DuelTurnEngine
               key={engineKey}
               userId={user?.id ?? 0}
@@ -491,7 +546,29 @@ export default function DuelRoom() {
               sendWs={sendWs}
               latestMessage={latestGameMessage}
               onGameOver={handleGameOver}
-              adapter={getAdapterForSlug(roomInfo?.gameSlug ?? "word-chain")}
+              adapter={adapter}
+            />
+          </motion.div>
+        )}
+
+        {/* ── Playing (Race) ─────────────────────────────────────────────── */}
+        {phase === "playing" && isRace && raceInitState && (
+          <motion.div key="playing-race" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <DuelRaceEngine
+              key={raceEngineKey}
+              userId={user?.id ?? 0}
+              opponentId={opponentId}
+              opponentName={opponentName}
+              opponentAvatarUrl={opponentAvatarUrl}
+              myName={user?.name ?? "You"}
+              myAvatarUrl={user?.avatarUrl ?? null}
+              raceTarget={raceTarget}
+              initialState={raceInitState}
+              sendWs={sendWs}
+              latestMessage={latestGameMessage}
+              onGameOver={handleGameOver}
+              adapter={adapter}
+              startWord={startWord}
             />
           </motion.div>
         )}
@@ -507,7 +584,6 @@ export default function DuelRoom() {
                 : "border-muted"
             }>
               <CardContent className="py-10 space-y-6">
-                {/* Winner banner */}
                 <div className="text-center space-y-2">
                   <Trophy className={`h-14 w-14 mx-auto ${
                     gameResult.outcome === "you_win" || gameResult.outcome === "forfeit"
@@ -531,7 +607,6 @@ export default function DuelRoom() {
                   )}
                 </div>
 
-                {/* ELO delta */}
                 <div className="flex justify-center gap-8">
                   <div className="text-center">
                     <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5">ELO change</p>
@@ -556,26 +631,16 @@ export default function DuelRoom() {
                   </div>
                 </div>
 
-                {/* Both players' word lists */}
                 {(gameResult.myWords.length > 0 || gameResult.opponentWords.length > 0) && (
                   <div className="grid grid-cols-2 gap-3" data-testid="section-word-lists">
-                    {/* My words */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                         Your words ({gameResult.myWords.length})
                       </p>
-                      <div
-                        className="flex flex-wrap gap-1 max-h-32 overflow-y-auto"
-                        data-testid="list-my-words"
-                      >
+                      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto" data-testid="list-my-words">
                         {gameResult.myWords.length > 0 ? (
                           gameResult.myWords.map((w, i) => (
-                            <Badge
-                              key={i}
-                              variant="secondary"
-                              className="text-xs font-mono"
-                              data-testid={`word-mine-${i}`}
-                            >
+                            <Badge key={i} variant="secondary" className="text-xs font-mono" data-testid={`word-mine-${i}`}>
                               {w}
                             </Badge>
                           ))
@@ -584,23 +649,14 @@ export default function DuelRoom() {
                         )}
                       </div>
                     </div>
-                    {/* Opponent words */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                         {opponentName || "Opponent"}'s words ({gameResult.opponentWords.length})
                       </p>
-                      <div
-                        className="flex flex-wrap gap-1 max-h-32 overflow-y-auto"
-                        data-testid="list-opponent-words"
-                      >
+                      <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto" data-testid="list-opponent-words">
                         {gameResult.opponentWords.length > 0 ? (
                           gameResult.opponentWords.map((w, i) => (
-                            <Badge
-                              key={i}
-                              variant="outline"
-                              className="text-xs font-mono"
-                              data-testid={`word-opponent-${i}`}
-                            >
+                            <Badge key={i} variant="outline" className="text-xs font-mono" data-testid={`word-opponent-${i}`}>
                               {w}
                             </Badge>
                           ))
@@ -612,13 +668,14 @@ export default function DuelRoom() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex gap-3 justify-center pt-1">
                   <Link href="/friends">
                     <Button variant="outline" data-testid="button-back-friends">Back to Friends</Button>
                   </Link>
-                  <Link href="/games/word-chain">
-                    <Button data-testid="button-play-again">Play Word Chain</Button>
+                  <Link href={`/games/${roomInfo?.gameSlug ?? "word-chain"}`}>
+                    <Button data-testid="button-play-again">
+                      Play Again
+                    </Button>
                   </Link>
                 </div>
               </CardContent>
