@@ -10,7 +10,7 @@ import { Swords, Loader2, RefreshCw, Users, Clock, ArrowRight, Zap } from "lucid
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
 import { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
@@ -77,7 +77,7 @@ function FormatBadge({ slug }: { slug: string }) {
   return <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">⚡ Race</Badge>;
 }
 
-function DuelGameCard({ game }: { game: Game }) {
+function DuelGameCard({ game, waitingCount = 0 }: { game: Game; waitingCount?: number }) {
   return (
     <Card className="h-full" data-testid={`card-duel-game-${game.slug}`}>
       <CardContent className="p-3 flex items-center gap-3">
@@ -86,6 +86,14 @@ function DuelGameCard({ game }: { game: Game }) {
           <div className="flex items-center gap-1.5 mb-0.5">
             <p className="font-semibold text-sm truncate">{game.name}</p>
             <FormatBadge slug={game.slug} />
+            {waitingCount > 0 && (
+              <Badge
+                className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0 shrink-0"
+                data-testid={`badge-waiting-${game.slug}`}
+              >
+                {waitingCount} waiting
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
         </div>
@@ -114,6 +122,22 @@ export default function DuelLobby() {
   const duelGames = allGames.filter((g) => DUEL_GAME_SLUGS.has(g.slug));
   const turnGames = duelGames.filter((g) => DUEL_TURN_SLUGS.has(g.slug));
   const raceGames = duelGames.filter((g) => DUEL_RACE_SLUGS.has(g.slug));
+
+  const { data: allOpenChallenges = [] } = useQuery<OpenChallenge[]>({
+    queryKey: ["/api/duels/open"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/open", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 15000,
+  });
+
+  const waitingCountByGame = allOpenChallenges.reduce<Record<string, number>>((acc, c) => {
+    acc[c.gameSlug] = (acc[c.gameSlug] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const { data: openChallenges = [], isLoading, refetch, isFetching } = useQuery<OpenChallenge[]>({
     queryKey: ["/api/duels/open", gameFilter],
@@ -174,7 +198,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} />)}
+              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} />)}
             </div>
           )}
         </div>
@@ -192,7 +216,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} />)}
+              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} />)}
             </div>
           )}
         </div>
@@ -208,7 +232,7 @@ export default function DuelLobby() {
             Open Challenges
           </h2>
           {isAuthenticated && (
-            <Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isFetching} data-testid="button-refresh-lobby">
+            <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} data-testid="button-refresh-lobby">
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
           )}
