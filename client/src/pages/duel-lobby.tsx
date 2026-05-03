@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History } from "lucide-react";
+import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History, X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -189,6 +189,8 @@ export default function DuelLobby() {
     enabled: isAuthenticated && !!user?.id,
   });
 
+  const myOpenChallenges = allOpenChallenges.filter((c) => c.challengerId === user?.id);
+
   const joinMutation = useMutation({
     mutationFn: async (challengeId: number) => {
       const res = await apiRequest("PATCH", `/api/duels/challenges/${challengeId}/accept`, {});
@@ -206,6 +208,40 @@ export default function DuelLobby() {
       refetch();
     },
     onSettled: () => setJoiningId(null),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (challengeId: number) => {
+      const res = await apiRequest("PATCH", `/api/duels/challenges/${challengeId}/cancel`, {});
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to cancel");
+      }
+      return res.json();
+    },
+    onMutate: async (challengeId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/duels/open"] });
+      const prev = queryClient.getQueryData<OpenChallenge[]>(["/api/duels/open"]);
+      queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open"], (old) =>
+        old ? old.filter((c) => c.id !== challengeId) : []
+      );
+      queryClient.setQueryData<OpenChallenge[]>(["/api/duels/open", gameFilter], (old) =>
+        old ? old.filter((c) => c.id !== challengeId) : []
+      );
+      return { prev };
+    },
+    onSuccess: () => {
+      toast({ title: "Challenge cancelled", description: "Your open challenge has been removed from the lobby." });
+    },
+    onError: (err: any, _challengeId, ctx: any) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(["/api/duels/open"], ctx.prev);
+      }
+      toast({ title: "Could not cancel", description: err?.message ?? "Try again.", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] });
+    },
   });
 
   function openAuth(tab: "signin" | "signup") {
@@ -365,6 +401,52 @@ export default function DuelLobby() {
             {!user?.isPremium && (
               <div className="mb-4">
                 <PremiumBanner variant="card" />
+              </div>
+            )}
+
+            {/* ── My Open Challenges sub-section ── */}
+            {myOpenChallenges.length > 0 && (
+              <div className="mb-5" data-testid="section-my-open-challenges">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Your Posted Challenges</p>
+                <div className="space-y-2">
+                  {myOpenChallenges.map((c) => {
+                    const isCancelling = cancelMutation.isPending && cancelMutation.variables === c.id;
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-violet-300 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/10"
+                        data-testid={`row-my-challenge-${c.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
+                            </Badge>
+                            {c.message && (
+                              <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Posted {timeAgo(c.createdAt)} · waiting for an opponent
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          disabled={isCancelling}
+                          onClick={() => cancelMutation.mutate(c.id)}
+                          data-testid={`button-cancel-challenge-${c.id}`}
+                        >
+                          {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                          Cancel
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Separator className="mt-4" />
               </div>
             )}
 
