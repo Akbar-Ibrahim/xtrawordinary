@@ -440,9 +440,13 @@ export default function QuizPlay() {
                 <p className="text-muted-foreground text-sm mt-1 capitalize">{session.gameSlug.replace(/-/g, " ")}</p>
                 {(() => {
                   const summary = getVariantSummary(session.gameSlug, seed, (session.params as Record<string, any>) ?? undefined);
-                  return summary ? (
-                    <p className="text-xs text-primary font-medium mt-0.5" data-testid="text-quiz-variant-summary">{summary}</p>
-                  ) : null;
+                  const displaySummary = summary ?? "Standard rules";
+                  return (
+                    <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-md bg-muted/60 border border-border/50" data-testid="text-quiz-variant-summary">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Game settings:</span>
+                      <span className="text-xs font-medium text-foreground">{displaySummary}</span>
+                    </div>
+                  );
                 })()}
                 {session.creatorName && (
                   <div className="flex items-center justify-center gap-1.5 mt-2" data-testid="text-quiz-creator">
