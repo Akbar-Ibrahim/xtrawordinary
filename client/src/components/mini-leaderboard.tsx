@@ -23,12 +23,12 @@ function ModeTab({
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer ${
+      className={`shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap ${
         active
           ? "bg-background shadow-sm text-foreground"
           : "text-muted-foreground hover:text-foreground"
       }`}
-      data-testid={`mini-tab-${label.toLowerCase()}`}
+      data-testid={`mini-tab-${label.toLowerCase().replace(/\s+/g, "-")}`}
     >
       {label}
     </button>
@@ -155,17 +155,19 @@ export function MiniLeaderboard({ game }: MiniLeaderboardProps) {
       <CardContent className="px-4 pb-4 space-y-3">
         {hasModes && (
           <div
-            className="flex gap-1 p-0.5 bg-muted rounded-md"
+            className="overflow-x-auto bg-muted rounded-md p-0.5 scrollbar-none"
             data-testid="mini-leaderboard-tabs"
           >
-            {game.modes!.map((mode) => (
-              <ModeTab
-                key={mode.slug}
-                label={mode.label}
-                active={activeModeSlug === mode.slug}
-                onClick={() => setActiveModeSlug(mode.slug)}
-              />
-            ))}
+            <div className="flex gap-1 min-w-max">
+              {game.modes!.map((mode) => (
+                <ModeTab
+                  key={mode.slug}
+                  label={mode.label}
+                  active={activeModeSlug === mode.slug}
+                  onClick={() => setActiveModeSlug(mode.slug)}
+                />
+              ))}
+            </div>
           </div>
         )}
 
