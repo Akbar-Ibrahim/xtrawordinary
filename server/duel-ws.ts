@@ -265,6 +265,8 @@ type DuelRoom = {
   raceTimerHandle: ReturnType<typeof setTimeout> | null;
   /** Timestamp (ms) when race started; used to broadcast remaining time. */
   raceStartedAt: number | null;
+  /** Race: set of userIds with a move validation currently in progress (prevents double-submit). */
+  racePendingMoves: Set<number>;
 };
 
 const INITIAL_LIVES = 3;
@@ -443,6 +445,7 @@ export class DuelRoomRegistry {
       racePoolPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
+      racePendingMoves: new Set(),
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} created for game ${gameSlug} (format: ${format})`, "duel-ws");
@@ -497,6 +500,7 @@ export class DuelRoomRegistry {
       racePoolPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
+      racePendingMoves: new Set(),
     };
     this.rooms.set(roomCode, room);
     log(`[Duel] Room ${roomCode} restored from challenge metadata`, "duel-ws");
@@ -696,13 +700,22 @@ export class DuelRoomRegistry {
     }
   }
 
+  /**
+   * Perform the dictionary check for race moves.
+   * Declared as a protected method so tests can override it with a delayed
+   * implementation to exercise the async in-flight lock.
+   */
+  protected isDictionaryWord(word: string): Promise<boolean> {
+    return Promise.resolve(wordDictSet.has(word.toUpperCase()));
+  }
+
   /** Relay a game move with full server-side validation. Returns an error string when
    *  the move is illegal, or triggered=true when it causes the game to end. */
-  relayMove(
+  async relayMove(
     roomCode: string,
     fromUserId: number,
     payload: unknown,
-  ): { triggered: boolean; winnerId?: number; error?: string } {
+  ): Promise<{ triggered: boolean; winnerId?: number; error?: string }> {
     const room = this.rooms.get(roomCode);
     if (!room || room.status !== "playing") return { triggered: false };
 
@@ -737,7 +750,7 @@ export class DuelRoomRegistry {
         }
 
         // --- Dictionary check ---
-        if (!wordDictSet.has(submittedWord.toLowerCase())) {
+        if (!wordDictSet.has(submittedWord.toUpperCase())) {
           return { triggered: false, error: `"${submittedWord}" is not a valid word` };
         }
 
@@ -831,11 +844,11 @@ export class DuelRoomRegistry {
   }
 
   /** Handle a move in race format: per-player duplicate check, constraint check, count update. */
-  private relayRaceMove(
+  private async relayRaceMove(
     room: DuelRoom,
     fromUserId: number,
     payload: unknown,
-  ): { triggered: boolean; winnerId?: number; error?: string } {
+  ): Promise<{ triggered: boolean; winnerId?: number; error?: string }> {
     if (payload === null || typeof payload !== "object") return { triggered: false };
     const p = payload as { type?: string; word?: string };
     if (p.type !== "word" || typeof p.word !== "string") return { triggered: false };
@@ -843,6 +856,13 @@ export class DuelRoomRegistry {
     const submittedWord = p.word.toUpperCase().trim();
     if (!submittedWord) return { triggered: false };
 
+    // --- In-flight lock: reject if this player already has a move being validated ---
+    if (room.racePendingMoves.has(fromUserId)) {
+      return { triggered: false, error: "Move already in progress, please wait" };
+    }
+    room.racePendingMoves.add(fromUserId);
+
+    try {
     const slug = room.gameSlug;
 
     // --- Per-player duplicate check (each player has own word pool) ---
@@ -856,9 +876,10 @@ export class DuelRoomRegistry {
     const constraintError = this.checkRaceConstraint(room, submittedWord, myWords, fromUserId);
     if (constraintError) return { triggered: false, error: constraintError };
 
-    // --- Dictionary check (skip for definition-match which uses fixed sets) ---
+    // --- Dictionary check (async so the in-flight lock genuinely spans this boundary) ---
     if (slug !== "definition-match") {
-      if (!wordDictSet.has(submittedWord.toLowerCase())) {
+      const valid = await this.isDictionaryWord(submittedWord);
+      if (!valid) {
         return { triggered: false, error: `"${submittedWord}" is not a valid word` };
       }
     }
@@ -895,6 +916,9 @@ export class DuelRoomRegistry {
     }
 
     return { triggered: false };
+    } finally {
+      room.racePendingMoves.delete(fromUserId);
+    }
   }
 
   /** Game-specific constraint check for race format. Returns error string or null. */
@@ -1381,7 +1405,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
             send(ws, { type: "error", message: "Not in a room" });
             return;
           }
-          const moveResult = duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
+          const moveResult = await duelRegistry.relayMove(currentRoomCode, userId, msg.payload);
           if (moveResult.error) {
             // Illegal move — notify sender only (opponent state unchanged)
             send(ws, { type: "error", message: moveResult.error });
