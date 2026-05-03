@@ -213,7 +213,7 @@ export default function GroupDetail() {
   const [createRoundOpen, setCreateRoundOpen] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState("random");
   const [closesAt, setClosesAt] = useState("");
-  const [roundLetterCount, setRoundLetterCount] = useState<2 | 3>(2);
+  const [roundLetterCount, setRoundLetterCount] = useState<2 | 3 | 4>(2);
   const [roundLetters, setRoundLetters] = useState<string[]>(["any", "any"]);
   const [roundLbMode, setRoundLbMode] = useState<"random" | "locked">("random");
   const [roundLbLevel, setRoundLbLevel] = useState<number | undefined>(undefined);
@@ -808,7 +808,7 @@ export default function GroupDetail() {
               <div className="space-y-2 rounded-md border border-border p-3">
                 <label className="text-sm font-medium">Pin Letters <span className="text-muted-foreground font-normal">(optional)</span></label>
                 <div className="flex gap-1">
-                  {([2, 3] as const).map(n => (
+                  {([2, 3, 4] as const).map(n => (
                     <Button
                       key={n}
                       type="button"
