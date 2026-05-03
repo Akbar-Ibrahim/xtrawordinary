@@ -53,7 +53,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?: Challenge; locked?: boolean } = {}) {
+export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initialChallenge?: Challenge; locked?: boolean; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -130,7 +130,10 @@ export function NoRepeatsGame({ initialChallenge, locked }: { initialChallenge?:
   }, [stopTimer, startTimer, resetRecorded]);
 
   useEffect(() => {
-    if (initialChallenge !== undefined) {
+    if (groupSeed !== undefined) {
+      const level = (3 + (groupSeed % 7)) as Challenge;
+      startGame(level, false);
+    } else if (initialChallenge !== undefined) {
       startGame(initialChallenge, false);
     }
   }, []);

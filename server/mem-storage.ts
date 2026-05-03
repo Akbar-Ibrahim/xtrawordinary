@@ -276,8 +276,11 @@ export class MemStorage implements IStorage {
     return { letters: sortedLetters };
   }
 
-  async getWordChainStartWord(_variation: number, _level: number): Promise<string | null> {
+  async getWordChainStartWord(_variation: number, _level: number, seed?: number): Promise<string | null> {
     if (wordDictionary.length === 0) return null;
+    if (seed !== undefined) {
+      return wordDictionary[seed % wordDictionary.length];
+    }
     return wordDictionary[Math.floor(Math.random() * wordDictionary.length)];
   }
 

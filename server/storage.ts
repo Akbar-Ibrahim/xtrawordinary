@@ -43,7 +43,7 @@ export interface IStorage {
   generateLengthConstraint(level: number): Promise<LengthConstraint>;
   generatePositionConstraint(): Promise<PositionConstraint>;
   generateContainsConstraint(): Promise<ContainsConstraint>;
-  getWordChainStartWord(variation: number, level: number): Promise<string | null>;
+  getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null>;
   getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null>;
   getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]>;
   generateWordSweepGrid(seed?: number): Promise<WordSweepGrid>;

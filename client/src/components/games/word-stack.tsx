@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown, LogIn } from "lucide-react";
+import { makeSeededRng } from "@/lib/seeded-rng";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -36,7 +37,7 @@ const challenges = [
   },
 ];
 
-export function WordStackGame({ locked }: { locked?: boolean } = {}) {
+export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-stack" });
   const personalBest = usePersonalBest("word-stack");
@@ -144,6 +145,32 @@ export function WordStackGame({ locked }: { locked?: boolean } = {}) {
     setUsedPuzzles(new Set([randomPuzzle.targetWord]));
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [puzzles, resetRecorded]);
+
+  useEffect(() => {
+    if (groupSeed !== undefined && puzzles.length > 0 && gameStatus === "selecting") {
+      const rng = makeSeededRng(groupSeed);
+      const challengeType: ChallengeType = rng() < 0.5 ? "build-up" : "break-down";
+      const puzzleIndex = Math.floor(rng() * puzzles.length);
+      const seededPuzzle = puzzles[puzzleIndex];
+      resetRecorded();
+      setSelectedChallenge(challengeType);
+      setActivePuzzles(puzzles);
+      setScore(0);
+      setStreak(0);
+      setPuzzlesCompleted(0);
+      setGameStatus("playing");
+      setUsedPuzzles(new Set([seededPuzzle.targetWord]));
+      setShowHint(false);
+      setCurrentPuzzle(seededPuzzle);
+      if (challengeType === "build-up") {
+        setStack([]);
+      } else {
+        setStack([seededPuzzle.targetWord.toUpperCase()]);
+      }
+      setUserInput("");
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [puzzles, groupSeed]);
 
   useEffect(() => {
     if (gameStatus === "complete") {

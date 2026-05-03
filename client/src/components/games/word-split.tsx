@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { makeSeededRng } from "@/lib/seeded-rng";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -89,7 +90,7 @@ function getTotalRemaining(pool: Map<string, number>): number {
   return total;
 }
 
-export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked }: { initialChallenge?: Difficulty | ""; locked?: boolean } = {}) {
+export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked, groupSeed }: { initialChallenge?: Difficulty | ""; locked?: boolean; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-split" });
   const personalBest = usePersonalBest("word-split");
@@ -171,10 +172,28 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
   }, [puzzles, startPuzzle, resetRecorded]);
 
   useEffect(() => {
-    if (initialChallenge && puzzles.length > 0 && gameState === "menu") {
+    if (groupSeed !== undefined && puzzles.length > 0 && gameState === "menu") {
+      const rng = makeSeededRng(groupSeed);
+      const difficulties: Difficulty[] = ["short", "medium", "long"];
+      const diff = difficulties[Math.floor(rng() * difficulties.length)];
+      const config = DIFFICULTY_CONFIG[diff];
+      const filtered = puzzles.filter(p => p.targetWord.length >= config.minLength && p.targetWord.length <= config.maxLength);
+      const puzzleList = filtered.length > 0 ? filtered : puzzles;
+      const seededPuzzle = puzzleList[Math.floor(rng() * puzzleList.length)];
+      setDifficulty(diff);
+      setActivePuzzles(puzzleList);
+      setScore(0);
+      setStreak(0);
+      setPuzzlesCompleted(0);
+      setPuzzlesSkipped(0);
+      setUsedPuzzles(new Set([seededPuzzle.targetWord]));
+      setGameState("playing");
+      resetRecorded();
+      startPuzzle(seededPuzzle);
+    } else if (initialChallenge && puzzles.length > 0 && gameState === "menu") {
       startGame(initialChallenge as Difficulty);
     }
-  }, [initialChallenge, puzzles, startGame, gameState]);
+  }, [initialChallenge, puzzles, startGame, startPuzzle, resetRecorded, gameState, groupSeed]);
 
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);

@@ -28,7 +28,7 @@ const SURVIVAL_TIME_OPTIONS = [
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean } = {}) {
+export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number } = {}) {
   const { playSound } = useSound();
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
@@ -44,8 +44,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   });
 
   const startWordMutation = useMutation({
-    mutationFn: async ({ variation, level }: { variation: number; level: number }) => {
-      const response = await apiRequest("POST", "/api/games/word-chain/start", { variation, level });
+    mutationFn: async ({ variation, level, seed }: { variation: number; level: number; seed?: number }) => {
+      const response = await apiRequest("POST", "/api/games/word-chain/start", { variation, level, ...(seed !== undefined ? { seed } : {}) });
       return response.json() as Promise<{ word: string | null }>;
     },
   });
@@ -153,7 +153,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     });
   }, [survivalTime]);
 
-  const startGame = useCallback(async (v: Variation, l: Level) => {
+  const startGame = useCallback(async (v: Variation, l: Level, seed?: number) => {
     resetRecorded();
     stopTimer();
 
@@ -169,7 +169,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     setTimeLeft(survivalTime);
     
     try {
-      const result = await startWordMutation.mutateAsync({ variation: v, level: l });
+      const result = await startWordMutation.mutateAsync({ variation: v, level: l, seed });
       if (!result.word) {
         playSound("wrong");
         setFeedback({ type: "invalid", message: "Could not start game" });
@@ -190,7 +190,9 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   }, [startWordMutation, stopTimer, startTimer, resetRecorded, survivalTime]);
 
   useEffect(() => {
-    if (initialChallenge.variation && initialChallenge.level) {
+    if (groupSeed !== undefined) {
+      startGame(1, 1, groupSeed);
+    } else if (initialChallenge.variation && initialChallenge.level) {
       startGame(initialChallenge.variation, initialChallenge.level);
     }
   }, []);
@@ -305,6 +307,16 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   };
 
   const timerPercent = (timeLeft / survivalTime) * 100;
+
+  if (gameStatus === "menu" && groupSeed !== undefined) {
+    return (
+      <Card>
+        <CardContent className="p-12 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (gameStatus === "menu") {
     return (

@@ -139,7 +139,7 @@ export class MySQLStorage implements IStorage {
   async generateLengthConstraint(level: number): Promise<LengthConstraint> { return this.gameData.generateLengthConstraint(level); }
   async generatePositionConstraint(): Promise<PositionConstraint> { return this.gameData.generatePositionConstraint(); }
   async generateContainsConstraint(): Promise<ContainsConstraint> { return this.gameData.generateContainsConstraint(); }
-  async getWordChainStartWord(variation: number, level: number): Promise<string | null> { return this.gameData.getWordChainStartWord(variation, level); }
+  async getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null> { return this.gameData.getWordChainStartWord(variation, level, seed); }
   async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return this.gameData.getWordChainComputerWord(playerWord, variation, level, usedWords); }
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }

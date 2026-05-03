@@ -515,8 +515,9 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const { variation, level } = req.body;
-      const word = await dataSource.getWordChainStartWord(variation || 1, level || 1);
+      const { variation, level, seed } = req.body;
+      const seedNum = (seed !== undefined && Number.isFinite(Number(seed))) ? Number(seed) : undefined;
+      const word = await dataSource.getWordChainStartWord(variation || 1, level || 1, seedNum);
       res.json({ word });
     } catch (error) {
       res.status(500).json({ message: "Failed to get start word" });
