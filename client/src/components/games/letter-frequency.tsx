@@ -160,11 +160,14 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     if (initialChallenge === undefined || initialChallenge === "multi" || initialChallenge === "random") return null;
     return generateConstraint(initialChallenge, seedRngRef.current, initialLetter);
   });
+  const resolvedMultiLettersRef = useRef<string[] | undefined>(undefined);
   const [multiConstraint, setMultiConstraint] = useState<MultiLetterConstraint | null>(() => {
     if (initialChallenge !== "multi") return null;
     const rng = seedRngRef.current ?? Math.random;
     if (initialLetters && initialLetters.length > 0) {
-      return { letters: resolveMultiLetters(initialLetters, rng), minCount: 2 };
+      const resolved = resolveMultiLetters(initialLetters, rng);
+      resolvedMultiLettersRef.current = resolved;
+      return { letters: resolved, minCount: 2 };
     }
     return generateMultiLetterConstraint(rng);
   });
@@ -223,11 +226,15 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     setFeedback(null);
     if (c === "multi") {
       setConstraint(null);
-      const rng = seedRngRef.current ?? Math.random;
-      if (initialLettersRef.current && initialLettersRef.current.length > 0) {
-        setMultiConstraint({ letters: resolveMultiLetters(initialLettersRef.current, rng), minCount: 2 });
+      if (resolvedMultiLettersRef.current) {
+        setMultiConstraint({ letters: resolvedMultiLettersRef.current, minCount: 2 });
+      } else if (initialLettersRef.current && initialLettersRef.current.length > 0) {
+        const rng = seedRngRef.current ?? Math.random;
+        const resolved = resolveMultiLetters(initialLettersRef.current, rng);
+        resolvedMultiLettersRef.current = resolved;
+        setMultiConstraint({ letters: resolved, minCount: 2 });
       } else {
-        setMultiConstraint(generateMultiLetterConstraint(rng));
+        setMultiConstraint(generateMultiLetterConstraint(seedRngRef.current));
       }
     } else {
       setMultiConstraint(null);

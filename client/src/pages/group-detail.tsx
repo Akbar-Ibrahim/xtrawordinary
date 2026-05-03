@@ -186,6 +186,22 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+function getLfLettersSummary(round: GroupRound): string | null {
+  if (round.gameSlug !== "letter-frequency" || !round.gameConfig) return null;
+  try {
+    const cfg = JSON.parse(round.gameConfig);
+    if (!Array.isArray(cfg.letters) || cfg.letters.length === 0) return null;
+    const pinned = cfg.letters.filter((l: string) => l !== "any");
+    if (pinned.length === 0) return null;
+    const anyCount = cfg.letters.filter((l: string) => l === "any").length;
+    const parts = [...pinned];
+    if (anyCount > 0) parts.push(`+${anyCount} random`);
+    return parts.join(", ");
+  } catch {
+    return null;
+  }
+}
+
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
 export default function GroupDetail() {
@@ -479,7 +495,11 @@ export default function GroupDetail() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-medium mb-3">{GAME_NAMES[activeRound.gameSlug] || activeRound.gameSlug}</p>
+                    <p className="font-medium">{GAME_NAMES[activeRound.gameSlug] || activeRound.gameSlug}</p>
+                    {getLfLettersSummary(activeRound) && (
+                      <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-round-letters-active">Letters: {getLfLettersSummary(activeRound)}</p>
+                    )}
+                    <div className="mb-3" />
                     {activeRound.closesAt && (
                       <p className="text-sm text-muted-foreground mb-3">
                         Closes: {new Date(activeRound.closesAt).toLocaleDateString()}
@@ -542,6 +562,9 @@ export default function GroupDetail() {
                               <CardContent className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors rounded-xl">
                                 <div>
                                   <p className="font-medium">{GAME_NAMES[round.gameSlug] || round.gameSlug}</p>
+                                  {getLfLettersSummary(round) && (
+                                    <p className="text-xs text-primary/70" data-testid={`text-round-letters-${round.id}`}>Letters: {getLfLettersSummary(round)}</p>
+                                  )}
                                   <p className="text-xs text-muted-foreground">{new Date(round.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
