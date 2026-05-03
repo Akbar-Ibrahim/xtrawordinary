@@ -46,74 +46,10 @@ GROUP VS GROUP CHALLENGES
    Build after Huddle and Team Race are stable.
 
 ────────────────────────────────────────────────────────────
-SOCIAL & COMMUNITY
-────────────────────────────────────────────────────────────
-
-6. Full In-App Notification System
-   The current bell icon (lightweight build) unifies duel challenges,
-   accepted duel rooms, and friend challenge unread counts using existing
-   data sources — but group invites, comment replies, and group round
-   events are still invisible.
-
-   Full build scope:
-   - New `notifications` table (MemStorage + MySQLStorage required).
-     Columns: id, userId, type, title, body, linkUrl, readAt, createdAt.
-   - Server-side notification creation wired into all meaningful events:
-       • Group invite received
-       • Comment reply on a game or group round
-       • Group round started / ended
-       • Duel challenge accepted (supplement existing WS alert)
-       • Friend challenge result (supplement existing count)
-   - Bell icon panel becomes a proper notification centre: real unread
-     count badge, mark individual as read on click, "Mark all read"
-     button, notification history (last 30).
-   - Lightweight bell remains as the UI shell — just needs the backend
-     wired up and the panel expanded.
-
-────────────────────────────────────────────────────────────
-NEW DUEL GAMES
-────────────────────────────────────────────────────────────
-
-7. Ladder Rush Duel & Ladder Rush: Double Swap Duel
-   Turn-based duel format for both Ladder Rush games. Both players share
-   a single word chain: Player A enters a word, Player B must respond
-   with a valid word that differs by exactly 1 letter (or 2 for Double
-   Swap), and so on. The chain is visible to both players at all times.
-
-   Strategic layer: players are incentivised to use obscure words to
-   make it as hard as possible for their opponent to form a valid
-   next word. This is unique in the duel roster — every other duel
-   game tests speed or accuracy; this one rewards vocabulary depth
-   and cunning. The dynamic is closer to chess than to a reflex game.
-
-   Design decisions:
-   - Starting word: server-assigned randomly at game start (must be
-     neutral — neither player picks it to prevent opener advantage).
-   - Word length: chosen in the challenge dialog (4, 5, or 6 letters),
-     same as how race games expose target/time-limit pickers.
-   - Losing condition: can't form a valid word within the 8-second
-     turn timer → lose a life. 3 lives lost = game over. Same as all
-     existing turn-based duel games.
-   - No-repeat rule: a word already in the chain cannot be used again.
-   - Format: Turn-Based only (Race format does not apply — the chain
-     is shared state so simultaneous play makes no sense).
-
-   Technical notes:
-   - The validate-word endpoint already exists and handles dictionary
-     lookups, so server-side word checking is covered.
-   - The isNLetterDiff function in ladder-rush.tsx uses letter-frequency
-     comparison rather than positional comparison. Works correctly in
-     the vast majority of cases but worth a close review for edge cases
-     with repeated letters before shipping the duel version.
-   - Both games can be added to DUEL_TURN_SLUGS in shared/schema.ts
-     as new slugs alongside a corresponding duel adapter in the turn
-     engine.
-
-────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
   1. Duel Spectator Mode         — natural next step for the mature duel system
-  2. Full Notification System    — ties all social features together properly
-  3. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
+  2. Ladder Rush Duel            — DONE
+  3. Full Notification System    — DONE
   4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
