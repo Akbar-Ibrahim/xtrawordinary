@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,19 @@ import { useToast } from "@/hooks/use-toast";
 interface AuthModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: "signin" | "signup";
 }
 
-export function AuthModal({ open, onOpenChange }: AuthModalProps) {
+export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthModalProps) {
   const { login, register, loginWithGoogle } = useAuth();
   const { toast } = useToast();
-  const [tab, setTab] = useState<string>("signin");
+  const [tab, setTab] = useState<string>(initialTab);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Reset to the requested tab whenever the modal opens
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, initialTab]);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");

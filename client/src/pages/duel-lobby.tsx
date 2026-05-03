@@ -6,12 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Swords, Loader2, RefreshCw, Users, Clock, ArrowRight, Zap } from "lucide-react";
+import { Swords, Loader2, RefreshCw, Users, Clock, ArrowRight, Zap, Trophy, UserPlus, BarChart3, Star } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
+import { AuthModal } from "@/components/auth-modal";
+import { PremiumBanner } from "@/components/premium-banner";
 import { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
 
@@ -52,6 +54,13 @@ const ALL_GAME_LABELS: Record<string, string> = {
   "word-split": "Word Split",
   "definition-match": "Definition Match",
 };
+
+const SIGNUP_PERKS = [
+  { icon: Swords, label: "Post open challenges", desc: "Put yourself out there — anyone can accept and you're in a duel." },
+  { icon: Trophy, label: "Track your ELO rating", desc: "Earn, lose, and climb the duel rankings over time." },
+  { icon: BarChart3, label: "Full duel history", desc: "Review every match you've played, wins and losses alike." },
+  { icon: UserPlus, label: "Challenge friends", desc: "Send direct duel invites to people on your friends list." },
+];
 
 function GameIcon({ game }: { game: Game }) {
   const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
@@ -114,6 +123,8 @@ export default function DuelLobby() {
   const { toast } = useToast();
   const [gameFilter, setGameFilter] = useState<string>("all");
   const [joiningId, setJoiningId] = useState<number | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
 
   const { data: allGames = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -170,6 +181,11 @@ export default function DuelLobby() {
     onSettled: () => setJoiningId(null),
   });
 
+  function openAuth(tab: "signin" | "signup") {
+    setAuthInitialTab(tab);
+    setAuthOpen(true);
+  }
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8 space-y-10">
 
@@ -184,9 +200,7 @@ export default function DuelLobby() {
 
       {/* ── Game Directory ── */}
       <section>
-        <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
-          Pick a Game
-        </h2>
+        <h2 className="text-base font-semibold mb-3">Pick a Game</h2>
 
         {/* Turn-Based */}
         <div className="mb-5">
@@ -226,7 +240,7 @@ export default function DuelLobby() {
 
       {/* ── Open Challenges ── */}
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
             Open Challenges
@@ -239,14 +253,67 @@ export default function DuelLobby() {
         </div>
 
         {!isAuthenticated ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              <Swords className="h-8 w-8 mx-auto mb-3 opacity-30" />
-              <p className="font-medium text-sm">Sign in to join open duels or post your own challenge.</p>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            {/* Sign-up CTA */}
+            <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/20" data-testid="card-guest-signup-cta">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">
+                    <Swords className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-violet-900 dark:text-violet-100">Join the arena</p>
+                    <p className="text-xs text-violet-700 dark:text-violet-300">Create a free account to unlock the full duel experience.</p>
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 mb-5">
+                  {SIGNUP_PERKS.map(({ icon: Icon, label, desc }) => (
+                    <li key={label} className="flex items-start gap-2.5">
+                      <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0 mt-0.5">
+                        <Icon className="h-3 w-3 text-violet-600 dark:text-violet-400" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-violet-900 dark:text-violet-100">{label}</span>
+                        <span className="text-xs text-violet-700/80 dark:text-violet-300/80 ml-1.5">{desc}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white gap-2"
+                    onClick={() => openAuth("signup")}
+                    data-testid="button-guest-create-account"
+                  >
+                    <Star className="h-4 w-4" />
+                    Create Free Account
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40"
+                    onClick={() => openAuth("signin")}
+                    data-testid="button-guest-signin"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Premium teaser for guests */}
+            <PremiumBanner variant="card" />
+          </div>
         ) : (
           <>
+            {/* Premium teaser for free signed-in users */}
+            {!user?.isPremium && (
+              <div className="mb-4">
+                <PremiumBanner variant="banner" />
+              </div>
+            )}
+
             <div className="mb-3">
               <Select value={gameFilter} onValueChange={setGameFilter}>
                 <SelectTrigger className="w-48" data-testid="select-lobby-filter">
@@ -320,6 +387,8 @@ export default function DuelLobby() {
           </>
         )}
       </section>
+
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} initialTab={authInitialTab} />
     </div>
   );
 }
