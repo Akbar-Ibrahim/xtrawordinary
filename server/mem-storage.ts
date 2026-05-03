@@ -1559,4 +1559,18 @@ export class MemStorage implements IStorage {
       }
     }
   }
+
+  async pruneNotifications(): Promise<number> {
+    const now = Date.now();
+    const readCutoff = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const unreadCutoff = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const before = this.notifications.length;
+    this.notifications = this.notifications.filter(n => {
+      if (n.readAt !== null) {
+        return n.createdAt >= readCutoff;
+      }
+      return n.createdAt >= unreadCutoff;
+    });
+    return before - this.notifications.length;
+  }
 }

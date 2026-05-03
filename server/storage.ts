@@ -206,6 +206,7 @@ export interface IStorage {
   getUnreadNotificationCount(userId: number): Promise<number>;
   markNotificationRead(id: number, userId: number): Promise<void>;
   markAllNotificationsRead(userId: number): Promise<void>;
+  pruneNotifications(): Promise<number>;
 }
 
 export { MemStorage } from "./mem-storage";

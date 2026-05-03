@@ -1717,4 +1717,25 @@ export class MySQLStorage implements IStorage {
       .set({ readAt: new Date() })
       .where(and(eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)));
   }
+
+  async pruneNotifications(): Promise<number> {
+    const db = await this.getDb();
+    const now = new Date();
+    const readCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const unreadCutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const result = await db.delete(schema.notifications).where(
+      or(
+        and(
+          sql`${schema.notifications.readAt} IS NOT NULL`,
+          sql`${schema.notifications.createdAt} < ${readCutoff}`,
+        ),
+        and(
+          isNull(schema.notifications.readAt),
+          sql`${schema.notifications.createdAt} < ${unreadCutoff}`,
+        ),
+      ),
+    );
+    return result[0].affectedRows ?? 0;
+  }
 }

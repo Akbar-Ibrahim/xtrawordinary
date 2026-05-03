@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { initStorage } from "./storage";
+import { initStorage, getStorage } from "./storage";
 import { setupDuelWebSocket } from "./duel-ws";
 
 const app = express();
@@ -62,8 +62,23 @@ app.use((req, res, next) => {
   next();
 });
 
+const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+async function runPruneJob() {
+  try {
+    const count = await getStorage().pruneNotifications();
+    if (count > 0) {
+      log(`[prune] Deleted ${count} old notification(s)`, "prune");
+    }
+  } catch (err) {
+    log(`[prune] Error pruning notifications: ${err}`, "prune");
+  }
+}
+
 (async () => {
   await initStorage();
+  runPruneJob();
+  setInterval(runPruneJob, PRUNE_INTERVAL_MS);
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);
