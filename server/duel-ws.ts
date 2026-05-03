@@ -34,6 +34,19 @@ const DUEL_BALANCE_CONSTRAINTS = ["2V", "3V", "4V", "2C", "3C", "4C"];
 /** Positions used for Letter Position duels (2–5). */
 const DUEL_POSITIONS = [2, 3, 4, 5];
 
+/** Deterministic Fisher-Yates shuffle driven by an integer seed. */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const result = [...arr];
+  let s = (seed ^ 0xdeadbeef) >>> 0;
+  for (let i = result.length - 1; i > 0; i--) {
+    s = (Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0);
+    s = (Math.imul(s ^ (s >>> 16), 0x45d9f3b) >>> 0);
+    const j = s % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 // ── Race-format game constants ─────────────────────────────────────────────
 
 /** 6-letter pools for word-scramble race mode. */
@@ -114,8 +127,10 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     case "letter-balance":
       return DUEL_BALANCE_CONSTRAINTS[seed % DUEL_BALANCE_CONSTRAINTS.length];
     // ── Race-only games ──
-    case "word-scramble":
-      return RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length].toUpperCase();
+    case "word-scramble": {
+      const scrambleWord = RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length];
+      return seededShuffle(scrambleWord.toUpperCase().split(""), seed).join("");
+    }
     case "no-repeats":
       // min length 4–7 driven by seed
       return String(4 + (seed % 4));
@@ -828,14 +843,16 @@ export class DuelRoomRegistry {
     const submittedWord = p.word.toUpperCase().trim();
     if (!submittedWord) return { triggered: false };
 
+    const slug = room.gameSlug;
+
     // --- Per-player duplicate check (each player has own word pool) ---
+    // word-split allows repeating the same word across compound cycles
     const myWords = room.wordsPerPlayer.get(fromUserId) ?? [];
-    if (myWords.includes(submittedWord)) {
+    if (slug !== "word-split" && myWords.includes(submittedWord)) {
       return { triggered: false, error: "You already used that word" };
     }
 
     // --- Game-specific constraint check ---
-    const slug = room.gameSlug;
     const constraintError = this.checkRaceConstraint(room, submittedWord, myWords, fromUserId);
     if (constraintError) return { triggered: false, error: constraintError };
 
@@ -848,7 +865,15 @@ export class DuelRoomRegistry {
 
     // Move is valid — update per-player state
     room.wordsPerPlayer.set(fromUserId, [...myWords, submittedWord]);
-    const newCount = (room.countsPerPlayer.get(fromUserId) ?? 0) + 1;
+
+    // word-split: score only when a full compound cycle is completed (no partial cycles)
+    let scoreIncrement = 1;
+    if (slug === "word-split") {
+      const totalCoveredBefore = myWords.reduce((sum, w) => sum + w.length, 0);
+      const splitPos = totalCoveredBefore % room.startWord.length;
+      scoreIncrement = (splitPos + submittedWord.length === room.startWord.length) ? 1 : 0;
+    }
+    const newCount = (room.countsPerPlayer.get(fromUserId) ?? 0) + scoreIncrement;
     room.countsPerPlayer.set(fromUserId, newCount);
 
     // letter-pool: deduct used letters from player's remaining pool

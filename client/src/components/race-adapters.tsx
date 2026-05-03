@@ -59,12 +59,12 @@ function remainingPool(startPool: string, usedWords: string[]): string {
 
 const VOWELS = new Set("AEIOU");
 
-function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, placeholder }: DuelInputProps & { placeholder: string }) {
+function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, placeholder, skipDuplicateCheck }: DuelInputProps & { placeholder: string; skipDuplicateCheck?: boolean }) {
   const [value, setValue] = useState("");
   const handleSubmit = () => {
     const upper = value.toUpperCase().trim();
     if (!upper || disabled) return;
-    if (usedWords.includes(upper)) return;
+    if (!skipDuplicateCheck && usedWords.includes(upper)) return;
     setValue("");
     clearFeedback();
     onSubmit(upper);
@@ -98,6 +98,7 @@ function makeAdapter(opts: {
   validateMoveClient: (input: string, currentWord: string, usedWords: string[]) => string | null;
   renderGameDisplay: (props: DuelDisplayProps) => React.ReactNode;
   placeholder: string;
+  skipDuplicateCheck?: boolean;
 }): DuelGameAdapter {
   return {
     validateMoveClient: opts.validateMoveClient,
@@ -110,7 +111,7 @@ function makeAdapter(opts: {
       }
       return null;
     },
-    renderInput: (props) => <RaceInput {...props} placeholder={opts.placeholder} />,
+    renderInput: (props) => <RaceInput {...props} placeholder={opts.placeholder} skipDuplicateCheck={opts.skipDuplicateCheck} />,
     renderGameDisplay: opts.renderGameDisplay,
   };
 }
@@ -310,6 +311,7 @@ export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
 
 export const wordSplitRaceAdapter: DuelGameAdapter = makeAdapter({
   placeholder: "Type the next slice of the compound word…",
+  skipDuplicateCheck: true,
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
