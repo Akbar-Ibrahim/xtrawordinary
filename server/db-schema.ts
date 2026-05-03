@@ -341,6 +341,10 @@ export const duelSessions = mysqlTable("duel_sessions", {
   seed: int("seed").notNull(),
   /** "turn" or "race" */
   format: varchar("format", { length: 10 }).notNull().default("turn"),
+  /** Target word count for race sessions. */
+  raceTarget: int("race_target"),
+  /** Race time limit in seconds. */
+  raceTimeLimit: int("race_time_limit"),
   outcome: varchar("outcome", { length: 30 }),
   eloDeltaPlayer1: int("elo_delta_player1"),
   eloDeltaPlayer2: int("elo_delta_player2"),

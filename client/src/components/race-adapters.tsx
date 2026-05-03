@@ -24,6 +24,28 @@ function canFormFromPool(word: string, pool: string): boolean {
   return true;
 }
 
+/** Check whether word is an ordered subsequence of base (letters in same order). */
+function isSubsequenceOf(word: string, base: string): boolean {
+  let bi = 0;
+  for (let wi = 0; wi < word.length; wi++) {
+    while (bi < base.length && base[bi] !== word[wi]) bi++;
+    if (bi >= base.length) return false;
+    bi++;
+  }
+  return true;
+}
+
+/** Compute remaining pool after all used words have deducted their letters. */
+function remainingPool(startPool: string, usedWords: string[]): string {
+  let pool = startPool.toUpperCase();
+  for (const w of usedWords) {
+    for (const c of w.toUpperCase()) {
+      pool = pool.replace(c, "");
+    }
+  }
+  return pool;
+}
+
 const VOWELS = new Set("AEIOU");
 
 function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, placeholder }: DuelInputProps & { placeholder: string }) {
@@ -94,6 +116,7 @@ export const wordScrambleRaceAdapter: DuelGameAdapter = makeAdapter({
     return null;
   },
   renderGameDisplay({ currentWord }) {
+    // Deterministic display: sort alphabetically (same for both players every render)
     const letters = currentWord.toUpperCase().split("").sort();
     return (
       <div className="text-center space-y-2">
@@ -156,15 +179,16 @@ export const anagramSolverRaceAdapter: DuelGameAdapter = makeAdapter({
   },
   renderGameDisplay({ currentWord }) {
     const seed = currentWord.toUpperCase();
-    const shuffled = seed.split("").sort(() => 0.5 - Math.random()).join("");
+    // Deterministic display: sort alphabetically (same for both players every render)
+    const sorted = seed.split("").sort().join("");
     return (
       <div className="text-center space-y-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Anagram Race</p>
         <p className="text-4xl font-black text-primary tracking-widest font-mono" data-testid="text-current-word">
-          {shuffled}
+          {sorted}
         </p>
         <p className="text-xs text-muted-foreground">
-          Submit words that are anagrams of <strong className="font-mono">{seed}</strong>
+          Submit words that are anagrams of these letters
         </p>
       </div>
     );
@@ -174,32 +198,30 @@ export const anagramSolverRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-stack ────────────────────────────────────────────────────────────────
 
 export const wordStackRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word of the right length…",
+  placeholder: "Type a word ±1 letters from your last…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    const baseLen = parseInt(currentWord, 10);
-    const expectedLen = usedWords.length % 2 === 0 ? baseLen : baseLen + 1;
-    if (upper.length !== expectedLen) {
-      return `Word must be exactly ${expectedLen} letters long`;
+    // currentWord is the seed/starting word; each new word must differ by ±1 from the previous
+    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord;
+    const prevLen = prevWord.length;
+    if (upper.length !== prevLen - 1 && upper.length !== prevLen + 1) {
+      return `Word must be ${prevLen - 1} or ${prevLen + 1} letters (±1 from your last word)`;
     }
     return null;
   },
   renderGameDisplay({ currentWord, usedWords }) {
-    const baseLen = parseInt(currentWord, 10);
-    const nextLen = usedWords.length % 2 === 0 ? baseLen : baseLen + 1;
+    const prevWord = usedWords.length > 0 ? usedWords[usedWords.length - 1] : currentWord;
+    const prevLen = prevWord.length;
     return (
       <div className="text-center space-y-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Word Stack</p>
-        <p className="text-5xl font-black text-primary tabular-nums" data-testid="text-current-word">
-          {nextLen}
+        <p className="text-4xl font-black text-primary tracking-widest font-mono" data-testid="text-current-word">
+          {prevWord}
         </p>
         <p className="text-xs text-muted-foreground">
-          Alternates between <strong>{baseLen}</strong> and <strong>{baseLen + 1}</strong> letter words
-        </p>
-        <p className="text-xs text-primary font-semibold">
-          Next word needs <strong>{nextLen}</strong> letters
+          Next word must be <strong>{prevLen - 1}</strong> or <strong>{prevLen + 1}</strong> letters (±1 from previous)
         </p>
       </div>
     );
@@ -209,31 +231,41 @@ export const wordStackRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── letter-pool ───────────────────────────────────────────────────────────────
 
 export const letterPoolRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word using pool letters…",
+  placeholder: "Type a word using your remaining letters…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    if (!canFormFromPool(upper, currentWord)) return "Word must only use letters from the pool";
+    // Compute remaining letters client-side (best-effort; server is authoritative)
+    const remaining = remainingPool(currentWord, usedWords);
+    if (!remaining) return "Your letter pool is exhausted";
+    if (!canFormFromPool(upper, remaining)) return "Word must only use your remaining letters";
     return null;
   },
-  renderGameDisplay({ currentWord }) {
-    const letters = currentWord.toUpperCase().split("");
+  renderGameDisplay({ currentWord, usedWords }) {
+    // Show remaining letters (subtract all used words' letters from starting pool)
+    const remaining = remainingPool(currentWord, usedWords);
+    const letters = remaining.split("").sort();
     return (
       <div className="text-center space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Letter Pool</p>
-        <div className="flex flex-wrap justify-center gap-1">
-          {letters.map((l, i) => (
-            <Badge
-              key={i}
-              variant={VOWELS.has(l) ? "default" : "secondary"}
-              className="text-base font-black px-2.5 py-0.5 font-mono"
-            >
-              {l}
-            </Badge>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">Make words using these letters (reuse allowed)</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Your Remaining Letters</p>
+        {letters.length > 0 ? (
+          <div className="flex flex-wrap justify-center gap-1">
+            {letters.map((l, i) => (
+              <Badge
+                key={i}
+                variant={VOWELS.has(l) ? "default" : "secondary"}
+                className="text-base font-black px-2.5 py-0.5 font-mono"
+                data-testid={i === 0 ? "text-current-word" : undefined}
+              >
+                {l}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-2xl font-black text-muted-foreground" data-testid="text-current-word">Pool exhausted</p>
+        )}
+        <p className="text-xs text-muted-foreground">Use your remaining letters (letters are consumed)</p>
       </div>
     );
   },
@@ -242,13 +274,13 @@ export const letterPoolRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-maker ────────────────────────────────────────────────────────────────
 
 export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word using letters from the base word…",
+  placeholder: "Type a word whose letters appear in order in the base word…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    if (!canFormFromPool(upper, currentWord)) {
-      return `Word must only use letters from "${currentWord}"`;
+    if (!isSubsequenceOf(upper, currentWord.toUpperCase())) {
+      return `Word letters must appear in order within "${currentWord}"`;
     }
     return null;
   },
@@ -260,7 +292,7 @@ export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
         <p className="text-4xl font-black text-primary tracking-widest font-mono" data-testid="text-current-word">
           {base}
         </p>
-        <p className="text-xs text-muted-foreground">Make words using only letters from <strong>{base}</strong></p>
+        <p className="text-xs text-muted-foreground">Submit words whose letters appear <strong>in order</strong> within <strong>{base}</strong></p>
       </div>
     );
   },
@@ -269,12 +301,14 @@ export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-split ────────────────────────────────────────────────────────────────
 
 export const wordSplitRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word using the compound letters…",
+  placeholder: "Type a word that's part of the compound word…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    if (!canFormFromPool(upper, currentWord)) return "Word must only use letters from the compound word";
+    if (!currentWord.toUpperCase().includes(upper)) {
+      return `Word must be a contiguous part of "${currentWord}"`;
+    }
     return null;
   },
   renderGameDisplay({ currentWord }) {
@@ -291,7 +325,7 @@ export const wordSplitRaceAdapter: DuelGameAdapter = makeAdapter({
           <span>{part2}</span>
         </p>
         <p className="text-xs text-muted-foreground">
-          Make words using letters from <strong>{compound}</strong>
+          Submit words that are <strong>substrings</strong> of <strong>{compound}</strong>
         </p>
       </div>
     );

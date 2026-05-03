@@ -603,6 +603,10 @@ export const duelSessionSchema = z.object({
   gameSlug: z.string(),
   seed: z.number(),
   format: z.enum(["turn", "race"]).optional().default("turn"),
+  /** Target word count for race sessions (null for turn-based). */
+  raceTarget: z.number().nullable().optional(),
+  /** Race time limit in seconds (null for turn-based). */
+  raceTimeLimit: z.number().nullable().optional(),
   outcome: duelSessionOutcomeSchema.nullable(),
   eloDeltaPlayer1: z.number().nullable(),
   eloDeltaPlayer2: z.number().nullable(),

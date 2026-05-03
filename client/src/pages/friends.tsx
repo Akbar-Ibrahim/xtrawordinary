@@ -15,7 +15,7 @@ import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loa
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
-import { SEEDED_GAME_SLUGS } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 
 type EnrichedDuelChallenge = DuelChallenge & {
   challengerName: string | null;
@@ -67,6 +67,13 @@ export default function Friends() {
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
   const [challengeMessage, setChallengeMessage] = useState("");
 
+  const [duelDialogOpen, setDuelDialogOpen] = useState(false);
+  const [duelFriendId, setDuelFriendId] = useState<number | null>(null);
+  const [duelGameSlug, setDuelGameSlug] = useState("");
+  const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
+  const [duelRaceTarget, setDuelRaceTarget] = useState(15);
+  const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(120);
+
   const { data: friends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
@@ -104,6 +111,36 @@ export default function Friends() {
       navigate(`/duel/${data.roomCode}`);
     },
     onError: () => toast({ title: "Error", description: "Could not accept duel.", variant: "destructive" }),
+  });
+
+  const createDuelChallengeMutation = useMutation({
+    mutationFn: async () => {
+      if (!duelFriendId || !duelGameSlug) throw new Error("Missing fields");
+      const body: Record<string, unknown> = {
+        challengeeId: duelFriendId,
+        gameSlug: duelGameSlug,
+        format: duelFormat,
+      };
+      if (duelFormat === "race") {
+        body.raceTarget = duelRaceTarget;
+        body.raceTimeLimit = duelRaceTimeLimit;
+      }
+      const res = await apiRequest("POST", "/api/duels/challenges", body);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed to send duel" }));
+        throw new Error(err.error ?? "Failed to send duel");
+      }
+      return res.json() as Promise<{ roomCode: string }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Duel challenge sent!", description: "Waiting for your friend to accept." });
+      setDuelDialogOpen(false);
+      setDuelGameSlug("");
+      setDuelFormat("turn");
+      queryClient.invalidateQueries({ queryKey: ["/api/duels/challenges"] });
+      navigate(`/duel/${data.roomCode}`);
+    },
+    onError: (err: Error) => toast({ title: "Could not send duel", description: err.message, variant: "destructive" }),
   });
 
   const declineDuelMutation = useMutation({
@@ -350,6 +387,21 @@ export default function Friends() {
                           >
                             <Swords className="h-4 w-4 mr-1" /> Challenge
                           </Button>
+                          <Button
+                            size="sm"
+                            className="bg-violet-600 hover:bg-violet-700 text-white gap-1"
+                            onClick={() => {
+                              setDuelFriendId(f.friendUser.id);
+                              setDuelGameSlug("");
+                              setDuelFormat("turn");
+                              setDuelRaceTarget(15);
+                              setDuelRaceTimeLimit(120);
+                              setDuelDialogOpen(true);
+                            }}
+                            data-testid={`button-duel-${f.friendUser.id}`}
+                          >
+                            <Swords className="h-4 w-4" /> Duel
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => removeMutation.mutate(f.id)} data-testid={`button-remove-${f.friendUser.id}`}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -579,6 +631,112 @@ export default function Friends() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={duelDialogOpen} onOpenChange={setDuelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Swords className="h-5 w-5 text-violet-500" /> Send a Duel Challenge
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Game</label>
+                <Select value={duelGameSlug} onValueChange={(v) => {
+                  setDuelGameSlug(v);
+                  if (DUEL_TURN_SLUGS.has(v) && !DUEL_RACE_SLUGS.has(v)) setDuelFormat("turn");
+                  else if (DUEL_RACE_SLUGS.has(v) && !DUEL_TURN_SLUGS.has(v)) setDuelFormat("race");
+                }}>
+                  <SelectTrigger data-testid="select-duel-game">
+                    <SelectValue placeholder="Select a game" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {games.filter((g) => DUEL_GAME_SLUGS.has(g.slug)).map((g) => (
+                      <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {duelGameSlug && (DUEL_TURN_SLUGS.has(duelGameSlug) || DUEL_RACE_SLUGS.has(duelGameSlug)) && (
+                <div>
+                  <label className="text-sm font-medium">Format</label>
+                  <div className="flex gap-2 mt-1.5">
+                    {DUEL_TURN_SLUGS.has(duelGameSlug) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={duelFormat === "turn" ? "default" : "outline"}
+                        onClick={() => setDuelFormat("turn")}
+                        data-testid="button-format-turn"
+                      >
+                        Turn-Based
+                      </Button>
+                    )}
+                    {DUEL_RACE_SLUGS.has(duelGameSlug) && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={duelFormat === "race" ? "default" : "outline"}
+                        onClick={() => setDuelFormat("race")}
+                        data-testid="button-format-race"
+                      >
+                        Race
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {duelFormat === "race" && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium">Target (words to win)</label>
+                    <Select value={String(duelRaceTarget)} onValueChange={(v) => setDuelRaceTarget(Number(v))}>
+                      <SelectTrigger data-testid="select-race-target">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 15, 20, 25].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} words</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Time limit</label>
+                    <Select value={String(duelRaceTimeLimit)} onValueChange={(v) => setDuelRaceTimeLimit(Number(v))}>
+                      <SelectTrigger data-testid="select-race-time-limit">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[60, 90, 120, 180, 300].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n < 60 ? `${n}s` : `${n / 60} min${n > 60 ? "s" : ""}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              <Button
+                className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+                onClick={() => createDuelChallengeMutation.mutate()}
+                disabled={!duelGameSlug || createDuelChallengeMutation.isPending}
+                data-testid="button-send-duel"
+              >
+                {createDuelChallengeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Swords className="h-4 w-4" />
+                )}
+                Send Duel Challenge
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={challengeDialogOpen} onOpenChange={setChallengeDialogOpen}>
           <DialogContent>

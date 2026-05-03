@@ -66,6 +66,8 @@ export function DuelRaceEngine({
   const prevMsgRef = useRef<DuelServerMessage | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(Date.now());
+  /** Track the last optimistically appended word so we can roll it back on server error. */
+  const pendingWordRef = useRef<string | null>(null);
 
   // Countdown timer display
   useEffect(() => {
@@ -95,6 +97,8 @@ export function DuelRaceEngine({
       case "race:progress": {
         if (msg.userId === userId) {
           setMyCount(msg.count);
+          // Server confirmed the move — clear pending so rollback won't fire
+          pendingWordRef.current = null;
         } else {
           setOpponentCount(msg.count);
         }
@@ -156,6 +160,12 @@ export function DuelRaceEngine({
       }
 
       case "error": {
+        // Rollback any optimistic word append that the server rejected
+        if (pendingWordRef.current !== null) {
+          const rejected = pendingWordRef.current;
+          pendingWordRef.current = null;
+          setMyWords((prev) => prev.filter((w) => w !== rejected));
+        }
         setFeedback(msg.message);
         setTimeout(() => setFeedback(null), 3000);
         break;
@@ -185,7 +195,8 @@ export function DuelRaceEngine({
       return;
     }
 
-    // Optimistic update
+    // Optimistic update (track pending so we can roll back on server error)
+    pendingWordRef.current = upper;
     setMyWords((prev) => [...prev, upper]);
     setFeedback(null);
 

@@ -36,31 +36,40 @@ const DUEL_POSITIONS = [2, 3, 4, 5];
 
 // ── Race-format game constants ─────────────────────────────────────────────
 
-/** Letter pools for word-scramble / word-maker / letter-pool / word-split race modes.
- *  Each string contains the available letters for the round. */
+/** 6-letter pools for word-scramble race mode. */
 const RACE_SCRAMBLE_POOLS = [
-  "PLANETS", "GARDENS", "FICTION", "HORIZON",
-  "CABINET", "WINDOWS", "MONSTER", "CHAPTER",
-  "PYRAMID", "DIGITAL", "BLANKET", "COMFORT",
+  "PLANET", "GARDEN", "CASTLE", "BRIDGE",
+  "MARKET", "FINGER", "BUCKET", "CANDLE",
+  "CARPET", "GRAVEL", "BRANCH", "CINDER",
 ];
 const RACE_ANAGRAM_WORDS = [
   "STONE", "TRACE", "PARTS", "SNARE", "TEARS",
   "REINS", "NOTES", "STEAM", "STARE", "PEARS",
   "CRATE", "RATES", "TALES", "LEAST", "EARNS",
 ];
+/** 12-letter pools for letter-pool race mode. */
 const RACE_LETTER_POOLS = [
-  "RSTLNEAIOUM", "GRIMSTONAED", "BLAKETROUND", "FLOWERSCAPE",
-  "AEIOUPLMNST", "PRINTEDCARS", "SHAKEGROUND", "CLOUDSTREAM",
+  "RSTLNEAIOUMB", "GRIMSTONAEDP", "BLAKETROUNDA", "FLOWERSCAPEI",
+  "AEIOUPLMNSTR", "PRINTEDCARSH", "SHAKEGROUNDL", "CLOUDSTREAMN",
+  "TRAILSPONDEK", "BRAVECOASTNI", "FLOCKSTANDRE", "WINDYPLASOME",
 ];
+/** Starting words for word-maker race mode (players submit ordered subsequences). */
 const RACE_MAKER_WORDS = [
   "PLANETS", "HISTORY", "CABINET", "TRADING",
   "BLANKET", "CHAPTER", "MYSTERY", "DRAGONS",
   "PARKING", "COUNTRY", "GARDENS", "WINTERS",
 ];
+/** Compound words for word-split race mode (players submit substrings). */
 const RACE_SPLIT_WORDS = [
   "SUNFLOWER", "STARLIGHT", "BLACKBIRD", "FIREWORKS",
   "AFTERNOON", "BUTTERFLY", "MOONLIGHT", "SNOWFLAKE",
   "CLASSROOM", "FOOTPRINT", "HANDCRAFT", "DAYDREAMS",
+];
+/** Starting words for word-stack race mode (each word must differ by ±1 letter in length). */
+const RACE_STACK_WORDS = [
+  "APPLE", "FLAME", "CHESS", "STONE", "CRISP",
+  "FABLE", "GRADE", "PLANT", "SPINE", "TROVE",
+  "DRIVE", "CABLE",
 ];
 
 /** Category word sets for definition-match race mode. */
@@ -108,13 +117,13 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     case "word-scramble":
       return RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length].toUpperCase();
     case "no-repeats":
-      // min length 4–6 driven by seed
-      return String(4 + (seed % 3));
+      // min length 4–7 driven by seed
+      return String(4 + (seed % 4));
     case "anagram-solver":
       return RACE_ANAGRAM_WORDS[seed % RACE_ANAGRAM_WORDS.length].toUpperCase();
     case "word-stack":
-      // starting word length: 4 or 5
-      return String(4 + (seed % 2));
+      // starting word for word-stack (subsequent words must differ by ±1 letter)
+      return RACE_STACK_WORDS[seed % RACE_STACK_WORDS.length].toUpperCase();
     case "letter-pool":
       return RACE_LETTER_POOLS[seed % RACE_LETTER_POOLS.length].toUpperCase();
     case "word-maker":
@@ -137,6 +146,29 @@ function canFormFromPool(word: string, pool: string): boolean {
   for (const c of word.toUpperCase()) {
     if (!counts[c] || counts[c] <= 0) return false;
     counts[c]--;
+  }
+  return true;
+}
+
+/** Deduct word letters from pool string. Returns the remaining pool. */
+function deductFromPool(word: string, pool: string): string {
+  const counts: Record<string, number> = {};
+  for (const c of pool.toUpperCase()) counts[c] = (counts[c] ?? 0) + 1;
+  for (const c of word.toUpperCase()) {
+    if (counts[c]) counts[c]--;
+  }
+  let remaining = "";
+  for (const [c, n] of Object.entries(counts)) remaining += c.repeat(n);
+  return remaining;
+}
+
+/** Check whether word is an ordered subsequence of base (letters appear in order). */
+function isSubsequenceOf(word: string, base: string): boolean {
+  let bi = 0;
+  for (let wi = 0; wi < word.length; wi++) {
+    while (bi < base.length && base[bi] !== word[wi]) bi++;
+    if (bi >= base.length) return false;
+    bi++;
   }
   return true;
 }
@@ -198,6 +230,8 @@ type DuelRoom = {
   raceTimeLimitMs: number;
   /** Race: per-player valid word counts (userId → count). */
   countsPerPlayer: Map<number, number>;
+  /** Race: per-player remaining letter pool (userId → pool string). Used by letter-pool. */
+  racePoolPerPlayer: Map<number, string>;
   /** Race: server-side timer handle for the time-limit fallback. */
   raceTimerHandle: ReturnType<typeof setTimeout> | null;
   /** Timestamp (ms) when race started; used to broadcast remaining time. */
@@ -286,6 +320,8 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
       gameSlug: room.gameSlug,
       seed: room.seed,
       format: room.format,
+      raceTarget: room.format === "race" ? room.raceTarget : null,
+      raceTimeLimit: room.format === "race" ? Math.round(room.raceTimeLimitMs / 1000) : null,
       outcome,
       eloDeltaPlayer1: delta1,
       eloDeltaPlayer2: delta2,
@@ -375,6 +411,7 @@ export class DuelRoomRegistry {
       raceTarget,
       raceTimeLimitMs: raceTimeLimitSecs * 1000,
       countsPerPlayer: new Map(),
+      racePoolPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
     };
@@ -428,6 +465,7 @@ export class DuelRoomRegistry {
       raceTarget,
       raceTimeLimitMs: raceTimeLimitSecs * 1000,
       countsPerPlayer: new Map(),
+      racePoolPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
     };
@@ -589,6 +627,10 @@ export class DuelRoomRegistry {
       for (const pid of Array.from(room.players.keys())) {
         room.livesPerPlayer.set(pid, INITIAL_LIVES);
         room.countsPerPlayer.set(pid, 0);
+        // Initialize per-player letter pool for letter-pool game
+        if (room.gameSlug === "letter-pool") {
+          room.racePoolPerPlayer.set(pid, room.startWord);
+        }
       }
       // Initialize authoritative game state
       room.currentWord = room.startWord;
@@ -795,6 +837,12 @@ export class DuelRoomRegistry {
     const newCount = (room.countsPerPlayer.get(fromUserId) ?? 0) + 1;
     room.countsPerPlayer.set(fromUserId, newCount);
 
+    // letter-pool: deduct used letters from player's remaining pool
+    if (slug === "letter-pool") {
+      const remaining = deductFromPool(submittedWord, room.racePoolPerPlayer.get(fromUserId) ?? room.startWord);
+      room.racePoolPerPlayer.set(fromUserId, remaining);
+    }
+
     // Broadcast progress to both players
     for (const p2 of Array.from(room.players.values())) {
       send(p2.ws, { type: "race:progress", userId: fromUserId, count: newCount });
@@ -843,10 +891,27 @@ export class DuelRoomRegistry {
         const typeName = type === "V" ? "vowel" : "consonant";
         return `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
       }
-    } else if (slug === "word-scramble" || slug === "letter-pool" || slug === "word-maker" || slug === "word-split") {
-      // Pool-based: word must be formable from the pool letters
+    } else if (slug === "word-scramble") {
+      // Pool-based: word must be formable from the static letter pool
       if (!canFormFromPool(word, room.startWord)) {
         return "Word must only use letters from the pool";
+      }
+    } else if (slug === "letter-pool") {
+      // Player-specific: word must be formable from this player's REMAINING pool
+      const remainingPool = room.racePoolPerPlayer.get(userId) ?? room.startWord;
+      if (!remainingPool) return "Your letter pool is exhausted";
+      if (!canFormFromPool(word, remainingPool)) {
+        return "Word must only use your remaining letters";
+      }
+    } else if (slug === "word-maker") {
+      // Ordered subsequence: letters must appear in the same order as in the base word
+      if (!isSubsequenceOf(word, room.startWord)) {
+        return `Word letters must appear in order within "${room.startWord}"`;
+      }
+    } else if (slug === "word-split") {
+      // Substring: word must be a contiguous part of the compound target
+      if (!room.startWord.includes(word)) {
+        return `Word must be a part of "${room.startWord}"`;
       }
     } else if (slug === "no-repeats") {
       const minLen = parseInt(room.startWord, 10);
@@ -860,11 +925,11 @@ export class DuelRoomRegistry {
         return `Word must be an anagram of "${room.startWord}"`;
       }
     } else if (slug === "word-stack") {
-      const baseLen = parseInt(room.startWord, 10);
-      const playerWordCount = myWords.length;
-      const expectedLen = playerWordCount % 2 === 0 ? baseLen : baseLen + 1;
-      if (word.length !== expectedLen) {
-        return `Word must be exactly ${expectedLen} letters long`;
+      // Each word must differ by ±1 letter in length from the player's previous word
+      const prevWord = myWords.length > 0 ? myWords[myWords.length - 1] : room.startWord;
+      const prevLen = prevWord.length;
+      if (word.length !== prevLen - 1 && word.length !== prevLen + 1) {
+        return `Word must be ${prevLen - 1} or ${prevLen + 1} letters (±1 from your last word)`;
       }
     } else if (slug === "definition-match") {
       const categoryWords = DEFINITION_CATEGORIES[room.startWord] ?? new Set<string>();
