@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -30,6 +30,9 @@ export class MemStorage implements IStorage {
   private duelSessionIdCounter = 1;
   private duelRatings: DuelRating[] = [];
   private duelRatingIdCounter = 1;
+
+  private notifications: Notification[] = [];
+  private notificationIdCounter = 1;
 
   constructor() {
     this.games = gamesData;
@@ -1517,5 +1520,43 @@ export class MemStorage implements IStorage {
     const entry = all.find(e => e.userId === userId);
     if (!entry) return null;
     return { rank: entry.rank, totalPlayers: all.length };
+  }
+
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const notif: Notification = {
+      ...data,
+      id: this.notificationIdCounter++,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.notifications.push(notif);
+    return notif;
+  }
+
+  async getNotifications(userId: number, limit = 30): Promise<Notification[]> {
+    return this.notifications
+      .filter(n => n.userId === userId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    return this.notifications.filter(n => n.userId === userId && n.readAt === null).length;
+  }
+
+  async markNotificationRead(id: number, userId: number): Promise<void> {
+    const notif = this.notifications.find(n => n.id === id && n.userId === userId);
+    if (notif && notif.readAt === null) {
+      notif.readAt = new Date().toISOString();
+    }
+  }
+
+  async markAllNotificationsRead(userId: number): Promise<void> {
+    const now = new Date().toISOString();
+    for (const n of this.notifications) {
+      if (n.userId === userId && n.readAt === null) {
+        n.readAt = now;
+      }
+    }
   }
 }

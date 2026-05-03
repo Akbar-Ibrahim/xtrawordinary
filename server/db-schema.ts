@@ -368,3 +368,18 @@ export const duelRatings = mysqlTable("duel_ratings", {
 }, (table) => [
   index("dr_user_id_idx").on(table.userId),
 ]);
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body").notNull(),
+  linkUrl: varchar("link_url", { length: 500 }),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("notif_user_id_idx").on(table.userId),
+  index("notif_user_read_idx").on(table.userId, table.readAt),
+  index("notif_created_at_idx").on(table.createdAt),
+]);

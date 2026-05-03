@@ -8,13 +8,15 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useToast } from "@/hooks/use-toast";
 import { useDuelNotifications } from "@/lib/duel-notifications-context";
+import type { Notification } from "@shared/schema";
 
 function slugToTitle(slug: string): string {
   return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -29,6 +31,32 @@ type IncomingDuelChallenge = {
   challengerAvatarUrl: string | null;
   roomCode: string | null;
 };
+
+const NOTIF_ICONS: Record<string, React.ReactNode> = {
+  group_join: <UserPlus className="h-4 w-4 text-emerald-500" />,
+  comment_reply: <MessageSquare className="h-4 w-4 text-sky-500" />,
+  group_round_start: <PlayCircle className="h-4 w-4 text-violet-500" />,
+  duel_accepted: <Swords className="h-4 w-4 text-orange-500" />,
+  friend_challenge_result: <Trophy className="h-4 w-4 text-primary" />,
+};
+
+const NOTIF_BG: Record<string, string> = {
+  group_join: "bg-emerald-500/10",
+  comment_reply: "bg-sky-500/10",
+  group_round_start: "bg-violet-500/10",
+  duel_accepted: "bg-orange-500/10",
+  friend_challenge_result: "bg-primary/10",
+};
+
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export function Navigation() {
   const [location, navigate] = useLocation();
@@ -69,6 +97,35 @@ export function Navigation() {
   });
   const incomingDuelCount = incomingDuels.length;
 
+  const { data: dbNotifications = [] } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  const { data: dbUnreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+  const dbUnreadCount = dbUnreadData?.count ?? 0;
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/notifications/${id}/read`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
+  const markAllReadMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/notifications/read-all"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
   const prevToastedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -103,7 +160,7 @@ export function Navigation() {
     }
   }, [newlyAccepted]);
 
-  const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount;
+  const totalNotificationCount = unreadCount + incomingDuelCount + unseenCount + dbUnreadCount;
 
   const firstUnseenRoom: string | null =
     unseenCount > 0
@@ -144,6 +201,12 @@ export function Navigation() {
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },
   ];
+
+  const hasAnyNotifications =
+    incomingDuels.length > 0 ||
+    unseenChallenges.length > 0 ||
+    unreadCount > 0 ||
+    dbNotifications.length > 0;
 
   return (
     <>
@@ -255,15 +318,23 @@ export function Navigation() {
                 <PopoverContent align="end" className="w-80 p-0" data-testid="panel-notifications">
                   <div className="flex items-center justify-between px-4 py-3 border-b">
                     <span className="font-semibold text-sm">Notifications</span>
-                    {totalNotificationCount > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {totalNotificationCount} new
-                      </span>
+                    {(dbUnreadCount > 0 || totalNotificationCount > 0) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground px-2"
+                        onClick={() => markAllReadMutation.mutate()}
+                        disabled={markAllReadMutation.isPending}
+                        data-testid="button-mark-all-read"
+                      >
+                        <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                        Mark all read
+                      </Button>
                     )}
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto">
-                    {totalNotificationCount === 0 ? (
+                  <div className="max-h-96 overflow-y-auto">
+                    {!hasAnyNotifications ? (
                       <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
                         <CheckCheck className="h-8 w-8 opacity-40" />
                         <p className="text-sm">You're all caught up!</p>
@@ -361,6 +432,41 @@ export function Navigation() {
                               </div>
                               <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />
                             </button>
+                          </div>
+                        )}
+
+                        {dbNotifications.length > 0 && (
+                          <div>
+                            {(incomingDuels.length > 0 || unseenChallenges.length > 0 || unreadCount > 0) && (
+                              <div className="mx-4 my-1 border-t" />
+                            )}
+                            {dbNotifications.map((notif) => {
+                              const isUnread = notif.readAt === null;
+                              return (
+                                <button
+                                  key={notif.id}
+                                  className={`w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3 ${isUnread ? "bg-muted/20" : ""}`}
+                                  onClick={() => {
+                                    if (isUnread) markReadMutation.mutate(notif.id);
+                                    setBellOpen(false);
+                                    if (notif.linkUrl) navigate(notif.linkUrl);
+                                  }}
+                                  data-testid={`notification-db-${notif.id}`}
+                                >
+                                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${NOTIF_BG[notif.type] ?? "bg-muted"}`}>
+                                    {NOTIF_ICONS[notif.type] ?? <Bell className="h-4 w-4 text-muted-foreground" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium leading-snug">{notif.title}</p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">{notif.body}</p>
+                                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">{timeAgo(notif.createdAt)}</p>
+                                  </div>
+                                  {isUnread && (
+                                    <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" data-testid={`dot-unread-${notif.id}`} />
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

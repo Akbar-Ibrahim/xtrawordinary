@@ -635,6 +635,32 @@ export const duelRatingSchema = z.object({
 });
 export type DuelRating = z.infer<typeof duelRatingSchema>;
 
+// ==================== NOTIFICATIONS ====================
+
+export const notificationTypeSchema = z.enum([
+  "group_join",
+  "comment_reply",
+  "group_round_start",
+  "duel_accepted",
+  "friend_challenge_result",
+]);
+export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const notificationSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  type: notificationTypeSchema,
+  title: z.string(),
+  body: z.string(),
+  linkUrl: z.string().nullable(),
+  readAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type Notification = z.infer<typeof notificationSchema>;
+
+export const insertNotificationSchema = notificationSchema.omit({ id: true, createdAt: true, readAt: true });
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
 // ==================== CHALLENGES ====================
 
 export const SEEDED_GAME_SLUGS = new Set([

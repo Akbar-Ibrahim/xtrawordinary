@@ -42,6 +42,10 @@ A groups feature allows users to create/join groups. Group admins can start "rou
 A polymorphic likes system allows signed-in users to like games and comments.
 A polymorphic comment system allows signed-in users to comment on games and group rounds, supporting replies, soft delete, and reporting.
 
+### In-App Notification System
+A persistent, DB-backed notification system delivers alerts for key events to signed-in users. Notification types: `group_join` (owner notified when member joins), `comment_reply` (parent commenter notified on reply), `group_round_start` (all members notified when a round starts), `duel_accepted` (challenger notified when duel is accepted), `friend_challenge_result` (sender notified when receiver completes a challenge).
+The `notifications` table stores id, userId, type, title, body, linkUrl, readAt, createdAt with indexed queries for fast per-user lookups. API: `GET /api/notifications`, `GET /api/notifications/unread-count`, `PATCH /api/notifications/:id/read`, `POST /api/notifications/read-all`. The bell icon in the navigation shows the combined unread badge (DB notifications + real-time duel notifications). Each notification row has type-specific icon/color coding and a "Mark all read" button.
+
 ### Admin Dashboard
 An admin dashboard provides analytics, user management (ban/unban, admin status, premium status toggle), leaderboard entry management, and moderation of reported comments. Access is restricted to `isAdmin: true` users.
 

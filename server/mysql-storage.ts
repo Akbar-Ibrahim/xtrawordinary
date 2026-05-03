@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1659,5 +1659,62 @@ export class MySQLStorage implements IStorage {
     const entry = all.find(e => e.userId === userId);
     if (!entry) return null;
     return { rank: entry.rank, totalPlayers: all.length };
+  }
+
+  private mapNotification(row: any): Notification {
+    return {
+      id: row.id,
+      userId: row.userId,
+      type: row.type,
+      title: row.title,
+      body: row.body,
+      linkUrl: row.linkUrl ?? null,
+      readAt: row.readAt instanceof Date ? row.readAt.toISOString() : (row.readAt ? String(row.readAt) : null),
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.notifications).values({
+      userId: data.userId,
+      type: data.type,
+      title: data.title,
+      body: data.body,
+      linkUrl: data.linkUrl ?? null,
+    });
+    const rows = await db.select().from(schema.notifications).where(eq(schema.notifications.id, result[0].insertId)).limit(1);
+    return this.mapNotification(rows[0]);
+  }
+
+  async getNotifications(userId: number, limit = 30): Promise<Notification[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.notifications)
+      .where(eq(schema.notifications.userId, userId))
+      .orderBy(desc(schema.notifications.createdAt))
+      .limit(limit);
+    return rows.map((r: any) => this.mapNotification(r));
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const db = await this.getDb();
+    const rows = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)));
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  async markNotificationRead(id: number, userId: number): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.notifications)
+      .set({ readAt: new Date() })
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)));
+  }
+
+  async markAllNotificationsRead(userId: number): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.notifications)
+      .set({ readAt: new Date() })
+      .where(and(eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)));
   }
 }

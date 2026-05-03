@@ -1385,6 +1385,20 @@ export async function registerRoutes(
       if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Not your challenge" });
       if (challenge.status === "completed") return res.status(400).json({ error: "Challenge already completed" });
       const updated = await storage.completeFriendChallenge(id, score);
+      // Notify the challenge sender that results are ready
+      if (challenge.senderId && challenge.senderId !== req.user!.id) {
+        try {
+          const receiverName = (req.user as any).name as string;
+          const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          storage.createNotification({
+            userId: challenge.senderId,
+            type: "friend_challenge_result",
+            title: "Challenge result ready",
+            body: `${receiverName} completed your ${gameTitle} challenge`,
+            linkUrl: "/friends?tab=challenges",
+          }).catch(() => {});
+        } catch {}
+      }
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to complete challenge" });
@@ -1696,6 +1710,16 @@ export async function registerRoutes(
       if (existing) return res.status(409).json({ error: "Already a member" });
       await storage.addGroupMember(group.id, userId, "member");
       await storage.logGroupActivity(group.id, userId, "joined", { name: (req.user as any).name });
+      // Notify group owner that someone joined
+      if (group.createdById && group.createdById !== userId) {
+        storage.createNotification({
+          userId: group.createdById,
+          type: "group_join",
+          title: "New member joined your group",
+          body: `${(req.user as any).name} joined "${group.name}"`,
+          linkUrl: `/groups/${group.id}`,
+        }).catch(() => {});
+      }
       res.json(group);
     } catch {
       res.status(500).json({ error: "Failed to join group" });
@@ -1715,6 +1739,16 @@ export async function registerRoutes(
       if (existing) return res.status(409).json({ error: "Already a member" });
       await storage.addGroupMember(groupId, userId, "member");
       await storage.logGroupActivity(groupId, userId, "joined", { name: (req.user as any).name });
+      // Notify group owner that someone joined
+      if (group.createdById && group.createdById !== userId) {
+        storage.createNotification({
+          userId: group.createdById,
+          type: "group_join",
+          title: "New member joined your group",
+          body: `${(req.user as any).name} joined "${group.name}"`,
+          linkUrl: `/groups/${groupId}`,
+        }).catch(() => {});
+      }
       res.json(group);
     } catch {
       res.status(500).json({ error: "Failed to join group" });
@@ -1921,6 +1955,24 @@ export async function registerRoutes(
         gameConfig: configJson,
       });
       await storage.logGroupActivity(groupId, userId, "round_started", { gameSlug: slug, roundId: round.id, name: (req.user as any).name });
+      // Notify all group members (except the creator) about the new round
+      try {
+        const group = await storage.getGroup(groupId);
+        const members = await storage.getGroupMembers(groupId);
+        const creatorName = (req.user as any).name as string;
+        const gameTitle = slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        for (const m of members) {
+          if (m.userId !== userId) {
+            storage.createNotification({
+              userId: m.userId,
+              type: "group_round_start",
+              title: "New group round started",
+              body: `${creatorName} started a ${gameTitle} round in "${group?.name ?? "your group"}"`,
+              linkUrl: `/groups/${groupId}`,
+            }).catch(() => {});
+          }
+        }
+      } catch {}
       res.status(201).json(round);
     } catch {
       res.status(500).json({ error: "Failed to create round" });
@@ -2220,6 +2272,24 @@ export async function registerRoutes(
         parentId: resolvedParentId,
         content: trimmed,
       });
+      // Notify the parent comment author about the reply
+      if (resolvedParentId !== null) {
+        try {
+          const allComments = await storage.getComments(targetType, String(targetId));
+          const flat = [...allComments, ...allComments.flatMap(c => c.replies ?? [])];
+          const parent = flat.find(c => c.id === resolvedParentId);
+          if (parent && parent.userId !== userId) {
+            const commenterName = (req.user as any).name as string;
+            storage.createNotification({
+              userId: parent.userId,
+              type: "comment_reply",
+              title: "Someone replied to your comment",
+              body: `${commenterName}: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}"`,
+              linkUrl: targetType === "game" ? `/games/${targetId}` : null,
+            }).catch(() => {});
+          }
+        } catch {}
+      }
       res.status(201).json(comment);
     } catch {
       res.status(500).json({ error: "Failed to create comment" });
@@ -2696,6 +2766,18 @@ export async function registerRoutes(
       } else {
         updated = await storage.updateDuelChallengeStatus(id, "accepted", roomCode ?? undefined);
       }
+      // Notify the challenger that their challenge was accepted
+      try {
+        const accepterName = (req.user as any).name as string;
+        const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        storage.createNotification({
+          userId: challenge.challengerId,
+          type: "duel_accepted",
+          title: "Duel challenge accepted!",
+          body: `${accepterName} accepted your ${gameTitle} duel`,
+          linkUrl: roomCode ? `/duel/${roomCode}` : "/duels",
+        }).catch(() => {});
+      } catch {}
       res.json({ ...updated, roomCode });
     } catch (err) {
       console.error(err);
@@ -2864,6 +2946,46 @@ export async function registerRoutes(
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to fetch duel sessions" });
+    }
+  });
+
+  // ==================== NOTIFICATIONS ====================
+
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const notifications = await storage.getNotifications(req.user!.id, 30);
+      res.json(notifications);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.user!.id);
+      res.json({ count });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      await storage.markNotificationRead(id, req.user!.id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Failed to mark notification read" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", requireAuth, async (req, res) => {
+    try {
+      await storage.markAllNotificationsRead(req.user!.id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Failed to mark all notifications read" });
     }
   });
 
