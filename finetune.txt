@@ -59,92 +59,53 @@ DAILY & STREAKS
    same seed, building a daily all-time leaderboard. Fits naturally
    alongside the existing daily challenge.
 
-8. Streak Visualization on the Stats Page
-   The streak system exists in the backend but the stats page could show
-   a heatmap calendar (like GitHub contributions) to make streaks feel
-   more satisfying.
-
 ────────────────────────────────────────────────────────────
 DISCOVERY & ONBOARDING
 ────────────────────────────────────────────────────────────
 
-9. Game Search and Filtering on the Home Page
-   With 23 games, new users may feel overwhelmed. A search bar, difficulty
-   filter, and "popular this week" sort would help them find games they
-   enjoy faster.
-
-10. Improved Onboarding Flow
-    New users currently land on the home grid with no guidance. A short
-    "pick your first game" wizard or a welcome banner for new accounts
-    would reduce drop-off.
-
-────────────────────────────────────────────────────────────
-SOCIAL & COMMUNITY
-────────────────────────────────────────────────────────────
-
-11. In-App Notifications Panel
-    Friend requests, group invites, challenge results, and comment replies
-    currently require the user to navigate to the right page. A
-    notification bell in the nav with a dropdown would surface these
-    without disruption.
-
-    Current state: notifications are fragmented — duel challenge alerts
-    live in the Duels lobby, friend challenge unread counts require
-    visiting Friends, and group/comment events are invisible entirely.
-    The nav already combines counts into a dot badge but has no panel.
-
-    Two build scopes:
-
-    Lightweight (small — ~half day):
-    Unify existing data sources (duel alerts, friend challenge unread
-    count) into a single bell icon dropdown in the nav. No new DB tables.
-    Quick win, but group/comment events remain uncovered.
-
-    Full system (medium — 1–2 days):
-    New `notifications` table (MemStorage + MySQLStorage required).
-    Server-side notification creation on all meaningful events: group
-    invites, comment replies, group round starts/ends, duel accepted,
-    friend challenge result. Bell icon with a real panel, mark-as-read
-    support, and notification history. Covers everything properly.
+8. Improved Onboarding Flow
+   New users currently land on the home grid with no guidance. A short
+   "pick your first game" wizard or a welcome banner for new accounts
+   would reduce drop-off.
 
 ────────────────────────────────────────────────────────────
 NEW DUEL GAMES
 ────────────────────────────────────────────────────────────
 
-12. Ladder Rush Duel & Ladder Rush: Double Swap Duel
-    Turn-based duel format for both Ladder Rush games. Both players share
-    a single word chain: Player A enters a word, Player B must respond
-    with a valid word that differs by exactly 1 letter (or 2 for Double
-    Swap), and so on. The chain is visible to both players at all times.
+9. Ladder Rush Duel & Ladder Rush: Double Swap Duel
+   Turn-based duel format for both Ladder Rush games. Both players share
+   a single word chain: Player A enters a word, Player B must respond
+   with a valid word that differs by exactly 1 letter (or 2 for Double
+   Swap), and so on. The chain is visible to both players at all times.
 
-    Strategic layer: players are incentivised to use obscure words to
-    make it as hard as possible for their opponent to form a valid
-    next word. This is unique in the duel roster — every other duel
-    game tests speed or accuracy; this one rewards vocabulary depth
-    and cunning. The dynamic is closer to chess than to a reflex game.
+   Strategic layer: players are incentivised to use obscure words to
+   make it as hard as possible for their opponent to form a valid
+   next word. This is unique in the duel roster — every other duel
+   game tests speed or accuracy; this one rewards vocabulary depth
+   and cunning. The dynamic is closer to chess than to a reflex game.
 
-    Design decisions:
-    - Starting word: server-assigned randomly at game start (must be
-      neutral — neither player picks it to prevent opener advantage).
-    - Word length: chosen in the challenge dialog (4, 5, or 6 letters),
-      same as how race games expose target/time-limit pickers.
-    - Losing condition: can't form a valid word within the 8-second
-      turn timer → lose a life. 3 lives lost = game over. Same as all
-      existing turn-based duel games.
-    - No-repeat rule: a word already in the chain cannot be used again.
-    - Format: Turn-Based only (Race format does not apply — the chain
-      is shared state so simultaneous play makes no sense).
+   Design decisions:
+   - Starting word: server-assigned randomly at game start (must be
+     neutral — neither player picks it to prevent opener advantage).
+   - Word length: chosen in the challenge dialog (4, 5, or 6 letters),
+     same as how race games expose target/time-limit pickers.
+   - Losing condition: can't form a valid word within the 8-second
+     turn timer → lose a life. 3 lives lost = game over. Same as all
+     existing turn-based duel games.
+   - No-repeat rule: a word already in the chain cannot be used again.
+   - Format: Turn-Based only (Race format does not apply — the chain
+     is shared state so simultaneous play makes no sense).
 
-    Technical notes:
-    - The validate-word endpoint already exists and handles dictionary
-      lookups, so server-side word checking is covered.
-    - The isNLetterDiff function in ladder-rush.tsx uses letter-frequency
-      comparison rather than positional comparison. Works correctly in
-      the vast majority of cases but worth a close review for edge cases
-      with repeated letters before shipping the duel version.
-    - Both games can be added to DUEL_TURN_SLUGS in shared/schema.ts
-      as new slugs alongside a corresponding duel adapter in the turn
-      engine.
+   Technical notes:
+   - The validate-word endpoint already exists and handles dictionary
+     lookups, so server-side word checking is covered.
+   - The isNLetterDiff function in ladder-rush.tsx uses letter-frequency
+     comparison rather than positional comparison. Works correctly in
+     the vast majority of cases but worth a close review for edge cases
+     with repeated letters before shipping the duel version.
+   - Both games can be added to DUEL_TURN_SLUGS in shared/schema.ts
+     as new slugs alongside a corresponding duel adapter in the turn
+     engine.
 
 ────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
@@ -154,5 +115,4 @@ PRIORITY ORDER (highest user impact first)
   2. Duel Achievements           — makes duel investment pay off in engagement
   3. Ladder Rush Duel            — novel strategic mechanic, clean fit for turn engine
   4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
-  5. In-App Notifications        — ties all social features together
-  6. Game Search / Filtering     — helps new users find games faster
+  5. Improved Onboarding         — reduces drop-off for new users
