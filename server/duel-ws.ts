@@ -25,6 +25,30 @@ const DUEL_START_WORDS = [
   "WATER", "YIELD",
 ];
 
+/** Target letters used for Letter Hunt and Letter Frequency duels. */
+const DUEL_HUNT_LETTERS = ["R", "T", "L", "S", "N", "M", "B", "D", "F", "G", "P", "C"];
+/** Word-length targets (as strings) used for Word Length duels. */
+const DUEL_WORD_LENGTHS = ["4", "5", "6", "7"];
+
+/**
+ * Returns the game-specific constraint string stored in `startWord` for a room.
+ * - word-chain      → a seed word (e.g. "APPLE")
+ * - letter-hunt     → a target letter (e.g. "R")
+ * - letter-frequency→ a target letter (e.g. "T")
+ * - word-length     → a target length string (e.g. "5")
+ */
+function getDuelGameInit(gameSlug: string, seed: number): string {
+  switch (gameSlug) {
+    case "letter-hunt":
+    case "letter-frequency":
+      return DUEL_HUNT_LETTERS[seed % DUEL_HUNT_LETTERS.length];
+    case "word-length":
+      return DUEL_WORD_LENGTHS[seed % DUEL_WORD_LENGTHS.length];
+    default:
+      return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+  }
+}
+
 function generateRoomCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
@@ -216,7 +240,7 @@ export class DuelRoomRegistry {
     } while (this.rooms.has(roomCode));
 
     const seed = Math.floor(Math.random() * 1_000_000);
-    const startWord = DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+    const startWord = getDuelGameInit(gameSlug, seed);
 
     const room: DuelRoom = {
       roomCode,
@@ -230,7 +254,7 @@ export class DuelRoomRegistry {
       livesPerPlayer: new Map(),
       wordsPerPlayer: new Map(),
       currentWord: startWord,
-      usedWords: [startWord],
+      usedWords: gameSlug === "word-chain" ? [startWord] : [],
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
@@ -261,7 +285,7 @@ export class DuelRoomRegistry {
     if (existing) return existing;
 
     const seed = persistedSeed ?? Math.floor(Math.random() * 1_000_000);
-    const startWord = persistedStartWord ?? DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
+    const startWord = persistedStartWord ?? getDuelGameInit(gameSlug, seed);
     const room: DuelRoom = {
       roomCode,
       players: new Map(),
@@ -274,7 +298,7 @@ export class DuelRoomRegistry {
       livesPerPlayer: new Map(),
       wordsPerPlayer: new Map(),
       currentWord: startWord,
-      usedWords: [startWord],
+      usedWords: gameSlug === "word-chain" ? [startWord] : [],
       currentTurnUserId: null,
       finalized: false,
       countdownStartAt: null,
@@ -471,13 +495,24 @@ export class DuelRoomRegistry {
       if (p.type === "word" && typeof p.word === "string") {
         const submittedWord = p.word.toUpperCase().trim();
 
-        // --- Starting-letter constraint ---
-        const requiredLetter = room.currentWord[room.currentWord.length - 1];
-        if (!submittedWord.startsWith(requiredLetter)) {
-          return {
-            triggered: false,
-            error: `Word must start with "${requiredLetter}"`,
-          };
+        // --- Game-specific constraint check ---
+        const slug = room.gameSlug;
+        if (slug === "letter-hunt" || slug === "letter-frequency") {
+          const targetLetter = room.startWord.toUpperCase();
+          if (!submittedWord.includes(targetLetter)) {
+            return { triggered: false, error: `Word must contain the letter "${targetLetter}"` };
+          }
+        } else if (slug === "word-length") {
+          const targetLen = parseInt(room.startWord, 10);
+          if (submittedWord.length !== targetLen) {
+            return { triggered: false, error: `Word must be exactly ${targetLen} letters long` };
+          }
+        } else {
+          // word-chain: starting-letter constraint
+          const requiredLetter = room.currentWord[room.currentWord.length - 1];
+          if (!submittedWord.startsWith(requiredLetter)) {
+            return { triggered: false, error: `Word must start with "${requiredLetter}"` };
+          }
         }
 
         // --- Duplicate constraint ---
@@ -491,7 +526,9 @@ export class DuelRoomRegistry {
         }
 
         // Move is valid — update authoritative state and relay to opponent
-        room.currentWord = submittedWord;
+        // For word-chain, currentWord advances to the new word.
+        // For other games, currentWord holds the static constraint and never changes.
+        if (slug === "word-chain") room.currentWord = submittedWord;
         room.usedWords = [...room.usedWords, submittedWord];
         const senderWords = room.wordsPerPlayer.get(fromUserId) ?? [];
         room.wordsPerPlayer.set(fromUserId, [...senderWords, submittedWord]);

@@ -34,7 +34,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
-import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -673,7 +673,7 @@ export default function GameDetail() {
                       Challenge a Friend
                     </Button>
                   )}
-                  {isAuthenticated && user?.isPremium && slug === "word-chain" && (
+                  {isAuthenticated && user?.isPremium && slug && DUEL_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
                       className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20 disabled:opacity-50"

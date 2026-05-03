@@ -511,6 +511,13 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
 
 // ==================== DUELS ====================
 
+export const DUEL_GAME_SLUGS = new Set([
+  "word-chain",
+  "letter-hunt",
+  "word-length",
+  "letter-frequency",
+]);
+
 export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired", "completed"]);
 export type DuelChallengeStatus = z.infer<typeof duelChallengeStatusSchema>;
 

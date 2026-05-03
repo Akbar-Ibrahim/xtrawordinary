@@ -2507,10 +2507,10 @@ export async function registerRoutes(
       if (!challengeeId || !gameSlug) {
         return res.status(400).json({ error: "challengeeId and gameSlug are required" });
       }
-      // Allowlist: only word-chain duels are supported in the current release
-      const DUEL_ALLOWED_SLUGS = new Set(["word-chain"]);
+      // Allowlist: games that support the turn-based duel format
+      const DUEL_ALLOWED_SLUGS = new Set(["word-chain", "letter-hunt", "word-length", "letter-frequency"]);
       if (!DUEL_ALLOWED_SLUGS.has(gameSlug)) {
-        return res.status(400).json({ error: "Duels are only available for Word Chain at this time" });
+        return res.status(400).json({ error: "That game does not support duels" });
       }
       const challengerId = req.user.id;
       if (!req.user.isPremium) {

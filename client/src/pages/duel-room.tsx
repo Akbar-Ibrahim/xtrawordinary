@@ -13,6 +13,19 @@ import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
 import type { GameResult, DuelTurnEngineInitialState } from "@/components/duel-turn-engine";
 import { wordChainDuelAdapter } from "@/components/games/word-chain-duel-adapter";
+import { letterHuntDuelAdapter } from "@/components/games/letter-hunt-duel-adapter";
+import { wordLengthDuelAdapter } from "@/components/games/word-length-duel-adapter";
+import { letterFrequencyDuelAdapter } from "@/components/games/letter-frequency-duel-adapter";
+import type { DuelGameAdapter } from "@/components/duel-turn-engine";
+
+function getAdapterForSlug(gameSlug: string): DuelGameAdapter {
+  switch (gameSlug) {
+    case "letter-hunt":      return letterHuntDuelAdapter;
+    case "word-length":      return wordLengthDuelAdapter;
+    case "letter-frequency": return letterFrequencyDuelAdapter;
+    default:                 return wordChainDuelAdapter;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -253,9 +266,10 @@ export default function DuelRoom() {
   useEffect(() => {
     if (phase === "playing" && roomInfo && user && !engineInitState) {
       const isFirst = user.id === roomInfo.challengerId;
+      const isWordChain = roomInfo.gameSlug === "word-chain";
       setEngineInitState({
         currentWord: roomInfo.startWord,
-        usedWords: [roomInfo.startWord.toUpperCase()],
+        usedWords: isWordChain ? [roomInfo.startWord.toUpperCase()] : [],
         isMyTurn: isFirst,
         myLives: 3,
         opponentLives: 3,
@@ -473,7 +487,7 @@ export default function DuelRoom() {
               sendWs={sendWs}
               latestMessage={latestGameMessage}
               onGameOver={handleGameOver}
-              adapter={wordChainDuelAdapter}
+              adapter={getAdapterForSlug(roomInfo?.gameSlug ?? "word-chain")}
             />
           </motion.div>
         )}
