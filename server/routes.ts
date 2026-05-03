@@ -1396,7 +1396,7 @@ export async function registerRoutes(
             title: "Challenge result ready",
             body: `${receiverName} completed your ${gameTitle} challenge`,
             linkUrl: "/friends?tab=challenges",
-          }).catch(() => {});
+          }).catch((err) => console.error("[notification]", err));
         } catch {}
       }
       res.json(updated);
@@ -1722,7 +1722,7 @@ export async function registerRoutes(
               title: "New member joined your group",
               body: `${joinerName} joined "${group.name}"`,
               linkUrl: `/groups/${group.id}`,
-            }).catch(() => {});
+            }).catch((err) => console.error("[notification]", err));
           }
         }
       } catch {}
@@ -1757,7 +1757,7 @@ export async function registerRoutes(
               title: "New member joined your group",
               body: `${joinerName} joined "${group.name}"`,
               linkUrl: `/groups/${groupId}`,
-            }).catch(() => {});
+            }).catch((err) => console.error("[notification]", err));
           }
         }
       } catch {}
@@ -1981,7 +1981,7 @@ export async function registerRoutes(
               title: "New group round started",
               body: `${creatorName} started a ${gameTitle} round in "${group?.name ?? "your group"}"`,
               linkUrl: `/groups/${groupId}`,
-            }).catch(() => {});
+            }).catch((err) => console.error("[notification]", err));
           }
         }
       } catch {}
@@ -2306,7 +2306,7 @@ export async function registerRoutes(
               title: "Someone replied to your comment",
               body: `${commenterName}: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}"`,
               linkUrl: replyLinkUrl,
-            }).catch(() => {});
+            }).catch((err) => console.error("[notification]", err));
           }
         } catch {}
       }
@@ -2672,7 +2672,7 @@ export async function registerRoutes(
           title: "You've been challenged to a duel!",
           body: `${challenger?.name ?? "Someone"} challenged you to a ${gameTitle} duel`,
           linkUrl: "/friends?tab=duels",
-        }).catch(() => {});
+        }).catch((err) => console.error("[notification]", err));
       }
       res.status(201).json({
         ...challenge,
@@ -2807,7 +2807,7 @@ export async function registerRoutes(
           title: "Duel challenge accepted!",
           body: `${accepterName} accepted your ${gameTitle} duel`,
           linkUrl: roomCode ? `/duel/${roomCode}` : "/duels",
-        }).catch(() => {});
+        }).catch((err) => console.error("[notification]", err));
       } catch {}
       res.json({ ...updated, roomCode });
     } catch (err) {

@@ -135,8 +135,10 @@ export function Navigation() {
     }
   }, [newlyAccepted]);
 
-  // Total badge = DB unread + WS unseen (transient duel rooms ready, not yet in DB)
-  const totalNotificationCount = dbUnreadCount + unseenCount;
+  // Badge = DB unread only. duel_accepted is persisted to DB, so WS unseenChallenges
+  // are shown as a convenience "go to room" section in the panel but are not
+  // counted separately in the badge to avoid double-counting.
+  const totalNotificationCount = dbUnreadCount;
 
   const firstUnseenRoom: string | null =
     unseenCount > 0
