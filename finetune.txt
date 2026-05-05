@@ -65,6 +65,18 @@ WORD WARS — RECURRING COMPETITIVE EVENTS
    registration/scheduling layer, bracket/scoreboard UI, result tracking,
    and war history pages. Gameplay itself reuses duels and group rounds.
 
+   NOTE — Dramatic challenge notifications:
+   When a Word Wars bracket is drawn and opponents are matched, each player
+   receives a flavourful, war-themed notification (e.g. "Your opponent has
+   been chosen. The war begins. Prepare yourself."). Similarly, when a Guild
+   War is declared, all members of the challenged group receive a dramatic
+   call-to-arms notification. This uses the existing notification system;
+   only the copy and a new notification type (word_war_matched / guild_war_declared)
+   need to be added. Consider applying the same treatment to standard Duels —
+   replacing the plain "X challenged you" notification with something like
+   "X has drawn their sword. Will you accept the challenge?" for no extra
+   engineering cost. (Optional — to be decided at build time.)
+
 ────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
