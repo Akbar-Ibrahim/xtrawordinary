@@ -4,13 +4,7 @@ NEXT STEPS — xtraWordinary
 DUEL SYSTEM DEPTH
 ────────────────────────────────────────────────────────────
 
-1. Duel Tournaments
-   A bracket-style mini-tournament where 4–8 players sign up, get seeded
-   by ELO, and play single-elimination rounds. The platform already has
-   rooms, ELO, and lobby infrastructure; this would be the crown jewel
-   of the duel system.
-
-2. Duel Spectator Mode
+1. Duel Spectator Mode
    Players set a duel as Public or Private when issuing the challenge.
    Spectators join the same real-time room in read-only mode and see the
    live word feed, timer, and lives. Spectator emoji reactions (👀 🔥 😬)
@@ -23,7 +17,7 @@ DUEL SYSTEM DEPTH
 GROUP VS GROUP CHALLENGES
 ────────────────────────────────────────────────────────────
 
-3. Huddle Mode (Phase 1)
+2. Huddle Mode (Phase 1)
    Two groups challenge each other to a synchronous game session.
    One designated typist per group; the rest shout answers. Both groups
    start at the same time via the existing mutual-Ready + countdown flow.
@@ -31,7 +25,7 @@ GROUP VS GROUP CHALLENGES
    Entry point: "Challenge Another Group" on the Group detail page.
    No new game logic needed — same engine as 1v1 duels.
 
-4. Team Race Mode (Phase 2)
+3. Team Race Mode (Phase 2)
    Every group member joins on their own device. Members play
    simultaneously; answers are pooled and de-duplicated for the team.
    Real-time team score feed shows both groups' aggregate tallies live.
@@ -40,7 +34,7 @@ GROUP VS GROUP CHALLENGES
    Design questions to resolve: player cap, score normalisation for
    unequal group sizes, quorum (min members needed to start).
 
-5. Relay Mode (Phase 3)
+4. Relay Mode (Phase 3)
    Teams rotate which member is the active typist each round — each
    member gets a turn. Works for turn-based games.
    Build after Huddle and Team Race are stable.
@@ -49,7 +43,7 @@ GROUP VS GROUP CHALLENGES
 WORD WARS — RECURRING COMPETITIVE EVENTS
 ────────────────────────────────────────────────────────────
 
-6. Solo Wars (individual bracket tournament)
+5. Solo Wars (individual bracket tournament)
    A recurring bracket-style tournament open to all players.
    Players sign up during a registration window; the bracket is seeded
    by ELO rating. Each round is a best-of-3 series (different game types
@@ -59,7 +53,7 @@ WORD WARS — RECURRING COMPETITIVE EVENTS
    A hall of fame page records all past champions. Reuses the existing
    duel engine, ELO system, and badge/achievement infrastructure.
 
-7. Guild Wars (group vs group tournament)
+6. Guild Wars (group vs group tournament)
    Group admins declare war on another group. Each group fields its members
    across a set of assigned games played within a fixed window (e.g. 48 hrs).
    Scores are pooled per group; the group with the higher combined total wins.
@@ -78,4 +72,3 @@ PRIORITY ORDER (highest user impact first)
   1. Duel Spectator Mode         — natural next step for the mature duel system
   2. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
   3. Word Wars (Solo + Guild)    — recurring competitive events, crown jewel feature
-  4. Duel Tournaments            — structured brackets for the competitive core audience
