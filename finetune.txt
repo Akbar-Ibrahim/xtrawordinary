@@ -46,6 +46,32 @@ GROUP VS GROUP CHALLENGES
    Build after Huddle and Team Race are stable.
 
 ────────────────────────────────────────────────────────────
+WORD WARS — RECURRING COMPETITIVE EVENTS
+────────────────────────────────────────────────────────────
+
+6. Solo Wars (individual bracket tournament)
+   A recurring bracket-style tournament open to all players.
+   Players sign up during a registration window; the bracket is seeded
+   by ELO rating. Each round is a best-of-3 series (different game types
+   per round, chosen by the platform). Players have a 24-hour window to
+   complete each battle. Losers are eliminated; the winner of the final
+   earns a permanent "Word Wars Champion — Week N" badge on their profile.
+   A hall of fame page records all past champions. Reuses the existing
+   duel engine, ELO system, and badge/achievement infrastructure.
+
+7. Guild Wars (group vs group tournament)
+   Group admins declare war on another group. Each group fields its members
+   across a set of assigned games played within a fixed window (e.g. 48 hrs).
+   Scores are pooled per group; the group with the higher combined total wins.
+   Winning group earns a victory badge on their group page and a war history
+   log. Unequal group sizes are handled by score normalisation. Builds on
+   the existing groups and group-rounds infrastructure.
+
+   Both formats live under the same "Word Wars" nav entry. Shared components:
+   registration/scheduling layer, bracket/scoreboard UI, result tracking,
+   and war history pages. Gameplay itself reuses duels and group rounds.
+
+────────────────────────────────────────────────────────────
 PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
@@ -53,3 +79,4 @@ PRIORITY ORDER (highest user impact first)
   2. Ladder Rush Duel            — DONE
   3. Full Notification System    — DONE
   4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
+  5. Word Wars (Solo + Guild)    — recurring competitive events, crown jewel feature
