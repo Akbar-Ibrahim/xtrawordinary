@@ -357,6 +357,12 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
   if (challenge) {
     void storage.updateDuelChallengeStatus(challenge.id, "completed").catch(() => {});
   }
+  // Mark any associated huddle challenge as completed
+  void storage.getHuddleChallengeByRoom(room.roomCode).then(hc => {
+    if (hc && hc.status === "accepted") {
+      return storage.updateHuddleChallenge(hc.id, { status: "completed" });
+    }
+  }).catch(() => {});
   const outcome = isDraw
     ? "draw"
     : isForfeit

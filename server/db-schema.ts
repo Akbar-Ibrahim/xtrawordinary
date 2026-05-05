@@ -379,6 +379,29 @@ export const notificationPreferences = mysqlTable("notification_preferences", {
   index("np_user_idx").on(table.userId),
 ]);
 
+export const huddleChallenges = mysqlTable("huddle_challenges", {
+  id: int("id").primaryKey().autoincrement(),
+  challengerGroupId: int("challenger_group_id").notNull(),
+  challengeeGroupId: int("challengee_group_id").notNull(),
+  challengerAdminId: int("challenger_admin_id").notNull(),
+  challengeeAdminId: int("challengee_admin_id"),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  format: varchar("format", { length: 10 }).notNull().default("turn"),
+  raceTarget: int("race_target"),
+  raceTimeLimit: int("race_time_limit"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  roomCode: varchar("room_code", { length: 12 }),
+  seed: int("seed"),
+  startWord: varchar("start_word", { length: 60 }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("hc_challenger_group_idx").on(table.challengerGroupId),
+  index("hc_challengee_group_idx").on(table.challengeeGroupId),
+  index("hc_status_idx").on(table.status),
+  index("hc_room_code_idx").on(table.roomCode),
+]);
+
 export const notifications = mysqlTable("notifications", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),

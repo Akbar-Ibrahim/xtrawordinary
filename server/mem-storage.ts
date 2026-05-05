@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -30,6 +30,9 @@ export class MemStorage implements IStorage {
   private duelSessionIdCounter = 1;
   private duelRatings: DuelRating[] = [];
   private duelRatingIdCounter = 1;
+
+  private huddleChallenges: HuddleChallenge[] = [];
+  private huddleChallengeIdCounter = 1;
 
   private notifications: Notification[] = [];
   private notificationIdCounter = 1;
@@ -1523,6 +1526,33 @@ export class MemStorage implements IStorage {
     return { rank: entry.rank, totalPlayers: all.length };
   }
 
+  async createHuddleChallenge(data: InsertHuddleChallenge): Promise<HuddleChallenge> {
+    const h: HuddleChallenge = { ...data, id: this.huddleChallengeIdCounter++, createdAt: new Date().toISOString() };
+    this.huddleChallenges.push(h);
+    return h;
+  }
+
+  async getHuddleChallenge(id: number): Promise<HuddleChallenge | undefined> {
+    return this.huddleChallenges.find(h => h.id === id);
+  }
+
+  async getHuddleChallengesForGroup(groupId: number): Promise<HuddleChallenge[]> {
+    return this.huddleChallenges
+      .filter(h => h.challengerGroupId === groupId || h.challengeeGroupId === groupId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateHuddleChallenge(id: number, updates: Partial<Pick<HuddleChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord">>): Promise<HuddleChallenge | undefined> {
+    const h = this.huddleChallenges.find(h => h.id === id);
+    if (!h) return undefined;
+    Object.assign(h, updates);
+    return h;
+  }
+
+  async getHuddleChallengeByRoom(roomCode: string): Promise<HuddleChallenge | undefined> {
+    return this.huddleChallenges.find(h => h.roomCode === roomCode);
+  }
+
   async createNotification(data: InsertNotification): Promise<Notification> {
     const notif: Notification = {
       ...data,
@@ -1576,7 +1606,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;

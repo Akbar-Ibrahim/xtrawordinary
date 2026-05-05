@@ -18,10 +18,36 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock, Megaphone, Star, Edit2, Activity as ActivityIcon } from "lucide-react";
-import type { Group, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry } from "@shared/schema";
+import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock, Megaphone, Star, Edit2, Activity as ActivityIcon, Search, Zap } from "lucide-react";
+import type { Group, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, HuddleChallenge } from "@shared/schema";
 
 const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
+
+const DUEL_TURN_SLUGS = new Set([
+  "word-chain", "letter-hunt", "word-length", "letter-frequency",
+  "letter-position", "letter-balance",
+]);
+const DUEL_RACE_SLUGS = new Set([
+  "letter-hunt", "word-length", "letter-frequency", "letter-position", "letter-balance",
+  "word-scramble", "no-repeats", "anagram-solver", "word-stack",
+  "letter-pool", "word-maker", "word-split", "definition-match",
+]);
+const DUEL_GAME_SLUGS_LIST = Array.from(new Set([...Array.from(DUEL_TURN_SLUGS), ...Array.from(DUEL_RACE_SLUGS)]));
+const DUEL_GAME_NAMES: Record<string, string> = {
+  "word-chain": "Word Chain", "letter-hunt": "Letter Hunt", "word-length": "Length Challenge",
+  "letter-frequency": "Letter Frequency", "letter-position": "Position Master",
+  "letter-balance": "Letter Balance", "word-scramble": "Word Scramble",
+  "no-repeats": "No Repeats", "anagram-solver": "Anagram Solver",
+  "word-stack": "Word Stack", "letter-pool": "Letter Pool", "word-maker": "Word Maker",
+  "word-split": "Word Split", "definition-match": "Definition Match",
+};
+
+interface EnrichedHuddleChallenge extends HuddleChallenge {
+  challengerGroupName: string;
+  challengeeGroupName: string;
+  challengerAdminName: string;
+  challengeeAdminName: string | null;
+}
 
 const GAME_SLUGS = [
   "word-ladder", "anagram-solver", "word-scramble", "definition-match",
@@ -229,6 +255,14 @@ export default function GroupDetail() {
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editAnnouncement, setEditAnnouncement] = useState("");
 
+  const [huddleOpen, setHuddleOpen] = useState(false);
+  const [huddleGroupSearch, setHuddleGroupSearch] = useState("");
+  const [huddleTargetGroupId, setHuddleTargetGroupId] = useState<number | null>(null);
+  const [huddleGameSlug, setHuddleGameSlug] = useState(DUEL_GAME_SLUGS_LIST[0]);
+  const [huddleFormat, setHuddleFormat] = useState<"turn" | "race">("turn");
+  const [huddleRaceTarget, setHuddleRaceTarget] = useState(15);
+  const [huddleRaceTimeLimit, setHuddleRaceTimeLimit] = useState(300);
+
   const { data, isLoading, error } = useQuery<GroupDetailResponse>({
     queryKey: ["/api/groups", groupId],
     queryFn: async () => {
@@ -267,6 +301,28 @@ export default function GroupDetail() {
       return res.json();
     },
     enabled: !isNaN(groupId),
+  });
+
+  const { data: huddles, isLoading: huddlesLoading } = useQuery<EnrichedHuddleChallenge[]>({
+    queryKey: ["/api/groups", groupId, "huddles"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/huddles`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !isNaN(groupId),
+    refetchInterval: 10000,
+  });
+
+  const { data: publicGroups } = useQuery<Group[]>({
+    queryKey: ["/api/groups/browse"],
+    queryFn: async () => {
+      const res = await fetch("/api/groups/browse", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: huddleOpen,
+    staleTime: 60000,
   });
 
   const { data: activity, isLoading: activityLoading } = useQuery<GroupActivityEntry[]>({
@@ -339,6 +395,61 @@ export default function GroupDetail() {
       apiRequest("PATCH", `/api/groups/${groupId}/members/${userId}/role`, { role }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "members"] }),
     onError: () => toast({ title: "Failed to update role", variant: "destructive" }),
+  });
+
+  const createHuddleMutation = useMutation({
+    mutationFn: async () => {
+      if (!huddleTargetGroupId) throw new Error("Pick a group first");
+      return apiRequest("POST", "/api/huddles", {
+        challengerGroupId: groupId,
+        challengeeGroupId: huddleTargetGroupId,
+        gameSlug: huddleGameSlug,
+        format: huddleFormat,
+        raceTarget: huddleRaceTarget,
+        raceTimeLimit: huddleRaceTimeLimit,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "huddles"] });
+      setHuddleOpen(false);
+      setHuddleTargetGroupId(null);
+      setHuddleGroupSearch("");
+      toast({ title: "Huddle challenge sent!" });
+    },
+    onError: async (err: any) => {
+      let msg = "Failed to send challenge";
+      try { const body = await err.response?.json(); if (body?.error) msg = body.error; } catch {}
+      toast({ title: msg, variant: "destructive" });
+    },
+  });
+
+  const acceptHuddleMutation = useMutation({
+    mutationFn: async (huddleId: number) => apiRequest("PATCH", `/api/huddles/${huddleId}/accept`),
+    onSuccess: async (res) => {
+      const body = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "huddles"] });
+      toast({ title: "Challenge accepted! Heading to the arena..." });
+      if (body.roomCode) navigate(`/duel/${body.roomCode}`);
+    },
+    onError: () => toast({ title: "Failed to accept challenge", variant: "destructive" }),
+  });
+
+  const declineHuddleMutation = useMutation({
+    mutationFn: async (huddleId: number) => apiRequest("PATCH", `/api/huddles/${huddleId}/decline`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "huddles"] });
+      toast({ title: "Challenge declined" });
+    },
+    onError: () => toast({ title: "Failed to decline challenge", variant: "destructive" }),
+  });
+
+  const cancelHuddleMutation = useMutation({
+    mutationFn: async (huddleId: number) => apiRequest("PATCH", `/api/huddles/${huddleId}/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "huddles"] });
+      toast({ title: "Challenge cancelled" });
+    },
+    onError: () => toast({ title: "Failed to cancel challenge", variant: "destructive" }),
   });
 
   const editMutation = useMutation({
@@ -447,6 +558,11 @@ export default function GroupDetail() {
                     <Edit2 className="h-4 w-4 mr-1.5" />Edit
                   </Button>
                 )}
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setHuddleOpen(true)} data-testid="button-huddle-challenge">
+                    <Zap className="h-4 w-4 mr-1.5" />Battle
+                  </Button>
+                )}
                 {membership && !isOwner && (
                   <Button variant="outline" size="sm" onClick={() => setLeaveConfirmOpen(true)} data-testid="button-leave-group">
                     <X className="h-4 w-4 mr-1.5" />Leave
@@ -485,6 +601,129 @@ export default function GroupDetail() {
 
           <TabsContent value="rounds">
             <div className="space-y-4">
+              {/* Huddle Battles Section */}
+              {(() => {
+                const pendingIncoming = (huddles || []).filter(h => h.status === "pending" && h.challengeeGroupId === groupId);
+                const pendingOutgoing = (huddles || []).filter(h => h.status === "pending" && h.challengerGroupId === groupId);
+                const pastBattles = (huddles || []).filter(h => h.status !== "pending");
+                if (!isAdmin && pendingIncoming.length === 0 && pendingOutgoing.length === 0 && pastBattles.length === 0) return null;
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="h-3.5 w-3.5" />Group Battles
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
+                      {pendingIncoming.map(h => (
+                        <Card key={h.id} className="border-amber-500/40 bg-amber-50/30 dark:bg-amber-950/20" data-testid={`card-huddle-incoming-${h.id}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div>
+                                <p className="font-semibold text-sm flex items-center gap-1.5">
+                                  <Swords className="h-4 w-4 text-amber-600" />
+                                  Challenge from <span className="text-foreground">{h.challengerGroupName}</span>
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                  {DUEL_GAME_NAMES[h.gameSlug] || h.gameSlug} · {h.format === "race" ? "Race" : "Turn-Based"}
+                                  {h.format === "race" && ` · ${h.raceTarget} words`}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Typist will be: <strong>{user?.name}</strong></p>
+                              </div>
+                              {isAdmin && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => acceptHuddleMutation.mutate(h.id)}
+                                    disabled={acceptHuddleMutation.isPending}
+                                    data-testid={`button-huddle-accept-${h.id}`}
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => declineHuddleMutation.mutate(h.id)}
+                                    disabled={declineHuddleMutation.isPending}
+                                    data-testid={`button-huddle-decline-${h.id}`}
+                                  >
+                                    Decline
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {pendingOutgoing.map(h => (
+                        <Card key={h.id} className="border-blue-500/30 bg-blue-50/20 dark:bg-blue-950/10" data-testid={`card-huddle-outgoing-${h.id}`}>
+                          <CardContent className="p-4 flex items-start justify-between gap-3 flex-wrap">
+                            <div>
+                              <p className="font-semibold text-sm flex items-center gap-1.5">
+                                <Swords className="h-4 w-4 text-blue-500" />
+                                Battle sent to <span className="text-foreground">{h.challengeeGroupName}</span>
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-0.5">
+                                {DUEL_GAME_NAMES[h.gameSlug] || h.gameSlug} · {h.format === "race" ? "Race" : "Turn-Based"}
+                              </p>
+                              <Badge variant="outline" className="mt-1 text-xs">Awaiting response</Badge>
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-2 items-start">
+                                {h.roomCode && (
+                                  <Link href={`/duel/${h.roomCode}`}>
+                                    <Button size="sm" variant="outline" data-testid={`button-huddle-enter-${h.id}`}>
+                                      Enter Room
+                                    </Button>
+                                  </Link>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  onClick={() => cancelHuddleMutation.mutate(h.id)}
+                                  disabled={cancelHuddleMutation.isPending}
+                                  data-testid={`button-huddle-cancel-${h.id}`}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {pastBattles.slice(0, 5).map(h => {
+                        const weWon = h.status === "completed";
+                        const isChallengerGroup = h.challengerGroupId === groupId;
+                        const opponent = isChallengerGroup ? h.challengeeGroupName : h.challengerGroupName;
+                        return (
+                          <Card key={h.id} className="opacity-80" data-testid={`card-huddle-past-${h.id}`}>
+                            <CardContent className="p-3 flex items-center gap-3">
+                              <Swords className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">vs {opponent}</p>
+                                <p className="text-xs text-muted-foreground">{DUEL_GAME_NAMES[h.gameSlug] || h.gameSlug}</p>
+                              </div>
+                              <Badge variant="outline" className="text-xs capitalize shrink-0">{h.status}</Badge>
+                              {h.roomCode && h.status === "completed" && (
+                                <Link href={`/duel/${h.roomCode}`}>
+                                  <Button size="sm" variant="ghost" className="text-xs h-7">View</Button>
+                                </Link>
+                              )}
+                              {h.status === "accepted" && h.roomCode && (
+                                <Link href={`/duel/${h.roomCode}`}>
+                                  <Button size="sm" className="text-xs h-7">Join</Button>
+                                </Link>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {activeRound ? (
                 <Card className="border-primary/40">
                   <CardHeader className="pb-2">
@@ -974,6 +1213,144 @@ export default function GroupDetail() {
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
             <Button variant="destructive" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} data-testid="button-confirm-delete">
               Delete Group
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Huddle Challenge Dialog */}
+      <Dialog open={huddleOpen} onOpenChange={(v) => { setHuddleOpen(v); if (!v) { setHuddleTargetGroupId(null); setHuddleGroupSearch(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Challenge Another Group
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Send a group battle challenge. One admin from each group plays as the typist while the rest cheer them on.</p>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Opponent Group</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search groups..."
+                  value={huddleGroupSearch}
+                  onChange={e => setHuddleGroupSearch(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-huddle-search"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto rounded-md border border-border mt-1">
+                {(() => {
+                  const filtered = (publicGroups || [])
+                    .filter(g => g.id !== groupId && g.name.toLowerCase().includes(huddleGroupSearch.toLowerCase()));
+                  if (!filtered.length) return <p className="text-sm text-muted-foreground text-center py-4">No groups found</p>;
+                  return filtered.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => { setHuddleTargetGroupId(g.id); setHuddleGroupSearch(g.name); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left ${huddleTargetGroupId === g.id ? "bg-primary/10 text-primary font-medium" : ""}`}
+                      data-testid={`huddle-group-option-${g.id}`}
+                    >
+                      <Users className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{g.name}</span>
+                      {huddleTargetGroupId === g.id && <span className="ml-auto text-xs">✓</span>}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Game</label>
+              <Select value={huddleGameSlug} onValueChange={v => {
+                setHuddleGameSlug(v);
+                if (huddleFormat === "turn" && !DUEL_TURN_SLUGS.has(v)) setHuddleFormat("race");
+                if (huddleFormat === "race" && !DUEL_RACE_SLUGS.has(v)) setHuddleFormat("turn");
+              }}>
+                <SelectTrigger data-testid="select-huddle-game">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DUEL_GAME_SLUGS_LIST.map(slug => (
+                    <SelectItem key={slug} value={slug}>{DUEL_GAME_NAMES[slug] || slug}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Format</label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={huddleFormat === "turn" ? "default" : "outline"}
+                  onClick={() => setHuddleFormat("turn")}
+                  disabled={!DUEL_TURN_SLUGS.has(huddleGameSlug)}
+                  data-testid="button-huddle-format-turn"
+                >
+                  Turn-Based
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={huddleFormat === "race" ? "default" : "outline"}
+                  onClick={() => setHuddleFormat("race")}
+                  disabled={!DUEL_RACE_SLUGS.has(huddleGameSlug)}
+                  data-testid="button-huddle-format-race"
+                >
+                  Race
+                </Button>
+              </div>
+            </div>
+
+            {huddleFormat === "race" && (
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Target words (first to reach wins)</label>
+                  <div className="flex gap-1 flex-wrap">
+                    {[5, 10, 15, 20, 25].map(n => (
+                      <Button key={n} type="button" size="sm"
+                        variant={huddleRaceTarget === n ? "default" : "outline"}
+                        onClick={() => setHuddleRaceTarget(n)}
+                        data-testid={`button-huddle-target-${n}`}
+                      >{n}</Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Time limit</label>
+                  <div className="flex gap-1 flex-wrap">
+                    {[{ v: 180, l: "3 min" }, { v: 300, l: "5 min" }, { v: 600, l: "10 min" }].map(({ v, l }) => (
+                      <Button key={v} type="button" size="sm"
+                        variant={huddleRaceTimeLimit === v ? "default" : "outline"}
+                        onClick={() => setHuddleRaceTimeLimit(v)}
+                        data-testid={`button-huddle-timelimit-${v}`}
+                      >{l}</Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!huddleTargetGroupId && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">Select an opponent group to continue.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setHuddleOpen(false); setHuddleTargetGroupId(null); setHuddleGroupSearch(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createHuddleMutation.mutate()}
+              disabled={!huddleTargetGroupId || createHuddleMutation.isPending}
+              data-testid="button-huddle-send"
+            >
+              {createHuddleMutation.isPending ? "Sending..." : "Send Challenge"}
             </Button>
           </DialogFooter>
         </DialogContent>

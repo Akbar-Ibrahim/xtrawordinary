@@ -3,6 +3,7 @@ import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, Lett
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
+import type { HuddleChallenge, InsertHuddleChallenge } from "@shared/schema";
 
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
@@ -1661,6 +1662,79 @@ export class MySQLStorage implements IStorage {
     return { rank: entry.rank, totalPlayers: all.length };
   }
 
+  private mapHuddleChallenge(row: typeof schema.huddleChallenges.$inferSelect): HuddleChallenge {
+    return {
+      id: row.id,
+      challengerGroupId: row.challengerGroupId,
+      challengeeGroupId: row.challengeeGroupId,
+      challengerAdminId: row.challengerAdminId,
+      challengeeAdminId: row.challengeeAdminId ?? null,
+      gameSlug: row.gameSlug,
+      format: (row.format as "turn" | "race") ?? "turn",
+      raceTarget: row.raceTarget ?? null,
+      raceTimeLimit: row.raceTimeLimit ?? null,
+      status: row.status as HuddleChallenge["status"],
+      roomCode: row.roomCode ?? null,
+      seed: row.seed ?? null,
+      startWord: row.startWord ?? null,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+      expiresAt: row.expiresAt instanceof Date ? row.expiresAt.toISOString() : (row.expiresAt ? String(row.expiresAt) : null),
+    };
+  }
+
+  async createHuddleChallenge(data: InsertHuddleChallenge): Promise<HuddleChallenge> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.huddleChallenges).values({
+      challengerGroupId: data.challengerGroupId,
+      challengeeGroupId: data.challengeeGroupId,
+      challengerAdminId: data.challengerAdminId,
+      challengeeAdminId: data.challengeeAdminId ?? null,
+      gameSlug: data.gameSlug,
+      format: data.format ?? "turn",
+      raceTarget: data.raceTarget ?? null,
+      raceTimeLimit: data.raceTimeLimit ?? null,
+      status: data.status ?? "pending",
+      roomCode: data.roomCode ?? null,
+      seed: data.seed ?? null,
+      startWord: data.startWord ?? null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+    });
+    const rows = await db.select().from(schema.huddleChallenges).where(eq(schema.huddleChallenges.id, result[0].insertId)).limit(1);
+    return this.mapHuddleChallenge(rows[0]);
+  }
+
+  async getHuddleChallenge(id: number): Promise<HuddleChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.huddleChallenges).where(eq(schema.huddleChallenges.id, id)).limit(1);
+    return rows[0] ? this.mapHuddleChallenge(rows[0]) : undefined;
+  }
+
+  async getHuddleChallengesForGroup(groupId: number): Promise<HuddleChallenge[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.huddleChallenges)
+      .where(or(eq(schema.huddleChallenges.challengerGroupId, groupId), eq(schema.huddleChallenges.challengeeGroupId, groupId)))
+      .orderBy(desc(schema.huddleChallenges.createdAt));
+    return rows.map((r: typeof schema.huddleChallenges.$inferSelect) => this.mapHuddleChallenge(r));
+  }
+
+  async updateHuddleChallenge(id: number, updates: Partial<Pick<HuddleChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord">>): Promise<HuddleChallenge | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: Record<string, any> = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.challengeeAdminId !== undefined) dbUpdates.challengeeAdminId = updates.challengeeAdminId;
+    if (updates.roomCode !== undefined) dbUpdates.roomCode = updates.roomCode;
+    if (updates.seed !== undefined) dbUpdates.seed = updates.seed;
+    if (updates.startWord !== undefined) dbUpdates.startWord = updates.startWord;
+    await db.update(schema.huddleChallenges).set(dbUpdates).where(eq(schema.huddleChallenges.id, id));
+    return this.getHuddleChallenge(id);
+  }
+
+  async getHuddleChallengeByRoom(roomCode: string): Promise<HuddleChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.huddleChallenges).where(eq(schema.huddleChallenges.roomCode, roomCode)).limit(1);
+    return rows[0] ? this.mapHuddleChallenge(rows[0]) : undefined;
+  }
+
   private mapNotification(row: any): Notification {
     return {
       id: row.id,
@@ -1742,7 +1816,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted"];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
