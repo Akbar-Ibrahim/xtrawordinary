@@ -76,7 +76,6 @@ PRIORITY ORDER (highest user impact first)
 ────────────────────────────────────────────────────────────
 
   1. Duel Spectator Mode         — natural next step for the mature duel system
-  2. Ladder Rush Duel            — DONE
-  3. Full Notification System    — DONE
-  4. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
-  5. Word Wars (Solo + Guild)    — recurring competitive events, crown jewel feature
+  2. Group vs Group (Huddle)     — big social/competitive hook, reuses duel engine
+  3. Word Wars (Solo + Guild)    — recurring competitive events, crown jewel feature
+  4. Duel Tournaments            — structured brackets for the competitive core audience
