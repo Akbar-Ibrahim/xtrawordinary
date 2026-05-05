@@ -12,6 +12,21 @@ GROUP VS GROUP CHALLENGES
    Entry point: "Challenge Another Group" on the Group detail page.
    No new game logic needed — same engine as 1v1 duels.
 
+   OPEN DESIGN QUESTION — Typist selection:
+   Currently the typist is determined by admin role: the admin who sends
+   the challenge plays for their group; whichever admin accepts first plays
+   for the other group. Alternatives to consider:
+     a) Challenger nominates any group member (not just admin) when creating
+        the challenge — adds a member-picker step to the challenge dialog.
+     b) "Claim the seat" lobby — any member can join the duel room before
+        it starts and the first to click Ready becomes the typist; others
+        are auto-moved to spectator. More spontaneous, less predictable.
+     c) Group vote — members vote on who should represent them; majority
+        wins. More democratic but adds latency before the game can start.
+   Current behaviour (admin-only, first-accept-wins) ships as Phase 1.
+   Revisit before Team Race Mode (Phase 2) since that feature makes
+   typist selection irrelevant (everyone plays).
+
 2. Team Race Mode (Phase 2)
    Every group member joins on their own device. Members play
    simultaneously; answers are pooled and de-duplicated for the team.
