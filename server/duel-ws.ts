@@ -244,6 +244,12 @@ function send(ws: WebSocket, msg: DuelServerMessage): void {
   }
 }
 
+function sendToSpectators(room: DuelRoom, msg: DuelServerMessage): void {
+  for (const ws of Array.from(room.spectators.values())) {
+    send(ws, msg);
+  }
+}
+
 type RoomPlayer = {
   ws: WebSocket;
   userId: number;
@@ -256,6 +262,8 @@ type RoomPlayer = {
 type DuelRoom = {
   roomCode: string;
   players: Map<number, RoomPlayer>;
+  /** Authenticated users watching this room in read-only mode (userId → ws). */
+  spectators: Map<number, WebSocket>;
   gameSlug: string;
   seed: number;
   startWord: string;
@@ -409,6 +417,9 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
       newElo: elo2 + delta2,
     });
   }
+  // Notify spectators which player won
+  const winnerPlayer = isDraw ? null : (p1wins ? p1 : p2);
+  sendToSpectators(room, { type: "spectator:game_over", winnerName: winnerPlayer?.name ?? null });
 }
 
 export class DuelRoomRegistry {
@@ -461,6 +472,7 @@ export class DuelRoomRegistry {
     const room: DuelRoom = {
       roomCode,
       players: new Map(),
+      spectators: new Map(),
       gameSlug,
       seed,
       startWord,
@@ -516,6 +528,7 @@ export class DuelRoomRegistry {
     const room: DuelRoom = {
       roomCode,
       players: new Map(),
+      spectators: new Map(),
       gameSlug,
       seed,
       startWord,
@@ -800,6 +813,7 @@ export class DuelRoomRegistry {
         room.currentTurnUserId = opponent?.userId ?? room.currentTurnUserId;
 
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+        sendToSpectators(room, { type: "opponent:move", payload });
 
         this.armTurnTimer(room);
 
@@ -811,6 +825,7 @@ export class DuelRoomRegistry {
 
         const authoritativeTimeout = { type: "timeout", lives: newLives };
         if (opponent) send(opponent.ws, { type: "opponent:move", payload: authoritativeTimeout });
+        sendToSpectators(room, { type: "opponent:move", payload: authoritativeTimeout });
 
         this.armTurnTimer(room);
 
@@ -820,6 +835,7 @@ export class DuelRoomRegistry {
         return { triggered: false };
       } else {
         if (opponent) send(opponent.ws, { type: "opponent:move", payload });
+        sendToSpectators(room, { type: "opponent:move", payload });
       }
 
       if (typeof p.lives === "number" && p.type !== "timeout") {
@@ -952,10 +968,11 @@ export class DuelRoomRegistry {
       room.racePoolPerPlayer.set(fromUserId, remaining);
     }
 
-    // Broadcast progress to both players
+    // Broadcast progress to both players and spectators
     for (const p2 of Array.from(room.players.values())) {
       send(p2.ws, { type: "race:progress", userId: fromUserId, count: newCount });
     }
+    sendToSpectators(room, { type: "race:progress", userId: fromUserId, count: newCount });
 
     log(`[Duel] Race move: user ${fromUserId} in room ${room.roomCode} → count ${newCount}/${room.raceTarget}`, "duel-ws");
 
@@ -1183,6 +1200,103 @@ export class DuelRoomRegistry {
     this.endRoom(roomCode);
   }
 
+  // ── Spectator helpers ──────────────────────────────────────────────────────
+
+  private broadcastSpectatorCount(room: DuelRoom): void {
+    const count = room.spectators.size;
+    for (const p of Array.from(room.players.values())) {
+      send(p.ws, { type: "spectator:count", count });
+    }
+  }
+
+  joinSpectator(
+    roomCode: string,
+    userId: number,
+    ws: WebSocket,
+  ): { success: boolean; error?: string } {
+    const room = this.rooms.get(roomCode);
+    if (!room) return { success: false, error: "Room not found" };
+    if (room.status !== "playing") return { success: false, error: "Duel is not in progress" };
+    if (room.players.has(userId)) return { success: false, error: "You are a participant, not a spectator" };
+
+    room.spectators.set(userId, ws);
+    this.broadcastSpectatorCount(room);
+
+    const players = Array.from(room.players.values());
+    if (players.length < 2) return { success: false, error: "Room not ready" };
+    const [p1, p2] = players;
+
+    send(ws, {
+      type: "spectator:joined",
+      player1Id: p1.userId,
+      player1Name: p1.name,
+      player1AvatarUrl: p1.avatarUrl,
+      player2Id: p2.userId,
+      player2Name: p2.name,
+      player2AvatarUrl: p2.avatarUrl,
+      gameSlug: room.gameSlug,
+      format: room.format,
+      raceTarget: room.raceTarget,
+      raceTimeLimitMs: room.raceStartedAt
+        ? Math.max(0, room.raceTimeLimitMs - (Date.now() - room.raceStartedAt))
+        : room.raceTimeLimitMs,
+      count1: room.countsPerPlayer.get(p1.userId) ?? 0,
+      count2: room.countsPerPlayer.get(p2.userId) ?? 0,
+      lives1: room.livesPerPlayer.get(p1.userId) ?? INITIAL_LIVES,
+      lives2: room.livesPerPlayer.get(p2.userId) ?? INITIAL_LIVES,
+      spectatorCount: room.spectators.size,
+    });
+
+    log(`[Duel] Spectator ${userId} joined room ${roomCode} (${room.spectators.size} watching)`, "duel-ws");
+    return { success: true };
+  }
+
+  removeSpectator(roomCode: string, userId: number): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+    if (!room.spectators.has(userId)) return;
+    room.spectators.delete(userId);
+    this.broadcastSpectatorCount(room);
+    log(`[Duel] Spectator ${userId} left room ${roomCode} (${room.spectators.size} watching)`, "duel-ws");
+  }
+
+  broadcastReaction(roomCode: string, emoji: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room) return;
+    const msg: DuelServerMessage = { type: "spectator:reaction", emoji };
+    for (const p of Array.from(room.players.values())) {
+      send(p.ws, msg);
+    }
+    sendToSpectators(room, msg);
+  }
+
+  getActiveLiveRooms(): Array<{
+    roomCode: string;
+    gameSlug: string;
+    format: "turn" | "race";
+    player1Name: string;
+    player2Name: string;
+    spectatorCount: number;
+  }> {
+    const result = [];
+    for (const room of Array.from(this.rooms.values())) {
+      if (room.status !== "playing") continue;
+      const players = Array.from(room.players.values());
+      if (players.length < 2) continue;
+      result.push({
+        roomCode: room.roomCode,
+        gameSlug: room.gameSlug,
+        format: room.format,
+        player1Name: players[0].name,
+        player2Name: players[1].name,
+        spectatorCount: room.spectators.size,
+      });
+    }
+    return result;
+  }
+
+  // ── Room teardown ──────────────────────────────────────────────────────────
+
   endRoom(roomCode: string): void {
     const room = this.rooms.get(roomCode);
     if (!room) return;
@@ -1354,6 +1468,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
     let lastTypingRelayedAt = 0;
 
     log(`[Duel] WS connection established for user ${userId}`, "duel-ws");
+    let currentSpectatorRoomCode: string | undefined;
 
     ws.on("message", (raw) => {
       void handleMessage(raw.toString());
@@ -1533,6 +1648,25 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           break;
         }
 
+        case "spectator:join": {
+          const spectRoomCode = msg.roomCode.toUpperCase();
+          const result = duelRegistry.joinSpectator(spectRoomCode, userId, ws);
+          if (!result.success) {
+            send(ws, { type: "error", message: result.error ?? "Cannot spectate this duel" });
+            return;
+          }
+          currentSpectatorRoomCode = spectRoomCode;
+          break;
+        }
+
+        case "spectator:react": {
+          if (!currentSpectatorRoomCode) break;
+          const VALID_EMOJIS = new Set(["👀", "🔥", "😬", "❤️", "👏"]);
+          if (!VALID_EMOJIS.has(msg.emoji)) break;
+          duelRegistry.broadcastReaction(currentSpectatorRoomCode, msg.emoji);
+          break;
+        }
+
         default:
           send(ws, { type: "error", message: "Unknown message type" });
       }
@@ -1542,6 +1676,9 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
       log(`[Duel] WS closed for user ${userId}`, "duel-ws");
       if (currentRoomCode) {
         duelRegistry.handleDisconnect(currentRoomCode, userId);
+      }
+      if (currentSpectatorRoomCode) {
+        duelRegistry.removeSpectator(currentSpectatorRoomCode, userId);
       }
     });
 

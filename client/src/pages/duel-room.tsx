@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords } from "lucide-react";
+import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords, Eye } from "lucide-react";
 import { recordDuelResult } from "@/lib/game-stats";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
@@ -81,6 +81,24 @@ interface RoomInfo {
   raceTimeLimitMs?: number;
 }
 
+interface SpectatorState {
+  player1Id: number;
+  player1Name: string;
+  player1AvatarUrl: string | null;
+  player2Id: number;
+  player2Name: string;
+  player2AvatarUrl: string | null;
+  gameSlug: string;
+  format: "turn" | "race";
+  raceTarget: number;
+  count1: number;
+  count2: number;
+  lives1: number;
+  lives2: number;
+}
+
+const REACT_EMOJIS = ["👀", "🔥", "😬", "❤️", "👏"] as const;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function DuelRoom() {
@@ -128,6 +146,14 @@ export default function DuelRoom() {
 
   // ── Latest message for engines ──────────────────────────────────────────────
   const [latestGameMessage, setLatestGameMessage] = useState<DuelServerMessage | null>(null);
+
+  // ── Spectator state ─────────────────────────────────────────────────────────
+  const [isSpectator, setIsSpectator] = useState(false);
+  const [spectatorCount, setSpectatorCount] = useState(0);
+  const [spectatorData, setSpectatorData] = useState<SpectatorState | null>(null);
+  const [spectatorWinner, setSpectatorWinner] = useState<string | null>(null);
+  const [reactionFlash, setReactionFlash] = useState<string | null>(null);
+  const [wsReady, setWsReady] = useState(false);
 
   // ── REST query for room metadata ───────────────────────────────────────────
   const { data: roomInfo, error: roomFetchError } = useQuery<RoomInfo, Error>({
@@ -262,11 +288,69 @@ export default function DuelRoom() {
           break;
 
         case "race:progress":
+          // Update spectator live counts when watching
+          setSpectatorData((prev) => {
+            if (!prev) return prev;
+            if (msg.userId === prev.player1Id) return { ...prev, count1: msg.count };
+            if (msg.userId === prev.player2Id) return { ...prev, count2: msg.count };
+            return prev;
+          });
+          setLatestGameMessage(msg);
+          break;
+
         case "opponent:move":
+          // Update spectator lives from turn-based timeout payloads
+          setSpectatorData((prev) => {
+            if (!prev) return prev;
+            const payload = msg.payload as Record<string, unknown> | null;
+            if (payload && payload.type === "timeout" && typeof payload.lives === "number") {
+              // The move came from the opponent of whoever we're tracking — find which player it's from
+              // We can't tell which player sent it here, but lives will be corrected server-side.
+            }
+            return prev;
+          });
+          setLatestGameMessage(msg);
+          break;
+
         case "player:reconnect":
         case "player:forfeited":
         case "game:over":
           setLatestGameMessage(msg);
+          break;
+
+        case "spectator:joined":
+          setSpectatorData({
+            player1Id: msg.player1Id,
+            player1Name: msg.player1Name,
+            player1AvatarUrl: msg.player1AvatarUrl,
+            player2Id: msg.player2Id,
+            player2Name: msg.player2Name,
+            player2AvatarUrl: msg.player2AvatarUrl,
+            gameSlug: msg.gameSlug,
+            format: msg.format,
+            raceTarget: msg.raceTarget,
+            count1: msg.count1,
+            count2: msg.count2,
+            lives1: msg.lives1,
+            lives2: msg.lives2,
+          });
+          setRaceTarget(msg.raceTarget);
+          setSpectatorCount(msg.spectatorCount);
+          setPhase("playing");
+          break;
+
+        case "spectator:count":
+          setSpectatorCount(msg.count);
+          break;
+
+        case "spectator:reaction":
+          setReactionFlash(msg.emoji);
+          setTimeout(() => setReactionFlash(null), 1200);
+          break;
+
+        case "spectator:game_over":
+          setSpectatorWinner(msg.winnerName);
+          setPhase("over");
           break;
 
         case "challenge:cancelled":
@@ -339,7 +423,7 @@ export default function DuelRoom() {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      sendWs({ type: "room:join", roomCode });
+      setWsReady(true);
       setPhase("lobby");
     };
 
@@ -371,8 +455,23 @@ export default function DuelRoom() {
     return () => {
       ws.close();
       wsRef.current = null;
+      setWsReady(false);
     };
   }, [roomCode, isAuthenticated, user?.id]);
+
+  // Send the correct join message once both the WS is open and we know
+  // whether the current user is a participant or a spectator.
+  useEffect(() => {
+    if (!wsReady || !roomInfo || !user) return;
+    const isSpec = user.id !== roomInfo.challengerId && user.id !== roomInfo.challengeeId;
+    setIsSpectator(isSpec);
+    if (isSpec) {
+      sendWs({ type: "spectator:join", roomCode });
+    } else {
+      sendWs({ type: "room:join", roomCode });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wsReady, roomInfo?.challengerId, roomInfo?.challengeeId, user?.id]);
 
   const handleReady = () => {
     setMeReady(true);
@@ -468,6 +567,16 @@ export default function DuelRoom() {
         {isRace && (
           <Badge variant="secondary" className="text-xs gap-1" data-testid="badge-race-format">
             ⚡ Race to {raceTarget}
+          </Badge>
+        )}
+        {isSpectator && (
+          <Badge className="text-xs gap-1 bg-violet-600 text-white" data-testid="badge-spectating">
+            <Eye className="h-3 w-3" /> Watching
+          </Badge>
+        )}
+        {!isSpectator && spectatorCount > 0 && (
+          <Badge variant="outline" className="text-xs gap-1 text-violet-600 border-violet-300 dark:border-violet-700" data-testid="badge-spectator-count">
+            <Eye className="h-3 w-3" /> {spectatorCount} watching
           </Badge>
         )}
       </div>
@@ -606,6 +715,82 @@ export default function DuelRoom() {
           </motion.div>
         )}
 
+        {/* ── Spectator View ─────────────────────────────────────────────── */}
+        {phase === "playing" && isSpectator && spectatorData && (
+          <motion.div key="spectating" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="space-y-4">
+              {/* Players scoreboard */}
+              <Card>
+                <CardContent className="pt-5 pb-4">
+                  <p className="text-xs text-center text-muted-foreground uppercase tracking-widest mb-4 font-medium">
+                    Live Match · {spectatorData.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                    {" "}· {spectatorData.format === "race" ? "Race" : "Turn-Based"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { id: spectatorData.player1Id, name: spectatorData.player1Name, avatar: spectatorData.player1AvatarUrl, count: spectatorData.count1, lives: spectatorData.lives1 },
+                      { id: spectatorData.player2Id, name: spectatorData.player2Name, avatar: spectatorData.player2AvatarUrl, count: spectatorData.count2, lives: spectatorData.lives2 },
+                    ].map((p) => (
+                      <div key={p.id} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/40 border">
+                        <UserAvatar name={p.name} avatarUrl={p.avatar} className="h-14 w-14 text-lg" />
+                        <p className="font-semibold text-sm text-center truncate max-w-full">{p.name}</p>
+                        {spectatorData.format === "race" ? (
+                          <div className="text-center">
+                            <p className="text-3xl font-black text-primary">{p.count}</p>
+                            <p className="text-xs text-muted-foreground">/ {spectatorData.raceTarget} words</p>
+                          </div>
+                        ) : (
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                              <Heart key={i} className={`h-5 w-5 ${i < p.lives ? "text-red-500 fill-red-500" : "text-muted-foreground/30"}`} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Reaction flash overlay */}
+              <AnimatePresence>
+                {reactionFlash && (
+                  <motion.div
+                    key={reactionFlash + Date.now()}
+                    className="fixed inset-0 pointer-events-none flex items-center justify-center z-50"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.6 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <span className="text-8xl drop-shadow-xl">{reactionFlash}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Emoji reaction bar */}
+              <Card>
+                <CardContent className="py-4">
+                  <p className="text-xs text-center text-muted-foreground mb-3">React to the match</p>
+                  <div className="flex justify-center gap-3">
+                    {REACT_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => sendWs({ type: "spectator:react", emoji })}
+                        className="text-2xl hover:scale-125 active:scale-95 transition-transform duration-150 focus:outline-none"
+                        data-testid={`button-react-${emoji}`}
+                        title={`React ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Playing (Race) ─────────────────────────────────────────────── */}
         {phase === "playing" && isRace && raceInitState && (
           <motion.div key="playing-race" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -628,8 +813,31 @@ export default function DuelRoom() {
           </motion.div>
         )}
 
+        {/* ── Spectator Game Over ───────────────────────────────────────── */}
+        {phase === "over" && isSpectator && (
+          <motion.div key="spectator-over" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+            <Card className="border-violet-400">
+              <CardContent className="py-12 text-center space-y-5">
+                <Trophy className="h-14 w-14 mx-auto text-yellow-500" />
+                <div>
+                  <h2 className="text-3xl font-black" data-testid="text-spectator-outcome">
+                    {spectatorWinner ? `${spectatorWinner} wins! 🎉` : "It's a Draw!"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">The match has ended</p>
+                </div>
+                <Link href="/duels">
+                  <Button className="gap-2" data-testid="button-back-lobby">
+                    <Swords className="h-4 w-4" />
+                    Back to Duels
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* ── Game Over ─────────────────────────────────────────────────── */}
-        {phase === "over" && gameResult && (
+        {phase === "over" && !isSpectator && gameResult && (
           <motion.div key="over" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
             <Card className={
               gameResult.outcome === "you_win" || gameResult.outcome === "forfeit"

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History, X, Bell, ChevronDown, ChevronUp } from "lucide-react";
+import { Swords, Loader2, RefreshCw, Users, Clock, Zap, Trophy, UserPlus, BarChart3, Star, TrendingUp, TrendingDown, Minus, History, X, Bell, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -229,6 +229,82 @@ function DuelNotificationsPanel({
   );
 }
 
+interface LiveRoom {
+  roomCode: string;
+  gameSlug: string;
+  format: "turn" | "race";
+  player1Name: string;
+  player2Name: string;
+  spectatorCount: number;
+}
+
+function LiveNowSection() {
+  const [, navigate] = useLocation();
+  const { data: liveRooms = [], isLoading } = useQuery<LiveRoom[]>({
+    queryKey: ["/api/duels/live"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/live", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchInterval: 10000,
+  });
+
+  if (isLoading || liveRooms.length === 0) return null;
+
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+        </span>
+        <h2 className="text-base font-semibold">Live Now</h2>
+        <Badge variant="secondary" className="text-xs">{liveRooms.length}</Badge>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {liveRooms.map((room) => {
+          const gameName = room.gameSlug
+            .split("-")
+            .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(" ");
+          return (
+            <button
+              key={room.roomCode}
+              onClick={() => navigate(`/duel/${room.roomCode}`)}
+              className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors text-left w-full group"
+              data-testid={`card-live-room-${room.roomCode}`}
+            >
+              <div className="shrink-0 w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
+                {room.format === "race" ? (
+                  <Zap className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                ) : (
+                  <Swords className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{gameName}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {room.player1Name} vs {room.player2Name}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <Badge variant="outline" className="text-xs gap-1 text-violet-600 border-violet-300 dark:border-violet-700 group-hover:bg-violet-50 dark:group-hover:bg-violet-950/30">
+                  <Eye className="h-3 w-3" />
+                  Watch
+                </Badge>
+                {room.spectatorCount > 0 && (
+                  <span className="text-xs text-muted-foreground">{room.spectatorCount} watching</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function DuelLobby() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -377,6 +453,9 @@ export default function DuelLobby() {
           onDismissAll={dismissAllNotifications}
         />
       )}
+
+      {/* ── Live Now ── */}
+      {isAuthenticated && <LiveNowSection />}
 
       {/* ── Game Directory ── */}
       <section>

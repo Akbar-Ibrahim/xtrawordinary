@@ -2866,21 +2866,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/duels/live", requireAuth, async (_req, res) => {
+    try {
+      const { duelRegistry } = await import("./duel-ws");
+      res.json(duelRegistry.getActiveLiveRooms());
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to fetch live rooms" });
+    }
+  });
+
   app.get("/api/duels/rooms/:roomCode", requireAuth, async (req: any, res) => {
     try {
       const roomCode = req.params.roomCode.toUpperCase();
       const userId = req.user.id;
       const challenge = await storage.getDuelChallengeByRoom(roomCode);
       if (!challenge) return res.status(404).json({ error: "Room not found" });
-      if (challenge.challengerId !== userId && challenge.challengeeId !== userId && challenge.challengeeId !== null) {
-        return res.status(403).json({ error: "Not a participant" });
+
+      const isParticipant = challenge.challengerId === userId || challenge.challengeeId === userId;
+      const isOpenChallenge = challenge.challengeeId === null;
+
+      if (!isParticipant && !isOpenChallenge) {
+        // Allow spectators if the room is actively playing
+        const { duelRegistry: reg } = await import("./duel-ws");
+        const liveRoom = reg.getRoom(roomCode);
+        if (!liveRoom || liveRoom.status !== "playing") {
+          return res.status(403).json({ error: "Not a participant" });
+        }
       }
-      // Reject complete/terminal statuses
+
+      // Reject complete/terminal statuses (for participants)
       if (
-        challenge.status === "declined" ||
-        challenge.status === "cancelled" ||
-        challenge.status === "expired" ||
-        challenge.status === "completed"
+        isParticipant &&
+        (challenge.status === "declined" ||
+          challenge.status === "cancelled" ||
+          challenge.status === "expired" ||
+          challenge.status === "completed")
       ) {
         return res.status(410).json({ error: `This challenge has been ${challenge.status}` });
       }

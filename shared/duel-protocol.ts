@@ -7,7 +7,11 @@ export type DuelClientMessage =
   | { type: "game:end" }
   | { type: "game:forfeit" }
   /** Race: notify server the player is actively typing (relayed to opponent). */
-  | { type: "race:typing" };
+  | { type: "race:typing" }
+  /** Spectator: join a live room in read-only mode. */
+  | { type: "spectator:join"; roomCode: string }
+  /** Spectator: broadcast an emoji reaction to everyone in the room. */
+  | { type: "spectator:react"; emoji: string };
 
 export type DuelFormat = "turn" | "race";
 
@@ -76,4 +80,30 @@ export type DuelServerMessage =
   | { type: "challenge:cancelled"; reason: "declined" | "cancelled" | "expired" }
   | { type: "error"; message: string }
   /** Race: relayed to the opponent when a player sends race:typing. */
-  | { type: "race:typing"; userId: number };
+  | { type: "race:typing"; userId: number }
+  // ── Spectator messages ────────────────────────────────────────────────────
+  /** Sent to a newly joined spectator with full live room state. */
+  | {
+      type: "spectator:joined";
+      player1Id: number;
+      player1Name: string;
+      player1AvatarUrl: string | null;
+      player2Id: number;
+      player2Name: string;
+      player2AvatarUrl: string | null;
+      gameSlug: string;
+      format: DuelFormat;
+      raceTarget: number;
+      raceTimeLimitMs: number;
+      count1: number;
+      count2: number;
+      lives1: number;
+      lives2: number;
+      spectatorCount: number;
+    }
+  /** Sent to both players whenever the spectator count changes. */
+  | { type: "spectator:count"; count: number }
+  /** Broadcast to everyone in the room when a spectator reacts. */
+  | { type: "spectator:reaction"; emoji: string }
+  /** Sent to all spectators when the game ends. */
+  | { type: "spectator:game_over"; winnerName: string | null };
