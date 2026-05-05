@@ -281,6 +281,10 @@ export default function GameDetail() {
     queryKey: ["/api/games", slug],
   });
 
+  const { data: allGames = [] } = useQuery<Game[]>({
+    queryKey: ["/api/games"],
+  });
+
   const { data: likeData } = useQuery<{ counts: Record<string, number>; likedByMe: Record<string, boolean> }>({
     queryKey: ["/api/likes", "game", slug],
     queryFn: async () => {
@@ -671,6 +675,52 @@ export default function GameDetail() {
                   </ul>
                 </CardContent>
               </Card>
+
+              {/* More Games carousel */}
+              {allGames.length > 1 && (() => {
+                const otherGames = allGames.filter(g => g.slug !== game.slug);
+                const diffColor: Record<string, string> = {
+                  easy: "bg-green-500/10 text-green-600 dark:text-green-400",
+                  medium: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+                  hard: "bg-red-500/10 text-red-600 dark:text-red-400",
+                };
+                return (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">More Games</h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                      {otherGames.map(g => {
+                        const GIcon = (LucideIcons as any)[g.icon] as React.ElementType | undefined;
+                        return (
+                          <Link key={g.slug} href={`/game/${g.slug}`}>
+                            <div
+                              className="snap-start shrink-0 w-44 rounded-xl border bg-card hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden flex flex-col"
+                              data-testid={`card-more-game-${g.slug}`}
+                            >
+                              <div
+                                className="h-16 flex items-center justify-center"
+                                style={{ background: g.color }}
+                              >
+                                {GIcon ? (
+                                  <GIcon className="h-8 w-8 text-white drop-shadow" />
+                                ) : (
+                                  <Play className="h-8 w-8 text-white drop-shadow" />
+                                )}
+                              </div>
+                              <div className="p-2.5 flex flex-col gap-1 flex-1">
+                                <p className="text-sm font-semibold leading-tight line-clamp-1">{g.name}</p>
+                                <span className={`self-start text-[10px] font-medium px-1.5 py-0.5 rounded-full ${diffColor[g.difficulty] ?? ""}`}>
+                                  {g.difficulty}
+                                </span>
+                                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">{g.description}</p>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <CommentSection targetType="game" targetId={game.slug} />
             </div>
