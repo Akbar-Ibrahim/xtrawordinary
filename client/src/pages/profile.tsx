@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import type { UserGameStats, UserAchievement, Game, QuizSession, NotificationType } from "@shared/schema";
@@ -203,6 +203,24 @@ export default function Profile() {
 
   const quizzes = isOwnProfile ? myQuizzes : otherQuizzes;
   const quizzesLoading = isOwnProfile ? myQuizzesLoading : otherQuizzesLoading;
+
+  type FriendEntry = { id: number; friendUser: { id: number; name: string; avatarUrl: string | null } };
+  const { data: myFriends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
+    queryKey: ["/api/friends"],
+    queryFn: async () => {
+      const res = await fetch("/api/friends", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isOwnProfile && isAuthenticated,
+  });
+
+  type GroupSummary = { id: number; name: string; memberCount: number; isPublic: boolean };
+  const { data: groupsData } = useQuery<{ myGroups: GroupSummary[] }>({
+    queryKey: ["/api/groups"],
+    enabled: isOwnProfile && isAuthenticated,
+  });
+  const myGroups = groupsData?.myGroups ?? [];
 
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
@@ -394,37 +412,47 @@ export default function Profile() {
         <Card>
           <CardContent className="pt-4">
             <Tabs defaultValue="stats">
-              <TabsList className={`w-full grid ${isOwnProfile ? "grid-cols-6" : "grid-cols-5"}`} data-testid="tabs-profile-sections">
-                <TabsTrigger value="stats" className="flex items-center gap-1.5" data-testid="tab-game-stats">
-                  <Gamepad2 className="h-4 w-4" /> <span className="hidden sm:inline">Game Stats</span>
-                </TabsTrigger>
-                <TabsTrigger value="quizzes" className="flex items-center gap-1.5" data-testid="tab-my-quizzes">
-                  <GraduationCap className="h-4 w-4" /> <span className="hidden sm:inline">{isOwnProfile ? "My Quizzes" : "Quizzes"}</span>
-                  {quizzes.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-xs">{quizzes.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="rankings" className="flex items-center gap-1.5" data-testid="tab-rankings">
-                  <Trophy className="h-4 w-4" /> <span className="hidden sm:inline">Rankings</span>
-                </TabsTrigger>
-                <TabsTrigger value="achievements" className="flex items-center gap-1.5" data-testid="tab-achievements">
-                  <Award className="h-4 w-4" /> <span className="hidden sm:inline">Achievements</span>
-                  {profile.achievements.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-xs">{profile.achievements.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="duels" className="flex items-center gap-1.5" data-testid="tab-duels">
-                  <Swords className="h-4 w-4" /> <span className="hidden sm:inline">Duels</span>
-                  {duelHistory.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 text-xs">{duelHistory.length}</Badge>
-                  )}
-                </TabsTrigger>
-                {isOwnProfile && (
-                  <TabsTrigger value="settings" className="flex items-center gap-1.5" data-testid="tab-settings">
-                    <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Settings</span>
+              <div className="w-full overflow-x-auto">
+                <TabsList className="flex w-max min-w-full h-auto" data-testid="tabs-profile-sections">
+                  <TabsTrigger value="stats" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-game-stats">
+                    <Gamepad2 className="h-4 w-4" /> <span className="hidden sm:inline">Game Stats</span>
                   </TabsTrigger>
-                )}
-              </TabsList>
+                  <TabsTrigger value="quizzes" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-my-quizzes">
+                    <GraduationCap className="h-4 w-4" /> <span className="hidden sm:inline">{isOwnProfile ? "My Quizzes" : "Quizzes"}</span>
+                    {quizzes.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">{quizzes.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="rankings" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-rankings">
+                    <Trophy className="h-4 w-4" /> <span className="hidden sm:inline">Rankings</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="achievements" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-achievements">
+                    <Award className="h-4 w-4" /> <span className="hidden sm:inline">Achievements</span>
+                    {profile.achievements.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">{profile.achievements.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="duels" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-duels">
+                    <Swords className="h-4 w-4" /> <span className="hidden sm:inline">Duels</span>
+                    {duelHistory.length > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">{duelHistory.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                  {isOwnProfile && (
+                    <TabsTrigger value="social" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-social">
+                      <Heart className="h-4 w-4" /> <span className="hidden sm:inline">Social</span>
+                      {(myFriends.length + myGroups.length) > 0 && (
+                        <Badge variant="secondary" className="ml-1 text-xs">{myFriends.length + myGroups.length}</Badge>
+                      )}
+                    </TabsTrigger>
+                  )}
+                  {isOwnProfile && (
+                    <TabsTrigger value="settings" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-settings">
+                      <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Settings</span>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
 
               <TabsContent value="stats" className="mt-4">
                 {profile.stats.length === 0 ? (
@@ -455,7 +483,12 @@ export default function Profile() {
 
               <TabsContent value="quizzes" className="mt-4">
                 {isOwnProfile && !quizzesLoading && (
-                  <div className="flex justify-end mb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <Link href="/my-quizzes">
+                      <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs h-7 px-2" data-testid="link-manage-all-quizzes">
+                        Manage all <ChevronRight className="h-3 w-3" />
+                      </Button>
+                    </Link>
                     <Link href="/create-quiz">
                       <Button size="sm" className="gap-2" data-testid="button-create-new-quiz">
                         <GraduationCap className="h-4 w-4" />
@@ -720,6 +753,117 @@ export default function Profile() {
                   </div>
                 )}
               </TabsContent>
+
+              {isOwnProfile && (
+                <TabsContent value="social" className="mt-4">
+                  <div className="space-y-6">
+                    {/* Friends */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-primary" /> Friends
+                          {myFriends.length > 0 && <Badge variant="secondary" className="text-xs">{myFriends.length}</Badge>}
+                        </h3>
+                        <Link href="/friends">
+                          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs h-7 px-2" data-testid="link-all-friends">
+                            View all <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                      {friendsLoading ? (
+                        <div className="space-y-2">
+                          {[1,2,3].map(i => <Skeleton key={i} className="h-11 w-full rounded-lg" />)}
+                        </div>
+                      ) : myFriends.length === 0 ? (
+                        <div className="text-center py-5 text-muted-foreground">
+                          <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-medium">No friends yet</p>
+                          <Link href="/friends">
+                            <Button variant="outline" size="sm" className="mt-3 gap-1" data-testid="button-find-friends">
+                              <UserPlus className="h-3.5 w-3.5" /> Find Friends
+                            </Button>
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {myFriends.slice(0, 5).map(f => (
+                            <div key={f.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors" data-testid={`row-friend-${f.friendUser.id}`}>
+                              <div className="flex items-center gap-2.5">
+                                <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-7 w-7 text-xs shrink-0" />
+                                <span className="text-sm font-medium">{f.friendUser.name}</span>
+                              </div>
+                              <Link href={`/profile/${f.friendUser.id}`}>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" data-testid={`link-friend-profile-${f.friendUser.id}`}>
+                                  Profile <ChevronRight className="h-3 w-3 ml-0.5" />
+                                </Button>
+                              </Link>
+                            </div>
+                          ))}
+                          {myFriends.length > 5 && (
+                            <Link href="/friends">
+                              <p className="text-xs text-center text-muted-foreground hover:text-foreground cursor-pointer py-1" data-testid="link-more-friends">
+                                +{myFriends.length - 5} more — view all
+                              </p>
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Groups */}
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-primary" /> Groups
+                          {myGroups.length > 0 && <Badge variant="secondary" className="text-xs">{myGroups.length}</Badge>}
+                        </h3>
+                        <Link href="/groups">
+                          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground text-xs h-7 px-2" data-testid="link-all-groups">
+                            View all <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </Link>
+                      </div>
+                      {myGroups.length === 0 ? (
+                        <div className="text-center py-5 text-muted-foreground">
+                          <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm font-medium">No groups yet</p>
+                          <Link href="/groups">
+                            <Button variant="outline" size="sm" className="mt-3 gap-1" data-testid="button-find-groups">
+                              <Users className="h-3.5 w-3.5" /> Browse Groups
+                            </Button>
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {myGroups.slice(0, 5).map(g => (
+                            <Link key={g.id} href={`/groups/${g.id}`}>
+                              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer" data-testid={`row-group-${g.id}`}>
+                                <div className="flex items-center gap-2.5">
+                                  {g.isPublic
+                                    ? <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    : <Lock className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                  <div>
+                                    <p className="text-sm font-medium leading-tight">{g.name}</p>
+                                    <p className="text-xs text-muted-foreground">{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                                  </div>
+                                </div>
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            </Link>
+                          ))}
+                          {myGroups.length > 5 && (
+                            <Link href="/groups">
+                              <p className="text-xs text-center text-muted-foreground hover:text-foreground cursor-pointer py-1" data-testid="link-more-groups">
+                                +{myGroups.length - 5} more — view all
+                              </p>
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           </CardContent>
         </Card>
