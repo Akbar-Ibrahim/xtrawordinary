@@ -55,7 +55,7 @@ export default function Home() {
     queryKey: ["/api/word-wars"],
   });
 
-  const openTournament = wordWarsTournaments.find(t => t.status === "registration" || t.status === "active");
+  const openTournament = wordWarsTournaments.find(t => t.status === "active") ?? wordWarsTournaments.find(t => t.status === "registration");
   const hasAnyTournament = wordWarsTournaments.length > 0;
 
   const { data: hallOfFame = [] } = useQuery<ChampionEntry[]>({
@@ -378,7 +378,7 @@ export default function Home() {
                   if (openTournament.status === "registration") {
                     subLabel = `${openTournament.registrationCount} ${openTournament.registrationCount === 1 ? "warrior" : "warriors"} · closes ${new Date(openTournament.registrationDeadline).toLocaleDateString()}`;
                   } else {
-                    subLabel = "Tournament in progress";
+                    subLabel = "In Progress";
                   }
                 } else if (hallOfFame.length > 0 && hallOfFame[0].user) {
                   subLabel = `Last champion: ${hallOfFame[0].user.name}`;
