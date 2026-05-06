@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,36 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, ChevronDown, Shield, XCircle, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
+
+function useCountdown(isoDeadline: string) {
+  const [remaining, setRemaining] = useState(() => new Date(isoDeadline).getTime() - Date.now());
+
+  useEffect(() => {
+    setRemaining(new Date(isoDeadline).getTime() - Date.now());
+    const id = setInterval(() => {
+      setRemaining(new Date(isoDeadline).getTime() - Date.now());
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isoDeadline]);
+
+  return remaining;
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Drawing bracket…";
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) {
+    return `${days}d ${hours}h ${String(minutes).padStart(2, "0")}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  }
+  return `${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+}
 
 type MatchWithGames = WordWarsMatch & { games: WordWarsMatchGame[] };
 type PlayerInfo = { id: number; name: string; avatarUrl: string | null };
@@ -429,6 +459,59 @@ function MyMatchesSection({
   );
 }
 
+function RegistrationCountdownCard({
+  registrationDeadline,
+  registrationCount,
+  onDeadlinePassed,
+}: {
+  registrationDeadline: string;
+  registrationCount: number;
+  onDeadlinePassed: () => void;
+}) {
+  const remaining = useCountdown(registrationDeadline);
+  const deadlinePassed = remaining <= 0;
+
+  useEffect(() => {
+    if (deadlinePassed) {
+      onDeadlinePassed();
+    }
+  }, [deadlinePassed]);
+
+  return (
+    <Card className={`border-dashed transition-colors ${deadlinePassed ? "border-primary/40 bg-primary/5" : ""}`} data-testid="registration-countdown-card">
+      <CardContent className="py-10 text-center">
+        <Swords className={`h-10 w-10 mx-auto mb-3 ${deadlinePassed ? "text-primary opacity-60" : "text-muted-foreground opacity-30"}`} />
+
+        {deadlinePassed ? (
+          <div className="space-y-2">
+            <p className="font-semibold text-primary" data-testid="text-drawing-bracket">Drawing bracket…</p>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Page will update automatically</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="font-medium text-muted-foreground">Bracket draws when registration closes</p>
+            <div
+              className="inline-flex items-center gap-2 rounded-lg bg-muted px-5 py-3"
+              data-testid="countdown-display"
+            >
+              <Clock className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-2xl font-bold tabular-nums tracking-tight" data-testid="text-countdown">
+                {formatCountdown(remaining)}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {registrationCount} {registrationCount === 1 ? "warrior" : "warriors"} registered so far
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function WordWarsBracket() {
   const [, params] = useRoute("/word-wars/:id");
   const tournamentId = parseInt(params?.id ?? "0");
@@ -436,7 +519,7 @@ export default function WordWarsBracket() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<TournamentDetail>({
+  const { data, isLoading, refetch } = useQuery<TournamentDetail>({
     queryKey: ["/api/word-wars", tournamentId],
     queryFn: async () => {
       const res = await fetch(`/api/word-wars/${tournamentId}`);
@@ -444,7 +527,15 @@ export default function WordWarsBracket() {
       return res.json();
     },
     enabled: tournamentId > 0,
-    refetchInterval: 15000,
+    refetchInterval: (query) => {
+      const d = query.state.data as TournamentDetail | undefined;
+      if (!d) return 15000;
+      if (d.tournament.status === "registration") {
+        const msLeft = new Date(d.tournament.registrationDeadline).getTime() - Date.now();
+        if (msLeft <= 0) return 3000;
+      }
+      return 15000;
+    },
   });
 
   if (isLoading) {
@@ -552,13 +643,11 @@ export default function WordWarsBracket() {
         </Card>
 
         {tournament.status === "registration" && matches.length === 0 && (
-          <Card className="border-dashed">
-            <CardContent className="py-10 text-center text-muted-foreground">
-              <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Bracket will be drawn when registration closes.</p>
-              <p className="text-sm mt-1">{registrations.length} warrior{registrations.length !== 1 ? "s" : ""} registered so far.</p>
-            </CardContent>
-          </Card>
+          <RegistrationCountdownCard
+            registrationDeadline={tournament.registrationDeadline}
+            registrationCount={registrations.length}
+            onDeadlinePassed={() => refetch()}
+          />
         )}
 
         {user && <MyMatchesSection matches={matches} players={players} user={user} tournamentId={tournamentId} navigate={navigate} toast={toast} />}
