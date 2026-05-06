@@ -7,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles } from "lucide-react";
+import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles, Sword } from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import type { WordWarsTournament } from "@shared/schema";
 import type { Game } from "@shared/schema";
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
 import { PremiumBanner } from "@/components/premium-banner";
@@ -44,6 +45,10 @@ export default function Home() {
 
   const { data: dailyChallenge } = useQuery<DailyChallengeResponse>({
     queryKey: ["/api/daily-challenge"],
+  });
+
+  const { data: wordWarsTournaments = [] } = useQuery<WordWarsTournament[]>({
+    queryKey: ["/api/word-wars"],
   });
 
   const stats = useMemo(() => loadStats(), []);
@@ -352,7 +357,44 @@ export default function Home() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.26 }}
+              transition={{ delay: 0.25 }}
+              className="flex flex-col"
+            >
+              {(() => {
+                const openTournament = wordWarsTournaments.find(t => t.status === "registration" || t.status === "active");
+                const subLabel = openTournament
+                  ? openTournament.status === "registration"
+                    ? `Open · closes ${new Date(openTournament.registrationDeadline).toLocaleDateString()}`
+                    : "Tournament in progress"
+                  : wordWarsTournaments.length > 0
+                  ? "View past tournaments"
+                  : "Bracket tournaments";
+                return (
+                  <Link href="/word-wars" className="flex-1 flex flex-col">
+                    <Card
+                      className={`hover-elevate cursor-pointer h-full${openTournament ? " border-amber-400/40" : ""}`}
+                      data-testid="card-word-wars-shortcut"
+                    >
+                      <CardContent className="p-4 flex items-center gap-3 h-full">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/10">
+                          <Sword className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">Word Wars</p>
+                          <p className="text-xs text-muted-foreground truncate">{subLabel}</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })()}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.27 }}
               className="flex flex-col"
             >
               <PremiumBanner variant="card" />

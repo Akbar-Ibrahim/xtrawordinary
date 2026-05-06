@@ -68,7 +68,6 @@ export function Navigation() {
   const { toast } = useToast();
   const { unseenChallenges, unseenCount, newlyAccepted, dismiss: dismissDuelNotification } = useDuelNotifications();
 
-  // Legacy: open duel count badge on Duels nav link
   const { data: openDuelCountData } = useQuery<{ count: number }>({
     queryKey: ["/api/duels/open/count"],
     enabled: isAuthenticated,
@@ -76,7 +75,6 @@ export function Navigation() {
   });
   const openDuelCount = openDuelCountData?.count ?? 0;
 
-  // Primary notification feed (DB-backed)
   const { data: dbNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: isAuthenticated,
@@ -114,7 +112,6 @@ export function Navigation() {
     }
   }, [isAuthenticated]);
 
-  // WS supplement: toast when challenger's duel room is accepted
   useEffect(() => {
     for (const c of newlyAccepted) {
       if (!prevToastedRef.current.has(c.id)) {
@@ -141,9 +138,6 @@ export function Navigation() {
     }
   }, [newlyAccepted]);
 
-  // Badge = DB unread only. duel_accepted is persisted to DB, so WS unseenChallenges
-  // are shown as a convenience "go to room" section in the panel but are not
-  // counted separately in the badge to avoid double-counting.
   const totalNotificationCount = dbUnreadCount;
 
   const firstUnseenRoom: string | null =
@@ -188,57 +182,21 @@ export function Navigation() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md"
       >
-        <nav className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
+        {/* ── Top row: logo + utility controls ── */}
+        <div className="container mx-auto flex h-12 items-center justify-between px-4">
           <Link href="/">
             <div
               className="flex items-center gap-2 cursor-pointer hover-elevate rounded-md px-2 py-1"
               data-testid="link-home-logo"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden bg-primary">
-                <img src="/favicon.png" alt="xtraWordinary logo" className="h-9 w-9 object-cover" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg overflow-hidden bg-primary">
+                <img src="/favicon.png" alt="xtraWordinary logo" className="h-8 w-8 object-cover" />
               </div>
-              <span className="text-xl font-bold tracking-tight">xtraWordinary</span>
+              <span className="text-lg font-bold tracking-tight">xtraWordinary</span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-1">
-            {navLinks.map((link) => {
-              const isActive = location === link.href;
-              const Icon = link.icon;
-              const isDuels = link.href === "/duels";
-              return (
-                <Link key={link.href} href={link.href}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    className="gap-2 relative"
-                    data-testid={`link-nav-${link.label.toLowerCase()}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{link.label}</span>
-                    {isDuels && openDuelCount > 0 && (
-                      <span
-                        className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
-                        data-testid="badge-open-duels-count"
-                      >
-                        {openDuelCount > 99 ? "99+" : openDuelCount}
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-              );
-            })}
-            {isAuthenticated && (
-              <Link href="/create-quiz">
-                <Button
-                  variant={location === "/create-quiz" ? "secondary" : "ghost"}
-                  className="gap-2"
-                  data-testid="link-nav-create-quiz"
-                >
-                  <GraduationCap className="h-4 w-4" />
-                  <span className="hidden sm:inline">Create Quiz</span>
-                </Button>
-              </Link>
-            )}
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="icon"
@@ -247,9 +205,9 @@ export function Navigation() {
               data-testid="button-sound-toggle"
             >
               {soundEnabled ? (
-                <Volume2 className="h-5 w-5" />
+                <Volume2 className="h-4 w-4" />
               ) : (
-                <VolumeX className="h-5 w-5" />
+                <VolumeX className="h-4 w-4" />
               )}
             </Button>
             <Button
@@ -260,9 +218,9 @@ export function Navigation() {
               data-testid="button-theme-toggle"
             >
               {theme === "light" ? (
-                <Moon className="h-5 w-5" />
+                <Moon className="h-4 w-4" />
               ) : (
-                <Sun className="h-5 w-5" />
+                <Sun className="h-4 w-4" />
               )}
             </Button>
 
@@ -282,7 +240,7 @@ export function Navigation() {
                         aria-hidden="true"
                       />
                     )}
-                    <Bell className="h-5 w-5" />
+                    <Bell className="h-4 w-4" />
                     {totalNotificationCount > 0 && (
                       <span
                         className="absolute top-1 right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none"
@@ -319,7 +277,6 @@ export function Navigation() {
                       </div>
                     ) : (
                       <div className="py-1">
-                        {/* WS supplement: transient duel rooms that are ready */}
                         {unseenChallenges.length > 0 && (
                           <div>
                             <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -353,7 +310,6 @@ export function Navigation() {
                           </div>
                         )}
 
-                        {/* Primary DB-backed notification feed */}
                         {dbNotifications.length > 0 && (
                           <div>
                             {unseenChallenges.length > 0 && (
@@ -402,16 +358,16 @@ export function Navigation() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="gap-2 relative"
+                    size="sm"
+                    className="gap-2 relative px-2"
                     data-testid="button-user-menu"
                     onClick={handleUserMenuClick}
                   >
                     <UserAvatar name={user.name} avatarUrl={user.avatarUrl} className="h-6 w-6 text-[10px]" />
-                    <span className="hidden sm:inline max-w-[100px] truncate">{user.name}</span>
+                    <span className="hidden sm:inline max-w-[80px] truncate text-sm">{user.name}</span>
                     {user.isPremium && (
                       <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-amber-500 shrink-0" data-testid="badge-premium-nav">
                         <Crown className="h-3 w-3" />
-                        Premium
                       </span>
                     )}
                   </Button>
@@ -463,12 +419,57 @@ export function Navigation() {
               </DropdownMenu>
             ) : (
               <Button variant="outline" size="sm" onClick={() => setAuthOpen(true)} data-testid="button-signin">
-                <LogIn className="h-4 w-4 mr-2" />
+                <LogIn className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline">Sign In</span>
               </Button>
             )}
           </div>
-        </nav>
+        </div>
+
+        {/* ── Bottom row: navigation links ── */}
+        <div className="border-t border-border/40">
+          <div className="container mx-auto flex h-10 items-center gap-0.5 px-4 overflow-x-auto scrollbar-none">
+            {navLinks.map((link) => {
+              const isActive = location === link.href;
+              const Icon = link.icon;
+              const isDuels = link.href === "/duels";
+              return (
+                <Link key={link.href} href={link.href}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    size="sm"
+                    className="gap-1.5 relative shrink-0 h-8 px-3 text-xs"
+                    data-testid={`link-nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{link.label}</span>
+                    {isDuels && openDuelCount > 0 && (
+                      <span
+                        className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none"
+                        data-testid="badge-open-duels-count"
+                      >
+                        {openDuelCount > 99 ? "99+" : openDuelCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+            {isAuthenticated && (
+              <Link href="/create-quiz">
+                <Button
+                  variant={location === "/create-quiz" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="gap-1.5 shrink-0 h-8 px-3 text-xs"
+                  data-testid="link-nav-create-quiz"
+                >
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  <span>Create Quiz</span>
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
       </motion.header>
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </>

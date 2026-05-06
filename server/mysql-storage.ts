@@ -2082,4 +2082,33 @@ export class MySQLStorage implements IStorage {
       .orderBy(desc(schema.wordWarsChampions.createdAt));
     return rows.map((r: any) => this.toWordWarsChampion(r));
   }
+
+  async getWordWarsStatsForUser(userId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const db = await this.getDb();
+    const regRows = await db.select().from(schema.wordWarsRegistrations)
+      .where(eq(schema.wordWarsRegistrations.userId, userId));
+    const tournamentsEntered = regRows.length;
+
+    const matchRows = await db.select().from(schema.wordWarsMatches)
+      .where(
+        and(
+          or(
+            eq(schema.wordWarsMatches.player1Id, userId),
+            eq(schema.wordWarsMatches.player2Id, userId)
+          ),
+          or(
+            eq(schema.wordWarsMatches.status, "completed"),
+            eq(schema.wordWarsMatches.status, "forfeited")
+          )
+        )
+      );
+
+    let matchWins = 0;
+    let matchLosses = 0;
+    for (const m of matchRows) {
+      if (m.winnerId === userId) matchWins++;
+      else if (m.winnerId !== null) matchLosses++;
+    }
+    return { tournamentsEntered, matchWins, matchLosses };
+  }
 }

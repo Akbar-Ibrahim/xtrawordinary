@@ -169,6 +169,84 @@ function pickThreeGames(): [string, string, string] {
   return [pool[0], pool[1], pool[2]];
 }
 
+// ==================== AUTO-FORFEIT ====================
+
+/**
+ * Checks all active/pending matches in a tournament whose deadline has passed.
+ * Forfeits them by advancing the player with more match-game wins (random on tie).
+ * Bracket advancement fires automatically via _triggerAdvancement.
+ * Safe to call on every GET /api/word-wars/:id — idempotent on already-decided matches.
+ */
+export async function checkAndForfeitExpiredMatches(tournamentId: number): Promise<void> {
+  try {
+    const tournament = await storage.getWordWarsTournament(tournamentId);
+    if (!tournament || tournament.status !== "active") return;
+
+    const matches = await storage.listWordWarsMatchesForTournament(tournamentId);
+    const expirable = matches.filter(
+      (m) =>
+        (m.status === "pending" || m.status === "active") &&
+        m.deadline !== null &&
+        new Date(m.deadline) <= new Date() &&
+        m.player1Id !== null &&
+        m.player2Id !== null,
+    );
+
+    for (const match of expirable) {
+      const games = await storage.getWordWarsMatchGames(match.id);
+      const completed = games.filter((g) => g.status === "completed");
+      let p1Wins = 0;
+      let p2Wins = 0;
+      for (const g of completed) {
+        if (g.winnerId === match.player1Id) p1Wins++;
+        else if (g.winnerId === match.player2Id) p2Wins++;
+      }
+      const winnerId =
+        p1Wins > p2Wins
+          ? match.player1Id!
+          : p2Wins > p1Wins
+          ? match.player2Id!
+          : Math.random() < 0.5
+          ? match.player1Id!
+          : match.player2Id!;
+
+      await storage.updateWordWarsMatch(match.id, {
+        status: "forfeited",
+        winnerId,
+      });
+
+      // Notify both players
+      const loserId = winnerId === match.player1Id ? match.player2Id! : match.player1Id!;
+      for (const [playerId, isWinner] of [
+        [winnerId, true],
+        [loserId, false],
+      ] as [number, boolean][]) {
+        try {
+          const prefs = await storage.getNotificationPreferences(playerId);
+          if (prefs["word_war_round_start"]) {
+            await storage.createNotification({
+              userId: playerId,
+              type: "word_war_round_start",
+              title: isWinner ? "Match decided by forfeit" : "You were forfeited",
+              body: isWinner
+                ? "Your opponent didn't complete their games in time. You advance."
+                : "The round deadline passed before you completed your games. You have been eliminated.",
+              linkUrl: `/word-wars/${tournamentId}`,
+            });
+          }
+        } catch (e) {
+          console.error("[word-wars-engine] forfeit notification error", e);
+        }
+      }
+
+      // Advance bracket through the serialized helper
+      _triggerAdvancement(match.tournamentId, match.round);
+    }
+  } catch (err) {
+    console.error("[word-wars-engine] checkAndForfeitExpiredMatches error", err);
+  }
+}
+
 // ==================== DUEL FINALIZE HOOK ====================
 
 /**
@@ -201,13 +279,10 @@ export async function resolveWordWarsGame(
     });
 
     // IDEMPOTENCY: if the parent match is already decided, skip bracket advancement.
-    // This handles the case where game 2 already decided the series and advanced the
-    // bracket, but game 3 (which was already in progress) now also finalizes.
     if (match.status === "completed" || match.status === "bye") return;
 
     // Count wins for each player across all completed games in this match
     const allGames = await storage.getWordWarsMatchGames(match.id);
-    // Treat the current game as completed with our recorded winner when counting
     const completedGames = allGames.map(g =>
       g.id === matchGame.id ? { ...g, status: "completed" as const, winnerId: gameWinnerId } : g
     ).filter(g => g.status === "completed");
@@ -223,22 +298,16 @@ export async function resolveWordWarsGame(
     const seriesWinnerId = p1Wins >= 2 ? match.player1Id
       : p2Wins >= 2 ? match.player2Id
       : totalCompleted >= 3
-        // All 3 done, no one has 2 — whoever has more wins advances; player1 wins ties
         ? (p1Wins >= p2Wins ? match.player1Id : match.player2Id)
         : null;
 
     if (seriesWinnerId === null) return; // Series not decided yet
 
-    // Mark match completed — this write happens BEFORE the lock so that when
-    // another concurrent resolver holds the lock and re-queries, it sees our
-    // match as completed in storage.
     await storage.updateWordWarsMatch(match.id, {
       status: "completed",
       winnerId: seriesWinnerId,
     });
 
-    // Trigger bracket advancement through the serialized helper so concurrent
-    // finalizations are handled safely without dropping any event.
     _triggerAdvancement(match.tournamentId, match.round);
   } catch (err) {
     console.error("[word-wars-engine] resolveWordWarsGame error", err);
@@ -247,15 +316,9 @@ export async function resolveWordWarsGame(
 
 /**
  * Safely triggers bracket advancement for a tournament round.
- * Acquires the per-tournament lock; if the lock is already held by another
- * async execution, enqueues a pending retry instead of dropping the event.
- * After the lock-holder finishes, it fires the retry via setImmediate so the
- * retry always runs after all in-flight writes have committed.
- * This pattern ensures no completion signal is ever lost under concurrency.
  */
 function _triggerAdvancement(tournamentId: number, round: number): void {
   if (roundAdvancementsInProgress.has(tournamentId)) {
-    // Lock is held — register a pending retry; the holder will fire it.
     pendingRoundAdvancements.set(tournamentId, round);
     return;
   }
@@ -264,49 +327,34 @@ function _triggerAdvancement(tournamentId: number, round: number): void {
     .catch(e => console.error("[word-wars-engine] advance error", e))
     .finally(() => {
       roundAdvancementsInProgress.delete(tournamentId);
-      // Fire any retry that arrived while we held the lock.
       const pending = pendingRoundAdvancements.get(tournamentId);
       if (pending !== undefined) {
         pendingRoundAdvancements.delete(tournamentId);
-        // setImmediate gives in-flight storage writes a chance to commit
-        // before the retry re-reads round state.
         setImmediate(() => _triggerAdvancement(tournamentId, pending));
       }
     });
 }
 
-/**
- * Checks whether all matches in `round` are complete and, if so, either
- * crowns a champion (final round) or creates next-round matches.
- * Must always be called while holding `roundAdvancementsInProgress` for the
- * given tournamentId so only one execution path runs at a time.
- */
 async function _advanceBracket(tournamentId: number, round: number): Promise<void> {
     const tournament = await storage.getWordWarsTournament(tournamentId);
     if (!tournament) return;
 
-    // Re-fetch from storage inside the lock — reflects all writes that happened
-    // before the lock was acquired (including the match we just completed).
     const allMatchesInTournament = await storage.listWordWarsMatchesForTournament(tournamentId);
     const currentRoundMatches = allMatchesInTournament.filter(m => m.round === round);
     const allCurrentRoundDone = currentRoundMatches.every(
-      m => m.status === "completed" || m.status === "bye",
+      m => m.status === "completed" || m.status === "bye" || m.status === "forfeited",
     );
 
     if (!allCurrentRoundDone) return;
 
-    // Safety check: ensure next-round matches don't already exist (extra guard
-    // against edge cases where the lock was bypassed or champion was already set)
     const nextRound = round + 1;
     const existingNextRoundMatches = allMatchesInTournament.filter(m => m.round === nextRound);
     if (existingNextRoundMatches.length > 0) return;
 
-    // Collect winners from this round (byes and completed matches)
     const roundWinners = currentRoundMatches.map(m => m.winnerId)
       .filter((id): id is number => id !== null);
 
     if (roundWinners.length === 1) {
-      // Final match decided — crown champion (only if not already completed)
       if (tournament.status === "completed") return;
       const championId = roundWinners[0];
       await storage.updateWordWarsTournament(tournamentId, { status: "completed" });
@@ -329,8 +377,6 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
       return;
     }
 
-    // Pair up winners for next round
-
     const deadline = tournament.roundDeadlineHours
       ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
       : null;
@@ -342,7 +388,6 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
       const [g1, g2, g3] = pickThreeGames();
 
       if (p2 === null) {
-        // Bye
         const created = await storage.createWordWarsMatch({
           tournamentId,
           round: nextRound,
@@ -391,7 +436,6 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
           });
         }
 
-        // Notify both players of their new match
         for (const [playerId, opponentId] of [[p1, p2], [p2, p1]] as [number, number][]) {
           try {
             const [opponent, prefs] = await Promise.all([

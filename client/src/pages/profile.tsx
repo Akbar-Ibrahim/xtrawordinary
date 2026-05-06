@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart, Sword } from "lucide-react";
 import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import type { UserGameStats, UserAchievement, Game, QuizSession, NotificationType } from "@shared/schema";
@@ -130,6 +130,16 @@ export default function Profile() {
     queryFn: async () => {
       const res = await fetch(`/api/users/${userId}/championships`, { credentials: "include" });
       if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: userId > 0,
+  });
+
+  const { data: wordWarsStats } = useQuery<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>({
+    queryKey: ["/api/users", userId, "word-wars-stats"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/word-wars-stats`, { credentials: "include" });
+      if (!res.ok) return null;
       return res.json();
     },
     enabled: userId > 0,
@@ -419,6 +429,52 @@ export default function Profile() {
                       </span>
                     </Link>
                   )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {wordWarsStats && (wordWarsStats.tournamentsEntered > 0 || championships.length > 0) && (
+          <Card className="border-amber-300 dark:border-amber-700" data-testid="card-word-wars-stats">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <Sword className="h-5 w-5 text-amber-500" />
+                  <div>
+                    <p className="font-semibold text-sm">Word Wars</p>
+                    <p className="text-xs text-muted-foreground">
+                      {wordWarsStats.tournamentsEntered} {wordWarsStats.tournamentsEntered === 1 ? "tournament" : "tournaments"} entered
+                      {championships.length > 0 && (
+                        <> · <span className="text-amber-600 dark:text-amber-400 font-semibold">{championships.length} {championships.length === 1 ? "title" : "titles"}</span></>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-3 justify-end">
+                    <div className="text-center">
+                      <p className="text-xl font-black text-amber-600 dark:text-amber-400" data-testid="text-word-wars-match-wins">{wordWarsStats.matchWins}</p>
+                      <p className="text-[10px] text-muted-foreground">Wins</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-black text-muted-foreground" data-testid="text-word-wars-match-losses">{wordWarsStats.matchLosses}</p>
+                      <p className="text-[10px] text-muted-foreground">Losses</p>
+                    </div>
+                    {wordWarsStats.matchWins + wordWarsStats.matchLosses > 0 && (
+                      <div className="text-center">
+                        <p className="text-xl font-black text-foreground" data-testid="text-word-wars-win-rate">
+                          {Math.round((wordWarsStats.matchWins / (wordWarsStats.matchWins + wordWarsStats.matchLosses)) * 100)}%
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Win Rate</p>
+                      </div>
+                    )}
+                  </div>
+                  <Link href="/word-wars">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer" data-testid="link-word-wars-profile">
+                      View tournaments
+                    </span>
+                  </Link>
                 </div>
               </div>
             </CardContent>

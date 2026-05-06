@@ -9,7 +9,7 @@ import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
-import { executeBracketDraw } from "./word-wars-engine";
+import { executeBracketDraw, checkAndForfeitExpiredMatches } from "./word-wars-engine";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -3379,6 +3379,8 @@ export async function registerRoutes(
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
       const tournament = await storage.getWordWarsTournament(id);
       if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      // Auto-forfeit any matches whose round deadline has expired
+      checkAndForfeitExpiredMatches(id).catch(e => console.error("[word-wars] forfeit check error", e));
       const [registrations, matches] = await Promise.all([
         storage.getWordWarsRegistrationsForTournament(id),
         storage.listWordWarsMatchesForTournament(id),
@@ -3468,6 +3470,17 @@ export async function registerRoutes(
       res.json(championships);
     } catch {
       res.status(500).json({ error: "Failed to get championships" });
+    }
+  });
+
+  app.get("/api/users/:id/word-wars-stats", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const stats = await storage.getWordWarsStatsForUser(id);
+      res.json(stats);
+    } catch {
+      res.status(500).json({ error: "Failed to get Word Wars stats" });
     }
   });
 

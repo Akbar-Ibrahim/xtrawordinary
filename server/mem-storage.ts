@@ -1761,4 +1761,15 @@ export class MemStorage implements IStorage {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
+
+  async getWordWarsStatsForUser(userId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const tournamentsEntered = this.wordWarsRegistrations.filter(r => r.userId === userId).length;
+    const userMatches = this.wordWarsMatches.filter(
+      m => (m.player1Id === userId || m.player2Id === userId) &&
+        (m.status === "completed" || m.status === "forfeited")
+    );
+    const matchWins = userMatches.filter(m => m.winnerId === userId).length;
+    const matchLosses = userMatches.filter(m => m.winnerId !== null && m.winnerId !== userId).length;
+    return { tournamentsEntered, matchWins, matchLosses };
+  }
 }
