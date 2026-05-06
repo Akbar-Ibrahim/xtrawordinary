@@ -6,6 +6,17 @@ import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch, WordWarsM
 const drawsInProgress = new Set<number>();
 
 /**
+ * Per-tournament lock for round-advancement.  When two matches in the same
+ * round finalize concurrently, the first resolver to acquire this lock does
+ * the "is round done? → create next-round matches" check and creation; the
+ * second resolver returns early and lets the first one handle advancement.
+ * This is safe because updateWordWarsMatch (which marks the match completed)
+ * is called *before* the lock is acquired, so the first resolver's snapshot
+ * always reflects the most up-to-date match statuses.
+ */
+const roundAdvancementsInProgress = new Set<number>();
+
+/**
  * Shared bracket-draw logic — called by both the admin REST endpoint and the
  * background scheduler so they can never get out of sync.
  *
@@ -217,35 +228,67 @@ export async function resolveWordWarsGame(
 
     if (seriesWinnerId === null) return; // Series not decided yet
 
-    // Mark match completed — this is the single authoritative write that prevents re-entry
+    // Mark match completed — this write happens BEFORE the lock so that when
+    // another concurrent resolver holds the lock and re-queries, it sees our
+    // match as completed in storage.
     await storage.updateWordWarsMatch(match.id, {
       status: "completed",
       winnerId: seriesWinnerId,
     });
 
-    const tournament = await storage.getWordWarsTournament(match.tournamentId);
+    // Acquire per-tournament advancement lock.  Only one resolver at a time
+    // may run the "is-round-done → create-next-round" section.  If another
+    // resolver already holds the lock for this tournament, we return early —
+    // the lock-holder will re-query storage (which now includes our completed
+    // match) and handle advancement if the round is fully done.
+    if (roundAdvancementsInProgress.has(match.tournamentId)) return;
+    roundAdvancementsInProgress.add(match.tournamentId);
+    try {
+      await _advanceBracket(match.tournamentId, match.round);
+    } finally {
+      roundAdvancementsInProgress.delete(match.tournamentId);
+    }
+  } catch (err) {
+    console.error("[word-wars-engine] resolveWordWarsGame error", err);
+  }
+}
+
+/**
+ * Checks whether all matches in `round` are complete and, if so, either
+ * crowns a champion (final round) or creates next-round matches.
+ * Must always be called while holding `roundAdvancementsInProgress` for the
+ * given tournamentId so only one execution path runs at a time.
+ */
+async function _advanceBracket(tournamentId: number, round: number): Promise<void> {
+    const tournament = await storage.getWordWarsTournament(tournamentId);
     if (!tournament) return;
 
-    // Check if all matches in this round are now complete
-    const allMatchesInTournament = await storage.listWordWarsMatchesForTournament(match.tournamentId);
-    const currentRoundMatches = allMatchesInTournament.filter(m => m.round === match.round);
+    // Re-fetch from storage inside the lock — reflects all writes that happened
+    // before the lock was acquired (including the match we just completed).
+    const allMatchesInTournament = await storage.listWordWarsMatchesForTournament(tournamentId);
+    const currentRoundMatches = allMatchesInTournament.filter(m => m.round === round);
     const allCurrentRoundDone = currentRoundMatches.every(
-      m => m.status === "completed" || m.status === "bye" || m.id === match.id,
+      m => m.status === "completed" || m.status === "bye",
     );
 
     if (!allCurrentRoundDone) return;
 
-    // Collect winners from this round (including byes)
-    const roundWinners = currentRoundMatches.map(m => {
-      if (m.id === match.id) return seriesWinnerId;
-      return m.winnerId;
-    }).filter((id): id is number => id !== null);
+    // Safety check: ensure next-round matches don't already exist (extra guard
+    // against edge cases where the lock was bypassed or champion was already set)
+    const nextRound = round + 1;
+    const existingNextRoundMatches = allMatchesInTournament.filter(m => m.round === nextRound);
+    if (existingNextRoundMatches.length > 0) return;
+
+    // Collect winners from this round (byes and completed matches)
+    const roundWinners = currentRoundMatches.map(m => m.winnerId)
+      .filter((id): id is number => id !== null);
 
     if (roundWinners.length === 1) {
-      // Final match is decided — this player is the tournament champion
+      // Final match decided — crown champion (only if not already completed)
+      if (tournament.status === "completed") return;
       const championId = roundWinners[0];
-      await storage.updateWordWarsTournament(match.tournamentId, { status: "completed" });
-      await storage.createWordWarsChampion(match.tournamentId, championId);
+      await storage.updateWordWarsTournament(tournamentId, { status: "completed" });
+      await storage.createWordWarsChampion(tournamentId, championId);
 
       try {
         const prefs = await storage.getNotificationPreferences(championId);
@@ -255,7 +298,7 @@ export async function resolveWordWarsGame(
             type: "word_war_champion",
             title: "Champion",
             body: "You have conquered the Word Wars. Glory is yours.",
-            linkUrl: `/word-wars/${match.tournamentId}`,
+            linkUrl: `/word-wars/${tournamentId}`,
           });
         }
       } catch (e) {
@@ -265,12 +308,6 @@ export async function resolveWordWarsGame(
     }
 
     // Pair up winners for next round
-    const nextRound = match.round + 1;
-
-    // DUPLICATE GUARD: ensure next-round matches don't already exist (e.g. if two
-    // matches in the current round finalize concurrently or very close together)
-    const existingNextRoundMatches = allMatchesInTournament.filter(m => m.round === nextRound);
-    if (existingNextRoundMatches.length > 0) return;
 
     const deadline = tournament.roundDeadlineHours
       ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
@@ -285,7 +322,7 @@ export async function resolveWordWarsGame(
       if (p2 === null) {
         // Bye
         const created = await storage.createWordWarsMatch({
-          tournamentId: match.tournamentId,
+          tournamentId,
           round: nextRound,
           player1Id: p1,
           player2Id: null,
@@ -309,7 +346,7 @@ export async function resolveWordWarsGame(
         }
       } else {
         const created = await storage.createWordWarsMatch({
-          tournamentId: match.tournamentId,
+          tournamentId,
           round: nextRound,
           player1Id: p1,
           player2Id: p2,
@@ -345,7 +382,7 @@ export async function resolveWordWarsGame(
                 type: "word_war_matched",
                 title: "Your opponent awaits",
                 body: `${opponent?.name ?? "Your opponent"} stands between you and glory. The war continues.`,
-                linkUrl: `/word-wars/${match.tournamentId}`,
+                linkUrl: `/word-wars/${tournamentId}`,
               });
             }
             if (prefs["word_war_round_start"]) {
@@ -354,7 +391,7 @@ export async function resolveWordWarsGame(
                 type: "word_war_round_start",
                 title: `Round ${nextRound} begins`,
                 body: "Your next battle has been assigned.",
-                linkUrl: `/word-wars/${match.tournamentId}`,
+                linkUrl: `/word-wars/${tournamentId}`,
               });
             }
           } catch (e) {
@@ -363,7 +400,4 @@ export async function resolveWordWarsGame(
         }
       }
     }
-  } catch (err) {
-    console.error("[word-wars-engine] resolveWordWarsGame error", err);
-  }
 }
