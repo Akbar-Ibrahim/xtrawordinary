@@ -3339,6 +3339,40 @@ export async function registerRoutes(
     }
   });
 
+  // Global Hall of Fame — all champions across all tournaments, most recent first.
+  // Must be defined BEFORE /api/word-wars/:id to avoid "champions" matching :id.
+  app.get("/api/word-wars/champions", async (_req, res) => {
+    try {
+      const champions = await storage.listAllWordWarsChampions();
+      if (champions.length === 0) return res.json([]);
+      const [users, tournaments] = await Promise.all([
+        Promise.all(champions.map(c => storage.getUserById(c.userId))),
+        Promise.all(champions.map(c => storage.getWordWarsTournament(c.tournamentId))),
+      ]);
+      res.json(champions.map((c, i) => ({
+        ...c,
+        user: users[i] ? { id: users[i]!.id, name: users[i]!.name, avatarUrl: users[i]!.avatarUrl } : null,
+        tournament: tournaments[i] ? { id: tournaments[i]!.id, name: tournaments[i]!.name } : null,
+      })));
+    } catch {
+      res.status(500).json({ error: "Failed to get champions" });
+    }
+  });
+
+  // Match detail — must be defined BEFORE /api/word-wars/:id to avoid "matches" matching :id.
+  app.get("/api/word-wars/matches/:matchId", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      if (isNaN(matchId)) return res.status(400).json({ error: "Invalid match ID" });
+      const match = await storage.getWordWarsMatch(matchId);
+      if (!match) return res.status(404).json({ error: "Match not found" });
+      const games = await storage.getWordWarsMatchGames(matchId);
+      res.json({ match, games });
+    } catch {
+      res.status(500).json({ error: "Failed to get match" });
+    }
+  });
+
   app.get("/api/word-wars/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -3352,7 +3386,18 @@ export async function registerRoutes(
       const matchesWithGames = await Promise.all(
         matches.map(async (m) => ({ ...m, games: await storage.getWordWarsMatchGames(m.id) }))
       );
-      res.json({ tournament, registrations, matches: matchesWithGames });
+      // Embed user info for all players so the bracket can show names/avatars
+      const playerIds = new Set<number>();
+      matchesWithGames.forEach(m => {
+        if (m.player1Id) playerIds.add(m.player1Id);
+        if (m.player2Id) playerIds.add(m.player2Id);
+      });
+      const playerUsers = await Promise.all([...playerIds].map(uid => storage.getUserById(uid)));
+      const players: Record<number, { id: number; name: string; avatarUrl: string | null }> = {};
+      playerUsers.forEach(u => {
+        if (u) players[u.id] = { id: u.id, name: u.name, avatarUrl: u.avatarUrl };
+      });
+      res.json({ tournament, registrations, matches: matchesWithGames, players });
     } catch {
       res.status(500).json({ error: "Failed to get tournament" });
     }
@@ -3423,19 +3468,6 @@ export async function registerRoutes(
       res.json(championships);
     } catch {
       res.status(500).json({ error: "Failed to get championships" });
-    }
-  });
-
-  app.get("/api/word-wars/matches/:matchId", async (req, res) => {
-    try {
-      const matchId = parseInt(req.params.matchId);
-      if (isNaN(matchId)) return res.status(400).json({ error: "Invalid match ID" });
-      const match = await storage.getWordWarsMatch(matchId);
-      if (!match) return res.status(404).json({ error: "Match not found" });
-      const games = await storage.getWordWarsMatchGames(matchId);
-      res.json({ match, games });
-    } catch {
-      res.status(500).json({ error: "Failed to get match" });
     }
   });
 

@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
-import { Shield, Users, Trophy, BarChart3, Ban, ShieldCheck, Trash2, Loader2, Star, Gamepad2, MessageSquare, Flag } from "lucide-react";
+import { Shield, Users, Trophy, BarChart3, Ban, ShieldCheck, Trash2, Loader2, Star, Gamepad2, MessageSquare, Flag, Swords, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 
 export default function Admin() {
@@ -42,6 +44,7 @@ export default function Admin() {
             <TabsTrigger value="groups" data-testid="tab-groups"><Users className="h-4 w-4 mr-1" />Groups</TabsTrigger>
             <TabsTrigger value="games" data-testid="tab-games"><Gamepad2 className="h-4 w-4 mr-1" />Games</TabsTrigger>
             <TabsTrigger value="comments" data-testid="tab-comments"><MessageSquare className="h-4 w-4 mr-1" />Comments</TabsTrigger>
+            <TabsTrigger value="word-wars" data-testid="tab-word-wars"><Swords className="h-4 w-4 mr-1" />Word Wars</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="users"><UsersTab /></TabsContent>
@@ -49,6 +52,7 @@ export default function Admin() {
           <TabsContent value="groups"><GroupsTab /></TabsContent>
           <TabsContent value="games"><GamesTab /></TabsContent>
           <TabsContent value="comments"><CommentsTab /></TabsContent>
+          <TabsContent value="word-wars"><WordWarsTab /></TabsContent>
         </Tabs>
       </motion.div>
     </div>
@@ -554,5 +558,176 @@ function GroupsTab() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function WordWarsTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [name, setName] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [roundHours, setRoundHours] = useState("24");
+  const [maxPlayers, setMaxPlayers] = useState("");
+
+  const { data: tournaments = [], isLoading } = useQuery<Array<{
+    id: number; name: string; status: string; registrationDeadline: string; roundDeadlineHours: number; maxPlayers: number | null; createdAt: string;
+  }>>({
+    queryKey: ["/api/word-wars"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/word-wars", {
+      name: name.trim(),
+      registrationDeadline: new Date(deadline).toISOString(),
+      roundDeadlineHours: parseInt(roundHours),
+      maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
+    }),
+    onSuccess: () => {
+      toast({ title: "Tournament created!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] });
+      setName(""); setDeadline(""); setRoundHours("24"); setMaxPlayers("");
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const drawMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/word-wars/${id}/draw`),
+    onSuccess: () => {
+      toast({ title: "Bracket drawn!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const statusColor = (s: string) => ({
+    registration: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    active: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
+    completed: "bg-primary/15 text-primary",
+    cancelled: "bg-muted text-muted-foreground",
+  }[s] ?? "bg-muted text-muted-foreground");
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create Tournament
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ww-name">Tournament Name</Label>
+              <Input
+                id="ww-name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Word Wars Season 1"
+                data-testid="input-ww-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ww-deadline">Registration Deadline</Label>
+              <Input
+                id="ww-deadline"
+                type="datetime-local"
+                value={deadline}
+                onChange={e => setDeadline(e.target.value)}
+                data-testid="input-ww-deadline"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ww-round-hours">Hours per Round</Label>
+              <Input
+                id="ww-round-hours"
+                type="number"
+                min="1"
+                value={roundHours}
+                onChange={e => setRoundHours(e.target.value)}
+                data-testid="input-ww-round-hours"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ww-max">Max Players (optional)</Label>
+              <Input
+                id="ww-max"
+                type="number"
+                min="2"
+                value={maxPlayers}
+                onChange={e => setMaxPlayers(e.target.value)}
+                placeholder="Unlimited"
+                data-testid="input-ww-max-players"
+              />
+            </div>
+          </div>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!name.trim() || !deadline || createMutation.isPending}
+            data-testid="button-create-ww-tournament"
+          >
+            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+            Create Tournament
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Swords className="h-4 w-4" />
+            All Tournaments
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+            </div>
+          ) : tournaments.length === 0 ? (
+            <p className="text-muted-foreground text-center py-6">No tournaments yet.</p>
+          ) : (
+            <div className="space-y-3" data-testid="list-admin-tournaments">
+              {tournaments.map(t => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 border rounded-lg px-4 py-3 flex-wrap"
+                  data-testid={`row-ww-tournament-${t.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`text-xs ${statusColor(t.status)}`}>{t.status}</Badge>
+                      <span className="font-medium truncate" data-testid={`text-ww-name-${t.id}`}>{t.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Deadline: {new Date(t.registrationDeadline).toLocaleString()} · {t.roundDeadlineHours}h/round
+                      {t.maxPlayers ? ` · max ${t.maxPlayers}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {t.status === "registration" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => drawMutation.mutate(t.id)}
+                        disabled={drawMutation.isPending}
+                        data-testid={`button-draw-bracket-${t.id}`}
+                      >
+                        {drawMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                        Draw Bracket
+                      </Button>
+                    )}
+                    <a href={`/word-wars/${t.id}`} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="ghost" data-testid={`link-ww-bracket-${t.id}`}>View</Button>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -2075,4 +2075,11 @@ export class MySQLStorage implements IStorage {
       .orderBy(desc(schema.wordWarsChampions.createdAt));
     return rows.map((r: any) => this.toWordWarsChampion(r));
   }
+
+  async listAllWordWarsChampions(): Promise<WordWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsChampions)
+      .orderBy(desc(schema.wordWarsChampions.createdAt));
+    return rows.map((r: any) => this.toWordWarsChampion(r));
+  }
 }

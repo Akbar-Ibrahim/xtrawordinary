@@ -32,6 +32,8 @@ import MyQuizzes from "@/pages/my-quizzes";
 import DuelRoom from "@/pages/duel-room";
 import DuelLobby from "@/pages/duel-lobby";
 import DuelLeaderboard from "@/pages/duel-leaderboard";
+import WordWarsLobby from "@/pages/word-wars";
+import WordWarsBracket from "@/pages/word-wars-bracket";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -59,6 +61,8 @@ function Router() {
       <Route path="/my-quizzes" component={MyQuizzes} />
       <Route path="/duels" component={DuelLobby} />
       <Route path="/duels/leaderboard" component={DuelLeaderboard} />
+      <Route path="/word-wars" component={WordWarsLobby} />
+      <Route path="/word-wars/:id" component={WordWarsBracket} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
       <Route component={NotFound} />
     </Switch>

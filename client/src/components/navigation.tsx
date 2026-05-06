@@ -8,7 +8,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -29,6 +29,9 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   duel_accepted: <Swords className="h-4 w-4 text-orange-500" />,
   duel_challenge_received: <Swords className="h-4 w-4 text-violet-500" />,
   friend_challenge_result: <Trophy className="h-4 w-4 text-primary" />,
+  word_war_matched: <Sword className="h-4 w-4 text-amber-500" />,
+  word_war_round_start: <Sword className="h-4 w-4 text-orange-500" />,
+  word_war_champion: <Crown className="h-4 w-4 text-amber-500" />,
 };
 
 const NOTIF_BG: Record<string, string> = {
@@ -38,6 +41,9 @@ const NOTIF_BG: Record<string, string> = {
   duel_accepted: "bg-orange-500/10",
   duel_challenge_received: "bg-violet-500/10",
   friend_challenge_result: "bg-primary/10",
+  word_war_matched: "bg-amber-500/10",
+  word_war_round_start: "bg-orange-500/10",
+  word_war_champion: "bg-amber-500/10",
 };
 
 function timeAgo(isoString: string): string {
@@ -166,6 +172,7 @@ export function Navigation() {
     { href: "/", label: "Home", icon: Home },
     { href: "/daily", label: "Daily", icon: Calendar },
     { href: "/duels", label: "Duels", icon: Swords },
+    { href: "/word-wars", label: "Wars", icon: Sword },
     { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },

@@ -125,6 +125,16 @@ export default function Profile() {
   const duelRank = duelRating?.rank ?? null;
   const totalDuelPlayers = duelRating?.totalPlayers ?? 0;
 
+  const { data: championships = [] } = useQuery<Array<{ id: number; tournamentId: number; createdAt: string }>>({
+    queryKey: ["/api/users", userId, "championships"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/championships`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: userId > 0,
+  });
+
   type DuelHistoryEntry = {
     id: number;
     roomCode: string;
@@ -312,6 +322,12 @@ export default function Profile() {
                     <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white border-0" data-testid="badge-premium-profile">
                       <Crown className="h-3 w-3" />
                       Premium
+                    </Badge>
+                  )}
+                  {championships.length > 0 && (
+                    <Badge className="gap-1 bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/40 hover:bg-amber-400/25" data-testid="badge-word-wars-champion">
+                      <Crown className="h-3 w-3 fill-current" />
+                      Word Wars Champion{championships.length > 1 ? ` ×${championships.length}` : ""}
                     </Badge>
                   )}
                   {isOwnProfile && (

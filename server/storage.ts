@@ -244,6 +244,7 @@ export interface IStorage {
   createWordWarsChampion(tournamentId: number, userId: number): Promise<WordWarsChampion>;
   getChampionsForTournament(tournamentId: number): Promise<WordWarsChampion[]>;
   getChampionshipsForUser(userId: number): Promise<WordWarsChampion[]>;
+  listAllWordWarsChampions(): Promise<WordWarsChampion[]>;
 }
 
 export { MemStorage } from "./mem-storage";
