@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight } from "lucide-react";
+import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import type { WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 
@@ -177,6 +177,150 @@ function PlayerRow({
   );
 }
 
+function MyMatchesSection({
+  matches,
+  players,
+  user,
+  tournamentId,
+  navigate,
+  toast,
+}: {
+  matches: MatchWithGames[];
+  players: Record<number, PlayerInfo>;
+  user: { id: number };
+  tournamentId: number;
+  navigate: (path: string) => void;
+  toast: (opts: { title: string; description?: string; variant?: "destructive" }) => void;
+}) {
+  const myMatches = matches.filter(
+    m => m.player1Id === user.id || m.player2Id === user.id
+  );
+
+  if (myMatches.length === 0) return null;
+
+  return (
+    <Card className="border-primary/30 bg-primary/5" data-testid="my-matches-section">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Swords className="h-4 w-4 text-primary" />
+          My Matches
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {myMatches.map(match => {
+          const opponentId = match.player1Id === user.id ? match.player2Id : match.player1Id;
+          const opponent = opponentId ? players[opponentId] : null;
+
+          const myWins = match.games.filter(
+            g => g.status === "completed" && g.winnerId === user.id
+          ).length;
+          const opponentWins = match.games.filter(
+            g => g.status === "completed" && g.winnerId !== null && g.winnerId !== user.id
+          ).length;
+
+          const iCompleted = match.status === "completed" || match.status === "forfeited";
+          const iWon = iCompleted && match.winnerId === user.id;
+          const isBye = match.status === "bye";
+
+          const nextPlayableGame = [...match.games]
+            .sort((a, b) => a.gameNumber - b.gameNumber)
+            .find(g => g.status !== "completed" && (match.status === "pending" || match.status === "active"));
+
+          const matchStatusBadge = (() => {
+            if (isBye) return <Badge variant="secondary" className="text-xs">Bye</Badge>;
+            if (match.status === "completed") {
+              return iWon
+                ? <Badge className="text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">Won</Badge>
+                : <Badge className="text-xs bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">Lost</Badge>;
+            }
+            if (match.status === "forfeited") {
+              return iWon
+                ? <Badge className="text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">Won</Badge>
+                : <Badge className="text-xs bg-muted text-muted-foreground border">Forfeited</Badge>;
+            }
+            if (match.status === "active") return <Badge className="text-xs bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30">Active</Badge>;
+            return <Badge variant="secondary" className="text-xs">Pending</Badge>;
+          })();
+
+          return (
+            <div
+              key={match.id}
+              className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border bg-background px-4 py-3 ${!iCompleted && !isBye ? "border-primary/20" : ""}`}
+              data-testid={`my-match-row-${match.id}`}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {opponent ? (
+                  <UserAvatar
+                    name={opponent.name}
+                    avatarUrl={opponent.avatarUrl}
+                    className="h-8 w-8 shrink-0"
+                    data-testid={`avatar-opponent-${match.id}`}
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate" data-testid={`text-opponent-name-${match.id}`}>
+                    {opponent ? `vs. ${opponent.name}` : isBye ? "Bye Round" : "vs. TBD"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Round {match.round}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                {!isBye && (
+                  <div
+                    className="flex items-center gap-1.5 text-sm font-bold tabular-nums"
+                    data-testid={`series-score-${match.id}`}
+                  >
+                    <span className={myWins >= opponentWins ? "text-primary" : "text-muted-foreground"}>{myWins}</span>
+                    <span className="text-muted-foreground font-normal">–</span>
+                    <span className={opponentWins > myWins ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"}>{opponentWins}</span>
+                  </div>
+                )}
+
+                {matchStatusBadge}
+
+                {nextPlayableGame && !iCompleted && (
+                  <Button
+                    size="sm"
+                    className="h-7 gap-1"
+                    onClick={async () => {
+                      try {
+                        const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${nextPlayableGame.gameNumber}/start`);
+                        const { roomCode } = await res.json() as { roomCode: string };
+                        queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
+                        navigate(`/duel/${roomCode}`);
+                      } catch (e: any) {
+                        toast({ title: "Error", description: e.message, variant: "destructive" });
+                      }
+                    }}
+                    data-testid={`button-play-match-${match.id}`}
+                  >
+                    <Play className="h-3 w-3" />
+                    Play
+                  </Button>
+                )}
+
+                {iCompleted && (
+                  <div className="flex items-center gap-1">
+                    {iWon
+                      ? <Trophy className="h-4 w-4 text-amber-500" />
+                      : <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                    }
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function WordWarsBracket() {
   const [, params] = useRoute("/word-wars/:id");
   const tournamentId = parseInt(params?.id ?? "0");
@@ -309,6 +453,8 @@ export default function WordWarsBracket() {
           </Card>
         )}
 
+        {user && <MyMatchesSection matches={matches} players={players} user={user} tournamentId={tournamentId} navigate={navigate} toast={toast} />}
+
         {rounds.length > 0 && (
           <div>
             <div className="overflow-x-auto pb-6">
@@ -339,74 +485,6 @@ export default function WordWarsBracket() {
           </div>
         )}
 
-        {tournament.status === "active" && user && (
-          (() => {
-            const myMatches = matches.filter(
-              m => (m.player1Id === user.id || m.player2Id === user.id) &&
-                (m.status === "pending" || m.status === "active")
-            );
-            if (myMatches.length === 0) return null;
-            return (
-              <Card className="border-primary/40 bg-primary/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Swords className="h-4 w-4 text-primary" />
-                    Your Current Match
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {myMatches.map(match => {
-                    const opponentId = match.player1Id === user.id ? match.player2Id : match.player1Id;
-                    const opponent = opponentId ? players[opponentId] : null;
-                    return (
-                      <div key={match.id} className="space-y-2" data-testid={`my-match-${match.id}`}>
-                        <p className="text-sm font-medium">
-                          vs. {opponent?.name ?? "TBD"} — Round {match.round}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {match.games.map(game => {
-                            const isCompleted = game.status === "completed";
-                            const gameWinner = game.winnerId ? players[game.winnerId] : null;
-                            return (
-                              <div key={game.gameNumber} className="flex items-center gap-2 bg-background border rounded-lg px-3 py-2">
-                                <span className="text-sm font-medium">Game {game.gameNumber}</span>
-                                <span className="text-xs text-muted-foreground">{slugToLabel(game.gameSlug)}</span>
-                                {isCompleted ? (
-                                  <Badge variant="outline" className="text-xs">
-                                    {gameWinner?.id === user.id ? "Win" : "Loss"}
-                                  </Badge>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    className="h-7"
-                                    onClick={async () => {
-                                      try {
-                                        const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${game.gameNumber}/start`);
-                                        const { roomCode } = await res.json() as { roomCode: string };
-                                        queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
-                                        navigate(`/duel/${roomCode}`);
-                                      } catch (e: any) {
-                                        toast({ title: "Error", description: e.message, variant: "destructive" });
-                                      }
-                                    }}
-                                    data-testid={`button-play-my-game-${match.id}-${game.gameNumber}`}
-                                  >
-                                    <Play className="h-3 w-3 mr-1" />
-                                    Play Game {game.gameNumber}
-                                  </Button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            );
-          })()
-        )}
       </motion.div>
     </div>
   );
