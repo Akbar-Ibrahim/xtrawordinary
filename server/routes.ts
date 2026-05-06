@@ -3365,6 +3365,9 @@ export async function registerRoutes(
       const tournament = await storage.getWordWarsTournament(id);
       if (!tournament) return res.status(404).json({ error: "Tournament not found" });
       if (tournament.status !== "registration") return res.status(400).json({ error: "Registration is closed" });
+      if (new Date(tournament.registrationDeadline) <= new Date()) {
+        return res.status(400).json({ error: "Registration deadline has passed" });
+      }
       const userId = req.user!.id;
       const existing = await storage.getWordWarsRegistration(id, userId);
       if (existing) {

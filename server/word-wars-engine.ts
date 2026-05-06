@@ -2,6 +2,9 @@ import { storage } from "./storage";
 import { WORD_WARS_ELIGIBLE_SLUGS } from "@shared/schema";
 import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch } from "@shared/schema";
 
+/** In-process guard: prevents concurrent bracket draws for the same tournament. */
+const drawsInProgress = new Set<number>();
+
 /**
  * Shared bracket-draw logic — called by both the admin REST endpoint and the
  * background scheduler so they can never get out of sync.
@@ -11,6 +14,20 @@ import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch } from "@s
  * 2 players the tournament is cancelled automatically.
  */
 export async function executeBracketDraw(
+  tournamentId: number,
+): Promise<{ matches: WordWarsMatch[] } | { error: string }> {
+  if (drawsInProgress.has(tournamentId)) {
+    return { error: "Bracket draw already in progress for this tournament" };
+  }
+  drawsInProgress.add(tournamentId);
+  try {
+    return await _doDraw(tournamentId);
+  } finally {
+    drawsInProgress.delete(tournamentId);
+  }
+}
+
+async function _doDraw(
   tournamentId: number,
 ): Promise<{ matches: WordWarsMatch[] } | { error: string }> {
   const tournament = await storage.getWordWarsTournament(tournamentId);
