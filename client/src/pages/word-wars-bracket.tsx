@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, Shield } from "lucide-react";
+import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, ChevronDown, Shield, XCircle, Circle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 
@@ -196,7 +196,33 @@ function MyMatchesSection({
     m => m.player1Id === user.id || m.player2Id === user.id
   );
 
+  const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set());
+  const [pendingGame, setPendingGame] = useState<{ matchId: number; gameNumber: number } | null>(null);
+
   if (myMatches.length === 0) return null;
+
+  const toggleExpanded = (matchId: number) => {
+    setExpandedMatches(prev => {
+      const next = new Set(prev);
+      if (next.has(matchId)) next.delete(matchId);
+      else next.add(matchId);
+      return next;
+    });
+  };
+
+  const startGame = async (matchId: number, gameNumber: number) => {
+    setPendingGame({ matchId, gameNumber });
+    try {
+      const res = await apiRequest("POST", `/api/word-wars/matches/${matchId}/games/${gameNumber}/start`);
+      const { roomCode } = await res.json() as { roomCode: string };
+      queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
+      navigate(`/duel/${roomCode}`);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setPendingGame(null);
+    }
+  };
 
   return (
     <Card className="border-primary/30 bg-primary/5" data-testid="my-matches-section">
@@ -221,10 +247,13 @@ function MyMatchesSection({
           const iCompleted = match.status === "completed" || match.status === "forfeited";
           const iWon = iCompleted && match.winnerId === user.id;
           const isBye = match.status === "bye";
+          const isExpanded = expandedMatches.has(match.id);
 
-          const nextPlayableGame = [...match.games]
-            .sort((a, b) => a.gameNumber - b.gameNumber)
-            .find(g => g.status !== "completed" && (match.status === "pending" || match.status === "active"));
+          const sortedGames = [...match.games].sort((a, b) => a.gameNumber - b.gameNumber);
+
+          const nextPlayableGame = sortedGames.find(
+            g => g.status !== "completed" && (match.status === "pending" || match.status === "active")
+          );
 
           const matchStatusBadge = (() => {
             if (isBye) return <Badge variant="secondary" className="text-xs">Bye</Badge>;
@@ -245,74 +274,153 @@ function MyMatchesSection({
           return (
             <div
               key={match.id}
-              className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border bg-background px-4 py-3 ${!iCompleted && !isBye ? "border-primary/20" : ""}`}
+              className={`rounded-lg border bg-background ${!iCompleted && !isBye ? "border-primary/20" : ""}`}
               data-testid={`my-match-row-${match.id}`}
             >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                {opponent ? (
-                  <UserAvatar
-                    name={opponent.name}
-                    avatarUrl={opponent.avatarUrl}
-                    className="h-8 w-8 shrink-0"
-                    data-testid={`avatar-opponent-${match.id}`}
-                  />
-                ) : (
-                  <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {opponent ? (
+                    <UserAvatar
+                      name={opponent.name}
+                      avatarUrl={opponent.avatarUrl}
+                      className="h-8 w-8 shrink-0"
+                      data-testid={`avatar-opponent-${match.id}`}
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate" data-testid={`text-opponent-name-${match.id}`}>
+                      {opponent ? `vs. ${opponent.name}` : isBye ? "Bye Round" : "vs. TBD"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Round {match.round}</p>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" data-testid={`text-opponent-name-${match.id}`}>
-                    {opponent ? `vs. ${opponent.name}` : isBye ? "Bye Round" : "vs. TBD"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Round {match.round}</p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {!isBye && (
+                    <div
+                      className="flex items-center gap-1.5 text-sm font-bold tabular-nums"
+                      data-testid={`series-score-${match.id}`}
+                    >
+                      <span className={myWins >= opponentWins ? "text-primary" : "text-muted-foreground"}>{myWins}</span>
+                      <span className="text-muted-foreground font-normal">–</span>
+                      <span className={opponentWins > myWins ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"}>{opponentWins}</span>
+                    </div>
+                  )}
+
+                  {matchStatusBadge}
+
+                  {nextPlayableGame && !iCompleted && (
+                    <Button
+                      size="sm"
+                      className="h-7 gap-1"
+                      onClick={() => startGame(match.id, nextPlayableGame.gameNumber)}
+                      disabled={pendingGame?.matchId === match.id}
+                      data-testid={`button-play-match-${match.id}`}
+                    >
+                      {pendingGame?.matchId === match.id && pendingGame?.gameNumber === nextPlayableGame.gameNumber
+                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                        : <Play className="h-3 w-3" />
+                      }
+                      Play
+                    </Button>
+                  )}
+
+                  {iCompleted && (
+                    <div className="flex items-center gap-1">
+                      {iWon
+                        ? <Trophy className="h-4 w-4 text-amber-500" />
+                        : <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                      }
+                    </div>
+                  )}
+
+                  {!isBye && sortedGames.length > 0 && (
+                    <button
+                      className="flex items-center justify-center h-6 w-6 rounded hover:bg-muted transition-colors text-muted-foreground"
+                      onClick={() => toggleExpanded(match.id)}
+                      aria-label={isExpanded ? "Collapse games" : "Expand games"}
+                      data-testid={`button-toggle-games-${match.id}`}
+                    >
+                      {isExpanded
+                        ? <ChevronDown className="h-4 w-4" />
+                        : <ChevronRight className="h-4 w-4" />
+                      }
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                {!isBye && (
-                  <div
-                    className="flex items-center gap-1.5 text-sm font-bold tabular-nums"
-                    data-testid={`series-score-${match.id}`}
-                  >
-                    <span className={myWins >= opponentWins ? "text-primary" : "text-muted-foreground"}>{myWins}</span>
-                    <span className="text-muted-foreground font-normal">–</span>
-                    <span className={opponentWins > myWins ? "text-rose-500 dark:text-rose-400" : "text-muted-foreground"}>{opponentWins}</span>
-                  </div>
-                )}
+              {!isBye && isExpanded && sortedGames.length > 0 && (
+                <div className="border-t px-4 py-3 space-y-2" data-testid={`game-breakdown-${match.id}`}>
+                  {sortedGames.map(game => {
+                    const isCompleted = game.status === "completed";
+                    const iMWon = isCompleted && game.winnerId === user.id;
+                    const iMLost = isCompleted && game.winnerId !== null && game.winnerId !== user.id;
+                    const isNext = nextPlayableGame?.gameNumber === game.gameNumber && !iCompleted;
+                    const isPlayable = isNext && !iCompleted;
 
-                {matchStatusBadge}
+                    return (
+                      <div
+                        key={game.gameNumber}
+                        className={`flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors ${isNext ? "bg-primary/5 border border-primary/20" : "border border-transparent"}`}
+                        data-testid={`game-row-${match.id}-${game.gameNumber}`}
+                      >
+                        <span className="text-xs font-mono text-muted-foreground w-6 shrink-0 text-center">
+                          G{game.gameNumber}
+                        </span>
 
-                {nextPlayableGame && !iCompleted && (
-                  <Button
-                    size="sm"
-                    className="h-7 gap-1"
-                    onClick={async () => {
-                      try {
-                        const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${nextPlayableGame.gameNumber}/start`);
-                        const { roomCode } = await res.json() as { roomCode: string };
-                        queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
-                        navigate(`/duel/${roomCode}`);
-                      } catch (e: any) {
-                        toast({ title: "Error", description: e.message, variant: "destructive" });
-                      }
-                    }}
-                    data-testid={`button-play-match-${match.id}`}
-                  >
-                    <Play className="h-3 w-3" />
-                    Play
-                  </Button>
-                )}
+                        <span className="text-xs flex-1 truncate font-medium" data-testid={`game-slug-${match.id}-${game.gameNumber}`}>
+                          {slugToLabel(game.gameSlug)}
+                        </span>
 
-                {iCompleted && (
-                  <div className="flex items-center gap-1">
-                    {iWon
-                      ? <Trophy className="h-4 w-4 text-amber-500" />
-                      : <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                    }
-                  </div>
-                )}
-              </div>
+                        {isCompleted ? (
+                          <div className="flex items-center gap-1.5 shrink-0" data-testid={`game-status-${match.id}-${game.gameNumber}`}>
+                            {iMWon ? (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Win</span>
+                              </>
+                            ) : iMLost ? (
+                              <>
+                                <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                                <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Loss</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Done</span>
+                              </>
+                            )}
+                          </div>
+                        ) : isPlayable ? (
+                          <Button
+                            size="sm"
+                            className="h-6 px-2 text-xs gap-1 shrink-0"
+                            onClick={() => startGame(match.id, game.gameNumber)}
+                            disabled={pendingGame?.matchId === match.id}
+                            data-testid={`button-play-game-${match.id}-${game.gameNumber}`}
+                          >
+                            {pendingGame?.matchId === match.id && pendingGame?.gameNumber === game.gameNumber
+                              ? <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                              : <Play className="h-2.5 w-2.5" />
+                            }
+                            Play
+                          </Button>
+                        ) : (
+                          <div className="flex items-center gap-1.5 shrink-0" data-testid={`game-status-${match.id}-${game.gameNumber}`}>
+                            <Circle className="h-3 w-3 text-muted-foreground/40" />
+                            <span className="text-xs text-muted-foreground">Pending</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
