@@ -126,6 +126,7 @@ async function runWordWarsJobs() {
 }
 
 function scheduleWordWarsJobs() {
+  runWordWarsJobs();
   setInterval(runWordWarsJobs, 60_000);
 }
 

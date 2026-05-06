@@ -72,7 +72,23 @@ async function _doDraw(
       }),
     ));
 
-    if (match.player1Id && match.player2Id && match.status !== "bye") {
+    if (match.status === "bye" && match.player1Id) {
+      // Bye recipient: bracket is live, they advance automatically
+      try {
+        const prefs = await storage.getNotificationPreferences(match.player1Id);
+        if (prefs["word_war_matched"]) {
+          await storage.createNotification({
+            userId: match.player1Id,
+            type: "word_war_matched",
+            title: "The bracket is live — you have a bye",
+            body: "The bracket has been drawn. You advance automatically in round 1 — prepare for round 2.",
+            linkUrl: `/word-wars/${tournamentId}`,
+          });
+        }
+      } catch (e) {
+        console.error("[word-wars-engine] bye notification error", e);
+      }
+    } else if (match.player1Id && match.player2Id) {
       for (const playerId of [match.player1Id, match.player2Id]) {
         const opponentId = playerId === match.player1Id ? match.player2Id! : match.player1Id!;
         try {
