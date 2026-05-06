@@ -461,6 +461,18 @@ export const wordWarsMatchGames = mysqlTable("word_wars_match_games", {
 }, (table) => [
   index("wmg_match_idx").on(table.matchId),
   uniqueIndex("wmg_match_game_idx").on(table.matchId, table.gameNumber),
+  index("wmg_room_code_idx").on(table.roomCode),
+]);
+
+export const wordWarsChampions = mysqlTable("word_wars_champions", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  userId: int("user_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("wc_tournament_idx").on(table.tournamentId),
+  index("wc_user_idx").on(table.userId),
+  uniqueIndex("wc_tournament_user_idx").on(table.tournamentId, table.userId),
 ]);
 
 export const notifications = mysqlTable("notifications", {

@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -239,6 +239,11 @@ export interface IStorage {
   getWordWarsMatchGame(matchId: number, gameNumber: number): Promise<WordWarsMatchGame | undefined>;
   getWordWarsMatchGames(matchId: number): Promise<WordWarsMatchGame[]>;
   updateWordWarsMatchGame(id: number, updates: Partial<Pick<WordWarsMatchGame, "status" | "winnerId" | "roomCode">>): Promise<WordWarsMatchGame | undefined>;
+  getMatchGameByRoomCode(roomCode: string): Promise<WordWarsMatchGame | undefined>;
+
+  createWordWarsChampion(tournamentId: number, userId: number): Promise<WordWarsChampion>;
+  getChampionsForTournament(tournamentId: number): Promise<WordWarsChampion[]>;
+  getChampionshipsForUser(userId: number): Promise<WordWarsChampion[]>;
 }
 
 export { MemStorage } from "./mem-storage";

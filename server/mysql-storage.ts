@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1816,7 +1816,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion"];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
@@ -2035,5 +2035,44 @@ export class MySQLStorage implements IStorage {
     await db.update(schema.wordWarsMatchGames).set(dbUpdates).where(eq(schema.wordWarsMatchGames.id, id));
     const rows = await db.select().from(schema.wordWarsMatchGames).where(eq(schema.wordWarsMatchGames.id, id)).limit(1);
     return rows[0] ? this.toWordWarsMatchGame(rows[0]) : undefined;
+  }
+
+  async getMatchGameByRoomCode(roomCode: string): Promise<WordWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsMatchGames)
+      .where(eq(schema.wordWarsMatchGames.roomCode, roomCode))
+      .limit(1);
+    return rows[0] ? this.toWordWarsMatchGame(rows[0]) : undefined;
+  }
+
+  private toWordWarsChampion(row: any): WordWarsChampion {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      userId: row.userId,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  async createWordWarsChampion(tournamentId: number, userId: number): Promise<WordWarsChampion> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.wordWarsChampions).values({ tournamentId, userId });
+    const rows = await db.select().from(schema.wordWarsChampions).where(eq(schema.wordWarsChampions.id, result[0].insertId)).limit(1);
+    return this.toWordWarsChampion(rows[0]);
+  }
+
+  async getChampionsForTournament(tournamentId: number): Promise<WordWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsChampions)
+      .where(eq(schema.wordWarsChampions.tournamentId, tournamentId));
+    return rows.map((r: any) => this.toWordWarsChampion(r));
+  }
+
+  async getChampionshipsForUser(userId: number): Promise<WordWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsChampions)
+      .where(eq(schema.wordWarsChampions.userId, userId))
+      .orderBy(desc(schema.wordWarsChampions.createdAt));
+    return rows.map((r: any) => this.toWordWarsChampion(r));
   }
 }

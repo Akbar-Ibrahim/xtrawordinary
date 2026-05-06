@@ -1,6 +1,6 @@
 import { storage } from "./storage";
 import { WORD_WARS_ELIGIBLE_SLUGS } from "@shared/schema";
-import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch } from "@shared/schema";
+import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 
 /** In-process guard: prevents concurrent bracket draws for the same tournament. */
 const drawsInProgress = new Set<number>();
@@ -155,4 +155,202 @@ function pickThreeGames(): [string, string, string] {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   return [pool[0], pool[1], pool[2]];
+}
+
+// ==================== DUEL FINALIZE HOOK ====================
+
+/**
+ * Called by finalizeGame in duel-ws.ts after ELO + session are persisted.
+ * Looks up whether this duel room belongs to a Word Wars match game, and if
+ * so records the game winner, checks if the series (first to 2 wins) is over,
+ * advances the bracket, and fires notifications.
+ *
+ * winnerId = -1 means draw (no win credited to either player for this game).
+ */
+export async function resolveWordWarsGame(
+  roomCode: string,
+  winnerId: number,
+): Promise<void> {
+  try {
+    const matchGame = await storage.getMatchGameByRoomCode(roomCode);
+    if (!matchGame) return; // not a Word Wars game
+
+    if (matchGame.status === "completed") return; // already resolved
+
+    const match = await storage.getWordWarsMatch(matchGame.matchId);
+    if (!match) return;
+    if (!match.player1Id || !match.player2Id) return;
+
+    // Record this game's result
+    const gameWinnerId = winnerId === -1 ? null : winnerId;
+    await storage.updateWordWarsMatchGame(matchGame.id, {
+      status: "completed",
+      winnerId: gameWinnerId,
+    });
+
+    // Count wins for each player across all games in this match
+    const allGames = await storage.getWordWarsMatchGames(match.id);
+    const completedGames = allGames.filter(g => g.status === "completed" || g.id === matchGame.id);
+
+    let p1Wins = 0;
+    let p2Wins = 0;
+    for (const g of completedGames) {
+      const wid = g.id === matchGame.id ? gameWinnerId : g.winnerId;
+      if (wid === match.player1Id) p1Wins++;
+      else if (wid === match.player2Id) p2Wins++;
+    }
+
+    const totalCompleted = completedGames.length;
+    const seriesWinnerId = p1Wins >= 2 ? match.player1Id
+      : p2Wins >= 2 ? match.player2Id
+      : totalCompleted >= 3
+        // All 3 done, no one has 2 — whoever has more wins advances; player1 wins ties
+        ? (p1Wins >= p2Wins ? match.player1Id : match.player2Id)
+        : null;
+
+    if (seriesWinnerId === null) return; // Series not decided yet
+
+    // Mark match completed
+    await storage.updateWordWarsMatch(match.id, {
+      status: "completed",
+      winnerId: seriesWinnerId,
+    });
+
+    const tournament = await storage.getWordWarsTournament(match.tournamentId);
+    if (!tournament) return;
+
+    // Check if all matches in this round are now complete
+    const allMatchesInTournament = await storage.listWordWarsMatchesForTournament(match.tournamentId);
+    const currentRoundMatches = allMatchesInTournament.filter(m => m.round === match.round);
+    const allCurrentRoundDone = currentRoundMatches.every(
+      m => m.status === "completed" || m.status === "bye" || m.id === match.id,
+    );
+
+    if (!allCurrentRoundDone) return;
+
+    // Collect winners from this round (including byes)
+    const roundWinners = currentRoundMatches.map(m => {
+      if (m.id === match.id) return seriesWinnerId;
+      return m.winnerId;
+    }).filter((id): id is number => id !== null);
+
+    if (roundWinners.length === 1) {
+      // Final match is decided — this player is the tournament champion
+      const championId = roundWinners[0];
+      await storage.updateWordWarsTournament(match.tournamentId, { status: "completed" });
+      await storage.createWordWarsChampion(match.tournamentId, championId);
+
+      try {
+        const prefs = await storage.getNotificationPreferences(championId);
+        if (prefs["word_war_champion"]) {
+          await storage.createNotification({
+            userId: championId,
+            type: "word_war_champion",
+            title: "⚔️ Champion",
+            body: `You have conquered "${tournament.name}". Glory is yours.`,
+            linkUrl: `/word-wars/${match.tournamentId}`,
+          });
+        }
+      } catch (e) {
+        console.error("[word-wars-engine] champion notification error", e);
+      }
+      return;
+    }
+
+    // Pair up winners for next round
+    const nextRound = match.round + 1;
+    const deadline = tournament.roundDeadlineHours
+      ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
+      : null;
+
+    const newMatches: WordWarsMatch[] = [];
+    for (let i = 0; i < roundWinners.length; i += 2) {
+      const p1 = roundWinners[i];
+      const p2 = roundWinners[i + 1] ?? null;
+      const [g1, g2, g3] = pickThreeGames();
+
+      if (p2 === null) {
+        // Bye
+        const created = await storage.createWordWarsMatch({
+          tournamentId: match.tournamentId,
+          round: nextRound,
+          player1Id: p1,
+          player2Id: null,
+          winnerId: p1,
+          status: "bye",
+          deadline: null,
+          game1Slug: g1,
+          game2Slug: g2,
+          game3Slug: g3,
+        });
+        newMatches.push(created);
+        for (const num of [1, 2, 3]) {
+          await storage.createWordWarsMatchGame({
+            matchId: created.id,
+            gameNumber: num,
+            gameSlug: num === 1 ? g1 : num === 2 ? g2 : g3,
+            roomCode: null,
+            winnerId: null,
+            status: "completed",
+          });
+        }
+      } else {
+        const created = await storage.createWordWarsMatch({
+          tournamentId: match.tournamentId,
+          round: nextRound,
+          player1Id: p1,
+          player2Id: p2,
+          winnerId: null,
+          status: "pending",
+          deadline,
+          game1Slug: g1,
+          game2Slug: g2,
+          game3Slug: g3,
+        });
+        newMatches.push(created);
+        for (const num of [1, 2, 3]) {
+          await storage.createWordWarsMatchGame({
+            matchId: created.id,
+            gameNumber: num,
+            gameSlug: num === 1 ? g1 : num === 2 ? g2 : g3,
+            roomCode: null,
+            winnerId: null,
+            status: "pending",
+          });
+        }
+
+        // Notify both players of their new match
+        for (const [playerId, opponentId] of [[p1, p2], [p2, p1]] as [number, number][]) {
+          try {
+            const [opponent, prefs] = await Promise.all([
+              storage.getUserById(opponentId),
+              storage.getNotificationPreferences(playerId),
+            ]);
+            if (prefs["word_war_matched"]) {
+              await storage.createNotification({
+                userId: playerId,
+                type: "word_war_matched",
+                title: "Your opponent awaits",
+                body: `${opponent?.name ?? "Your opponent"} stands between you and glory. The war continues.`,
+                linkUrl: `/word-wars/${match.tournamentId}`,
+              });
+            }
+            if (prefs["word_war_round_start"]) {
+              await storage.createNotification({
+                userId: playerId,
+                type: "word_war_round_start",
+                title: `Round ${nextRound} begins`,
+                body: "Your next battle has been assigned.",
+                linkUrl: `/word-wars/${match.tournamentId}`,
+              });
+            }
+          } catch (e) {
+            console.error("[word-wars-engine] round notification error", e);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[word-wars-engine] resolveWordWarsGame error", err);
+  }
 }

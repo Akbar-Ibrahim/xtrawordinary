@@ -3402,6 +3402,30 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/word-wars/:id/champions", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const champions = await storage.getChampionsForTournament(id);
+      if (champions.length === 0) return res.json([]);
+      const users = await Promise.all(champions.map(c => storage.getUserById(c.userId)));
+      res.json(champions.map((c, i) => ({ ...c, user: users[i] ? { id: users[i]!.id, name: users[i]!.name, avatarUrl: users[i]!.avatarUrl } : null })));
+    } catch {
+      res.status(500).json({ error: "Failed to get champions" });
+    }
+  });
+
+  app.get("/api/users/:id/championships", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const championships = await storage.getChampionshipsForUser(id);
+      res.json(championships);
+    } catch {
+      res.status(500).json({ error: "Failed to get championships" });
+    }
+  });
+
   app.get("/api/word-wars/matches/:matchId", async (req, res) => {
     try {
       const matchId = parseInt(req.params.matchId);

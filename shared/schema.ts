@@ -677,6 +677,7 @@ export const notificationTypeSchema = z.enum([
   "huddle_accepted",
   "word_war_matched",
   "word_war_round_start",
+  "word_war_champion",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -716,6 +717,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   huddle_accepted: "Group Huddle challenge accepted",
   word_war_matched: "Word Wars — Your opponent awaits",
   word_war_round_start: "Word Wars — Battle begins now",
+  word_war_champion: "Word Wars — You are champion",
 };
 
 // ==================== WORD WARS ====================
@@ -782,6 +784,16 @@ export const wordWarsMatchGameSchema = z.object({
   status: wordWarsMatchGameStatusSchema,
 });
 export type WordWarsMatchGame = z.infer<typeof wordWarsMatchGameSchema>;
+
+// ==================== WORD WARS CHAMPIONS ====================
+
+export const wordWarsChampionSchema = z.object({
+  id: z.number(),
+  tournamentId: z.number(),
+  userId: z.number(),
+  createdAt: z.string(),
+});
+export type WordWarsChampion = z.infer<typeof wordWarsChampionSchema>;
 
 // ==================== CHALLENGES ====================
 

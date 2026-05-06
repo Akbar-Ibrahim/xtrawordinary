@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -42,6 +42,8 @@ export class MemStorage implements IStorage {
   private wordWarsMatchIdCounter = 1;
   private wordWarsMatchGames: WordWarsMatchGame[] = [];
   private wordWarsMatchGameIdCounter = 1;
+  private wordWarsChampions: WordWarsChampion[] = [];
+  private wordWarsChampionIdCounter = 1;
 
   private notifications: Notification[] = [];
   private notificationIdCounter = 1;
@@ -1615,7 +1617,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;
@@ -1729,5 +1731,28 @@ export class MemStorage implements IStorage {
     if (!g) return undefined;
     Object.assign(g, updates);
     return g;
+  }
+
+  async getMatchGameByRoomCode(roomCode: string): Promise<WordWarsMatchGame | undefined> {
+    return this.wordWarsMatchGames.find(g => g.roomCode === roomCode);
+  }
+
+  async createWordWarsChampion(tournamentId: number, userId: number): Promise<WordWarsChampion> {
+    const c: WordWarsChampion = {
+      id: this.wordWarsChampionIdCounter++,
+      tournamentId,
+      userId,
+      createdAt: new Date().toISOString(),
+    };
+    this.wordWarsChampions.push(c);
+    return c;
+  }
+
+  async getChampionsForTournament(tournamentId: number): Promise<WordWarsChampion[]> {
+    return this.wordWarsChampions.filter(c => c.tournamentId === tournamentId);
+  }
+
+  async getChampionshipsForUser(userId: number): Promise<WordWarsChampion[]> {
+    return this.wordWarsChampions.filter(c => c.userId === userId);
   }
 }

@@ -6,6 +6,7 @@ import { log } from "./index";
 import { storage } from "./storage";
 import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
+import { resolveWordWarsGame } from "./word-wars-engine";
 
 interface DuelWebSocket extends WebSocket {
   userId: number;
@@ -426,6 +427,9 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
   // Notify spectators which player won
   const winnerPlayer = isDraw ? null : (p1wins ? p1 : p2);
   sendToSpectators(room, { type: "spectator:game_over", winnerName: winnerPlayer?.name ?? null });
+
+  // Word Wars integration — fire-and-forget; errors are logged inside
+  void resolveWordWarsGame(room.roomCode, winnerId);
 }
 
 export class DuelRoomRegistry {
