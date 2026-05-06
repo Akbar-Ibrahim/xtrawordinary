@@ -3536,6 +3536,29 @@ export async function registerRoutes(
       if (match.status === "pending") {
         await storage.updateWordWarsMatch(matchId, { status: "active" });
       }
+
+      // Notify the opponent that a game room is ready
+      const opponentId = userId === match.player1Id ? match.player2Id : match.player1Id;
+      if (opponentId) {
+        try {
+          const [starter, prefs] = await Promise.all([
+            storage.getUserById(userId),
+            storage.getNotificationPreferences(opponentId),
+          ]);
+          if (prefs["word_war_matched"]) {
+            await storage.createNotification({
+              userId: opponentId,
+              type: "word_war_matched",
+              title: "Your opponent is ready",
+              body: `${starter?.name ?? "Your opponent"} has started Game ${gameNumber} of Round ${match.round}. Head to the bracket to play.`,
+              linkUrl: `/word-wars/${match.tournamentId}`,
+            });
+          }
+        } catch (notifErr) {
+          console.error("[word-wars] start-game notification error", notifErr);
+        }
+      }
+
       res.json({ roomCode });
     } catch (err) {
       console.error("[word-wars] start game error", err);
