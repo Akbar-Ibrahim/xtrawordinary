@@ -278,8 +278,8 @@ export async function resolveWordWarsGame(
       winnerId: gameWinnerId,
     });
 
-    // IDEMPOTENCY: if the parent match is already decided, skip bracket advancement.
-    if (match.status === "completed" || match.status === "bye") return;
+    // IDEMPOTENCY: if the parent match is already decided (or forfeited), skip further processing.
+    if (match.status === "completed" || match.status === "bye" || match.status === "forfeited") return;
 
     // Count wins for each player across all completed games in this match
     const allGames = await storage.getWordWarsMatchGames(match.id);
