@@ -276,13 +276,13 @@ export default function Home() {
             </motion.div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+          <div className="flex overflow-x-auto gap-3 mb-8 scrollbar-none pb-1">
             {dailyChallenge && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.18 }}
-                className="flex flex-col"
+                className="flex flex-col flex-1 min-w-[200px]"
               >
                 <Link href="/daily" className="flex-1 flex flex-col">
                   <Card className="hover-elevate cursor-pointer border-primary/20 h-full" data-testid="card-daily-challenge">
@@ -319,7 +319,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.21 }}
-                className="flex flex-col"
+                className="flex flex-col flex-1 min-w-[200px]"
               >
                 <Card
                   className="hover-elevate cursor-pointer border-dashed h-full"
@@ -346,7 +346,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.23 }}
-              className="flex flex-col"
+              className="flex flex-col flex-1 min-w-[200px]"
             >
               <Link href="/duels" className="flex-1 flex flex-col">
                 <Card className="hover-elevate cursor-pointer h-full" data-testid="card-duels-shortcut">
@@ -370,7 +370,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              className="flex flex-col"
+              className="flex flex-col flex-1 min-w-[200px]"
             >
               {(() => {
                 let subLabel: string;
@@ -413,7 +413,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.27 }}
-              className="flex flex-col"
+              className="flex flex-col flex-1 min-w-[200px]"
             >
               <PremiumBanner variant="card" />
             </motion.div>
