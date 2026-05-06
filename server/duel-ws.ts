@@ -1558,12 +1558,46 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
           const name = user?.name ?? "Player";
           const avatarUrl = user?.avatarUrl ?? null;
 
+          // Snapshot room state BEFORE joining so we can detect genuine second-player
+          // joins (vs. reconnects) and identify the already-waiting player correctly.
+          const roomSnapshot = duelRegistry.getRoom(roomCode);
+          const isReconnect = roomSnapshot?.players.has(userId) ?? false;
+          const waitingPlayerId =
+            !isReconnect && roomSnapshot?.players.size === 1
+              ? Array.from(roomSnapshot.players.keys())[0]
+              : null;
+
           const result = duelRegistry.joinRoom(roomCode, userId, name, avatarUrl, ws);
           if (!result.success) {
             send(ws, { type: "error", message: result.error ?? "Cannot join room" });
             return;
           }
           currentRoomCode = roomCode;
+
+          // If a previously-waiting player was identified (genuine second-player join,
+          // not a reconnect), check if this is a Word Wars room and notify them.
+          if (waitingPlayerId !== null) {
+            try {
+              const matchGame = await storage.getMatchGameByRoomCode(roomCode);
+              if (matchGame) {
+                const wwMatch = await storage.getWordWarsMatch(matchGame.matchId);
+                if (wwMatch) {
+                  const prefs = await storage.getNotificationPreferences(waitingPlayerId);
+                  if (prefs["word_war_matched"]) {
+                    await storage.createNotification({
+                      userId: waitingPlayerId,
+                      type: "word_war_matched",
+                      title: "Your opponent has joined the room",
+                      body: `${user?.name ?? "Your opponent"} has entered the duel room — the race is live. Good luck!`,
+                      linkUrl: `/word-wars/${wwMatch.tournamentId}`,
+                    });
+                  }
+                }
+              }
+            } catch (e) {
+              log(`[Duel] Word Wars join notification error in room ${roomCode}: ${e}`, "duel-ws");
+            }
+          }
           break;
         }
 
