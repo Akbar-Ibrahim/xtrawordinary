@@ -84,8 +84,8 @@ async function _doDraw(
             await storage.createNotification({
               userId: playerId,
               type: "word_war_matched",
-              title: "⚔️ Your opponent awaits!",
-              body: `You've been drawn against ${opponentUser?.name ?? "your opponent"} in "${tournament.name}". The battle begins!`,
+              title: "Your opponent awaits",
+              body: `${opponentUser?.name ?? "Your opponent"} stands between you and glory. The war begins.`,
               linkUrl: `/word-wars/${tournamentId}`,
             });
           }
@@ -237,36 +237,42 @@ export async function resolveWordWarsGame(
       winnerId: seriesWinnerId,
     });
 
-    // Acquire per-tournament advancement lock.  Only one resolver at a time
-    // may run the "is-round-done → create-next-round" section.
-    // If the lock is already held, register a pending retry instead of
-    // dropping the event — the lock-holder will fire the retry after it
-    // finishes, ensuring no completion signal is ever lost.
-    if (roundAdvancementsInProgress.has(match.tournamentId)) {
-      pendingRoundAdvancements.set(match.tournamentId, match.round);
-      return;
-    }
-    roundAdvancementsInProgress.add(match.tournamentId);
-    try {
-      await _advanceBracket(match.tournamentId, match.round);
-    } finally {
-      roundAdvancementsInProgress.delete(match.tournamentId);
-      // If a concurrent resolver flagged a retry while we held the lock,
-      // fire it on the next tick so it can observe the fully-committed state.
-      const pendingRound = pendingRoundAdvancements.get(match.tournamentId);
-      if (pendingRound !== undefined) {
-        pendingRoundAdvancements.delete(match.tournamentId);
-        setImmediate(() => {
-          roundAdvancementsInProgress.add(match.tournamentId);
-          _advanceBracket(match.tournamentId, pendingRound)
-            .catch(e => console.error("[word-wars-engine] deferred advance error", e))
-            .finally(() => roundAdvancementsInProgress.delete(match.tournamentId));
-        });
-      }
-    }
+    // Trigger bracket advancement through the serialized helper so concurrent
+    // finalizations are handled safely without dropping any event.
+    _triggerAdvancement(match.tournamentId, match.round);
   } catch (err) {
     console.error("[word-wars-engine] resolveWordWarsGame error", err);
   }
+}
+
+/**
+ * Safely triggers bracket advancement for a tournament round.
+ * Acquires the per-tournament lock; if the lock is already held by another
+ * async execution, enqueues a pending retry instead of dropping the event.
+ * After the lock-holder finishes, it fires the retry via setImmediate so the
+ * retry always runs after all in-flight writes have committed.
+ * This pattern ensures no completion signal is ever lost under concurrency.
+ */
+function _triggerAdvancement(tournamentId: number, round: number): void {
+  if (roundAdvancementsInProgress.has(tournamentId)) {
+    // Lock is held — register a pending retry; the holder will fire it.
+    pendingRoundAdvancements.set(tournamentId, round);
+    return;
+  }
+  roundAdvancementsInProgress.add(tournamentId);
+  _advanceBracket(tournamentId, round)
+    .catch(e => console.error("[word-wars-engine] advance error", e))
+    .finally(() => {
+      roundAdvancementsInProgress.delete(tournamentId);
+      // Fire any retry that arrived while we held the lock.
+      const pending = pendingRoundAdvancements.get(tournamentId);
+      if (pending !== undefined) {
+        pendingRoundAdvancements.delete(tournamentId);
+        // setImmediate gives in-flight storage writes a chance to commit
+        // before the retry re-reads round state.
+        setImmediate(() => _triggerAdvancement(tournamentId, pending));
+      }
+    });
 }
 
 /**
