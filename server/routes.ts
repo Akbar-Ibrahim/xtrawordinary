@@ -8,7 +8,7 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
-import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, WORD_WARS_ELIGIBLE_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -3307,5 +3307,258 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== WORD WARS ====================
+
+  app.post("/api/word-wars", requireAuth, async (req, res) => {
+    try {
+      if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
+      const { name, registrationDeadline, roundDeadlineHours, maxPlayers, recurringCron } = req.body;
+      if (!name || !registrationDeadline) return res.status(400).json({ error: "name and registrationDeadline required" });
+      const tournament = await storage.createWordWarsTournament({
+        name: String(name),
+        registrationDeadline: new Date(registrationDeadline).toISOString(),
+        roundDeadlineHours: Number(roundDeadlineHours) || 24,
+        maxPlayers: maxPlayers ? Number(maxPlayers) : null,
+        recurringCron: recurringCron ? String(recurringCron) : null,
+        createdBy: req.user!.id,
+      });
+      res.status(201).json(tournament);
+    } catch (err) {
+      console.error("[word-wars] create tournament error", err);
+      res.status(500).json({ error: "Failed to create tournament" });
+    }
+  });
+
+  app.get("/api/word-wars", async (_req, res) => {
+    try {
+      const tournaments = await storage.listWordWarsTournaments();
+      res.json(tournaments);
+    } catch {
+      res.status(500).json({ error: "Failed to list tournaments" });
+    }
+  });
+
+  app.get("/api/word-wars/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const tournament = await storage.getWordWarsTournament(id);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      const [registrations, matches] = await Promise.all([
+        storage.getWordWarsRegistrationsForTournament(id),
+        storage.listWordWarsMatchesForTournament(id),
+      ]);
+      const matchesWithGames = await Promise.all(
+        matches.map(async (m) => ({ ...m, games: await storage.getWordWarsMatchGames(m.id) }))
+      );
+      res.json({ tournament, registrations, matches: matchesWithGames });
+    } catch {
+      res.status(500).json({ error: "Failed to get tournament" });
+    }
+  });
+
+  app.post("/api/word-wars/:id/register", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const tournament = await storage.getWordWarsTournament(id);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Registration is closed" });
+      const userId = req.user!.id;
+      const existing = await storage.getWordWarsRegistration(id, userId);
+      if (existing) {
+        await storage.deleteWordWarsRegistration(id, userId);
+        return res.json({ registered: false });
+      }
+      const registrations = await storage.getWordWarsRegistrationsForTournament(id);
+      if (tournament.maxPlayers && registrations.length >= tournament.maxPlayers) {
+        return res.status(400).json({ error: "Tournament is full" });
+      }
+      await storage.createWordWarsRegistration(id, userId);
+      res.json({ registered: true });
+    } catch (err) {
+      console.error("[word-wars] register error", err);
+      res.status(500).json({ error: "Failed to register" });
+    }
+  });
+
+  app.post("/api/word-wars/:id/draw", requireAuth, async (req, res) => {
+    try {
+      if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const tournament = await storage.getWordWarsTournament(id);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Tournament is not in registration phase" });
+      const registrations = await storage.getWordWarsRegistrationsForTournament(id);
+      if (registrations.length < 2) return res.status(400).json({ error: "Need at least 2 players to draw bracket" });
+      const matches = await drawWordWarsBracket(registrations, tournament);
+      await storage.updateWordWarsTournament(id, { status: "active" });
+      for (const match of matches) {
+        const created = await storage.createWordWarsMatch(match);
+        await Promise.all([1, 2, 3].map((num) =>
+          storage.createWordWarsMatchGame({
+            matchId: created.id,
+            gameNumber: num,
+            gameSlug: num === 1 ? match.game1Slug : num === 2 ? match.game2Slug : match.game3Slug,
+            roomCode: null,
+            winnerId: null,
+            status: match.status === "bye" ? "completed" : "pending",
+          })
+        ));
+        if (match.player1Id && match.player2Id && match.status !== "bye") {
+          for (const playerId of [match.player1Id, match.player2Id]) {
+            const opponent = playerId === match.player1Id ? match.player2Id : match.player1Id;
+            const opponentUser = await storage.getUserById(opponent);
+            await createNotificationIfEnabled({
+              userId: playerId,
+              type: "word_war_matched",
+              title: "⚔️ Your opponent awaits!",
+              body: `You've been drawn against ${opponentUser?.name ?? "your opponent"} in "${tournament.name}". The battle begins!`,
+              linkUrl: `/word-wars/${id}`,
+            });
+          }
+        }
+      }
+      const allMatches = await storage.listWordWarsMatchesForTournament(id);
+      res.json({ matches: allMatches });
+    } catch (err) {
+      console.error("[word-wars] draw error", err);
+      res.status(500).json({ error: "Failed to draw bracket" });
+    }
+  });
+
+  app.get("/api/word-wars/matches/:matchId", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      if (isNaN(matchId)) return res.status(400).json({ error: "Invalid match ID" });
+      const match = await storage.getWordWarsMatch(matchId);
+      if (!match) return res.status(404).json({ error: "Match not found" });
+      const games = await storage.getWordWarsMatchGames(matchId);
+      res.json({ match, games });
+    } catch {
+      res.status(500).json({ error: "Failed to get match" });
+    }
+  });
+
+  app.post("/api/word-wars/matches/:matchId/games/:gameNumber/start", requireAuth, async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const gameNumber = parseInt(req.params.gameNumber);
+      if (isNaN(matchId) || isNaN(gameNumber) || gameNumber < 1 || gameNumber > 3) {
+        return res.status(400).json({ error: "Invalid match or game number" });
+      }
+      const match = await storage.getWordWarsMatch(matchId);
+      if (!match) return res.status(404).json({ error: "Match not found" });
+      const userId = req.user!.id;
+      if (match.player1Id !== userId && match.player2Id !== userId) {
+        return res.status(403).json({ error: "You are not a participant in this match" });
+      }
+      if (match.status !== "pending" && match.status !== "active") {
+        return res.status(400).json({ error: "Match is not active" });
+      }
+      const matchGame = await storage.getWordWarsMatchGame(matchId, gameNumber);
+      if (!matchGame) return res.status(404).json({ error: "Game not found" });
+      if (matchGame.roomCode) return res.json({ roomCode: matchGame.roomCode });
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let roomCode = "";
+      for (let i = 0; i < 8; i++) roomCode += chars[Math.floor(Math.random() * chars.length)];
+      const seed = Math.floor(Math.random() * 1000000);
+      await storage.createDuelChallenge({
+        challengerId: match.player1Id!,
+        challengeeId: match.player2Id!,
+        gameSlug: matchGame.gameSlug,
+        message: `Word Wars Match — Game ${gameNumber}`,
+        status: "accepted",
+        roomCode,
+        seed,
+        startWord: null,
+        format: "race",
+        raceTarget: 10,
+        raceTimeLimit: 180,
+        expiresAt: null,
+      });
+      await storage.updateWordWarsMatchGame(matchGame.id, { roomCode, status: "active" });
+      if (match.status === "pending") {
+        await storage.updateWordWarsMatch(matchId, { status: "active" });
+      }
+      res.json({ roomCode });
+    } catch (err) {
+      console.error("[word-wars] start game error", err);
+      res.status(500).json({ error: "Failed to start game" });
+    }
+  });
+
   return httpServer;
+}
+
+// ==================== BRACKET DRAW UTILITY ====================
+
+import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch } from "@shared/schema";
+
+async function drawWordWarsBracket(
+  registrations: WordWarsRegistration[],
+  tournament: WordWarsTournament,
+): Promise<Omit<WordWarsMatch, "id" | "createdAt">[]> {
+  const userIds = registrations.map(r => r.userId);
+  const ratings = await Promise.all(userIds.map(uid => storage.getDuelRating(uid)));
+  const seeded = userIds
+    .map((uid, i) => ({ userId: uid, elo: ratings[i]?.elo ?? 1200 }))
+    .sort((a, b) => b.elo - a.elo);
+
+  const n = seeded.length;
+  let size = 1;
+  while (size < n) size *= 2;
+
+  const slots: (number | null)[] = seeded.map(s => s.userId);
+  while (slots.length < size) slots.push(null);
+
+  function pickThreeGames(): [string, string, string] {
+    const pool = [...WORD_WARS_ELIGIBLE_SLUGS];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return [pool[0], pool[1], pool[2]];
+  }
+
+  const deadline = tournament.roundDeadlineHours
+    ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
+    : null;
+
+  const matches: Omit<import("@shared/schema").WordWarsMatch, "id" | "createdAt">[] = [];
+  const half = size / 2;
+  for (let i = 0; i < half; i++) {
+    const p1 = slots[i];
+    const p2 = slots[size - 1 - i];
+    const [g1, g2, g3] = pickThreeGames();
+    if (p1 !== null && p2 === null) {
+      matches.push({
+        tournamentId: tournament.id,
+        round: 1,
+        player1Id: p1,
+        player2Id: null,
+        winnerId: p1,
+        status: "bye",
+        deadline: null,
+        game1Slug: g1,
+        game2Slug: g2,
+        game3Slug: g3,
+      });
+    } else {
+      matches.push({
+        tournamentId: tournament.id,
+        round: 1,
+        player1Id: p1,
+        player2Id: p2,
+        winnerId: null,
+        status: "pending",
+        deadline,
+        game1Slug: g1,
+        game2Slug: g2,
+        game3Slug: g3,
+      });
+    }
+  }
+  return matches;
 }

@@ -75,10 +75,61 @@ async function runPruneJob() {
   }
 }
 
+async function runWordWarsJobs() {
+  try {
+    const st = getStorage();
+    const tournaments = await st.listWordWarsTournaments();
+    const now = new Date();
+
+    for (const t of tournaments) {
+      if (t.status === "registration" && new Date(t.registrationDeadline) <= now) {
+        const regs = await st.getWordWarsRegistrationsForTournament(t.id);
+        if (regs.length < 2) {
+          await st.updateWordWarsTournament(t.id, { status: "cancelled" });
+          log(`[word-wars] Tournament ${t.id} cancelled — not enough players`, "word-wars");
+          continue;
+        }
+        await st.updateWordWarsTournament(t.id, { status: "active" });
+        log(`[word-wars] Tournament ${t.id} registration closed, bracket auto-draw triggered`, "word-wars");
+      }
+
+      if (t.status === "active") {
+        const matches = await st.listWordWarsMatchesForTournament(t.id);
+        for (const m of matches) {
+          if (m.status === "active" && m.deadline && new Date(m.deadline) <= now) {
+            const games = await st.getWordWarsMatchGames(m.id);
+            const p1Wins = games.filter(g => g.winnerId === m.player1Id).length;
+            const p2Wins = games.filter(g => g.winnerId === m.player2Id).length;
+            let forfeitWinner: number | null = null;
+            if (p1Wins > p2Wins) forfeitWinner = m.player1Id;
+            else if (p2Wins > p1Wins) forfeitWinner = m.player2Id;
+            else forfeitWinner = Math.random() < 0.5 ? m.player1Id : m.player2Id;
+            await st.updateWordWarsMatch(m.id, { status: "forfeited", winnerId: forfeitWinner });
+            log(`[word-wars] Match ${m.id} timed out — winner: ${forfeitWinner}`, "word-wars");
+          }
+        }
+
+        const activeMatches = matches.filter(m => m.status !== "completed" && m.status !== "forfeited" && m.status !== "bye");
+        if (activeMatches.length === 0 && matches.length > 0) {
+          await st.updateWordWarsTournament(t.id, { status: "completed" });
+          log(`[word-wars] Tournament ${t.id} completed`, "word-wars");
+        }
+      }
+    }
+  } catch (err) {
+    log(`[word-wars] Scheduler error: ${err}`, "word-wars");
+  }
+}
+
+function scheduleWordWarsJobs() {
+  setInterval(runWordWarsJobs, 60_000);
+}
+
 (async () => {
   await initStorage();
   runPruneJob();
   setInterval(runPruneJob, PRUNE_INTERVAL_MS);
+  scheduleWordWarsJobs();
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);

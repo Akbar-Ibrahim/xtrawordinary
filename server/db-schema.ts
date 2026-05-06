@@ -402,6 +402,67 @@ export const huddleChallenges = mysqlTable("huddle_challenges", {
   index("hc_room_code_idx").on(table.roomCode),
 ]);
 
+export const wordWarsTournaments = mysqlTable("word_wars_tournaments", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("registration"),
+  registrationDeadline: timestamp("registration_deadline").notNull(),
+  roundDeadlineHours: int("round_deadline_hours").notNull().default(24),
+  maxPlayers: int("max_players"),
+  recurringCron: varchar("recurring_cron", { length: 100 }),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("wt_status_idx").on(table.status),
+  index("wt_deadline_idx").on(table.registrationDeadline),
+  index("wt_created_by_idx").on(table.createdBy),
+]);
+
+export const wordWarsRegistrations = mysqlTable("word_wars_registrations", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  userId: int("user_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("wr_tournament_idx").on(table.tournamentId),
+  index("wr_user_idx").on(table.userId),
+  uniqueIndex("wr_tournament_user_idx").on(table.tournamentId, table.userId),
+]);
+
+export const wordWarsMatches = mysqlTable("word_wars_matches", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  round: int("round").notNull(),
+  player1Id: int("player1_id"),
+  player2Id: int("player2_id"),
+  winnerId: int("winner_id"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  deadline: timestamp("deadline"),
+  game1Slug: varchar("game1_slug", { length: 100 }).notNull(),
+  game2Slug: varchar("game2_slug", { length: 100 }).notNull(),
+  game3Slug: varchar("game3_slug", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("wm_tournament_idx").on(table.tournamentId),
+  index("wm_round_idx").on(table.tournamentId, table.round),
+  index("wm_player1_idx").on(table.player1Id),
+  index("wm_player2_idx").on(table.player2Id),
+  index("wm_status_idx").on(table.status),
+]);
+
+export const wordWarsMatchGames = mysqlTable("word_wars_match_games", {
+  id: int("id").primaryKey().autoincrement(),
+  matchId: int("match_id").notNull(),
+  gameNumber: int("game_number").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  roomCode: varchar("room_code", { length: 12 }),
+  winnerId: int("winner_id"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+}, (table) => [
+  index("wmg_match_idx").on(table.matchId),
+  uniqueIndex("wmg_match_game_idx").on(table.matchId, table.gameNumber),
+]);
+
 export const notifications = mysqlTable("notifications", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),

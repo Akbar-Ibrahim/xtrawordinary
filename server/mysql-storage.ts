@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1816,7 +1816,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start"];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
@@ -1829,5 +1829,211 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     await db.insert(schema.notificationPreferences).values({ userId, type, enabled })
       .onDuplicateKeyUpdate({ set: { enabled } });
+  }
+
+  // ==================== WORD WARS ====================
+
+  private toWordWarsTournament(row: any): WordWarsTournament {
+    return {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      registrationDeadline: row.registrationDeadline instanceof Date ? row.registrationDeadline.toISOString() : String(row.registrationDeadline),
+      roundDeadlineHours: row.roundDeadlineHours,
+      maxPlayers: row.maxPlayers ?? null,
+      recurringCron: row.recurringCron ?? null,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toWordWarsRegistration(row: any): WordWarsRegistration {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      userId: row.userId,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toWordWarsMatch(row: any): WordWarsMatch {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      round: row.round,
+      player1Id: row.player1Id ?? null,
+      player2Id: row.player2Id ?? null,
+      winnerId: row.winnerId ?? null,
+      status: row.status,
+      deadline: row.deadline ? (row.deadline instanceof Date ? row.deadline.toISOString() : String(row.deadline)) : null,
+      game1Slug: row.game1Slug,
+      game2Slug: row.game2Slug,
+      game3Slug: row.game3Slug,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toWordWarsMatchGame(row: any): WordWarsMatchGame {
+    return {
+      id: row.id,
+      matchId: row.matchId,
+      gameNumber: row.gameNumber,
+      gameSlug: row.gameSlug,
+      roomCode: row.roomCode ?? null,
+      winnerId: row.winnerId ?? null,
+      status: row.status,
+    };
+  }
+
+  async createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.wordWarsTournaments).values({
+      name: data.name,
+      status: "registration",
+      registrationDeadline: new Date(data.registrationDeadline),
+      roundDeadlineHours: data.roundDeadlineHours,
+      maxPlayers: data.maxPlayers ?? null,
+      recurringCron: data.recurringCron ?? null,
+      createdBy: data.createdBy,
+    });
+    const created = await this.getWordWarsTournament(result[0].insertId);
+    return created!;
+  }
+
+  async getWordWarsTournament(id: number): Promise<WordWarsTournament | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsTournaments).where(eq(schema.wordWarsTournaments.id, id)).limit(1);
+    return rows[0] ? this.toWordWarsTournament(rows[0]) : undefined;
+  }
+
+  async listWordWarsTournaments(): Promise<WordWarsTournament[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsTournaments).orderBy(desc(schema.wordWarsTournaments.createdAt));
+    return rows.map((r: any) => this.toWordWarsTournament(r));
+  }
+
+  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.registrationDeadline !== undefined) dbUpdates.registrationDeadline = new Date(updates.registrationDeadline);
+    if (updates.roundDeadlineHours !== undefined) dbUpdates.roundDeadlineHours = updates.roundDeadlineHours;
+    if (updates.maxPlayers !== undefined) dbUpdates.maxPlayers = updates.maxPlayers;
+    if (updates.recurringCron !== undefined) dbUpdates.recurringCron = updates.recurringCron;
+    await db.update(schema.wordWarsTournaments).set(dbUpdates).where(eq(schema.wordWarsTournaments.id, id));
+    return this.getWordWarsTournament(id);
+  }
+
+  async createWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.wordWarsRegistrations).values({ tournamentId, userId });
+    const rows = await db.select().from(schema.wordWarsRegistrations).where(eq(schema.wordWarsRegistrations.id, result[0].insertId)).limit(1);
+    return this.toWordWarsRegistration(rows[0]);
+  }
+
+  async getWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsRegistrations)
+      .where(and(eq(schema.wordWarsRegistrations.tournamentId, tournamentId), eq(schema.wordWarsRegistrations.userId, userId)))
+      .limit(1);
+    return rows[0] ? this.toWordWarsRegistration(rows[0]) : undefined;
+  }
+
+  async deleteWordWarsRegistration(tournamentId: number, userId: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.wordWarsRegistrations)
+      .where(and(eq(schema.wordWarsRegistrations.tournamentId, tournamentId), eq(schema.wordWarsRegistrations.userId, userId)));
+  }
+
+  async getWordWarsRegistrationsForTournament(tournamentId: number): Promise<WordWarsRegistration[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsRegistrations)
+      .where(eq(schema.wordWarsRegistrations.tournamentId, tournamentId))
+      .orderBy(asc(schema.wordWarsRegistrations.createdAt));
+    return rows.map((r: any) => this.toWordWarsRegistration(r));
+  }
+
+  async createWordWarsMatch(data: Omit<WordWarsMatch, "id" | "createdAt">): Promise<WordWarsMatch> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.wordWarsMatches).values({
+      tournamentId: data.tournamentId,
+      round: data.round,
+      player1Id: data.player1Id ?? null,
+      player2Id: data.player2Id ?? null,
+      winnerId: data.winnerId ?? null,
+      status: data.status,
+      deadline: data.deadline ? new Date(data.deadline) : null,
+      game1Slug: data.game1Slug,
+      game2Slug: data.game2Slug,
+      game3Slug: data.game3Slug,
+    });
+    const created = await this.getWordWarsMatch(result[0].insertId);
+    return created!;
+  }
+
+  async getWordWarsMatch(id: number): Promise<WordWarsMatch | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsMatches).where(eq(schema.wordWarsMatches.id, id)).limit(1);
+    return rows[0] ? this.toWordWarsMatch(rows[0]) : undefined;
+  }
+
+  async listWordWarsMatchesForTournament(tournamentId: number): Promise<WordWarsMatch[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsMatches)
+      .where(eq(schema.wordWarsMatches.tournamentId, tournamentId))
+      .orderBy(asc(schema.wordWarsMatches.round), asc(schema.wordWarsMatches.id));
+    return rows.map((r: any) => this.toWordWarsMatch(r));
+  }
+
+  async updateWordWarsMatch(id: number, updates: Partial<Pick<WordWarsMatch, "status" | "winnerId" | "deadline">>): Promise<WordWarsMatch | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.winnerId !== undefined) dbUpdates.winnerId = updates.winnerId;
+    if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline ? new Date(updates.deadline) : null;
+    await db.update(schema.wordWarsMatches).set(dbUpdates).where(eq(schema.wordWarsMatches.id, id));
+    return this.getWordWarsMatch(id);
+  }
+
+  async createWordWarsMatchGame(data: Omit<WordWarsMatchGame, "id">): Promise<WordWarsMatchGame> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.wordWarsMatchGames).values({
+      matchId: data.matchId,
+      gameNumber: data.gameNumber,
+      gameSlug: data.gameSlug,
+      roomCode: data.roomCode ?? null,
+      winnerId: data.winnerId ?? null,
+      status: data.status,
+    });
+    const rows = await db.select().from(schema.wordWarsMatchGames).where(eq(schema.wordWarsMatchGames.id, result[0].insertId)).limit(1);
+    return this.toWordWarsMatchGame(rows[0]);
+  }
+
+  async getWordWarsMatchGame(matchId: number, gameNumber: number): Promise<WordWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsMatchGames)
+      .where(and(eq(schema.wordWarsMatchGames.matchId, matchId), eq(schema.wordWarsMatchGames.gameNumber, gameNumber)))
+      .limit(1);
+    return rows[0] ? this.toWordWarsMatchGame(rows[0]) : undefined;
+  }
+
+  async getWordWarsMatchGames(matchId: number): Promise<WordWarsMatchGame[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.wordWarsMatchGames)
+      .where(eq(schema.wordWarsMatchGames.matchId, matchId))
+      .orderBy(asc(schema.wordWarsMatchGames.gameNumber));
+    return rows.map((r: any) => this.toWordWarsMatchGame(r));
+  }
+
+  async updateWordWarsMatchGame(id: number, updates: Partial<Pick<WordWarsMatchGame, "status" | "winnerId" | "roomCode">>): Promise<WordWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.winnerId !== undefined) dbUpdates.winnerId = updates.winnerId;
+    if (updates.roomCode !== undefined) dbUpdates.roomCode = updates.roomCode;
+    await db.update(schema.wordWarsMatchGames).set(dbUpdates).where(eq(schema.wordWarsMatchGames.id, id));
+    const rows = await db.select().from(schema.wordWarsMatchGames).where(eq(schema.wordWarsMatchGames.id, id)).limit(1);
+    return rows[0] ? this.toWordWarsMatchGame(rows[0]) : undefined;
   }
 }

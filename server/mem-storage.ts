@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -33,6 +33,15 @@ export class MemStorage implements IStorage {
 
   private huddleChallenges: HuddleChallenge[] = [];
   private huddleChallengeIdCounter = 1;
+
+  private wordWarsTournaments: WordWarsTournament[] = [];
+  private wordWarsTournamentIdCounter = 1;
+  private wordWarsRegistrations: WordWarsRegistration[] = [];
+  private wordWarsRegistrationIdCounter = 1;
+  private wordWarsMatches: WordWarsMatch[] = [];
+  private wordWarsMatchIdCounter = 1;
+  private wordWarsMatchGames: WordWarsMatchGame[] = [];
+  private wordWarsMatchGameIdCounter = 1;
 
   private notifications: Notification[] = [];
   private notificationIdCounter = 1;
@@ -1606,7 +1615,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;
@@ -1617,5 +1626,108 @@ export class MemStorage implements IStorage {
 
   async setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void> {
     this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
+  }
+
+  // ==================== WORD WARS ====================
+
+  async createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament> {
+    const t: WordWarsTournament = {
+      ...data,
+      id: this.wordWarsTournamentIdCounter++,
+      status: "registration",
+      createdAt: new Date().toISOString(),
+    };
+    this.wordWarsTournaments.push(t);
+    return t;
+  }
+
+  async getWordWarsTournament(id: number): Promise<WordWarsTournament | undefined> {
+    return this.wordWarsTournaments.find(t => t.id === id);
+  }
+
+  async listWordWarsTournaments(): Promise<WordWarsTournament[]> {
+    return [...this.wordWarsTournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
+    const t = this.wordWarsTournaments.find(t => t.id === id);
+    if (!t) return undefined;
+    Object.assign(t, updates);
+    return t;
+  }
+
+  async createWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration> {
+    const r: WordWarsRegistration = {
+      id: this.wordWarsRegistrationIdCounter++,
+      tournamentId,
+      userId,
+      createdAt: new Date().toISOString(),
+    };
+    this.wordWarsRegistrations.push(r);
+    return r;
+  }
+
+  async getWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration | undefined> {
+    return this.wordWarsRegistrations.find(r => r.tournamentId === tournamentId && r.userId === userId);
+  }
+
+  async deleteWordWarsRegistration(tournamentId: number, userId: number): Promise<void> {
+    this.wordWarsRegistrations = this.wordWarsRegistrations.filter(
+      r => !(r.tournamentId === tournamentId && r.userId === userId)
+    );
+  }
+
+  async getWordWarsRegistrationsForTournament(tournamentId: number): Promise<WordWarsRegistration[]> {
+    return this.wordWarsRegistrations.filter(r => r.tournamentId === tournamentId);
+  }
+
+  async createWordWarsMatch(data: Omit<WordWarsMatch, "id" | "createdAt">): Promise<WordWarsMatch> {
+    const m: WordWarsMatch = {
+      ...data,
+      id: this.wordWarsMatchIdCounter++,
+      createdAt: new Date().toISOString(),
+    };
+    this.wordWarsMatches.push(m);
+    return m;
+  }
+
+  async getWordWarsMatch(id: number): Promise<WordWarsMatch | undefined> {
+    return this.wordWarsMatches.find(m => m.id === id);
+  }
+
+  async listWordWarsMatchesForTournament(tournamentId: number): Promise<WordWarsMatch[]> {
+    return this.wordWarsMatches
+      .filter(m => m.tournamentId === tournamentId)
+      .sort((a, b) => a.round - b.round);
+  }
+
+  async updateWordWarsMatch(id: number, updates: Partial<Pick<WordWarsMatch, "status" | "winnerId" | "deadline">>): Promise<WordWarsMatch | undefined> {
+    const m = this.wordWarsMatches.find(m => m.id === id);
+    if (!m) return undefined;
+    Object.assign(m, updates);
+    return m;
+  }
+
+  async createWordWarsMatchGame(data: Omit<WordWarsMatchGame, "id">): Promise<WordWarsMatchGame> {
+    const g: WordWarsMatchGame = { ...data, id: this.wordWarsMatchGameIdCounter++ };
+    this.wordWarsMatchGames.push(g);
+    return g;
+  }
+
+  async getWordWarsMatchGame(matchId: number, gameNumber: number): Promise<WordWarsMatchGame | undefined> {
+    return this.wordWarsMatchGames.find(g => g.matchId === matchId && g.gameNumber === gameNumber);
+  }
+
+  async getWordWarsMatchGames(matchId: number): Promise<WordWarsMatchGame[]> {
+    return this.wordWarsMatchGames
+      .filter(g => g.matchId === matchId)
+      .sort((a, b) => a.gameNumber - b.gameNumber);
+  }
+
+  async updateWordWarsMatchGame(id: number, updates: Partial<Pick<WordWarsMatchGame, "status" | "winnerId" | "roomCode">>): Promise<WordWarsMatchGame | undefined> {
+    const g = this.wordWarsMatchGames.find(g => g.id === id);
+    if (!g) return undefined;
+    Object.assign(g, updates);
+    return g;
   }
 }

@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -218,6 +218,27 @@ export interface IStorage {
   // Notification Preferences
   getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>>;
   setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void>;
+
+  // Word Wars
+  createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament>;
+  getWordWarsTournament(id: number): Promise<WordWarsTournament | undefined>;
+  listWordWarsTournaments(): Promise<WordWarsTournament[]>;
+  updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined>;
+
+  createWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration>;
+  getWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration | undefined>;
+  deleteWordWarsRegistration(tournamentId: number, userId: number): Promise<void>;
+  getWordWarsRegistrationsForTournament(tournamentId: number): Promise<WordWarsRegistration[]>;
+
+  createWordWarsMatch(data: Omit<WordWarsMatch, "id" | "createdAt">): Promise<WordWarsMatch>;
+  getWordWarsMatch(id: number): Promise<WordWarsMatch | undefined>;
+  listWordWarsMatchesForTournament(tournamentId: number): Promise<WordWarsMatch[]>;
+  updateWordWarsMatch(id: number, updates: Partial<Pick<WordWarsMatch, "status" | "winnerId" | "deadline">>): Promise<WordWarsMatch | undefined>;
+
+  createWordWarsMatchGame(data: Omit<WordWarsMatchGame, "id">): Promise<WordWarsMatchGame>;
+  getWordWarsMatchGame(matchId: number, gameNumber: number): Promise<WordWarsMatchGame | undefined>;
+  getWordWarsMatchGames(matchId: number): Promise<WordWarsMatchGame[]>;
+  updateWordWarsMatchGame(id: number, updates: Partial<Pick<WordWarsMatchGame, "status" | "winnerId" | "roomCode">>): Promise<WordWarsMatchGame | undefined>;
 }
 
 export { MemStorage } from "./mem-storage";
