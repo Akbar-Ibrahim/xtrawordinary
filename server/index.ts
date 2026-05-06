@@ -78,19 +78,21 @@ async function runPruneJob() {
 async function runWordWarsJobs() {
   try {
     const st = getStorage();
+    const { executeBracketDraw } = await import("./word-wars-engine");
     const tournaments = await st.listWordWarsTournaments();
     const now = new Date();
 
     for (const t of tournaments) {
+      // Auto-draw bracket when registration window expires
       if (t.status === "registration" && new Date(t.registrationDeadline) <= now) {
-        const regs = await st.getWordWarsRegistrationsForTournament(t.id);
-        if (regs.length < 2) {
-          await st.updateWordWarsTournament(t.id, { status: "cancelled" });
-          log(`[word-wars] Tournament ${t.id} cancelled — not enough players`, "word-wars");
-          continue;
+        log(`[word-wars] Tournament ${t.id} registration closed — auto-drawing bracket`, "word-wars");
+        const result = await executeBracketDraw(t.id);
+        if ("error" in result) {
+          log(`[word-wars] Tournament ${t.id} auto-draw failed: ${result.error}`, "word-wars");
+        } else {
+          log(`[word-wars] Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "word-wars");
         }
-        await st.updateWordWarsTournament(t.id, { status: "active" });
-        log(`[word-wars] Tournament ${t.id} registration closed, bracket auto-draw triggered`, "word-wars");
+        continue;
       }
 
       if (t.status === "active") {
@@ -109,8 +111,10 @@ async function runWordWarsJobs() {
           }
         }
 
-        const activeMatches = matches.filter(m => m.status !== "completed" && m.status !== "forfeited" && m.status !== "bye");
-        if (activeMatches.length === 0 && matches.length > 0) {
+        const unresolvedMatches = matches.filter(
+          m => m.status !== "completed" && m.status !== "forfeited" && m.status !== "bye",
+        );
+        if (unresolvedMatches.length === 0 && matches.length > 0) {
           await st.updateWordWarsTournament(t.id, { status: "completed" });
           log(`[word-wars] Tournament ${t.id} completed`, "word-wars");
         }

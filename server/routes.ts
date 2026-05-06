@@ -8,7 +8,8 @@ import crypto from "crypto";
 import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
-import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, WORD_WARS_ELIGIBLE_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
+import { executeBracketDraw } from "./word-wars-engine";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -3387,41 +3388,11 @@ export async function registerRoutes(
       if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-      const tournament = await storage.getWordWarsTournament(id);
-      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
-      if (tournament.status !== "registration") return res.status(400).json({ error: "Tournament is not in registration phase" });
-      const registrations = await storage.getWordWarsRegistrationsForTournament(id);
-      if (registrations.length < 2) return res.status(400).json({ error: "Need at least 2 players to draw bracket" });
-      const matches = await drawWordWarsBracket(registrations, tournament);
-      await storage.updateWordWarsTournament(id, { status: "active" });
-      for (const match of matches) {
-        const created = await storage.createWordWarsMatch(match);
-        await Promise.all([1, 2, 3].map((num) =>
-          storage.createWordWarsMatchGame({
-            matchId: created.id,
-            gameNumber: num,
-            gameSlug: num === 1 ? match.game1Slug : num === 2 ? match.game2Slug : match.game3Slug,
-            roomCode: null,
-            winnerId: null,
-            status: match.status === "bye" ? "completed" : "pending",
-          })
-        ));
-        if (match.player1Id && match.player2Id && match.status !== "bye") {
-          for (const playerId of [match.player1Id, match.player2Id]) {
-            const opponent = playerId === match.player1Id ? match.player2Id : match.player1Id;
-            const opponentUser = await storage.getUserById(opponent);
-            await createNotificationIfEnabled({
-              userId: playerId,
-              type: "word_war_matched",
-              title: "⚔️ Your opponent awaits!",
-              body: `You've been drawn against ${opponentUser?.name ?? "your opponent"} in "${tournament.name}". The battle begins!`,
-              linkUrl: `/word-wars/${id}`,
-            });
-          }
-        }
+      const result = await executeBracketDraw(id);
+      if ("error" in result) {
+        return res.status(400).json({ error: result.error });
       }
-      const allMatches = await storage.listWordWarsMatchesForTournament(id);
-      res.json({ matches: allMatches });
+      res.json({ matches: result.matches });
     } catch (err) {
       console.error("[word-wars] draw error", err);
       res.status(500).json({ error: "Failed to draw bracket" });
@@ -3492,73 +3463,3 @@ export async function registerRoutes(
   return httpServer;
 }
 
-// ==================== BRACKET DRAW UTILITY ====================
-
-import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch } from "@shared/schema";
-
-async function drawWordWarsBracket(
-  registrations: WordWarsRegistration[],
-  tournament: WordWarsTournament,
-): Promise<Omit<WordWarsMatch, "id" | "createdAt">[]> {
-  const userIds = registrations.map(r => r.userId);
-  const ratings = await Promise.all(userIds.map(uid => storage.getDuelRating(uid)));
-  const seeded = userIds
-    .map((uid, i) => ({ userId: uid, elo: ratings[i]?.elo ?? 1200 }))
-    .sort((a, b) => b.elo - a.elo);
-
-  const n = seeded.length;
-  let size = 1;
-  while (size < n) size *= 2;
-
-  const slots: (number | null)[] = seeded.map(s => s.userId);
-  while (slots.length < size) slots.push(null);
-
-  function pickThreeGames(): [string, string, string] {
-    const pool = [...WORD_WARS_ELIGIBLE_SLUGS];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    return [pool[0], pool[1], pool[2]];
-  }
-
-  const deadline = tournament.roundDeadlineHours
-    ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
-    : null;
-
-  const matches: Omit<import("@shared/schema").WordWarsMatch, "id" | "createdAt">[] = [];
-  const half = size / 2;
-  for (let i = 0; i < half; i++) {
-    const p1 = slots[i];
-    const p2 = slots[size - 1 - i];
-    const [g1, g2, g3] = pickThreeGames();
-    if (p1 !== null && p2 === null) {
-      matches.push({
-        tournamentId: tournament.id,
-        round: 1,
-        player1Id: p1,
-        player2Id: null,
-        winnerId: p1,
-        status: "bye",
-        deadline: null,
-        game1Slug: g1,
-        game2Slug: g2,
-        game3Slug: g3,
-      });
-    } else {
-      matches.push({
-        tournamentId: tournament.id,
-        round: 1,
-        player1Id: p1,
-        player2Id: p2,
-        winnerId: null,
-        status: "pending",
-        deadline,
-        game1Slug: g1,
-        game2Slug: g2,
-        game3Slug: g3,
-      });
-    }
-  }
-  return matches;
-}
