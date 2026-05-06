@@ -175,29 +175,36 @@ export async function resolveWordWarsGame(
     const matchGame = await storage.getMatchGameByRoomCode(roomCode);
     if (!matchGame) return; // not a Word Wars game
 
-    if (matchGame.status === "completed") return; // already resolved
+    if (matchGame.status === "completed") return; // already resolved (idempotent at game level)
 
     const match = await storage.getWordWarsMatch(matchGame.matchId);
     if (!match) return;
     if (!match.player1Id || !match.player2Id) return;
 
-    // Record this game's result
+    // Record this individual game result (always, even if the series was already decided)
     const gameWinnerId = winnerId === -1 ? null : winnerId;
     await storage.updateWordWarsMatchGame(matchGame.id, {
       status: "completed",
       winnerId: gameWinnerId,
     });
 
-    // Count wins for each player across all games in this match
+    // IDEMPOTENCY: if the parent match is already decided, skip bracket advancement.
+    // This handles the case where game 2 already decided the series and advanced the
+    // bracket, but game 3 (which was already in progress) now also finalizes.
+    if (match.status === "completed" || match.status === "bye") return;
+
+    // Count wins for each player across all completed games in this match
     const allGames = await storage.getWordWarsMatchGames(match.id);
-    const completedGames = allGames.filter(g => g.status === "completed" || g.id === matchGame.id);
+    // Treat the current game as completed with our recorded winner when counting
+    const completedGames = allGames.map(g =>
+      g.id === matchGame.id ? { ...g, status: "completed" as const, winnerId: gameWinnerId } : g
+    ).filter(g => g.status === "completed");
 
     let p1Wins = 0;
     let p2Wins = 0;
     for (const g of completedGames) {
-      const wid = g.id === matchGame.id ? gameWinnerId : g.winnerId;
-      if (wid === match.player1Id) p1Wins++;
-      else if (wid === match.player2Id) p2Wins++;
+      if (g.winnerId === match.player1Id) p1Wins++;
+      else if (g.winnerId === match.player2Id) p2Wins++;
     }
 
     const totalCompleted = completedGames.length;
@@ -210,7 +217,7 @@ export async function resolveWordWarsGame(
 
     if (seriesWinnerId === null) return; // Series not decided yet
 
-    // Mark match completed
+    // Mark match completed — this is the single authoritative write that prevents re-entry
     await storage.updateWordWarsMatch(match.id, {
       status: "completed",
       winnerId: seriesWinnerId,
@@ -246,8 +253,8 @@ export async function resolveWordWarsGame(
           await storage.createNotification({
             userId: championId,
             type: "word_war_champion",
-            title: "⚔️ Champion",
-            body: `You have conquered "${tournament.name}". Glory is yours.`,
+            title: "Champion",
+            body: "You have conquered the Word Wars. Glory is yours.",
             linkUrl: `/word-wars/${match.tournamentId}`,
           });
         }
@@ -259,6 +266,12 @@ export async function resolveWordWarsGame(
 
     // Pair up winners for next round
     const nextRound = match.round + 1;
+
+    // DUPLICATE GUARD: ensure next-round matches don't already exist (e.g. if two
+    // matches in the current round finalize concurrently or very close together)
+    const existingNextRoundMatches = allMatchesInTournament.filter(m => m.round === nextRound);
+    if (existingNextRoundMatches.length > 0) return;
+
     const deadline = tournament.roundDeadlineHours
       ? new Date(Date.now() + tournament.roundDeadlineHours * 60 * 60 * 1000).toISOString()
       : null;
