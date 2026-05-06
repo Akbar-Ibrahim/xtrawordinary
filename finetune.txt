@@ -55,17 +55,43 @@ WORD WARS — RECURRING COMPETITIVE EVENTS
    A hall of fame page records all past champions. Reuses the existing
    duel engine, ELO system, and badge/achievement infrastructure.
 
-5. Guild Wars (group vs group tournament)
-   Group admins declare war on another group. Each group fields its members
-   across a set of assigned games played within a fixed window (e.g. 48 hrs).
-   Scores are pooled per group; the group with the higher combined total wins.
-   Winning group earns a victory badge on their group page and a war history
-   log. Unequal group sizes are handled by score normalisation. Builds on
-   the existing groups and group-rounds infrastructure.
+5. Guild Wars (group bracket tournament)
+   Guild Wars is to Huddle what Solo Wars is to Duels — the same group-vs-group
+   mechanic scaled up into a full bracket tournament.
 
-   Both formats live under the same "Word Wars" nav entry. Shared components:
-   registration/scheduling layer, bracket/scoreboard UI, result tracking,
-   and war history pages. Gameplay itself reuses duels and group rounds.
+   The analogy:
+     Individual 1v1    →  Duel
+     Individual bracket →  Solo Wars
+     Group 1v1         →  Huddle
+     Group bracket     →  Guild Wars
+
+   How it works:
+   - Groups register as a unit (not individual members).
+   - The bracket is seeded by a group ranking (group ELO, or registration order
+     for v1). Padded to next power-of-2 with BYE slots, same as Solo Wars.
+   - Each match = a Huddle battle between two groups. One typist represents
+     each group (the admin who created/accepted the challenge), using the
+     existing Huddle/duel room engine unchanged.
+   - The winning group advances; the losing group is eliminated. Groups win
+     as one and lose as one — no individual scoring, no score pooling.
+   - The last group standing wins the Guild War. All members of the winning
+     group share the champion recognition (badge on group page + notification
+     to all members).
+   - Edge case: if a group reaches a round where their only remaining opponent
+     is themselves (impossible in a bracket — but if a group somehow fields
+     both sides), the bracket resolves naturally since only one side can advance.
+
+   What's new to build (on top of Solo Wars + Huddle):
+   - guild_wars_tournaments table (mirrors word_wars_tournaments but keyed on groups)
+   - guild_wars_registrations table (groupId, tournamentId)
+   - Bracket draw that seeds groups instead of individuals
+   - Each match triggers a Huddle challenge between the two groups
+   - finalizeGame hook calls resolveGuildWarsMatch (mirrors resolveWordWarsGame)
+   - Group champion record + notification to all winning group members
+   - Frontend: Guild Wars lobby, bracket page (groups as nodes), group champion badge
+
+   Both Solo Wars and Guild Wars live under the same "Word Wars" nav entry.
+   Shared components: registration/scheduling layer, bracket UI, Hall of Fame.
 
    NOTE — Dramatic challenge notifications:
    When a Word Wars bracket is drawn and opponents are matched, each player
