@@ -223,7 +223,7 @@ export interface IStorage {
   createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament>;
   getWordWarsTournament(id: number): Promise<WordWarsTournament | undefined>;
   listWordWarsTournaments(): Promise<WordWarsTournament[]>;
-  updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined>;
+  updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minPlayers" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined>;
 
   createWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration>;
   getWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration | undefined>;

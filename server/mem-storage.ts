@@ -1651,7 +1651,7 @@ export class MemStorage implements IStorage {
     return [...this.wordWarsTournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
-  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
+  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minPlayers" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
     const t = this.wordWarsTournaments.find(t => t.id === id);
     if (!t) return undefined;
     Object.assign(t, updates);

@@ -3313,13 +3313,18 @@ export async function registerRoutes(
   app.post("/api/word-wars", requireAuth, async (req, res) => {
     try {
       if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
-      const { name, registrationDeadline, roundDeadlineHours, maxPlayers, recurringCron } = req.body;
+      const { name, registrationDeadline, roundDeadlineHours, minPlayers, maxPlayers, recurringCron } = req.body;
       if (!name || !registrationDeadline) return res.status(400).json({ error: "name and registrationDeadline required" });
+      const parsedMin = minPlayers ? Number(minPlayers) : 2;
+      if (!Number.isInteger(parsedMin) || parsedMin < 2) return res.status(400).json({ error: "minPlayers must be an integer >= 2" });
+      const parsedMax = maxPlayers ? Number(maxPlayers) : null;
+      if (parsedMax !== null && parsedMax < parsedMin) return res.status(400).json({ error: "maxPlayers must be >= minPlayers" });
       const tournament = await storage.createWordWarsTournament({
         name: String(name),
         registrationDeadline: new Date(registrationDeadline).toISOString(),
         roundDeadlineHours: Number(roundDeadlineHours) || 24,
-        maxPlayers: maxPlayers ? Number(maxPlayers) : null,
+        minPlayers: parsedMin,
+        maxPlayers: parsedMax,
         recurringCron: recurringCron ? String(recurringCron) : null,
         createdBy: req.user!.id,
       });

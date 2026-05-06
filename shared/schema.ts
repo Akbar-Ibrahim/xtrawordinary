@@ -734,6 +734,7 @@ export const wordWarsTournamentSchema = z.object({
   status: wordWarsTournamentStatusSchema,
   registrationDeadline: z.string(),
   roundDeadlineHours: z.number(),
+  minPlayers: z.number(),
   maxPlayers: z.number().nullable(),
   recurringCron: z.string().nullable(),
   createdBy: z.number(),

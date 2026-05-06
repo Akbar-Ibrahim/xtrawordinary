@@ -568,10 +568,11 @@ function WordWarsTab() {
   const [name, setName] = useState("");
   const [deadline, setDeadline] = useState("");
   const [roundHours, setRoundHours] = useState("24");
+  const [minPlayers, setMinPlayers] = useState("2");
   const [maxPlayers, setMaxPlayers] = useState("");
 
   const { data: tournaments = [], isLoading } = useQuery<Array<{
-    id: number; name: string; status: string; registrationDeadline: string; roundDeadlineHours: number; maxPlayers: number | null; createdAt: string;
+    id: number; name: string; status: string; registrationDeadline: string; roundDeadlineHours: number; minPlayers: number; maxPlayers: number | null; createdAt: string;
   }>>({
     queryKey: ["/api/word-wars"],
   });
@@ -581,12 +582,13 @@ function WordWarsTab() {
       name: name.trim(),
       registrationDeadline: new Date(deadline).toISOString(),
       roundDeadlineHours: parseInt(roundHours),
+      minPlayers: parseInt(minPlayers) || 2,
       maxPlayers: maxPlayers ? parseInt(maxPlayers) : null,
     }),
     onSuccess: () => {
       toast({ title: "Tournament created!" });
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] });
-      setName(""); setDeadline(""); setRoundHours("24"); setMaxPlayers("");
+      setName(""); setDeadline(""); setRoundHours("24"); setMinPlayers("2"); setMaxPlayers("");
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -650,6 +652,18 @@ function WordWarsTab() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="ww-min">Min Players to Run</Label>
+              <Input
+                id="ww-min"
+                type="number"
+                min="2"
+                value={minPlayers}
+                onChange={e => setMinPlayers(e.target.value)}
+                placeholder="2"
+                data-testid="input-ww-min-players"
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="ww-max">Max Players (optional)</Label>
               <Input
                 id="ww-max"
@@ -702,6 +716,7 @@ function WordWarsTab() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Deadline: {new Date(t.registrationDeadline).toLocaleString()} · {t.roundDeadlineHours}h/round
+                      {` · min ${t.minPlayers ?? 2}`}
                       {t.maxPlayers ? ` · max ${t.maxPlayers}` : ""}
                     </p>
                   </div>

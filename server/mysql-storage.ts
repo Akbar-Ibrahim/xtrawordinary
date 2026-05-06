@@ -1840,6 +1840,7 @@ export class MySQLStorage implements IStorage {
       status: row.status,
       registrationDeadline: row.registrationDeadline instanceof Date ? row.registrationDeadline.toISOString() : String(row.registrationDeadline),
       roundDeadlineHours: row.roundDeadlineHours,
+      minPlayers: row.minPlayers ?? 2,
       maxPlayers: row.maxPlayers ?? null,
       recurringCron: row.recurringCron ?? null,
       createdBy: row.createdBy,
@@ -1892,6 +1893,7 @@ export class MySQLStorage implements IStorage {
       status: "registration",
       registrationDeadline: new Date(data.registrationDeadline),
       roundDeadlineHours: data.roundDeadlineHours,
+      minPlayers: data.minPlayers ?? 2,
       maxPlayers: data.maxPlayers ?? null,
       recurringCron: data.recurringCron ?? null,
       createdBy: data.createdBy,
@@ -1912,13 +1914,14 @@ export class MySQLStorage implements IStorage {
     return rows.map((r: any) => this.toWordWarsTournament(r));
   }
 
-  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
+  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minPlayers" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> {
     const db = await this.getDb();
     const dbUpdates: any = {};
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.registrationDeadline !== undefined) dbUpdates.registrationDeadline = new Date(updates.registrationDeadline);
     if (updates.roundDeadlineHours !== undefined) dbUpdates.roundDeadlineHours = updates.roundDeadlineHours;
+    if (updates.minPlayers !== undefined) dbUpdates.minPlayers = updates.minPlayers;
     if (updates.maxPlayers !== undefined) dbUpdates.maxPlayers = updates.maxPlayers;
     if (updates.recurringCron !== undefined) dbUpdates.recurringCron = updates.recurringCron;
     await db.update(schema.wordWarsTournaments).set(dbUpdates).where(eq(schema.wordWarsTournaments.id, id));

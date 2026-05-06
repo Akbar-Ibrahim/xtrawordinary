@@ -22,8 +22,8 @@ const pendingRoundAdvancements = new Map<number, number>();
  * background scheduler so they can never get out of sync.
  *
  * Returns { matches } on success, { error } if the tournament cannot be drawn
- * (not found, wrong status, or not enough players).  When there are fewer than
- * 2 players the tournament is cancelled automatically.
+ * (not found, wrong status, or not enough players).  When registrations are
+ * below the tournament's minPlayers threshold it is cancelled automatically.
  */
 export async function executeBracketDraw(
   tournamentId: number,
@@ -47,9 +47,10 @@ async function _doDraw(
   if (tournament.status !== "registration") return { error: "Tournament is not in registration phase" };
 
   const registrations = await storage.getWordWarsRegistrationsForTournament(tournamentId);
-  if (registrations.length < 2) {
+  const minRequired = tournament.minPlayers ?? 2;
+  if (registrations.length < minRequired) {
     await storage.updateWordWarsTournament(tournamentId, { status: "cancelled" });
-    return { error: "Not enough players — tournament cancelled" };
+    return { error: `Not enough players (need ${minRequired}, have ${registrations.length}) — tournament cancelled` };
   }
 
   const matchData = await buildBracket(registrations, tournament);

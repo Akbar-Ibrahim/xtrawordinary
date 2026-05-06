@@ -408,6 +408,7 @@ export const wordWarsTournaments = mysqlTable("word_wars_tournaments", {
   status: varchar("status", { length: 20 }).notNull().default("registration"),
   registrationDeadline: timestamp("registration_deadline").notNull(),
   roundDeadlineHours: int("round_deadline_hours").notNull().default(24),
+  minPlayers: int("min_players").notNull().default(2),
   maxPlayers: int("max_players"),
   recurringCron: varchar("recurring_cron", { length: 100 }),
   createdBy: int("created_by").notNull(),
