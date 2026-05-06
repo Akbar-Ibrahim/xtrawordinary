@@ -81,8 +81,11 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
   const playerCount = detail?.registrations.length ?? 0;
 
   const registerMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/word-wars/${tournament.id}/register`),
-    onSuccess: (data: any) => {
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/word-wars/${tournament.id}/register`);
+      return res.json() as Promise<{ registered: boolean }>;
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournament.id] });
       toast({ title: data.registered ? "Registered for the war!" : "Registration withdrawn" });
     },

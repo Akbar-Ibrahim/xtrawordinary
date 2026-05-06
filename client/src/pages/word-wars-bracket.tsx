@@ -53,7 +53,7 @@ function MatchCard({
   const startGameMutation = useMutation({
     mutationFn: async (gameNumber: number) => {
       const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${gameNumber}/start`);
-      return res as { roomCode: string };
+      return res.json() as Promise<{ roomCode: string }>;
     },
     onSuccess: ({ roomCode }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
@@ -181,6 +181,8 @@ export default function WordWarsBracket() {
   const [, params] = useRoute("/word-wars/:id");
   const tournamentId = parseInt(params?.id ?? "0");
   const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery<TournamentDetail>({
     queryKey: ["/api/word-wars", tournamentId],
@@ -379,11 +381,12 @@ export default function WordWarsBracket() {
                                     className="h-7"
                                     onClick={async () => {
                                       try {
-                                        const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${game.gameNumber}/start`) as { roomCode: string };
+                                        const res = await apiRequest("POST", `/api/word-wars/matches/${match.id}/games/${game.gameNumber}/start`);
+                                        const { roomCode } = await res.json() as { roomCode: string };
                                         queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
-                                        window.location.href = `/duel/${res.roomCode}`;
+                                        navigate(`/duel/${roomCode}`);
                                       } catch (e: any) {
-                                        alert(e.message);
+                                        toast({ title: "Error", description: e.message, variant: "destructive" });
                                       }
                                     }}
                                     data-testid={`button-play-my-game-${match.id}-${game.gameNumber}`}
