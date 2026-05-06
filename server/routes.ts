@@ -3556,7 +3556,7 @@ export async function registerRoutes(
               type: "word_war_matched",
               title: "Your opponent is ready",
               body: `${starter?.name ?? "Your opponent"} has started Game ${gameNumber} of Round ${match.round}. Head to the bracket to play.`,
-              linkUrl: `/word-wars/${match.tournamentId}`,
+              linkUrl: `/word-wars/${match.tournamentId}/match/${matchId}`,
             });
           }
         } catch (notifErr) {

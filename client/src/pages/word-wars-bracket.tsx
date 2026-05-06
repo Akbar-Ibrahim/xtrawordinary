@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,11 +61,13 @@ function MatchCard({
   players,
   currentUserId,
   tournamentId,
+  isHighlighted,
 }: {
   match: MatchWithGames;
   players: Record<number, PlayerInfo>;
   currentUserId: number | undefined;
   tournamentId: number;
+  isHighlighted?: boolean;
 }) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -92,11 +94,11 @@ function MatchCard({
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
-  const isHighlighted = isUserMatch && isActive;
+  const isUserHighlighted = isUserMatch && isActive;
 
   return (
     <Card
-      className={`w-52 shrink-0 transition-shadow ${isHighlighted ? "border-primary shadow-md shadow-primary/10" : ""} ${isBye ? "opacity-60" : ""}`}
+      className={`w-52 shrink-0 transition-shadow ${isHighlighted ? "border-primary ring-2 ring-primary/30 shadow-md shadow-primary/20" : isUserHighlighted ? "border-primary shadow-md shadow-primary/10" : ""} ${isBye ? "opacity-60" : ""}`}
       data-testid={`card-match-${match.id}`}
     >
       <CardContent className="p-3 space-y-2">
@@ -214,6 +216,7 @@ function MyMatchesSection({
   tournamentId,
   navigate,
   toast,
+  highlightMatchId,
 }: {
   matches: MatchWithGames[];
   players: Record<number, PlayerInfo>;
@@ -221,13 +224,33 @@ function MyMatchesSection({
   tournamentId: number;
   navigate: (path: string) => void;
   toast: (opts: { title: string; description?: string; variant?: "destructive" }) => void;
+  highlightMatchId?: number;
 }) {
   const myMatches = matches.filter(
     m => m.player1Id === user.id || m.player2Id === user.id
   );
 
-  const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set());
+  const [expandedMatches, setExpandedMatches] = useState<Set<number>>(() =>
+    highlightMatchId ? new Set([highlightMatchId]) : new Set()
+  );
   const [pendingGame, setPendingGame] = useState<{ matchId: number; gameNumber: number } | null>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!highlightMatchId) return;
+    setExpandedMatches(prev => {
+      if (prev.has(highlightMatchId)) return prev;
+      const next = new Set(prev);
+      next.add(highlightMatchId);
+      return next;
+    });
+  }, [highlightMatchId]);
+
+  useEffect(() => {
+    if (highlightMatchId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightMatchId, matches.length]);
 
   if (myMatches.length === 0) return null;
 
@@ -301,10 +324,13 @@ function MyMatchesSection({
             return <Badge variant="secondary" className="text-xs">Pending</Badge>;
           })();
 
+          const isHighlighted = highlightMatchId === match.id;
+
           return (
             <div
               key={match.id}
-              className={`rounded-lg border bg-background ${!iCompleted && !isBye ? "border-primary/20" : ""}`}
+              ref={isHighlighted ? highlightRef : undefined}
+              className={`rounded-lg border bg-background transition-colors ${isHighlighted ? "border-primary ring-2 ring-primary/30 bg-primary/5" : !iCompleted && !isBye ? "border-primary/20" : ""}`}
               data-testid={`my-match-row-${match.id}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3">
@@ -514,7 +540,9 @@ function RegistrationCountdownCard({
 
 export default function WordWarsBracket() {
   const [, params] = useRoute("/word-wars/:id");
-  const tournamentId = parseInt(params?.id ?? "0");
+  const [, matchParams] = useRoute("/word-wars/:id/match/:matchId");
+  const tournamentId = parseInt(matchParams?.id ?? params?.id ?? "0");
+  const highlightMatchId = matchParams?.matchId ? parseInt(matchParams.matchId) : undefined;
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -650,7 +678,7 @@ export default function WordWarsBracket() {
           />
         )}
 
-        {user && <MyMatchesSection matches={matches} players={players} user={user} tournamentId={tournamentId} navigate={navigate} toast={toast} />}
+        {user && <MyMatchesSection matches={matches} players={players} user={user} tournamentId={tournamentId} navigate={navigate} toast={toast} highlightMatchId={highlightMatchId} />}
 
         {rounds.length > 0 && (
           <div>
@@ -672,6 +700,7 @@ export default function WordWarsBracket() {
                           players={players}
                           currentUserId={user?.id}
                           tournamentId={tournamentId}
+                          isHighlighted={highlightMatchId === match.id}
                         />
                       ))}
                     </div>

@@ -83,7 +83,7 @@ async function _doDraw(
             type: "word_war_matched",
             title: "The bracket is live — you have a bye",
             body: "The bracket has been drawn. You advance automatically in round 1 — prepare for round 2.",
-            linkUrl: `/word-wars/${tournamentId}`,
+            linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
           });
         }
       } catch (e) {
@@ -103,7 +103,7 @@ async function _doDraw(
               type: "word_war_matched",
               title: "Your opponent awaits",
               body: `${opponentUser?.name ?? "Your opponent"} stands between you and glory. The war begins.`,
-              linkUrl: `/word-wars/${tournamentId}`,
+              linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
             });
           }
         } catch (e) {
@@ -248,7 +248,7 @@ export async function checkAndForfeitExpiredMatches(tournamentId: number): Promi
               body: isWinner
                 ? "Your opponent didn't complete their games in time. You advance."
                 : "The round deadline passed before you completed your games. You have been eliminated.",
-              linkUrl: `/word-wars/${tournamentId}`,
+              linkUrl: `/word-wars/${tournamentId}/match/${match.id}`,
             });
           }
         } catch (e) {
@@ -465,7 +465,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
                 type: "word_war_matched",
                 title: "Your opponent awaits",
                 body: `${opponent?.name ?? "Your opponent"} stands between you and glory. The war continues.`,
-                linkUrl: `/word-wars/${tournamentId}`,
+                linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
               });
             }
             if (prefs["word_war_round_start"]) {
@@ -474,7 +474,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
                 type: "word_war_round_start",
                 title: `Round ${nextRound} begins`,
                 body: "Your next battle has been assigned.",
-                linkUrl: `/word-wars/${tournamentId}`,
+                linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
               });
             }
           } catch (e) {

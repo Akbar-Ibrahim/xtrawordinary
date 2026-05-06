@@ -62,6 +62,7 @@ function Router() {
       <Route path="/duels" component={DuelLobby} />
       <Route path="/duels/leaderboard" component={DuelLeaderboard} />
       <Route path="/word-wars" component={WordWarsLobby} />
+      <Route path="/word-wars/:id/match/:matchId" component={WordWarsBracket} />
       <Route path="/word-wars/:id" component={WordWarsBracket} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
       <Route component={NotFound} />
