@@ -7,14 +7,15 @@ const drawsInProgress = new Set<number>();
 
 /**
  * Per-tournament lock for round-advancement.  When two matches in the same
- * round finalize concurrently, the first resolver to acquire this lock does
- * the "is round done? → create next-round matches" check and creation; the
- * second resolver returns early and lets the first one handle advancement.
- * This is safe because updateWordWarsMatch (which marks the match completed)
- * is called *before* the lock is acquired, so the first resolver's snapshot
- * always reflects the most up-to-date match statuses.
+ * round finalize concurrently, only one resolver at a time runs the
+ * "is-round-done → create-next-round" section.  A second concurrent resolver
+ * that arrives while the lock is held sets a "pending retry" flag instead of
+ * dropping the event.  The lock-holder checks for the flag after it finishes
+ * and fires a retry on the next event-loop tick so no completion is ever lost.
  */
 const roundAdvancementsInProgress = new Set<number>();
+/** tournamentId → round: a retry is needed after the lock releases */
+const pendingRoundAdvancements = new Map<number, number>();
 
 /**
  * Shared bracket-draw logic — called by both the admin REST endpoint and the
@@ -237,16 +238,31 @@ export async function resolveWordWarsGame(
     });
 
     // Acquire per-tournament advancement lock.  Only one resolver at a time
-    // may run the "is-round-done → create-next-round" section.  If another
-    // resolver already holds the lock for this tournament, we return early —
-    // the lock-holder will re-query storage (which now includes our completed
-    // match) and handle advancement if the round is fully done.
-    if (roundAdvancementsInProgress.has(match.tournamentId)) return;
+    // may run the "is-round-done → create-next-round" section.
+    // If the lock is already held, register a pending retry instead of
+    // dropping the event — the lock-holder will fire the retry after it
+    // finishes, ensuring no completion signal is ever lost.
+    if (roundAdvancementsInProgress.has(match.tournamentId)) {
+      pendingRoundAdvancements.set(match.tournamentId, match.round);
+      return;
+    }
     roundAdvancementsInProgress.add(match.tournamentId);
     try {
       await _advanceBracket(match.tournamentId, match.round);
     } finally {
       roundAdvancementsInProgress.delete(match.tournamentId);
+      // If a concurrent resolver flagged a retry while we held the lock,
+      // fire it on the next tick so it can observe the fully-committed state.
+      const pendingRound = pendingRoundAdvancements.get(match.tournamentId);
+      if (pendingRound !== undefined) {
+        pendingRoundAdvancements.delete(match.tournamentId);
+        setImmediate(() => {
+          roundAdvancementsInProgress.add(match.tournamentId);
+          _advanceBracket(match.tournamentId, pendingRound)
+            .catch(e => console.error("[word-wars-engine] deferred advance error", e))
+            .finally(() => roundAdvancementsInProgress.delete(match.tournamentId));
+        });
+      }
     }
   } catch (err) {
     console.error("[word-wars-engine] resolveWordWarsGame error", err);
