@@ -3333,7 +3333,13 @@ export async function registerRoutes(
   app.get("/api/word-wars", async (_req, res) => {
     try {
       const tournaments = await storage.listWordWarsTournaments();
-      res.json(tournaments);
+      const withCounts = await Promise.all(
+        tournaments.map(async (t) => {
+          const regs = await storage.getWordWarsRegistrationsForTournament(t.id);
+          return { ...t, registrationCount: regs.length };
+        })
+      );
+      res.json(withCounts);
     } catch {
       res.status(500).json({ error: "Failed to list tournaments" });
     }
@@ -3379,8 +3385,8 @@ export async function registerRoutes(
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
       const tournament = await storage.getWordWarsTournament(id);
       if (!tournament) return res.status(404).json({ error: "Tournament not found" });
-      // Auto-forfeit any matches whose round deadline has expired
-      checkAndForfeitExpiredMatches(id).catch(e => console.error("[word-wars] forfeit check error", e));
+      // Auto-forfeit any matches whose round deadline has expired before returning data
+      await checkAndForfeitExpiredMatches(id);
       const [registrations, matches] = await Promise.all([
         storage.getWordWarsRegistrationsForTournament(id),
         storage.listWordWarsMatchesForTournament(id),
@@ -3467,7 +3473,12 @@ export async function registerRoutes(
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
       const championships = await storage.getChampionshipsForUser(id);
-      res.json(championships);
+      if (championships.length === 0) return res.json([]);
+      const tournaments = await Promise.all(championships.map(c => storage.getWordWarsTournament(c.tournamentId)));
+      res.json(championships.map((c, i) => ({
+        ...c,
+        tournamentName: tournaments[i]?.name ?? `Tournament #${c.tournamentId}`,
+      })));
     } catch {
       res.status(500).json({ error: "Failed to get championships" });
     }

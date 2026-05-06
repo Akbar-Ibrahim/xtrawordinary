@@ -9,10 +9,14 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles, Sword } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { WordWarsTournament } from "@shared/schema";
-import type { Game } from "@shared/schema";
+import type { Game, WordWarsTournament } from "@shared/schema";
+
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
+
 import { PremiumBanner } from "@/components/premium-banner";
+
+type TournamentWithCount = WordWarsTournament & { registrationCount: number };
+type ChampionEntry = { id: number; tournamentId: number; userId: number; createdAt: string; user: { id: number; name: string; avatarUrl: string | null } | null; tournament: { id: number; name: string } | null };
 
 const ONBOARDED_KEY = "xw_onboarded";
 
@@ -47,8 +51,16 @@ export default function Home() {
     queryKey: ["/api/daily-challenge"],
   });
 
-  const { data: wordWarsTournaments = [] } = useQuery<WordWarsTournament[]>({
+  const { data: wordWarsTournaments = [] } = useQuery<TournamentWithCount[]>({
     queryKey: ["/api/word-wars"],
+  });
+
+  const openTournament = wordWarsTournaments.find(t => t.status === "registration" || t.status === "active");
+  const hasAnyTournament = wordWarsTournaments.length > 0;
+
+  const { data: hallOfFame = [] } = useQuery<ChampionEntry[]>({
+    queryKey: ["/api/word-wars/champions"],
+    enabled: !openTournament && hasAnyTournament,
   });
 
   const stats = useMemo(() => loadStats(), []);
@@ -361,14 +373,20 @@ export default function Home() {
               className="flex flex-col"
             >
               {(() => {
-                const openTournament = wordWarsTournaments.find(t => t.status === "registration" || t.status === "active");
-                const subLabel = openTournament
-                  ? openTournament.status === "registration"
-                    ? `Open · closes ${new Date(openTournament.registrationDeadline).toLocaleDateString()}`
-                    : "Tournament in progress"
-                  : wordWarsTournaments.length > 0
-                  ? "View past tournaments"
-                  : "Bracket tournaments";
+                let subLabel: string;
+                if (openTournament) {
+                  if (openTournament.status === "registration") {
+                    subLabel = `${openTournament.registrationCount} ${openTournament.registrationCount === 1 ? "warrior" : "warriors"} · closes ${new Date(openTournament.registrationDeadline).toLocaleDateString()}`;
+                  } else {
+                    subLabel = "Tournament in progress";
+                  }
+                } else if (hallOfFame.length > 0 && hallOfFame[0].user) {
+                  subLabel = `Last champion: ${hallOfFame[0].user.name}`;
+                } else if (hasAnyTournament) {
+                  subLabel = "View past tournaments";
+                } else {
+                  subLabel = "Bracket tournaments";
+                }
                 return (
                   <Link href="/word-wars" className="flex-1 flex flex-col">
                     <Card
