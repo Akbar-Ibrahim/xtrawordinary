@@ -3672,6 +3672,31 @@ export async function registerRoutes(
         }
       }
 
+      // Send a "room is live" notification to both players so each has a direct link
+      if (roomCode) {
+        const bothPlayerIds = [userId, opponentId].filter((id): id is number => id != null);
+        try {
+          const prefsResults = await Promise.all(
+            bothPlayerIds.map((pid) => storage.getNotificationPreferences(pid)),
+          );
+          await Promise.all(
+            bothPlayerIds.map(async (pid, i) => {
+              if (prefsResults[i]["word_war_round_start"]) {
+                await storage.createNotification({
+                  userId: pid,
+                  type: "word_war_round_start",
+                  title: "Room is live — join now!",
+                  body: `Game ${gameNumber} of Round ${match.round} (Word Wars) is ready. Click to enter the duel room.`,
+                  linkUrl: `/duel/${roomCode}`,
+                });
+              }
+            }),
+          );
+        } catch (notifErr) {
+          console.error("[word-wars] room-ready notification error", notifErr);
+        }
+      }
+
       res.json({ roomCode });
     } catch (err) {
       console.error("[word-wars] start game error", err);
