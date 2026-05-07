@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
+import { useCountdown } from "@/lib/use-countdown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -131,7 +132,6 @@ export function DuelTurnEngine({
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
-  const [disconnectSecsLeft, setDisconnectSecsLeft] = useState(30);
   const [forfeitPending, setForfeitPending] = useState(false);
   const forfeitReasonRef = useRef<"disconnect" | "manual" | undefined>(undefined);
 
@@ -342,9 +342,6 @@ export function DuelTurnEngine({
       // --- Opponent disconnected: show overlay but keep playing your turn ---
       case "player:disconnect":
         setDisconnectDeadline(latestMessage.reconnectDeadlineMs);
-        setDisconnectSecsLeft(
-          Math.ceil((latestMessage.reconnectDeadlineMs - Date.now()) / 1000),
-        );
         break;
 
       case "player:reconnect":
@@ -366,18 +363,8 @@ export function DuelTurnEngine({
 
   // ── Disconnect countdown ───────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!disconnectDeadline) return;
-    const interval = setInterval(() => {
-      const secs = Math.ceil((disconnectDeadline - Date.now()) / 1000);
-      setDisconnectSecsLeft(Math.max(0, secs));
-      if (secs <= 0) {
-        clearInterval(interval);
-        setDisconnectDeadline(null);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [disconnectDeadline]);
+  const disconnectMs = useCountdown(disconnectDeadline, disconnectDeadline !== null);
+  const disconnectSecsLeft = Math.max(0, Math.ceil(disconnectMs / 1000));
 
   const timerPercent = (timerLeft / turnTimeSeconds) * 100;
 

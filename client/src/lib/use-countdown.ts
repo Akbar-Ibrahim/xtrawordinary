@@ -1,15 +1,32 @@
 import { useState, useEffect } from "react";
 
-export function useCountdown(isoDeadline: string, enabled = true): number {
-  const [remaining, setRemaining] = useState(() => new Date(isoDeadline).getTime() - Date.now());
+/** Accepts an ISO string, an epoch-ms number, or null (disabled).
+ *  Returns remaining milliseconds, updated every `intervalMs` (default 1000).
+ *  Returns 0 when deadline is null or in the past. */
+export function useCountdown(
+  deadline: string | number | null,
+  enabled = true,
+  intervalMs = 1000,
+): number {
+  const toMs = (d: string | number) =>
+    typeof d === "number" ? d : new Date(d).getTime();
+
+  const [remaining, setRemaining] = useState(() =>
+    deadline !== null ? Math.max(0, toMs(deadline) - Date.now()) : 0,
+  );
+
   useEffect(() => {
-    if (!enabled) return;
-    setRemaining(new Date(isoDeadline).getTime() - Date.now());
+    if (!enabled || deadline === null) {
+      setRemaining(0);
+      return;
+    }
+    setRemaining(Math.max(0, toMs(deadline) - Date.now()));
     const id = setInterval(() => {
-      setRemaining(new Date(isoDeadline).getTime() - Date.now());
-    }, 1000);
+      setRemaining(Math.max(0, toMs(deadline) - Date.now()));
+    }, intervalMs);
     return () => clearInterval(id);
-  }, [isoDeadline, enabled]);
+  }, [deadline, enabled, intervalMs]);
+
   return remaining;
 }
 

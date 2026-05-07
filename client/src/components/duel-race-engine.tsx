@@ -9,6 +9,7 @@ import { Timer, WifiOff, Loader2, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import type { DuelGameAdapter, GameResult } from "@/components/duel-turn-engine";
+import { useCountdown } from "@/lib/use-countdown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -61,11 +62,10 @@ export function DuelRaceEngine({
   const [opponentWords, setOpponentWords] = useState<string[]>(initialState.opponentWords);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [disconnectSecsLeft, setDisconnectSecsLeft] = useState<number | null>(null);
+  const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(initialState.raceTimeLimitMs);
   const [opponentIsTyping, setOpponentIsTyping] = useState(false);
 
-  const disconnectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevMsgRef = useRef<DuelServerMessage | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(Date.now());
@@ -166,24 +166,12 @@ export function DuelRaceEngine({
 
       case "player:disconnect": {
         if (msg.reconnectDeadlineMs <= 0) break;
-        const secsLeft = Math.ceil(msg.reconnectDeadlineMs / 1000);
-        setDisconnectSecsLeft(secsLeft);
-        if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
-        disconnectTimerRef.current = setInterval(() => {
-          setDisconnectSecsLeft((s) => {
-            if (s === null || s <= 1) {
-              if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
-              return null;
-            }
-            return s - 1;
-          });
-        }, 1000);
+        setDisconnectDeadline(msg.reconnectDeadlineMs);
         break;
       }
 
       case "player:reconnect": {
-        setDisconnectSecsLeft(null);
-        if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
+        setDisconnectDeadline(null);
         break;
       }
 
@@ -211,7 +199,6 @@ export function DuelRaceEngine({
   // Cleanup
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (disconnectTimerRef.current) clearInterval(disconnectTimerRef.current);
     if (opponentTypingTimeoutRef.current) clearTimeout(opponentTypingTimeoutRef.current);
   }, []);
 
@@ -251,6 +238,9 @@ export function DuelRaceEngine({
     const secs = totalSecs % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const disconnectMs = useCountdown(disconnectDeadline, disconnectDeadline !== null);
+  const disconnectSecsLeft = disconnectDeadline !== null ? Math.max(0, Math.ceil(disconnectMs / 1000)) : null;
 
   const myPct = Math.min(100, (myCount / raceTarget) * 100);
   const oppPct = Math.min(100, (opponentCount / raceTarget) * 100);
