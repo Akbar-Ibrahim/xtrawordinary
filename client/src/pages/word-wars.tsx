@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuthModal } from "@/components/auth-modal";
-import { Trophy, Swords, Users, Clock, Crown, Calendar, ChevronRight, Loader2, Star } from "lucide-react";
+import { Trophy, Swords, Users, Clock, Crown, Calendar, ChevronRight, Loader2, Star, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { WordWarsTournament } from "@shared/schema";
 
@@ -89,9 +89,24 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
 
   const canRegister = tournament.status === "registration" && new Date(tournament.registrationDeadline) > new Date();
 
+  const WARN_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+  const needsMorePlayers = tournament.status === "registration" && playerCount < tournament.minPlayers;
+  const closingSoon = countdown > 0 && countdown <= WARN_THRESHOLD_MS;
+  const showLowRegistrationWarning = needsMorePlayers && closingSoon;
+  const playersNeeded = tournament.minPlayers - playerCount;
+
   return (
     <Card className="hover:shadow-md transition-shadow" data-testid={`card-tournament-${tournament.id}`}>
       <CardContent className="pt-5 pb-4">
+        {showLowRegistrationWarning && (
+          <div
+            className="flex items-center gap-2 mb-3 rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+            data-testid={`banner-low-registration-${tournament.id}`}
+          >
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Needs {playersNeeded} more {playersNeeded === 1 ? "player" : "players"} to run</span>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">

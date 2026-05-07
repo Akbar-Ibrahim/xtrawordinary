@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, ChevronDown, Shield, XCircle, Circle } from "lucide-react";
+import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loader2, ChevronRight, ChevronDown, Shield, XCircle, Circle, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 
@@ -505,6 +505,15 @@ function RegistrationCountdownCard({
             <p className="text-sm text-muted-foreground" data-testid="text-registration-progress">
               {registrationCount} / {minPlayers} needed to lock in the bracket
             </p>
+            {registrationCount < minPlayers && remaining > 0 && remaining <= 24 * 60 * 60 * 1000 && (
+              <div
+                className="inline-flex items-center gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 px-4 py-2 text-sm text-amber-700 dark:text-amber-300"
+                data-testid="banner-low-registration-countdown"
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>⚠ Needs {minPlayers - registrationCount} more to run — invite friends!</span>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
@@ -642,6 +651,18 @@ export default function WordWarsBracket() {
                     {tournament.roundDeadlineHours}h per round
                   </span>
                 </div>
+                {tournament.status === "registration" &&
+                  registrations.length < tournament.minPlayers &&
+                  new Date(tournament.registrationDeadline).getTime() - Date.now() > 0 &&
+                  new Date(tournament.registrationDeadline).getTime() - Date.now() <= 24 * 60 * 60 * 1000 && (
+                    <div
+                      className="flex items-center gap-2 mt-3 rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-300"
+                      data-testid="banner-low-registration-header"
+                    >
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>⚠ Needs {tournament.minPlayers - registrations.length} more {tournament.minPlayers - registrations.length === 1 ? "player" : "players"} to run — invite friends!</span>
+                    </div>
+                  )}
               </div>
               {tournament.status === "completed" && (() => {
                 const finalRound = rounds[rounds.length - 1];
