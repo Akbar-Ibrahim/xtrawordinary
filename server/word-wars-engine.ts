@@ -442,8 +442,9 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
           game3Slug: g3,
         });
         newMatches.push(created);
+        let game1RoomCode: string | null = null;
         for (const num of [1, 2, 3]) {
-          await storage.createWordWarsMatchGame({
+          const matchGame = await storage.createWordWarsMatchGame({
             matchId: created.id,
             gameNumber: num,
             gameSlug: num === 1 ? g1 : num === 2 ? g2 : g3,
@@ -451,7 +452,12 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
             winnerId: null,
             status: "pending",
           });
+          if (num === 1) game1RoomCode = matchGame.roomCode ?? null;
         }
+
+        const matchLink = game1RoomCode
+          ? `/duel/${game1RoomCode}`
+          : `/word-wars/${tournamentId}/match/${created.id}`;
 
         for (const [playerId, opponentId] of [[p1, p2], [p2, p1]] as [number, number][]) {
           try {
@@ -474,7 +480,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
                 type: "word_war_round_start",
                 title: `Round ${nextRound} begins`,
                 body: "Your next battle has been assigned.",
-                linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
+                linkUrl: matchLink,
               });
             }
           } catch (e) {
