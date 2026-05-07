@@ -625,6 +625,18 @@ function WordWarsTab() {
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => { setCancellingId(id); return apiRequest("POST", `/api/word-wars/${id}/cancel`); },
+    onSuccess: () => {
+      toast({ title: "Tournament cancelled." });
+      queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] });
+      setCancellingId(null);
+    },
+    onError: (err: any) => { toast({ title: "Error", description: err.message, variant: "destructive" }); setCancellingId(null); },
+  });
+
   function startEdit(t: { id: number; name: string; registrationDeadline: string; roundDeadlineHours: number; minPlayers: number; maxPlayers: number | null }) {
     setEditingId(t.id);
     setEditName(t.name);
@@ -777,6 +789,22 @@ function WordWarsTab() {
                         >
                           {drawMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                           Draw Bracket
+                        </Button>
+                      )}
+                      {t.status === "registration" && editingId !== t.id && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            if (window.confirm(`Cancel "${t.name}"? This cannot be undone.`)) {
+                              cancelMutation.mutate(t.id);
+                            }
+                          }}
+                          disabled={cancellingId === t.id}
+                          data-testid={`button-cancel-ww-tournament-${t.id}`}
+                        >
+                          {cancellingId === t.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <X className="h-3 w-3 mr-1" />}
+                          Cancel
                         </Button>
                       )}
                       {editingId !== t.id && (

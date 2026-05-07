@@ -3538,6 +3538,22 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/word-wars/:id/cancel", requireAuth, async (req, res) => {
+    try {
+      if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const tournament = await storage.getWordWarsTournament(id);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Only registration-status tournaments can be cancelled" });
+      const updated = await storage.updateWordWarsTournament(id, { status: "cancelled" });
+      res.json(updated);
+    } catch (err) {
+      console.error("[word-wars] cancel tournament error", err);
+      res.status(500).json({ error: "Failed to cancel tournament" });
+    }
+  });
+
   app.post("/api/word-wars/:id/draw", requireAuth, async (req, res) => {
     try {
       if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
