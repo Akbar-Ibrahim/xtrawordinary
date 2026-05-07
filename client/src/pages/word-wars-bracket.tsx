@@ -488,10 +488,12 @@ function MyMatchesSection({
 function RegistrationCountdownCard({
   registrationDeadline,
   registrationCount,
+  minPlayers,
   onDeadlinePassed,
 }: {
   registrationDeadline: string;
   registrationCount: number;
+  minPlayers: number;
   onDeadlinePassed: () => void;
 }) {
   const remaining = useCountdown(registrationDeadline);
@@ -528,8 +530,8 @@ function RegistrationCountdownCard({
                 {formatCountdown(remaining)}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {registrationCount} {registrationCount === 1 ? "warrior" : "warriors"} registered so far
+            <p className="text-sm text-muted-foreground" data-testid="text-registration-progress">
+              {registrationCount} / {minPlayers} needed to lock in the bracket
             </p>
           </div>
         )}
@@ -640,9 +642,11 @@ export default function WordWarsBracket() {
                 </div>
                 <h1 className="text-2xl font-bold" data-testid="text-bracket-tournament-name">{tournament.name}</h1>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1" data-testid="text-bracket-player-count">
                     <Users className="h-3.5 w-3.5" />
-                    {registrations.length} {registrations.length === 1 ? "warrior" : "warriors"}
+                    {tournament.status === "registration"
+                      ? `${registrations.length} / ${tournament.minPlayers} needed`
+                      : `${registrations.length} ${registrations.length === 1 ? "warrior" : "warriors"}`}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5" />
@@ -674,6 +678,7 @@ export default function WordWarsBracket() {
           <RegistrationCountdownCard
             registrationDeadline={tournament.registrationDeadline}
             registrationCount={registrations.length}
+            minPlayers={tournament.minPlayers}
             onDeadlinePassed={() => refetch()}
           />
         )}

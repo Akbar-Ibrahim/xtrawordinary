@@ -135,7 +135,9 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1" data-testid={`text-player-count-${tournament.id}`}>
                 <Users className="h-3.5 w-3.5" />
-                {playerCount} {playerCount === 1 ? "warrior" : "warriors"}
+                {tournament.status === "registration"
+                  ? `${playerCount} / ${tournament.minPlayers} needed`
+                  : `${playerCount} ${playerCount === 1 ? "warrior" : "warriors"}`}
               </span>
               {tournament.status === "registration" && (
                 <span className="flex items-center gap-1" data-testid={`text-deadline-${tournament.id}`}>
