@@ -3603,12 +3603,15 @@ export async function registerRoutes(
             storage.getNotificationPreferences(opponentId),
           ]);
           if (prefs["word_war_matched"]) {
+            const notifLink = roomCode
+              ? `/duel/${roomCode}`
+              : `/word-wars/${match.tournamentId}/match/${matchId}`;
             await storage.createNotification({
               userId: opponentId,
               type: "word_war_matched",
               title: "Your opponent is ready",
-              body: `${starter?.name ?? "Your opponent"} has started Game ${gameNumber} of Round ${match.round}. Head to the bracket to play.`,
-              linkUrl: `/word-wars/${match.tournamentId}/match/${matchId}`,
+              body: `${starter?.name ?? "Your opponent"} has started Game ${gameNumber} of Round ${match.round}. Jump straight into the room!`,
+              linkUrl: notifLink,
             });
           }
         } catch (notifErr) {
