@@ -553,7 +553,7 @@ export default function WordWarsBracket() {
   const isRegistered = user && data ? data.registrations.some(r => r.userId === user.id) : false;
 
   useEffect(() => {
-    if (!isRegistered || !tournamentId) return;
+    if (!user || !tournamentId) return;
     const es = new EventSource(`/api/word-wars/${tournamentId}/sse`);
     es.onmessage = (e) => {
       try {
@@ -570,7 +570,7 @@ export default function WordWarsBracket() {
       }
     };
     return () => es.close();
-  }, [isRegistered, tournamentId]);
+  }, [user, tournamentId]);
 
   if (isLoading) {
     return (

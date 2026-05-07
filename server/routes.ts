@@ -3389,10 +3389,6 @@ export async function registerRoutes(
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).end(); return; }
     const userId = req.user!.id;
-    // Only allow registered participants to subscribe
-    const registrations = await storage.getWordWarsRegistrationsForTournament(id);
-    const isParticipant = registrations.some(r => r.userId === userId);
-    if (!isParticipant) { res.status(403).end(); return; }
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
