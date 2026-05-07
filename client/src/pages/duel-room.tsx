@@ -192,7 +192,16 @@ export default function DuelRoom() {
       switch (msg.type) {
         case "room:joined":
           if (msg.opponentId !== null) {
-            setOpponentId(msg.opponentId);
+            setOpponentId((prev) => {
+              if (prev === null && phaseRef.current === "waiting") {
+                toast({
+                  title: "Opponent has arrived!",
+                  description: `${msg.opponentName ?? "Your opponent"} just joined — get ready!`,
+                  duration: 4000,
+                });
+              }
+              return msg.opponentId;
+            });
           } else {
             setOpponentId(null);
             setOpponentName("");
