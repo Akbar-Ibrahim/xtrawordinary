@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useCountdown, formatCountdown } from "@/lib/use-countdown";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,35 +14,6 @@ import { Trophy, Swords, Crown, Play, CheckCircle2, Clock, Users, ArrowLeft, Loa
 import { motion } from "framer-motion";
 import type { WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 
-function useCountdown(isoDeadline: string) {
-  const [remaining, setRemaining] = useState(() => new Date(isoDeadline).getTime() - Date.now());
-
-  useEffect(() => {
-    setRemaining(new Date(isoDeadline).getTime() - Date.now());
-    const id = setInterval(() => {
-      setRemaining(new Date(isoDeadline).getTime() - Date.now());
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isoDeadline]);
-
-  return remaining;
-}
-
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return "Drawing bracket…";
-  const totalSeconds = Math.floor(ms / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (days > 0) {
-    return `${days}d ${hours}h ${String(minutes).padStart(2, "0")}m`;
-  }
-  if (hours > 0) {
-    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
-  }
-  return `${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
-}
 
 type MatchWithGames = WordWarsMatch & { games: WordWarsMatchGame[] };
 type PlayerInfo = { id: number; name: string; avatarUrl: string | null };
