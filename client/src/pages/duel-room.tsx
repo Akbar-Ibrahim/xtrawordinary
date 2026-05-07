@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSound } from "@/lib/sound-provider";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords, Eye } from "lucide-react";
+import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords, Eye, Volume2, VolumeX } from "lucide-react";
 import { recordDuelResult } from "@/lib/game-stats";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DuelTurnEngine } from "@/components/duel-turn-engine";
@@ -108,7 +108,7 @@ export default function DuelRoom() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { playSound } = useSound();
+  const { playSound, soundEnabled, toggleSound } = useSound();
 
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -617,6 +617,16 @@ export default function DuelRoom() {
             <Eye className="h-3 w-3" /> {spectatorCount} watching
           </Badge>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleSound}
+          title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
+          data-testid="button-toggle-sound"
+          className="ml-1 h-8 w-8 shrink-0"
+        >
+          {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+        </Button>
       </div>
 
       <AnimatePresence mode="wait">
