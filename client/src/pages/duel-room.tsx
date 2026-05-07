@@ -111,6 +111,7 @@ export default function DuelRoom() {
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownStartAtRef = useRef<number | null>(null);
+  const handleServerMessageRef = useRef<(msg: DuelServerMessage) => void>(() => {});
 
   // ── Phase & connection state ────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("connecting");
@@ -375,6 +376,11 @@ export default function DuelRoom() {
 
         case "player:disconnect":
           if (msg.reconnectDeadlineMs === 0) {
+            toast({
+              title: "Opponent forfeited",
+              description: `${opponentName || "Your opponent"} forfeited the match.`,
+              duration: 5000,
+            });
             if (countdownTimeoutRef.current !== null) {
               clearTimeout(countdownTimeoutRef.current);
               countdownTimeoutRef.current = null;
@@ -387,13 +393,23 @@ export default function DuelRoom() {
             setCountdownNum(null);
             setPhase("waiting");
           } else {
+            const seconds = Math.round(msg.reconnectDeadlineMs / 1000);
+            toast({
+              title: "Opponent disconnected",
+              description: `${opponentName || "Your opponent"} disconnected — they have ${seconds} second${seconds !== 1 ? "s" : ""} to reconnect.`,
+              duration: Math.max(3000, Math.min(msg.reconnectDeadlineMs, 8000)),
+            });
             setLatestGameMessage(msg);
           }
           break;
       }
     },
-    [toast],
+    [toast, opponentName],
   );
+
+  useEffect(() => {
+    handleServerMessageRef.current = handleServerMessage;
+  }, [handleServerMessage]);
 
   // ── Set initial engine state when room info + phase arrive (fresh start) ────
   useEffect(() => {
@@ -443,7 +459,7 @@ export default function DuelRoom() {
       } catch {
         return;
       }
-      handleServerMessage(msg);
+      handleServerMessageRef.current(msg);
     };
 
     ws.onerror = () => {
