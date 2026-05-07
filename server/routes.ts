@@ -3444,6 +3444,58 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/word-wars/:id", requireAuth, async (req, res) => {
+    try {
+      if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const tournament = await storage.getWordWarsTournament(id);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Only registration-status tournaments can be edited" });
+      const { name, registrationDeadline, roundDeadlineHours, minPlayers, maxPlayers } = req.body;
+      const updates: Parameters<typeof storage.updateWordWarsTournament>[1] = {};
+
+      if (name !== undefined) {
+        const trimmed = String(name).trim();
+        if (!trimmed) return res.status(400).json({ error: "Name cannot be empty" });
+        updates.name = trimmed;
+      }
+      if (registrationDeadline !== undefined) {
+        const d = new Date(registrationDeadline);
+        if (isNaN(d.getTime())) return res.status(400).json({ error: "Invalid registrationDeadline" });
+        updates.registrationDeadline = d.toISOString();
+      }
+      if (roundDeadlineHours !== undefined) {
+        const rh = parseInt(roundDeadlineHours);
+        if (isNaN(rh) || rh < 1) return res.status(400).json({ error: "roundDeadlineHours must be a positive integer" });
+        updates.roundDeadlineHours = rh;
+      }
+      if (minPlayers !== undefined) {
+        const mp = parseInt(minPlayers);
+        if (isNaN(mp) || mp < 2) return res.status(400).json({ error: "minPlayers must be at least 2" });
+        updates.minPlayers = mp;
+      }
+      if (maxPlayers !== undefined) {
+        if (maxPlayers === null || maxPlayers === "" || maxPlayers === 0) {
+          updates.maxPlayers = null;
+        } else {
+          const mx = parseInt(maxPlayers);
+          if (isNaN(mx) || mx < 2) return res.status(400).json({ error: "maxPlayers must be at least 2" });
+          const effectiveMin = updates.minPlayers ?? tournament.minPlayers;
+          if (mx < effectiveMin) return res.status(400).json({ error: "maxPlayers must be >= minPlayers" });
+          updates.maxPlayers = mx;
+        }
+      }
+      if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No fields to update" });
+
+      const updated = await storage.updateWordWarsTournament(id, updates);
+      res.json(updated);
+    } catch (err) {
+      console.error("[word-wars] update tournament error", err);
+      res.status(500).json({ error: "Failed to update tournament" });
+    }
+  });
+
   app.post("/api/word-wars/:id/draw", requireAuth, async (req, res) => {
     try {
       if (!req.user!.isAdmin) return res.status(403).json({ error: "Admin only" });
