@@ -1630,6 +1630,13 @@ export class MemStorage implements IStorage {
     this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
   }
 
+  async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    for (const type of types) {
+      this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
+    }
+  }
+
   // ==================== WORD WARS ====================
 
   async createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament> {

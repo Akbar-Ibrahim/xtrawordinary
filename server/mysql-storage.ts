@@ -1831,6 +1831,17 @@ export class MySQLStorage implements IStorage {
       .onDuplicateKeyUpdate({ set: { enabled } });
   }
 
+  async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
+    const db = await this.getDb();
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    await Promise.all(
+      types.map((type) =>
+        db.insert(schema.notificationPreferences).values({ userId, type, enabled })
+          .onDuplicateKeyUpdate({ set: { enabled } })
+      )
+    );
+  }
+
   // ==================== WORD WARS ====================
 
   private toWordWarsTournament(row: any): WordWarsTournament {

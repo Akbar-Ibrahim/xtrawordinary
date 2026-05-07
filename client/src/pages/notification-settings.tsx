@@ -29,6 +29,8 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   },
 ];
 
+const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => c.types);
+
 export default function NotificationSettings() {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -65,6 +67,34 @@ export default function NotificationSettings() {
     },
   });
 
+  const updateAllNotifPrefs = useMutation({
+    mutationFn: (enabled: boolean) =>
+      apiRequest("PATCH", "/api/notification-preferences", { enabled }),
+    onMutate: async (enabled) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/notification-preferences"] });
+      const previous = queryClient.getQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"]);
+      queryClient.setQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"], (old) => {
+        if (!old) return old;
+        const updated = { ...old };
+        for (const type of ALL_TYPES) updated[type] = enabled;
+        return updated;
+      });
+      return { previous };
+    },
+    onError: (_err, _enabled, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(["/api/notification-preferences"], ctx.previous);
+      }
+      toast({ title: "Failed to update preferences", variant: "destructive" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+    },
+  });
+
+  const allEnabled = notifPrefs ? ALL_TYPES.every((t) => notifPrefs[t]) : true;
+  const someEnabled = notifPrefs ? ALL_TYPES.some((t) => notifPrefs[t]) : true;
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12 text-center">
@@ -96,6 +126,30 @@ export default function NotificationSettings() {
           Choose which in-app notifications you receive. All types are enabled by default.
         </p>
       </div>
+
+      <Card data-testid="card-master-toggle">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">All notifications</p>
+              <p className="text-sm text-muted-foreground">
+                {allEnabled ? "All notifications are on" : someEnabled ? "Some notifications are off" : "All notifications are off"}
+              </p>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-6 w-11 rounded-full" />
+            ) : (
+              <Switch
+                checked={allEnabled}
+                onCheckedChange={(checked) => updateAllNotifPrefs.mutate(checked)}
+                disabled={updateAllNotifPrefs.isPending}
+                data-testid="switch-all-notifications"
+                aria-label="Toggle all notifications"
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {NOTIFICATION_CATEGORIES.map(({ label, icon: Icon, types }) => (
         <Card key={label} data-testid={`card-category-${label.toLowerCase().replace(/\s+/g, "-")}`}>

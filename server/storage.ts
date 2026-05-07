@@ -218,6 +218,7 @@ export interface IStorage {
   // Notification Preferences
   getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>>;
   setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void>;
+  setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void>;
 
   // Word Wars
   createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament>;

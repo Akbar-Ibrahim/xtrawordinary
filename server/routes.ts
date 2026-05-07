@@ -3269,6 +3269,17 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/notification-preferences", requireAuth, async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled must be a boolean" });
+      await storage.setAllNotificationPreferences(req.user!.id, enabled);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Failed to update notification preferences" });
+    }
+  });
+
   // ==================== NOTIFICATIONS ====================
 
   app.get("/api/notifications", requireAuth, async (req, res) => {
