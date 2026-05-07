@@ -34,6 +34,7 @@ import DuelLobby from "@/pages/duel-lobby";
 import DuelLeaderboard from "@/pages/duel-leaderboard";
 import WordWarsLobby from "@/pages/word-wars";
 import WordWarsBracket from "@/pages/word-wars-bracket";
+import NotificationSettings from "@/pages/notification-settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/word-wars/:id/match/:matchId" component={WordWarsBracket} />
       <Route path="/word-wars/:id" component={WordWarsBracket} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
+      <Route path="/settings/notifications" component={NotificationSettings} />
       <Route component={NotFound} />
     </Switch>
   );
