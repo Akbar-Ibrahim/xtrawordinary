@@ -326,6 +326,14 @@ export default function DuelRoom() {
           break;
 
         case "player:reconnect":
+          toast({
+            title: "Opponent reconnected",
+            description: `${opponentName || "Your opponent"} is back — game resuming!`,
+            duration: 4000,
+          });
+          setLatestGameMessage(msg);
+          break;
+
         case "player:forfeited":
         case "game:over":
           setLatestGameMessage(msg);
