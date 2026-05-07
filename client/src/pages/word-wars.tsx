@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +23,33 @@ type ChampionEntry = {
   tournament: { id: number; name: string } | null;
 };
 
-function timeUntil(isoString: string): string {
-  const diff = new Date(isoString).getTime() - Date.now();
-  if (diff <= 0) return "Deadline passed";
-  const h = Math.floor(diff / 3600000);
-  if (h < 24) return `${h}h remaining`;
-  return `${Math.floor(h / 24)}d remaining`;
+function useCountdown(isoDeadline: string, enabled = true) {
+  const [remaining, setRemaining] = useState(() => new Date(isoDeadline).getTime() - Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    setRemaining(new Date(isoDeadline).getTime() - Date.now());
+    const id = setInterval(() => {
+      setRemaining(new Date(isoDeadline).getTime() - Date.now());
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isoDeadline, enabled]);
+  return remaining;
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Drawing bracket…";
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (days > 0) {
+    return `${days}d ${hours}h ${String(minutes).padStart(2, "0")}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  }
+  return `${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
 }
 
 function statusBadge(t: WordWarsTournament) {
@@ -64,6 +85,7 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
   isAuthenticated: boolean;
 }) {
   const { toast } = useToast();
+  const countdown = useCountdown(tournament.registrationDeadline, tournament.status === "registration");
 
   const { data: detail } = useQuery<{
     tournament: WordWarsTournament;
@@ -118,7 +140,7 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
               {tournament.status === "registration" && (
                 <span className="flex items-center gap-1" data-testid={`text-deadline-${tournament.id}`}>
                   <Clock className="h-3.5 w-3.5" />
-                  {timeUntil(tournament.registrationDeadline)}
+                  {formatCountdown(countdown)}
                 </span>
               )}
               <span className="flex items-center gap-1">
