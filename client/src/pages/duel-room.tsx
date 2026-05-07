@@ -264,7 +264,6 @@ export default function DuelRoom() {
           if (msg.format) setRoomFormat(msg.format);
           if (msg.raceTarget) setRaceTarget(msg.raceTarget);
           if (msg.raceTimeLimitMs) setRaceTimeLimitMs(msg.raceTimeLimitMs);
-          playSound("countdown");
           setPhase("countdown");
           break;
 
@@ -273,6 +272,7 @@ export default function DuelRoom() {
             ? Math.max(1, Math.ceil((countdownStartAtRef.current - Date.now()) / 1000))
             : msg.secondsLeft;
           setCountdownNum(displayNum);
+          playSound("tick");
           if (msg.secondsLeft === 1) {
             const msToPlay = countdownStartAtRef.current
               ? Math.max(0, countdownStartAtRef.current - Date.now())
@@ -280,6 +280,7 @@ export default function DuelRoom() {
             const t = setTimeout(() => {
               setCountdownNum(null);
               setPhase("playing");
+              playSound("countdown");
             }, msToPlay);
             countdownTimeoutRef.current = t;
           }
