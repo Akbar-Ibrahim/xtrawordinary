@@ -8,7 +8,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword, Settings } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -348,6 +348,17 @@ export function Navigation() {
                         )}
                       </div>
                     )}
+                  </div>
+                  <div className="border-t px-4 py-2.5">
+                    <Link
+                      href="/settings/notifications"
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setBellOpen(false)}
+                      data-testid="link-manage-notification-preferences"
+                    >
+                      <Settings className="h-3.5 w-3.5" />
+                      Manage preferences
+                    </Link>
                   </div>
                 </PopoverContent>
               </Popover>
