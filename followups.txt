@@ -1,0 +1,48 @@
+# Proposed Follow-up Tasks (Cancelled / Not Yet Started)
+
+## Word Wars — Bracket & Match UX
+#251 - Highlight the next game to play so it's immediately obvious where to start
+       (Visual cue on My Matches section for the next unplayed game in an active series)
+
+#252 - Show game results and scores inside each completed game row
+       (Per-game W/L score breakdown inside the collapsible match rows)
+
+## Word Wars — Notifications & Alerts
+#270 - Send an email nudge to registered players when a tournament is at risk of not starting
+       (Email reminder when <24h to deadline and sign-up count is still below minPlayers)
+
+#281 - Let players opt out of 'room is live' alerts separately from match-start alerts
+       (Separate notification preference for word_war_round_start 'room is live' vs. matched)
+
+## Word Wars — Spectators & Public Access
+#282 - Let anyone with a link watch a tournament bracket without signing in
+       (Currently SSE + bracket data requires auth; unauthenticated viewers get 15s poll only)
+
+#283 - Let spectators see live match results update without refreshing
+       (Spectators not connected via SSE miss real-time match_completed events)
+
+## Duel Room — Sound & Audio
+#286 - Add a volume slider so players can control how loud the game sounds are
+
+#287 - Give the countdown ticker a rising pitch so the tension builds as the game approaches
+       (Each tick note slightly higher than the previous one)
+
+#288 - Remember mute preference separately for duels vs. regular games
+       (Currently one shared toggle affects all sounds site-wide)
+
+#289 - Add a sound mute button to the spectator view as well
+
+## Duel Room — In-Game Alerts
+#278 - Show a reconnect banner inside the game instead of just a toast
+       (Persistent UI banner showing "Opponent disconnected — reconnecting…" during window)
+
+## Duel Lobby
+#290 - Animate new challenge cards sliding in when they appear in the lobby
+       (Framer Motion entrance animation for newly posted challenges, mirroring exit animation)
+
+## Notification Settings
+#293 - Add per-category 'disable section' buttons to notification settings
+       (One toggle to mute all Social / all Duels / all Word Wars notifications at once)
+
+#294 - Add a shortcut to notification settings from the profile settings page
+       (Button or link in the profile Settings tab pointing to /settings/notifications)
