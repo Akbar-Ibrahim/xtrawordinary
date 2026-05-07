@@ -558,7 +558,11 @@ export default function WordWarsBracket() {
     es.onmessage = (e) => {
       try {
         const payload = JSON.parse(e.data);
-        if (payload.type === "game_started") {
+        if (
+          payload.type === "game_started" ||
+          payload.type === "match_completed" ||
+          payload.type === "bracket_updated"
+        ) {
           queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
         }
       } catch {

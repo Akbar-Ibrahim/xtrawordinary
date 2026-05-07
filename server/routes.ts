@@ -10,6 +10,7 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
 import { executeBracketDraw, checkAndForfeitExpiredMatches } from "./word-wars-engine";
+import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "./word-wars-sse";
 import { seededShuffle } from "./seeded-rng";
 // import axios from "axios";
 // const REMOTE_BASE_URL = "https://your-remote-server.com";
@@ -19,24 +20,6 @@ import { seededShuffle } from "./seeded-rng";
 
 const isLocalMode = process.env.DEV_MODE === "LOCAL";
 const dataSource = isLocalMode ? storage : externalApi;
-
-// SSE registry: tournamentId → Map<userId, Response>
-const wordWarsSSE = new Map<number, Map<number, import("express").Response>>();
-
-function ssePublishToUsers(tournamentId: number, userIds: number[], payload: Record<string, unknown>) {
-  const clients = wordWarsSSE.get(tournamentId);
-  if (!clients || clients.size === 0) return;
-  const data = `data: ${JSON.stringify(payload)}\n\n`;
-  for (const uid of userIds) {
-    const res = clients.get(uid);
-    if (!res) continue;
-    try {
-      res.write(data);
-    } catch {
-      clients.delete(uid);
-    }
-  }
-}
 
 async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
   try {
@@ -3414,15 +3397,13 @@ export async function registerRoutes(
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
-    if (!wordWarsSSE.has(id)) wordWarsSSE.set(id, new Map());
-    wordWarsSSE.get(id)!.set(userId, res);
+    registerSSEClient(id, userId, res);
     const heartbeat = setInterval(() => {
       try { res.write(": ping\n\n"); } catch { clearInterval(heartbeat); }
     }, 25_000);
     req.on("close", () => {
       clearInterval(heartbeat);
-      wordWarsSSE.get(id)?.delete(userId);
-      if (wordWarsSSE.get(id)?.size === 0) wordWarsSSE.delete(id);
+      unregisterSSEClient(id, userId);
     });
   });
 

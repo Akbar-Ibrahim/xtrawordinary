@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { WORD_WARS_ELIGIBLE_SLUGS } from "@shared/schema";
 import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
+import { ssePublishAll } from "./word-wars-sse";
 
 /** In-process guard: prevents concurrent bracket draws for the same tournament. */
 const drawsInProgress = new Set<number>();
@@ -112,6 +113,9 @@ async function _doDraw(
       }
     }
   }
+
+  // Notify all connected bracket viewers that the bracket is now live
+  ssePublishAll(tournamentId, { type: "bracket_updated", tournamentId });
 
   return { matches: createdMatches };
 }
@@ -325,6 +329,13 @@ export async function resolveWordWarsGame(
       winnerId: seriesWinnerId,
     });
 
+    // Broadcast to all connected bracket viewers so the bracket refreshes immediately
+    ssePublishAll(match.tournamentId, {
+      type: "match_completed",
+      matchId: match.id,
+      winnerId: seriesWinnerId,
+    });
+
     _triggerAdvancement(match.tournamentId, match.round);
   } catch (err) {
     console.error("[word-wars-engine] resolveWordWarsGame error", err);
@@ -376,6 +387,9 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
       const championId = roundWinners[0];
       await storage.updateWordWarsTournament(tournamentId, { status: "completed" });
       await storage.createWordWarsChampion(tournamentId, championId);
+
+      // Notify all watchers that the bracket is updated (tournament over)
+      ssePublishAll(tournamentId, { type: "bracket_updated", tournamentId });
 
       try {
         const prefs = await storage.getNotificationPreferences(championId);
@@ -489,4 +503,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
         }
       }
     }
+
+  // Notify all watchers that a new round has been created
+  ssePublishAll(tournamentId, { type: "bracket_updated", tournamentId, nextRound });
 }
