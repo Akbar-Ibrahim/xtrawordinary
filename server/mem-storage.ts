@@ -1617,7 +1617,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;

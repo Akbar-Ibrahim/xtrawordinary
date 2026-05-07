@@ -3528,6 +3528,16 @@ export async function registerRoutes(
       if (!tournament) return res.status(404).json({ error: "Tournament not found" });
       if (tournament.status !== "registration") return res.status(400).json({ error: "Only registration-status tournaments can be cancelled" });
       const updated = await storage.updateWordWarsTournament(id, { status: "cancelled" });
+      const registrations = await storage.getWordWarsRegistrationsForTournament(id);
+      await Promise.all(registrations.map((r) =>
+        createNotificationIfEnabled({
+          userId: r.userId,
+          type: "word_war_cancelled",
+          title: "Tournament Cancelled",
+          body: `"${tournament.name}" has been cancelled by an admin.`,
+          linkUrl: "/word-wars",
+        })
+      ));
       res.json(updated);
     } catch (err) {
       console.error("[word-wars] cancel tournament error", err);
