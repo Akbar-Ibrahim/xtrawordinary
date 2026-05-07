@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 
-type SoundType = "correct" | "wrong" | "win" | "lose" | "tick" | "click";
+type SoundType = "correct" | "wrong" | "win" | "lose" | "tick" | "click" | "notify";
 
 interface SoundContextType {
   soundEnabled: boolean;
@@ -36,6 +36,10 @@ const SOUND_FREQUENCIES: Record<SoundType, { frequency: number; duration: number
   ],
   click: [
     { frequency: 600, duration: 0.03, type: "sine" },
+  ],
+  notify: [
+    { frequency: 880, duration: 0.08, type: "sine" },
+    { frequency: 1108.73, duration: 0.12, type: "sine" },
   ],
 };
 

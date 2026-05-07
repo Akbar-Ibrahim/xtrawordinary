@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { useSound } from "@/lib/sound-provider";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trophy, ArrowLeft, Loader2, WifiOff, Swords, Eye } from "lucide-react";
@@ -107,6 +108,7 @@ export default function DuelRoom() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const { playSound } = useSound();
 
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,6 +202,7 @@ export default function DuelRoom() {
                   description: `${msg.opponentName ?? "Your opponent"} just joined — get ready!`,
                   duration: 4000,
                 });
+                playSound("notify");
               }
               return msg.opponentId;
             });
@@ -404,7 +407,7 @@ export default function DuelRoom() {
           break;
       }
     },
-    [toast, opponentName],
+    [toast, playSound, opponentName],
   );
 
   useEffect(() => {
