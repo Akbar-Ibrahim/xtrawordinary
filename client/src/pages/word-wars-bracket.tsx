@@ -568,6 +568,25 @@ export default function WordWarsBracket() {
     },
   });
 
+  // Compute registration status early (before early-return guards) so the SSE effect can gate on it
+  const isRegistered = user && data ? data.registrations.some(r => r.userId === user.id) : false;
+
+  useEffect(() => {
+    if (!isRegistered || !tournamentId) return;
+    const es = new EventSource(`/api/word-wars/${tournamentId}/sse`);
+    es.onmessage = (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.type === "game_started") {
+          queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    };
+    return () => es.close();
+  }, [isRegistered, tournamentId]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -616,8 +635,6 @@ export default function WordWarsBracket() {
     completed: "bg-primary/15 text-primary border-primary/30",
     cancelled: "",
   }[tournament.status];
-
-  const isRegistered = user ? registrations.some(r => r.userId === user.id) : false;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">

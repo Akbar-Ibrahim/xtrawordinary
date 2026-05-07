@@ -20,6 +20,24 @@ import { seededShuffle } from "./seeded-rng";
 const isLocalMode = process.env.DEV_MODE === "LOCAL";
 const dataSource = isLocalMode ? storage : externalApi;
 
+// SSE registry: tournamentId → Map<userId, Response>
+const wordWarsSSE = new Map<number, Map<number, import("express").Response>>();
+
+function ssePublishToUsers(tournamentId: number, userIds: number[], payload: Record<string, unknown>) {
+  const clients = wordWarsSSE.get(tournamentId);
+  if (!clients || clients.size === 0) return;
+  const data = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const uid of userIds) {
+    const res = clients.get(uid);
+    if (!res) continue;
+    try {
+      res.write(data);
+    } catch {
+      clients.delete(uid);
+    }
+  }
+}
+
 async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
   try {
     const prefs = await storage.getNotificationPreferences(data.userId);
@@ -3384,6 +3402,30 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/word-wars/:id/sse", requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).end(); return; }
+    const userId = req.user!.id;
+    // Only allow registered participants to subscribe
+    const registrations = await storage.getWordWarsRegistrationsForTournament(id);
+    const isParticipant = registrations.some(r => r.userId === userId);
+    if (!isParticipant) { res.status(403).end(); return; }
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+    if (!wordWarsSSE.has(id)) wordWarsSSE.set(id, new Map());
+    wordWarsSSE.get(id)!.set(userId, res);
+    const heartbeat = setInterval(() => {
+      try { res.write(": ping\n\n"); } catch { clearInterval(heartbeat); }
+    }, 25_000);
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      wordWarsSSE.get(id)?.delete(userId);
+      if (wordWarsSSE.get(id)?.size === 0) wordWarsSSE.delete(id);
+    });
+  });
+
   app.get("/api/word-wars/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -3593,6 +3635,10 @@ export async function registerRoutes(
       if (match.status === "pending") {
         await storage.updateWordWarsMatch(matchId, { status: "active" });
       }
+
+      // Push real-time SSE event to the two match participants only (no sensitive data in payload)
+      const participantIds = [match.player1Id, match.player2Id].filter((id): id is number => id != null);
+      ssePublishToUsers(match.tournamentId, participantIds, { type: "game_started", matchId, gameNumber });
 
       // Notify the opponent that a game room is ready
       const opponentId = userId === match.player1Id ? match.player2Id : match.player1Id;
