@@ -549,6 +549,17 @@ export default function WordWarsBracket() {
     },
   });
 
+  const { data: matchDetail } = useQuery<{ match: WordWarsMatch; games: WordWarsMatchGame[] }>({
+    queryKey: ["/api/word-wars/matches", highlightMatchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/word-wars/matches/${highlightMatchId}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: highlightMatchId != null && highlightMatchId > 0,
+    refetchInterval: 15000,
+  });
+
   // Compute registration status early (before early-return guards) so the SSE effect can gate on it
   const isRegistered = user && data ? data.registrations.some(r => r.userId === user.id) : false;
 
@@ -565,12 +576,19 @@ export default function WordWarsBracket() {
         ) {
           queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
         }
+        if (
+          (payload.type === "game_started" || payload.type === "match_completed") &&
+          highlightMatchId != null &&
+          payload.matchId === highlightMatchId
+        ) {
+          queryClient.invalidateQueries({ queryKey: ["/api/word-wars/matches", highlightMatchId] });
+        }
       } catch {
         // ignore malformed messages
       }
     };
     return () => es.close();
-  }, [user, tournamentId]);
+  }, [user, tournamentId, highlightMatchId]);
 
   if (isLoading) {
     return (
@@ -599,7 +617,14 @@ export default function WordWarsBracket() {
     );
   }
 
-  const { tournament, registrations, matches, players } = data;
+  const { tournament, registrations, players } = data;
+
+  const matches: MatchWithGames[] = data.matches.map(m => {
+    if (matchDetail && m.id === highlightMatchId) {
+      return { ...matchDetail.match, games: matchDetail.games };
+    }
+    return m;
+  });
 
   const maxRound = matches.length > 0 ? Math.max(...matches.map(m => m.round)) : 0;
   const rounds: MatchWithGames[][] = [];
