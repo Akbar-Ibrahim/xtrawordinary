@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useCountdown } from "@/lib/use-countdown";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,132 @@ interface OpenChallenge {
   message: string | null;
   roomCode: string | null;
   createdAt: string;
+  expiresAt: string | null;
+}
+
+function ChallengeCountdown({ expiresAt }: { expiresAt: string | null }) {
+  const deadline = expiresAt ? new Date(expiresAt).getTime() : null;
+  const remaining = useCountdown(deadline);
+  if (!deadline) return null;
+  if (remaining <= 0) return null;
+  const totalSecs = Math.floor(remaining / 1000);
+  const hrs = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  const isUrgent = remaining < 5 * 60 * 1000;
+  const label = hrs > 0
+    ? `${hrs}h ${String(mins).padStart(2, "0")}m`
+    : `${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
+  return (
+    <span className={`text-xs font-medium ${isUrgent ? "text-amber-500 dark:text-amber-400" : "text-muted-foreground"}`}>
+      expires in {label}
+    </span>
+  );
+}
+
+function useIsExpired(expiresAt: string | null): boolean {
+  const deadline = expiresAt ? new Date(expiresAt).getTime() : null;
+  const remaining = useCountdown(deadline);
+  return deadline !== null && remaining <= 0;
+}
+
+function isNotExpired(c: OpenChallenge): boolean {
+  return !c.expiresAt || new Date(c.expiresAt).getTime() > Date.now();
+}
+
+function MyOpenChallengeRow({
+  c,
+  isCancelling,
+  onCancel,
+}: {
+  c: OpenChallenge;
+  isCancelling: boolean;
+  onCancel: () => void;
+}) {
+  const expired = useIsExpired(c.expiresAt);
+  if (expired) return null;
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-violet-300 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/10"
+      data-testid={`row-my-challenge-${c.id}`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs shrink-0">
+            {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
+          </Badge>
+          {c.message && (
+            <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+          <Clock className="h-3 w-3" />
+          Posted {timeAgo(c.createdAt)} · <ChallengeCountdown expiresAt={c.expiresAt} />
+        </p>
+      </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        disabled={isCancelling}
+        onClick={onCancel}
+        data-testid={`button-cancel-challenge-${c.id}`}
+      >
+        {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+        Cancel
+      </Button>
+    </div>
+  );
+}
+
+function OpenChallengeCard({
+  c,
+  isJoining,
+  onJoin,
+  currentUserId,
+}: {
+  c: OpenChallenge;
+  isJoining: boolean;
+  onJoin: () => void;
+  currentUserId?: number;
+}) {
+  const expired = useIsExpired(c.expiresAt);
+  if (expired) return null;
+  return (
+    <Card data-testid={`card-open-challenge-${c.id}`} className="border border-violet-200 dark:border-violet-900">
+      <CardContent className="flex items-center gap-4 py-4">
+        <UserAvatar name={c.challengerName ?? "?"} avatarUrl={c.challengerAvatarUrl} className="h-10 w-10 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-medium truncate">{c.challengerName ?? "Unknown player"}</p>
+            <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
+              <Clock className="h-3 w-3" />
+              {timeAgo(c.createdAt)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <Badge variant="secondary" className="text-xs shrink-0">
+              {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
+            </Badge>
+            {c.message && (
+              <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
+            )}
+            <ChallengeCountdown expiresAt={c.expiresAt} />
+          </div>
+        </div>
+        <Button
+          size="sm"
+          className="shrink-0 gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+          disabled={isJoining || c.challengerId === currentUserId}
+          onClick={onJoin}
+          data-testid={`button-join-duel-${c.id}`}
+        >
+          {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+          {c.challengerId === currentUserId ? "Your challenge" : "Join"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface DuelHistoryEntry {
@@ -601,44 +728,19 @@ export default function DuelLobby() {
             )}
 
             {/* ── My Open Challenges sub-section ── */}
-            {myOpenChallenges.length > 0 && (
+            {myOpenChallenges.filter(isNotExpired).length > 0 && (
               <div className="mb-5" data-testid="section-my-open-challenges">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Your Posted Challenges</p>
                 <div className="space-y-2">
                   {myOpenChallenges.map((c) => {
                     const isCancelling = cancelMutation.isPending && cancelMutation.variables === c.id;
                     return (
-                      <div
+                      <MyOpenChallengeRow
                         key={c.id}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-violet-300 dark:border-violet-700 bg-violet-50/40 dark:bg-violet-950/10"
-                        data-testid={`row-my-challenge-${c.id}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs shrink-0">
-                              {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
-                            </Badge>
-                            {c.message && (
-                              <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Posted {timeAgo(c.createdAt)} · waiting for an opponent
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="shrink-0 gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          disabled={isCancelling}
-                          onClick={() => cancelMutation.mutate(c.id)}
-                          data-testid={`button-cancel-challenge-${c.id}`}
-                        >
-                          {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-                          Cancel
-                        </Button>
-                      </div>
+                        c={c}
+                        isCancelling={isCancelling}
+                        onCancel={() => cancelMutation.mutate(c.id)}
+                      />
                     );
                   })}
                 </div>
@@ -664,7 +766,7 @@ export default function DuelLobby() {
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : openChallenges.filter((c) => c.challengerId !== user?.id).length === 0 ? (
+            ) : openChallenges.filter((c) => c.challengerId !== user?.id && isNotExpired(c)).length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-3 opacity-30" />
@@ -677,41 +779,16 @@ export default function DuelLobby() {
                 {openChallenges.filter((c) => c.challengerId !== user?.id).map((c) => {
                   const isJoining = joiningId === c.id && joinMutation.isPending;
                   return (
-                    <Card key={c.id} data-testid={`card-open-challenge-${c.id}`} className="border border-violet-200 dark:border-violet-900">
-                      <CardContent className="flex items-center gap-4 py-4">
-                        <UserAvatar name={c.challengerName ?? "?"} avatarUrl={c.challengerAvatarUrl} className="h-10 w-10 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium truncate">{c.challengerName ?? "Unknown player"}</p>
-                            <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
-                              <Clock className="h-3 w-3" />
-                              {timeAgo(c.createdAt)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="secondary" className="text-xs shrink-0">
-                              {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
-                            </Badge>
-                            {c.message && (
-                              <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="shrink-0 gap-2 bg-violet-600 hover:bg-violet-700 text-white"
-                          disabled={isJoining || c.challengerId === user?.id}
-                          onClick={() => {
-                            setJoiningId(c.id);
-                            joinMutation.mutate(c.id);
-                          }}
-                          data-testid={`button-join-duel-${c.id}`}
-                        >
-                          {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
-                          {c.challengerId === user?.id ? "Your challenge" : "Join"}
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <OpenChallengeCard
+                      key={c.id}
+                      c={c}
+                      isJoining={isJoining}
+                      onJoin={() => {
+                        setJoiningId(c.id);
+                        joinMutation.mutate(c.id);
+                      }}
+                      currentUserId={user?.id}
+                    />
                   );
                 })}
               </div>
