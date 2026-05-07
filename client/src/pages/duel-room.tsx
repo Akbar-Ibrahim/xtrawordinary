@@ -264,6 +264,7 @@ export default function DuelRoom() {
           if (msg.format) setRoomFormat(msg.format);
           if (msg.raceTarget) setRaceTarget(msg.raceTarget);
           if (msg.raceTimeLimitMs) setRaceTimeLimitMs(msg.raceTimeLimitMs);
+          playSound("countdown");
           setPhase("countdown");
           break;
 
