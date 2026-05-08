@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useAuth } from "@/lib/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
@@ -269,13 +270,37 @@ export default function Leaderboard() {
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              {cardTitle}
-              {showSurvivalToggle && (
-                <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
-                  {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
-                </Badge>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">
+              {selectedGameObj ? (
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: selectedGameObj.color }}
+                  >
+                    {(() => {
+                      const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[selectedGameObj.icon] ?? LucideIcons.Gamepad2;
+                      return <Icon className="h-4 w-4 text-white" />;
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>{selectedGameObj.name}</span>
+                    {showSurvivalToggle && (
+                      <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
+                        {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>{cardTitle}</span>
+                  {showSurvivalToggle && (
+                    <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
+                      {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
+                    </Badge>
+                  )}
+                </div>
               )}
             </CardTitle>
           </CardHeader>
