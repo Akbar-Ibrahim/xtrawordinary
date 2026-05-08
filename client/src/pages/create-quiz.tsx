@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, ArrowLeft, LogIn } from "lucide-react";
 import * as LucideIcons from "lucide-react";
@@ -22,6 +21,33 @@ const QUIZ_GAME_DESCRIPTIONS: Record<string, string> = {
   "word-roots": "Guess words from their Latin or Greek root.",
   "progressive-reveal": "Uncover hidden letters one by one to guess the word.",
 };
+
+function QuizGameCard({ game }: { game: Game }) {
+  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
+  const description = QUIZ_GAME_DESCRIPTIONS[game.slug] ?? game.description;
+  return (
+    <Card className="h-full" data-testid={`card-quiz-game-${game.slug}`}>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: game.color }}
+        >
+          <Icon className="h-4 w-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm truncate mb-0.5">{game.name}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
+        </div>
+        <Link href={`/game/${game.slug}?create-quiz=1`}>
+          <Button size="sm" variant="secondary" className="shrink-0 gap-1.5" data-testid={`button-create-quiz-${game.slug}`}>
+            <GraduationCap className="h-3.5 w-3.5" />
+            Create Quiz
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function CreateQuiz() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -80,58 +106,16 @@ export default function CreateQuiz() {
       </div>
 
       {gamesLoading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 gap-2">
           {Array.from({ length: 9 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 rounded-xl" />
+            <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quizGames.map((game) => {
-            const IconComponent =
-              (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ||
-              LucideIcons.Gamepad2;
-            const description = QUIZ_GAME_DESCRIPTIONS[game.slug] ?? game.description;
-            return (
-              <Card
-                key={game.slug}
-                className="overflow-hidden hover:shadow-md transition-shadow"
-                data-testid={`card-quiz-game-${game.slug}`}
-              >
-                <div
-                  className="h-20 flex items-center justify-center"
-                  style={{ backgroundColor: game.color }}
-                >
-                  <IconComponent className="h-9 w-9 text-white opacity-90" />
-                </div>
-                <CardContent className="p-4 space-y-3">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm leading-tight">{game.name}</span>
-                      <Badge
-                        variant="outline"
-                        className="text-xs capitalize"
-                        data-testid={`badge-difficulty-${game.slug}`}
-                      >
-                        {game.difficulty}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
-                  </div>
-                  <Link href={`/game/${game.slug}?create-quiz=1`}>
-                    <Button
-                      size="sm"
-                      className="w-full gap-2"
-                      data-testid={`button-create-quiz-${game.slug}`}
-                    >
-                      <GraduationCap className="h-4 w-4" />
-                      Create Quiz
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="grid sm:grid-cols-2 gap-2">
+          {quizGames.map((game) => (
+            <QuizGameCard key={game.slug} game={game} />
+          ))}
         </div>
       )}
     </div>
