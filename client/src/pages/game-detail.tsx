@@ -685,11 +685,11 @@ export default function GameDetail() {
                 return (
                   <div>
                     <h3 className="text-lg font-semibold mb-3">More Games</h3>
-                    <div className="grid sm:grid-cols-2 gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
                       {otherGames.map(g => {
                         const GIcon = ((LucideIcons as any)[g.icon] ?? LucideIcons.Gamepad2) as React.ElementType;
                         return (
-                          <Link key={g.slug} href={`/game/${g.slug}`}>
+                          <Link key={g.slug} href={`/game/${g.slug}`} className="snap-start shrink-0 w-56">
                             <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-more-game-${g.slug}`}>
                               <CardContent className="p-3 flex items-center gap-3">
                                 <div
