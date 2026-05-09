@@ -539,9 +539,15 @@ export default function GameDetail() {
         <Skeleton className="h-8 w-32 mb-8" />
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <Skeleton className="h-48 w-full rounded-lg" />
-            <Skeleton className="h-6 w-3/4" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-14 h-14 rounded-xl shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
             <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
             <Skeleton className="h-4 w-2/3" />
           </div>
           <div className="space-y-4">
@@ -608,30 +614,27 @@ export default function GameDetail() {
             className="grid lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-2 space-y-6">
-              <div
-                className="h-48 sm:h-64 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: game.color }}
-              >
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.5, type: "spring" }}
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: game.color }}
                 >
-                  <IconComponent className="h-24 w-24 sm:h-32 sm:w-32 text-white drop-shadow-lg" />
-                </motion.div>
+                  <IconComponent className="h-7 w-7 text-white drop-shadow" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-3xl sm:text-4xl font-bold">{game.name}</h1>
+                    <Badge
+                      className={`text-sm ${difficultyColors[game.difficulty]}`}
+                      data-testid="badge-difficulty"
+                    >
+                      {game.difficulty}
+                    </Badge>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <h1 className="text-3xl sm:text-4xl font-bold">{game.name}</h1>
-                  <Badge
-                    className={`text-sm ${difficultyColors[game.difficulty]}`}
-                    data-testid="badge-difficulty"
-                  >
-                    {game.difficulty}
-                  </Badge>
-                </div>
-
                 <p className="text-lg text-muted-foreground">{game.longDescription}</p>
 
                 <div className="flex items-center gap-4 flex-wrap">
