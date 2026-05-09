@@ -341,8 +341,8 @@ export default function Home() {
                   data-testid="card-surprise-me"
                 >
                   <CardContent className="p-4 flex items-center gap-3 h-full">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10">
-                      <Shuffle className="h-5 w-5 text-primary" />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500">
+                      <Shuffle className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">Surprise Me</p>
@@ -365,8 +365,8 @@ export default function Home() {
               <Link href="/duels" className="flex-1 flex flex-col">
                 <Card className="hover-elevate cursor-pointer h-full" data-testid="card-duels-shortcut">
                   <CardContent className="p-4 flex items-center gap-3 h-full">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/10">
-                      <Swords className="h-5 w-5 text-violet-500" />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500">
+                      <Swords className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">Duels</p>
@@ -408,8 +408,8 @@ export default function Home() {
                       data-testid="card-word-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500/10">
-                          <Sword className="h-5 w-5 text-amber-500" />
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500">
+                          <Sword className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm">Word Wars</p>
