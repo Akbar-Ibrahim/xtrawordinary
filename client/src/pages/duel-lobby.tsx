@@ -287,6 +287,27 @@ function DuelGameCard({ game, waitingCount = 0, onPlayClick }: { game: Game; wai
   );
 }
 
+function DuelGameRow({ game, waitingCount = 0, onPlayClick }: { game: Game; waitingCount?: number; onPlayClick: () => void }) {
+  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
+  return (
+    <button
+      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/60 transition-colors text-left group"
+      onClick={onPlayClick}
+      data-testid={`button-play-duel-row-${game.slug}`}
+    >
+      <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: game.color }}>
+        <Icon className="h-3 w-3 text-white" />
+      </div>
+      <span className="flex-1 min-w-0 text-sm font-medium truncate">{game.name}</span>
+      {waitingCount > 0 && (
+        <Badge className="text-[10px] px-1 py-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0 shrink-0 leading-4">
+          {waitingCount}
+        </Badge>
+      )}
+    </button>
+  );
+}
+
 function DuelNotificationsPanel({
   challenges,
   onDismiss,
@@ -468,6 +489,7 @@ export default function DuelLobby() {
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
   const [selectedDuelGameSlug, setSelectedDuelGameSlug] = useState<string | null>(null);
   const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
+  const [gamePickerOpen, setGamePickerOpen] = useState(false);
 
   function handleDuelPlay(slug: string) {
     if (!isAuthenticated) {
@@ -603,10 +625,10 @@ export default function DuelLobby() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8 space-y-10">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
 
-      {/* Header */}
-      <div className="flex items-start gap-3">
+      {/* ── Header ── */}
+      <div className="flex items-start gap-3 mb-8">
         <Swords className="h-7 w-7 text-violet-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
@@ -622,101 +644,144 @@ export default function DuelLobby() {
         </div>
       </div>
 
-      {/* ── Duel Notifications Panel ── */}
-      {isAuthenticated && (
-        <DuelNotificationsPanel
-          challenges={unseenChallenges}
-          onDismiss={dismissNotification}
-          onDismissAll={dismissAllNotifications}
-        />
-      )}
+      {/* ── Mobile game picker toggle ── */}
+      <div className="md:hidden mb-6">
+        <Button
+          variant="outline"
+          className="w-full justify-between"
+          onClick={() => setGamePickerOpen((o) => !o)}
+          data-testid="button-mobile-game-picker-toggle"
+        >
+          <span className="flex items-center gap-2">
+            <Swords className="h-4 w-4 text-violet-500" />
+            Pick a Game
+          </span>
+          {gamePickerOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+        {gamePickerOpen && (
+          <Card className="mt-2 border-violet-100 dark:border-violet-900/50">
+            <CardContent className="p-3 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400 px-2 mb-1">⚔️ Turn-Based</p>
+                <div className="space-y-0.5">
+                  {turnGames.map((g) => (
+                    <DuelGameRow key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { setGamePickerOpen(false); handleDuelPlay(g.slug); }} />
+                  ))}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-xs font-medium text-violet-600 dark:text-violet-400 px-2 mb-1 flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Race
+                </p>
+                <div className="space-y-0.5">
+                  {raceGames.map((g) => (
+                    <DuelGameRow key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { setGamePickerOpen(false); handleDuelPlay(g.slug); }} />
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
-      {/* ── Live Now ── */}
-      {isAuthenticated && <LiveNowSection />}
+      {/* ── Two-column layout ── */}
+      <div className="flex gap-6 items-start">
 
-      {/* ── Game Directory ── */}
-      <section>
-        <h2 className="text-base font-semibold mb-3">Pick a Game</h2>
+        {/* ── Left column: Game Picker (desktop only) ── */}
+        <aside className="w-56 shrink-0 hidden md:block sticky top-4">
+          <Card className="border-violet-100 dark:border-violet-900/50">
+            <CardContent className="p-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3 px-2">Pick a Game</h2>
+              <div className="mb-2">
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400 px-2 mb-1">⚔️ Turn-Based</p>
+                <div className="space-y-0.5">
+                  {turnGames.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-1">Loading…</p>
+                  ) : (
+                    turnGames.map((g) => (
+                      <DuelGameRow key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />
+                    ))
+                  )}
+                </div>
+              </div>
+              <Separator className="my-2" />
+              <div>
+                <p className="text-xs font-medium text-violet-600 dark:text-violet-400 px-2 mb-1 flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Race
+                </p>
+                <div className="space-y-0.5">
+                  {raceGames.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-2 py-1">Loading…</p>
+                  ) : (
+                    raceGames.map((g) => (
+                      <DuelGameRow key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
 
-        {/* Turn-Based */}
-        <div className="mb-5">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">⚔️ Turn-Based</span>
-            <span className="text-xs text-muted-foreground">— alternate turns, 8-second timer, lives system</span>
-          </div>
-          {turnGames.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />)}
+        {/* ── Right column: Main content ── */}
+        <div className="flex-1 min-w-0 space-y-6">
+
+          {/* Duel Notifications Panel */}
+          {isAuthenticated && (
+            <DuelNotificationsPanel
+              challenges={unseenChallenges}
+              onDismiss={dismissNotification}
+              onDismissAll={dismissAllNotifications}
+            />
+          )}
+
+          {/* Live Now */}
+          {isAuthenticated && <LiveNowSection />}
+
+          {/* ── Open Challenges / My Duels ── */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              {isAuthenticated ? (
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1" data-testid="toggle-lobby-tab">
+                  <button
+                    onClick={() => setLobbyTab("challenges")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "challenges" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    data-testid="tab-open-challenges"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    Open Challenges
+                    {openChallenges.length > 0 && (
+                      <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{openChallenges.length}</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setLobbyTab("my-duels")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "my-duels" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    data-testid="tab-my-duels"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    My Duels
+                    {duelHistory.length > 0 && (
+                      <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{duelHistory.length}</Badge>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  Open Challenges
+                </h2>
+              )}
+              {isAuthenticated && lobbyTab === "challenges" && (
+                <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} data-testid="button-refresh-lobby">
+                  <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                </Button>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Race */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
-              <Zap className="h-3.5 w-3.5 inline mr-0.5 -mt-0.5" />
-              Race
-            </span>
-            <span className="text-xs text-muted-foreground">— simultaneous play, first to target wins</span>
-          </div>
-          {raceGames.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />)}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <Separator />
-
-      {/* ── Open Challenges / My Duels ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1" data-testid="toggle-lobby-tab">
-              <button
-                onClick={() => setLobbyTab("challenges")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "challenges" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                data-testid="tab-open-challenges"
-              >
-                <Users className="h-3.5 w-3.5" />
-                Open Challenges
-                {openChallenges.length > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{openChallenges.length}</Badge>
-                )}
-              </button>
-              <button
-                onClick={() => setLobbyTab("my-duels")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "my-duels" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                data-testid="tab-my-duels"
-              >
-                <History className="h-3.5 w-3.5" />
-                My Duels
-                {duelHistory.length > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs h-4 px-1">{duelHistory.length}</Badge>
-                )}
-              </button>
-            </div>
-          ) : (
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              Open Challenges
-            </h2>
-          )}
-          {isAuthenticated && lobbyTab === "challenges" && (
-            <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} data-testid="button-refresh-lobby">
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            </Button>
-          )}
-        </div>
-
-        {!isAuthenticated ? (
-          <div className="space-y-4">
+            {!isAuthenticated ? (
+              <div className="space-y-4">
             {/* Sign-up CTA */}
             <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/20" data-testid="card-guest-signup-cta">
               <CardContent className="p-5">
@@ -822,7 +887,7 @@ export default function DuelLobby() {
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-3 opacity-30" />
                   <p className="font-medium text-sm">No open challenges right now.</p>
-                  <p className="text-xs mt-1">Go to a game above and post an open challenge to start one!</p>
+                  <p className="text-xs mt-1">Pick a game on the left and post an open challenge to start one!</p>
                 </CardContent>
               </Card>
             ) : (
@@ -860,7 +925,7 @@ export default function DuelLobby() {
                 <CardContent className="py-10 text-center text-muted-foreground">
                   <Swords className="h-8 w-8 mx-auto mb-3 opacity-30" />
                   <p className="font-medium text-sm">No duel history yet.</p>
-                  <p className="text-xs mt-1">Play a duel from the game list above to see your matches here.</p>
+                  <p className="text-xs mt-1">Pick a game and start your first duel!</p>
                 </CardContent>
               </Card>
             ) : (
@@ -927,7 +992,9 @@ export default function DuelLobby() {
             )}
           </>
         )}
-      </section>
+          </section>
+        </div>
+      </div>
 
       {selectedDuelGameSlug && (
         <DuelChallengeDialog
