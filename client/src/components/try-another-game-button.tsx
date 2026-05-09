@@ -23,8 +23,8 @@ export function TryAnotherGameButton({ currentSlug }: TryAnotherGameButtonProps)
 
   return (
     <Button
-      variant="outline"
       onClick={handleClick}
+      className="bg-violet-500 hover:bg-violet-600 text-white border-0"
       data-testid="button-try-another-game"
     >
       <Shuffle className="h-4 w-4 mr-2" />

@@ -314,8 +314,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                   Change Mode
                 </Button>
                 <Button
-                  className="flex-1 gap-2"
-                  style={{ backgroundColor: BLOOM_COLOR }}
+                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
                     chainRef.current = [];
                     scoreRef.current = 0;

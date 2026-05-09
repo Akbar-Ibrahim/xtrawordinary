@@ -427,7 +427,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                 )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
-                    <Button onClick={initGame} data-testid="button-play-again">Play Again</Button>
+                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
                     <TryAnotherGameButton currentSlug="word-sweep" />
                   </div>
                 )}
@@ -742,7 +742,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
             )}
             {!locked && (
               <div className="flex gap-2 justify-center flex-wrap">
-                <Button onClick={initGame} className="gap-1.5" data-testid="button-play-again">
+                <Button onClick={initGame} className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="h-4 w-4" />
                   New Puzzle
                 </Button>

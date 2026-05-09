@@ -400,12 +400,12 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
                   Challenge Menu
                 </Button>
                 {nextChallenge && gameStatus === "won" && (
-                  <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2" data-testid="button-next-challenge">
+                  <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                     Next Challenge
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
-                <Button onClick={() => startGame(challenge, isSurvival)} variant="secondary" className="gap-2" data-testid="button-play-again">
+                <Button onClick={() => startGame(challenge, isSurvival)} className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="w-4 h-4" />
                   Play Again
                 </Button>

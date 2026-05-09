@@ -237,7 +237,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
 
             {!locked && (
               <div className="flex gap-2 justify-center flex-wrap">
-                <Button onClick={handleRestart} data-testid="button-play-again">
+                <Button onClick={handleRestart} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Play Again
                 </Button>

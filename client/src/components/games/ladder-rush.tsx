@@ -370,7 +370,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
                   Change Mode
                 </Button>
                 <Button
-                  className="flex-1 gap-2"
+                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={onPlayAgain}
                   data-testid="button-play-again"
                 >

@@ -666,12 +666,12 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
                     <TryAnotherGameButton currentSlug="letter-frequency" />
-                    <Button onClick={() => startGame(challenge, isSurvival)} variant={challenge === 4 || challenge === "random" ? "default" : "outline"} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
                     {getNextChallenge(challenge) && (
-                      <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} data-testid="button-next-challenge">
+                      <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>

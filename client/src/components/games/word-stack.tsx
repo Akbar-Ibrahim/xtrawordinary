@@ -419,7 +419,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
             )}
             {!locked && (
               <div className="flex gap-4 justify-center flex-wrap">
-                <Button onClick={() => initGame(selectedChallenge)} size="lg" data-testid="button-play-again">
+                <Button onClick={() => initGame(selectedChallenge)} size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
                 </Button>

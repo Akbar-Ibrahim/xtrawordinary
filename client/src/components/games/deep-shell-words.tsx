@@ -992,7 +992,7 @@ export function DeepShellWordsGame({
 
               <div className="flex gap-2 justify-center flex-wrap">
                 <Button
-                  variant="outline"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => switchMode(variation, subMode)}
                   data-testid="button-play-again"
                 >

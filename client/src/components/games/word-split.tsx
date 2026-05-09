@@ -484,7 +484,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                   <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
                     Main Menu
                   </Button>
-                  <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
+                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                     Play Again
                   </Button>
                   <TryAnotherGameButton currentSlug="word-split" />
@@ -556,7 +556,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                   <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
                     Main Menu
                   </Button>
-                  <Button variant="outline" onClick={() => difficulty && startGame(difficulty)} data-testid="button-play-again">
+                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                     Play Again
                   </Button>
                   <TryAnotherGameButton currentSlug="word-split" />

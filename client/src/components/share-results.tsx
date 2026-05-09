@@ -98,30 +98,27 @@ export function ShareResults({
       <p className="text-sm text-muted-foreground text-center">Share your results</p>
       <div className="flex flex-wrap justify-center gap-2">
         <Button
-          variant="outline"
           size="sm"
           onClick={handleShareTwitter}
-          className="gap-2"
+          className="gap-2 bg-black text-white hover:bg-black/80 border-0"
           data-testid="button-share-twitter"
         >
           <SiX className="w-4 h-4" />
           <span className="hidden sm:inline">X</span>
         </Button>
         <Button
-          variant="outline"
           size="sm"
           onClick={handleShareFacebook}
-          className="gap-2"
+          className="gap-2 bg-[#1877F2] text-white hover:bg-[#1877F2]/80 border-0"
           data-testid="button-share-facebook"
         >
           <SiFacebook className="w-4 h-4" />
           <span className="hidden sm:inline">Facebook</span>
         </Button>
         <Button
-          variant="outline"
           size="sm"
           onClick={handleShareLinkedIn}
-          className="gap-2"
+          className="gap-2 bg-[#0A66C2] text-white hover:bg-[#0A66C2]/80 border-0"
           data-testid="button-share-linkedin"
         >
           <SiLinkedin className="w-4 h-4" />

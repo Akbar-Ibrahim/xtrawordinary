@@ -387,7 +387,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                   Change Mode
                 </Button>
                 <Button
-                  className="flex-1 gap-2 bg-[hsl(262,70%,55%)] hover:bg-[hsl(262,70%,45%)]"
+                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
                     foundRef.current = [];
                     accumulatedScoreRef.current = 0;

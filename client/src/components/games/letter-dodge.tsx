@@ -633,7 +633,7 @@ export function LetterDodgeGame({
         <div className="flex gap-2">
           <Button
             onClick={() => startGame(difficulty)}
-            className="flex-1 gap-2"
+            className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
             data-testid="button-play-again"
           >
             <RotateCcw className="h-4 w-4" />

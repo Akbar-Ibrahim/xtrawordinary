@@ -571,7 +571,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                 )}
                 {!locked && (
                   <div className="flex gap-3 justify-center flex-wrap">
-                    <Button onClick={restartGame} data-testid="button-play-again">
+                    <Button onClick={restartGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <TryAnotherGameButton currentSlug="letter-pool" />

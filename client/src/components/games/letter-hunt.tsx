@@ -744,18 +744,18 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
                     <TryAnotherGameButton currentSlug="letter-hunt" />
-                    <Button onClick={() => startGame(challenge, ordered)} variant={challenge === "advanced" ? "default" : "outline"} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, ordered)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
                     {lastGameSeedRef.current !== null && (
-                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Replay
                       </Button>
                     )}
                     {challenge !== "advanced" && getNextChallenge(challenge) && (
-                      <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} data-testid="button-next-challenge">
+                      <Button onClick={() => selectChallenge(getNextChallenge(challenge)!)} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </Button>
@@ -836,12 +836,12 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
                     <TryAnotherGameButton currentSlug="letter-hunt" />
-                    <Button onClick={() => startGame(challenge, ordered)} data-testid="button-play-again">
+                    <Button onClick={() => startGame(challenge, ordered)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Play Again
                     </Button>
                     {lastGameSeedRef.current !== null && (
-                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} variant="outline" data-testid="button-replay-same">
+                      <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Replay
                       </Button>

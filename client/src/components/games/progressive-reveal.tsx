@@ -457,7 +457,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
                 )}
                 {!locked && (
                   <div className="flex gap-2 justify-center flex-wrap">
-                    <Button onClick={initGame} data-testid="button-play-again">
+                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <TryAnotherGameButton currentSlug="progressive-reveal" />

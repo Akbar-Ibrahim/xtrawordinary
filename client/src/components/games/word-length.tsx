@@ -627,9 +627,8 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                 {!locked && (
                   <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
                     <Button 
-                      variant="outline" 
                       onClick={() => startGame(variation, isSurvival)} 
-                      className="gap-1.5"
+                      className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                       data-testid="button-play-again"
                     >
                       <RotateCcw className="h-4 w-4" />
@@ -639,7 +638,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                     {gameStatus === "won" && variation < 5 && (
                       <Button 
                         onClick={() => startGame(variation + 1, isSurvival)} 
-                        className="gap-1.5"
+                        className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
                         data-testid="button-next-challenge"
                       >
                         Next Challenge
