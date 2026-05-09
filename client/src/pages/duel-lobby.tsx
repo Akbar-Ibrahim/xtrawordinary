@@ -18,6 +18,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { AuthModal } from "@/components/auth-modal";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useDuelNotifications } from "@/lib/duel-notifications-context";
+import { DuelChallengeDialog } from "@/components/duel-challenge-dialog";
 import type { UnseenChallenge } from "@/lib/duel-notifications-context";
 import { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
@@ -257,7 +258,7 @@ function FormatBadge({ slug }: { slug: string }) {
   return <Badge className="text-[10px] px-1.5 py-0 bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-0">⚡ Race</Badge>;
 }
 
-function DuelGameCard({ game, waitingCount = 0 }: { game: Game; waitingCount?: number }) {
+function DuelGameCard({ game, waitingCount = 0, onPlayClick }: { game: Game; waitingCount?: number; onPlayClick: () => void }) {
   return (
     <Card className="h-full" data-testid={`card-duel-game-${game.slug}`}>
       <CardContent className="p-3 flex items-center gap-3">
@@ -277,12 +278,10 @@ function DuelGameCard({ game, waitingCount = 0 }: { game: Game; waitingCount?: n
           </div>
           <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
         </div>
-        <Link href={`/game/${game.slug}`}>
-          <Button size="sm" variant="secondary" className="shrink-0 gap-1.5" data-testid={`button-play-duel-${game.slug}`}>
-            <Swords className="h-3.5 w-3.5" />
-            Play
-          </Button>
-        </Link>
+        <Button size="sm" variant="secondary" className="shrink-0 gap-1.5" onClick={onPlayClick} data-testid={`button-play-duel-${game.slug}`}>
+          <Swords className="h-3.5 w-3.5" />
+          Play
+        </Button>
       </CardContent>
     </Card>
   );
@@ -467,6 +466,7 @@ export default function DuelLobby() {
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
+  const [selectedDuelGameSlug, setSelectedDuelGameSlug] = useState<string | null>(null);
   const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
   const { unseenChallenges, dismiss: dismissNotification, dismissAll: dismissAllNotifications } = useDuelNotifications();
 
@@ -632,7 +632,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} />)}
+              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { if (!isAuthenticated) { openAuth("signup"); } else if (!user?.isPremium) { toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" }); } else { setSelectedDuelGameSlug(g.slug); } }} />)}
             </div>
           )}
         </div>
@@ -650,7 +650,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} />)}
+              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { if (!isAuthenticated) { openAuth("signup"); } else if (!user?.isPremium) { toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" }); } else { setSelectedDuelGameSlug(g.slug); } }} />)}
             </div>
           )}
         </div>
@@ -913,6 +913,13 @@ export default function DuelLobby() {
         )}
       </section>
 
+      {selectedDuelGameSlug && (
+        <DuelChallengeDialog
+          gameSlug={selectedDuelGameSlug}
+          open={true}
+          onOpenChange={(o) => { if (!o) setSelectedDuelGameSlug(null); }}
+        />
+      )}
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} initialTab={authInitialTab} />
     </div>
   );
