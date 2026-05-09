@@ -408,7 +408,7 @@ export default function Home() {
                       data-testid="card-word-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-500">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-500">
                           <Sword className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
