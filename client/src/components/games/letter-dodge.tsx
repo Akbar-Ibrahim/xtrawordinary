@@ -630,7 +630,15 @@ export function LetterDodgeGame({
           </div>
         )}
 
-        <div className="flex gap-2">
+        <ShareResults
+          score={score}
+          gameName="Letter Dodge"
+          gameSlug={currentSlug}
+          wordsCompleted={foundWords.length}
+          isWin={score > 0}
+        />
+
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => startGame(difficulty)}
             className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
@@ -647,17 +655,8 @@ export function LetterDodgeGame({
           >
             Change Difficulty
           </Button>
+          <TryAnotherGameButton currentSlug="letter-dodge" />
         </div>
-
-        <ShareResults
-          score={score}
-          gameName="Letter Dodge"
-          gameSlug={currentSlug}
-          wordsCompleted={foundWords.length}
-          isWin={score > 0}
-        />
-
-        <TryAnotherGameButton currentSlug="letter-dodge" />
 
         {authOpen && <AuthModal open={authOpen} onOpenChange={setAuthOpen} />}
       </CardContent>
