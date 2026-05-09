@@ -484,9 +484,15 @@ export default function DuelLobby() {
     queryKey: ["/api/games"],
   });
 
-  const duelGames = allGames.filter((g) => DUEL_GAME_SLUGS.has(g.slug));
-  const turnGames = duelGames.filter((g) => DUEL_TURN_SLUGS.has(g.slug));
-  const raceGames = duelGames.filter((g) => DUEL_RACE_SLUGS.has(g.slug));
+  const duelGames = allGames.filter((g) =>
+    DUEL_GAME_SLUGS.has(g.slug) || g.modes?.some((m) => DUEL_GAME_SLUGS.has(m.slug))
+  );
+  const turnGames = duelGames.filter((g) =>
+    DUEL_TURN_SLUGS.has(g.slug) || g.modes?.some((m) => DUEL_TURN_SLUGS.has(m.slug))
+  );
+  const raceGames = duelGames.filter((g) =>
+    DUEL_RACE_SLUGS.has(g.slug) || g.modes?.some((m) => DUEL_RACE_SLUGS.has(m.slug))
+  );
 
   const { data: allOpenChallenges = [] } = useQuery<OpenChallenge[]>({
     queryKey: ["/api/duels/open"],

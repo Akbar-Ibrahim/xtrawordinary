@@ -519,6 +519,7 @@ export const DUEL_TURN_SLUGS = new Set([
   "letter-frequency",
   "letter-position",
   "letter-balance",
+  "letter-dodge",
   "ladder-rush-4",
   "ladder-rush-5",
   "ladder-rush-6",
@@ -534,6 +535,8 @@ export const DUEL_RACE_SLUGS = new Set([
   "letter-frequency",
   "letter-position",
   "letter-balance",
+  "letter-dodge",
+  "word-roots",
   "word-scramble",
   "no-repeats",
   "anagram-solver",
@@ -542,6 +545,12 @@ export const DUEL_RACE_SLUGS = new Set([
   "word-maker",
   "word-split",
   "definition-match",
+  "ladder-rush-4",
+  "ladder-rush-5",
+  "ladder-rush-6",
+  "ladder-rush-double-4",
+  "ladder-rush-double-5",
+  "ladder-rush-double-6",
 ]);
 
 /** Union of all duel-enabled games (both formats). */
