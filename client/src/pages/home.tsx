@@ -72,9 +72,9 @@ export default function Home() {
 
   const [viewMode, setViewMode] = useState<"grid" | "compact">(() => {
     try {
-      return (localStorage.getItem(VIEW_MODE_KEY) as "grid" | "compact") || "grid";
+      return (localStorage.getItem(VIEW_MODE_KEY) as "grid" | "compact") || "compact";
     } catch {
-      return "grid";
+      return "compact";
     }
   });
 
