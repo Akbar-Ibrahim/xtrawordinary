@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles, Sword } from "lucide-react";
+import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles, Sword, LayoutGrid, List } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, WordWarsTournament } from "@shared/schema";
 
@@ -19,6 +19,7 @@ type TournamentWithCount = WordWarsTournament & { registrationCount: number };
 type ChampionEntry = { id: number; tournamentId: number; userId: number; createdAt: string; user: { id: number; name: string; avatarUrl: string | null } | null; tournament: { id: number; name: string } | null };
 
 const ONBOARDED_KEY = "xw_onboarded";
+const VIEW_MODE_KEY = "xw_game_view_mode";
 
 const STARTER_GAMES = [
   { slug: "word-scramble", label: "Word Scramble", blurb: "Unscramble letters into words", difficulty: "easy", color: "hsl(142, 69%, 45%)" },
@@ -68,6 +69,19 @@ export default function Home() {
   const [favorites, setFavorites] = useState(() => loadFavorites());
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>("all");
+
+  const [viewMode, setViewMode] = useState<"grid" | "compact">(() => {
+    try {
+      return (localStorage.getItem(VIEW_MODE_KEY) as "grid" | "compact") || "grid";
+    } catch {
+      return "grid";
+    }
+  });
+
+  const toggleViewMode = useCallback((mode: "grid" | "compact") => {
+    try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch {}
+    setViewMode(mode);
+  }, []);
 
   const [showWelcome, setShowWelcome] = useState(() => {
     try {
@@ -427,7 +441,25 @@ export default function Home() {
           >
             <div className="flex items-center gap-2 mb-4">
               <Gamepad2 className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Available Games</h2>
+              <h2 className="text-xl font-semibold flex-1">Available Games</h2>
+              <div className="flex items-center gap-0.5 p-0.5 rounded-md border bg-muted">
+                <button
+                  onClick={() => toggleViewMode("grid")}
+                  className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Grid view"
+                  data-testid="button-view-grid"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => toggleViewMode("compact")}
+                  className={`p-1.5 rounded transition-colors ${viewMode === "compact" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  title="Compact view"
+                  data-testid="button-view-compact"
+                >
+                  <List className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -468,16 +500,20 @@ export default function Home() {
           </motion.div>
 
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={viewMode === "compact" ? "grid sm:grid-cols-2 gap-2" : "grid gap-6 sm:grid-cols-2 lg:grid-cols-3"}>
               {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-4">
-                  <Skeleton className="h-32 w-full rounded-lg" />
-                  <div className="space-y-2 p-4">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                </div>
+                viewMode === "compact"
+                  ? <Skeleton key={i} className="h-16 rounded-lg" />
+                  : (
+                    <div key={i} className="space-y-4">
+                      <Skeleton className="h-32 w-full rounded-lg" />
+                      <div className="space-y-2 p-4">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    </div>
+                  )
               ))}
             </div>
           ) : error ? (
@@ -497,11 +533,38 @@ export default function Home() {
                   {filteredGames.length} {filteredGames.length === 1 ? "game" : "games"} found
                 </p>
               )}
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredGames.map((game, index) => (
-                  <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} />
-                ))}
-              </div>
+              {viewMode === "compact" ? (
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {filteredGames.map((game) => {
+                    const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
+                    return (
+                      <Link key={game.id} href={`/game/${game.slug}`}>
+                        <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-game-compact-${game.slug}`}>
+                          <CardContent className="p-3 flex items-center gap-3">
+                            <div
+                              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: game.color }}
+                            >
+                              <Icon className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate mb-0.5">{game.name}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
+                            </div>
+                            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredGames.map((game, index) => (
+                    <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} />
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <motion.div
