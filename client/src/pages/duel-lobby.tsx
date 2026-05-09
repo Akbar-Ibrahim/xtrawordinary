@@ -468,6 +468,16 @@ export default function DuelLobby() {
   const [authInitialTab, setAuthInitialTab] = useState<"signin" | "signup">("signup");
   const [selectedDuelGameSlug, setSelectedDuelGameSlug] = useState<string | null>(null);
   const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
+
+  function handleDuelPlay(slug: string) {
+    if (!isAuthenticated) {
+      openAuth("signup");
+    } else if (!user?.isPremium) {
+      toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" });
+    } else {
+      setSelectedDuelGameSlug(slug);
+    }
+  }
   const { unseenChallenges, dismiss: dismissNotification, dismissAll: dismissAllNotifications } = useDuelNotifications();
 
   const { data: allGames = [] } = useQuery<Game[]>({
@@ -632,7 +642,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { if (!isAuthenticated) { openAuth("signup"); } else if (!user?.isPremium) { toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" }); } else { setSelectedDuelGameSlug(g.slug); } }} />)}
+              {turnGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />)}
             </div>
           )}
         </div>
@@ -650,7 +660,7 @@ export default function DuelLobby() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => { if (!isAuthenticated) { openAuth("signup"); } else if (!user?.isPremium) { toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" }); } else { setSelectedDuelGameSlug(g.slug); } }} />)}
+              {raceGames.map((g) => <DuelGameCard key={g.slug} game={g} waitingCount={waitingCountByGame[g.slug] ?? 0} onPlayClick={() => handleDuelPlay(g.slug)} />)}
             </div>
           )}
         </div>

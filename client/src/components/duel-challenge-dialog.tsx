@@ -73,11 +73,13 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
   function handleOpenChange(nextOpen: boolean) {
     const defaultFmt = DUEL_RACE_SLUGS.has(gameSlug) && !DUEL_TURN_SLUGS.has(gameSlug) ? "race" : "turn";
     if (nextOpen) {
+      setDuelTab("targeted");
       setDuelFormat(defaultFmt);
     } else {
       setDuelSearch("");
       setDuelSearchInput("");
       setDuelSearchId(null);
+      setDuelTab("targeted");
       setDuelFormat(defaultFmt);
       setDuelRaceTarget(15);
       setDuelRaceTimeLimit(300);
