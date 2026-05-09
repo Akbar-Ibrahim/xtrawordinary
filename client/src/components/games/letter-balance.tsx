@@ -1009,7 +1009,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               <div className="flex flex-col gap-3 max-w-xs mx-auto">
                 {canContinue && (
                   <Button
-                    className="gap-2"
+                    className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0"
                     onClick={continueToNextLevel}
                     data-testid="button-next-level"
                   >
@@ -1094,6 +1094,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               <div className="flex flex-col gap-3 max-w-xs mx-auto">
                 <Button
                   onClick={() => selectedLevel && startGame(selectedLevel)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   data-testid="button-try-again"
                 >
                   Try Again
