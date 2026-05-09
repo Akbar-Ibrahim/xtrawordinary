@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCountdown, formatCountdown } from "@/lib/use-countdown";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -185,9 +185,11 @@ export default function WordWarsLobby() {
   const past = tournaments.filter(t => t.status === "completed" || t.status === "cancelled");
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="text-word-wars-title">
               <Swords className="h-8 w-8 text-primary" />
@@ -202,117 +204,125 @@ export default function WordWarsLobby() {
           )}
         </div>
 
-        {!isAuthenticated && (
-          <Card className="border-dashed">
-            <CardContent className="py-6 text-center text-muted-foreground">
-              <Trophy className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">Sign in to register for tournaments and track your progress.</p>
-              <Button className="mt-4" onClick={() => setAuthOpen(true)} data-testid="button-signin-prompt">
-                Sign In
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* ── Two-column layout ── */}
+        <div className="flex flex-col md:flex-row gap-6 items-start">
 
-        <section>
-          <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-            <Star className="h-5 w-5 text-primary" />
-            Active & Upcoming
-          </h2>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
-            </div>
-          ) : active.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-10 text-center text-muted-foreground">
-                <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>No active tournaments right now. Check back soon.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3" data-testid="list-active-tournaments">
-              {active.map(t => (
-                <TournamentCard
-                  key={t.id}
-                  tournament={t}
-                  userId={user?.id}
-                  isAuthenticated={isAuthenticated}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+          {/* Left column: Active & Upcoming + Past Tournaments */}
+          <div className="flex-1 min-w-0 space-y-8">
 
-        {past.length > 0 && (
-          <section>
-            <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              Past Tournaments
-            </h2>
-            <div className="space-y-3" data-testid="list-past-tournaments">
-              {past.map(t => (
-                <TournamentCard
-                  key={t.id}
-                  tournament={t}
-                  userId={user?.id}
-                  isAuthenticated={isAuthenticated}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+            {!isAuthenticated && (
+              <Card className="border-dashed">
+                <CardContent className="py-6 text-center text-muted-foreground">
+                  <Trophy className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                  <p className="font-medium">Sign in to register for tournaments and track your progress.</p>
+                  <Button className="mt-4" onClick={() => setAuthOpen(true)} data-testid="button-signin-prompt">
+                    Sign In
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
-        <section>
-          <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-            <Crown className="h-5 w-5 text-amber-500" />
-            Hall of Fame
-          </h2>
-          {championsLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
-            </div>
-          ) : champions.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-10 text-center text-muted-foreground">
-                <Crown className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>No champions yet. The glory awaits.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3" data-testid="list-champions">
-              {champions.map((c, idx) => (
-                <Card key={c.id} className="hover:shadow-sm transition-shadow" data-testid={`card-champion-${c.id}`}>
-                  <CardContent className="py-3 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-muted-foreground w-8 text-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <UserAvatar
-                      name={c.user?.name ?? "Unknown"}
-                      avatarUrl={c.user?.avatarUrl}
-                      className="h-10 w-10"
-                      data-testid={`avatar-champion-${c.id}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <Link href={c.user ? `/profile/${c.user.id}` : "#"}>
-                        <span className="font-semibold hover:underline cursor-pointer" data-testid={`link-champion-name-${c.id}`}>
-                          {c.user?.name ?? "Unknown"}
-                        </span>
-                      </Link>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {c.tournament?.name ?? "Tournament"} · {new Date(c.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge className="gap-1 bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 shrink-0" data-testid={`badge-champion-${c.id}`}>
-                      <Crown className="h-3 w-3" />
-                      Champion
-                    </Badge>
+            <section>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Star className="h-5 w-5 text-primary" />
+                Active & Upcoming
+              </h2>
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
+                </div>
+              ) : active.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-10 text-center text-muted-foreground">
+                    <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p>No active tournaments right now. Check back soon.</p>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-        </section>
+              ) : (
+                <div className="space-y-3" data-testid="list-active-tournaments">
+                  {active.map(t => (
+                    <TournamentCard
+                      key={t.id}
+                      tournament={t}
+                      userId={user?.id}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {past.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  Past Tournaments
+                </h2>
+                <div className="space-y-3" data-testid="list-past-tournaments">
+                  {past.map(t => (
+                    <TournamentCard
+                      key={t.id}
+                      tournament={t}
+                      userId={user?.id}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Right column: Hall of Fame (sticky on desktop, stacked below on mobile) */}
+          <aside className="w-full md:w-72 shrink-0 md:sticky md:top-4">
+            <section>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-500" />
+                Hall of Fame
+              </h2>
+              {championsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}
+                </div>
+              ) : champions.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    <Crown className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No champions yet. The glory awaits.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2" data-testid="list-champions">
+                  {champions.map((c, idx) => (
+                    <Card key={c.id} className="hover:shadow-sm transition-shadow" data-testid={`card-champion-${c.id}`}>
+                      <CardContent className="py-2.5 px-3 flex items-center gap-2.5">
+                        <span className="text-base font-bold text-muted-foreground w-6 text-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        <UserAvatar
+                          name={c.user?.name ?? "Unknown"}
+                          avatarUrl={c.user?.avatarUrl}
+                          className="h-8 w-8 text-xs shrink-0"
+                          data-testid={`avatar-champion-${c.id}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <Link href={c.user ? `/profile/${c.user.id}` : "#"}>
+                            <span className="font-semibold text-sm hover:underline cursor-pointer truncate block" data-testid={`link-champion-name-${c.id}`}>
+                              {c.user?.name ?? "Unknown"}
+                            </span>
+                          </Link>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {c.tournament?.name ?? "Tournament"}
+                          </p>
+                        </div>
+                        <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" data-testid={`badge-champion-${c.id}`} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </section>
+          </aside>
+        </div>
       </motion.div>
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
