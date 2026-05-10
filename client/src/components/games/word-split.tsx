@@ -480,12 +480,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 </div>
               )}
               {!locked && (
-                <div className="flex gap-2 justify-center flex-wrap">
-                  <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
-                    Main Menu
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Replay
                   </Button>
                   <Button onClick={() => difficulty && startGame(difficulty)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                     Play Again
+                  </Button>
+                  <Button onClick={() => setGameState("menu")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    Main Menu
                   </Button>
                   <TryAnotherGameButton currentSlug="word-split" />
                 </div>
@@ -552,12 +556,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 </div>
               )}
               {!locked && (
-                <div className="flex gap-2 justify-center flex-wrap">
-                  <Button onClick={() => setGameState("menu")} data-testid="button-main-menu">
-                    Main Menu
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Replay
                   </Button>
                   <Button onClick={() => difficulty && startGame(difficulty)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                     Play Again
+                  </Button>
+                  <Button onClick={() => setGameState("menu")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    Main Menu
                   </Button>
                   <TryAnotherGameButton currentSlug="word-split" />
                 </div>

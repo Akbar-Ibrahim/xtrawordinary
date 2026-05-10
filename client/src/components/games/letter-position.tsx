@@ -589,27 +589,25 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
-                    <TryAnotherGameButton currentSlug="letter-position" />
-                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Play Again
-                    </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
                     {lastGameSeedRef.current !== null && (
                       <Button onClick={() => startGame(challenge, isSurvival, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Replay
                       </Button>
                     )}
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                    <Button onClick={goToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
+                    </Button>
+                    <TryAnotherGameButton currentSlug="letter-position" />
                     {getNextChallenge(challenge) && (
                       <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    )}
-                    {challenge !== 2 && (
-                      <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                        Back to Menu
                       </Button>
                     )}
                   </div>
@@ -681,21 +679,21 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
-                    <TryAnotherGameButton currentSlug="letter-position" />
-                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Try Again
-                    </Button>
+                  <div className="flex flex-wrap justify-center gap-2">
                     {lastGameSeedRef.current !== null && (
                       <Button onClick={() => startGame(challenge, isSurvival, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Replay
                       </Button>
                     )}
-                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                      Back to Menu
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
                     </Button>
+                    <Button onClick={goToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
+                    </Button>
+                    <TryAnotherGameButton currentSlug="letter-position" />
                   </div>
                 )}
               </CardContent>

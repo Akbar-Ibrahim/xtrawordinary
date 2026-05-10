@@ -18,6 +18,7 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse, WordSweepGrid, WordUnpackPuzzle } from "@shared/schema";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { useLocation } from "wouter";
 interface GridCell {
   letter: string;
   id: number;
@@ -32,6 +33,7 @@ function calculateWordScore(wordLength: number): number {
 
 function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: boolean }) {
   const { playSound } = useSound();
+  const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-sweep" });
   const personalBest = usePersonalBest("word-sweep");
   const GRID_SIZE = 6;
@@ -426,8 +428,15 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex gap-2 justify-center flex-wrap">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
                     <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
+                    <Button onClick={() => navigate("/games/word-sweep")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
+                    </Button>
                     <TryAnotherGameButton currentSlug="word-sweep" />
                   </div>
                 )}
@@ -443,6 +452,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
 
 function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: number; locked?: boolean; overrideSlug?: string }) {
   const { playSound } = useSound();
+  const [, navigateSweep] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-unpack" });
   const personalBest = usePersonalBest("word-unpack");
   const seeded = groupSeed !== undefined;
@@ -741,10 +751,13 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
               </div>
             )}
             {!locked && (
-              <div className="flex gap-2 justify-center flex-wrap">
-                <Button onClick={initGame} className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
-                  <RotateCcw className="h-4 w-4" />
-                  New Puzzle
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Play Again
+                </Button>
+                <Button onClick={() => navigateSweep("/games/word-sweep")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-unpack" />
               </div>

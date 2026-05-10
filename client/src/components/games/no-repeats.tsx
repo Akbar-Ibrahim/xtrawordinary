@@ -394,22 +394,24 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
             )}
 
             {!locked && (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-                <Button onClick={returnToMenu} variant="outline" className="gap-2" data-testid="button-menu">
-                  <Menu className="w-4 h-4" />
-                  Challenge Menu
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Replay
                 </Button>
+                <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  Play Again
+                </Button>
+                <Button onClick={returnToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                  Main Menu
+                </Button>
+                <TryAnotherGameButton currentSlug="no-repeats" />
                 {nextChallenge && gameStatus === "won" && (
                   <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                     Next Challenge
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
-                <Button onClick={() => startGame(challenge, isSurvival)} className="gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
-                  <RotateCcw className="w-4 h-4" />
-                  Play Again
-                </Button>
-                <TryAnotherGameButton currentSlug="no-repeats" />
               </div>
             )}
           </CardContent>

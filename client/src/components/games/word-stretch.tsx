@@ -382,12 +382,36 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             )}
 
             {!locked && (
-              <div className="flex gap-3 pt-2 flex-wrap">
-                <Button variant="outline" className="flex-1 gap-2" onClick={onExit} data-testid="button-change-mode">
-                  Change Mode
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  onClick={() => {
+                    foundRef.current = [];
+                    accumulatedScoreRef.current = 0;
+                    survivalSolvedCountRef.current = 0;
+                    recordedRef.current = false;
+                    gameStatusRef.current = "playing";
+                    setFound([]);
+                    setInput("");
+                    setFinalScore(0);
+                    setAccumulatedScore(0);
+                    setSurvivalSolvedCount(0);
+                    setGameStatus("playing");
+                    const newSeed = Math.floor(Math.random() * 100000);
+                    setSeed(newSeed);
+                    fetchPuzzle(newSeed).then(p => {
+                      if (p) { setPuzzle(p); puzzleRef.current = p; }
+                      startTimer(newSeed);
+                      setTimeout(() => inputRef.current?.focus(), 100);
+                    });
+                  }}
+                  data-testid="button-replay"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
                 </Button>
                 <Button
-                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
                     foundRef.current = [];
                     accumulatedScoreRef.current = 0;
@@ -410,8 +434,10 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                   }}
                   data-testid="button-play-again"
                 >
-                  <RotateCcw className="h-4 w-4" />
                   Play Again
+                </Button>
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={onExit} data-testid="button-main-menu">
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-stretch" />
               </div>

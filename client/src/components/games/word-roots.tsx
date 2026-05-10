@@ -25,6 +25,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordRootsPuzzle } from "@shared/schema";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { useLocation } from "wouter";
 
 const TOTAL_ROUNDS = 5;
 const TOTAL_TIME = 180;
@@ -49,6 +50,7 @@ type RoundResult = { word: string; canonical: boolean; points: number };
 export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { user } = useAuth();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots", quizMode });
+  const [, navigate] = useLocation();
   const seeded = groupSeed !== undefined;
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -236,10 +238,13 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
             />
 
             {!locked && (
-              <div className="flex gap-2 justify-center flex-wrap">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={handleRestart} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Play Again
+                </Button>
+                <Button onClick={() => navigate("/games/word-roots")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-roots" />
               </div>

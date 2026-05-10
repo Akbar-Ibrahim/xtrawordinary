@@ -638,22 +638,28 @@ export function LetterDodgeGame({
           isWin={score > 0}
         />
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button
             onClick={() => startGame(difficulty)}
-            className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+            className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+            data-testid="button-replay"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Replay
+          </Button>
+          <Button
+            onClick={() => startGame(difficulty)}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
             data-testid="button-play-again"
           >
-            <RotateCcw className="h-4 w-4" />
             Play Again
           </Button>
           <Button
             onClick={() => setGameStatus("menu")}
-            variant="outline"
-            className="flex-1"
-            data-testid="button-change-difficulty"
+            className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+            data-testid="button-main-menu"
           >
-            Change Difficulty
+            Main Menu
           </Button>
           <TryAnotherGameButton currentSlug="letter-dodge" />
         </div>

@@ -309,12 +309,42 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
             )}
 
             {!locked && (
-              <div className="flex gap-3 pt-2 flex-wrap">
-                <Button variant="outline" className="flex-1 gap-2" onClick={onExit} data-testid="button-change-mode">
-                  Change Mode
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  onClick={() => {
+                    chainRef.current = [];
+                    scoreRef.current = 0;
+                    recordedRef.current = false;
+                    gameStatusRef.current = "playing";
+                    setChain([]);
+                    setScore(0);
+                    setInput("");
+                    setCurrentWord("");
+                    setGameStatus("playing");
+                    const newSeed = Math.floor(Math.random() * 100000);
+                    (async () => {
+                      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${newSeed}`, { credentials: "include" });
+                      if (!r.ok) return;
+                      const p: PuzzleData = await r.json();
+                      setPuzzle(p);
+                      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
+                      setChain([seedEntry]);
+                      chainRef.current = [seedEntry];
+                      setCurrentWord(p.seed);
+                      currentWordRef.current = p.seed;
+                      seedLenRef.current = p.seed.length;
+                      startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+                      setTimeout(() => inputRef.current?.focus(), 100);
+                    })();
+                  }}
+                  data-testid="button-replay"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
                 </Button>
                 <Button
-                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
                     chainRef.current = [];
                     scoreRef.current = 0;
@@ -343,8 +373,10 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                   }}
                   data-testid="button-play-again"
                 >
-                  <RotateCcw className="h-4 w-4" />
                   Play Again
+                </Button>
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={onExit} data-testid="button-main-menu">
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-bloom" />
               </div>

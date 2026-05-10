@@ -17,6 +17,7 @@ import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { useLocation } from "wouter";
 
 interface WordLadderGameProps {
   initialChallenge?: boolean;
@@ -42,6 +43,7 @@ function isOneLetterDiff(a: string, b: string): boolean {
 
 export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadderGameProps) {
   const { playSound } = useSound();
+  const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-ladder" });
   const personalBest = usePersonalBest("word-ladder");
   const seeded = groupSeed !== undefined;
@@ -643,9 +645,16 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex gap-2 justify-center flex-wrap mt-2">
+                  <div className="flex flex-wrap justify-center gap-2 mt-2">
+                    <Button onClick={() => initGame()} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
                     <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
+                    </Button>
+                    <Button onClick={() => navigate("/games/word-ladder")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-ladder" />
                   </div>
@@ -691,9 +700,16 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex gap-2 justify-center flex-wrap mt-2">
+                  <div className="flex flex-wrap justify-center gap-2 mt-2">
+                    <Button onClick={() => initGame()} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
                     <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
+                    </Button>
+                    <Button onClick={() => navigate("/games/word-ladder")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-ladder" />
                   </div>

@@ -990,14 +990,28 @@ export function DeepShellWordsGame({
                 </div>
               )}
 
-              <div className="flex gap-2 justify-center flex-wrap">
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  onClick={() => switchMode(variation, subMode)}
+                  data-testid="button-replay"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
+                </Button>
                 <Button
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => switchMode(variation, subMode)}
                   data-testid="button-play-again"
                 >
-                  <RotateCcw className="h-4 w-4 mr-2" />
                   Play Again
+                </Button>
+                <Button
+                  className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                  onClick={() => setGameStatus("idle")}
+                  data-testid="button-main-menu"
+                >
+                  Main Menu
                 </Button>
                 {!locked && <TryAnotherGameButton currentSlug={activeSlug} />}
               </div>

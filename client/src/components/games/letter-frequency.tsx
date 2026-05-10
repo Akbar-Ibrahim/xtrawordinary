@@ -664,21 +664,22 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
-                    <TryAnotherGameButton currentSlug="letter-frequency" />
-                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
+                    <Button onClick={goToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
+                    </Button>
+                    <TryAnotherGameButton currentSlug="letter-frequency" />
                     {getNextChallenge(challenge) && (
                       <Button onClick={() => startGame(getNextChallenge(challenge)!, isSurvival)} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
                         Next Challenge
                         <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    )}
-                    {challenge !== 4 && challenge !== "random" && (
-                      <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                        Back to Menu
                       </Button>
                     )}
                   </div>
@@ -738,14 +739,18 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => startGame(challenge, isSurvival)} data-testid="button-try-again">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
-                      Try Again
+                      Replay
                     </Button>
-                    <Button onClick={goToMenu} variant="secondary" data-testid="button-back-menu">
-                      Back to Menu
+                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      Play Again
                     </Button>
+                    <Button onClick={goToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
+                    </Button>
+                    <TryAnotherGameButton currentSlug="letter-frequency" />
                   </div>
                 )}
               </CardContent>

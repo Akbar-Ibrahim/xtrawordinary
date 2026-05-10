@@ -570,21 +570,25 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex gap-3 justify-center flex-wrap">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={restartGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
                     <Button onClick={restartGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
-                    <TryAnotherGameButton currentSlug="letter-pool" />
                     <Button
-                      variant="outline"
+                      className="bg-amber-500 hover:bg-amber-600 text-white border-0"
                       onClick={() => {
                         setGameStatus("menu");
                         setCurrentWord(null);
                       }}
-                      data-testid="button-change-mode"
+                      data-testid="button-main-menu"
                     >
-                      Change Mode
+                      Main Menu
                     </Button>
+                    <TryAnotherGameButton currentSlug="letter-pool" />
                   </div>
                 )}
               </CardContent>

@@ -418,13 +418,13 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
               </div>
             )}
             {!locked && (
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Button onClick={() => initGame(selectedChallenge)} size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => initGame(selectedChallenge)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Play Again
                 </Button>
-                <Button variant="outline" onClick={backToSelection} size="lg" data-testid="button-change-challenge">
-                  Change Challenge
+                <Button onClick={backToSelection} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-stack" />
               </div>

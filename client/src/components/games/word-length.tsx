@@ -625,14 +625,28 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+                  <div className="flex flex-wrap justify-center gap-2">
                     <Button 
                       onClick={() => startGame(variation, isSurvival)} 
-                      className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                      className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                      data-testid="button-replay"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
+                    <Button 
+                      onClick={() => startGame(variation, isSurvival)} 
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                       data-testid="button-play-again"
                     >
-                      <RotateCcw className="h-4 w-4" />
                       Play Again
+                    </Button>
+                    <Button 
+                      onClick={() => { stopTimer(); setGameStatus("menu"); }} 
+                      className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                      data-testid="button-main-menu"
+                    >
+                      Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-length" />
                     {gameStatus === "won" && variation < 5 && (
@@ -645,15 +659,6 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                         <ArrowRight className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => { stopTimer(); setGameStatus("menu"); }} 
-                      className="gap-1.5"
-                      data-testid="button-back-menu"
-                    >
-                      <Menu className="h-4 w-4" />
-                      Back to Menu
-                    </Button>
                   </div>
                 )}
               </CardContent>

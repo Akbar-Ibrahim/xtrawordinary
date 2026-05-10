@@ -360,22 +360,28 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
             )}
 
             {!locked && (
-              <div className="flex gap-3 pt-2 flex-wrap">
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button
-                  variant="outline"
-                  className="flex-1 gap-2"
-                  onClick={onExit}
-                  data-testid="button-change-mode"
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  onClick={onPlayAgain}
+                  data-testid="button-replay"
                 >
-                  Change Mode
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
                 </Button>
                 <Button
-                  className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={onPlayAgain}
                   data-testid="button-play-again"
                 >
-                  <RotateCcw className="h-4 w-4" />
                   Play Again
+                </Button>
+                <Button
+                  className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                  onClick={onExit}
+                  data-testid="button-main-menu"
+                >
+                  Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="ladder-rush" />
               </div>

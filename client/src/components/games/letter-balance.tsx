@@ -938,7 +938,17 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 <span><button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}to save your score!</span>
               </div>
             )}
-            <TryAnotherGameButton currentSlug="letter-balance" />
+            {!locked && (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => setGameState("level_menu")} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  Play Again
+                </Button>
+                <Button onClick={backToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                  Main Menu
+                </Button>
+                <TryAnotherGameButton currentSlug="letter-balance" />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1006,7 +1016,30 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
             
             {!locked && (
-              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  data-testid="button-replay"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
+                </Button>
+                <Button
+                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                  data-testid="button-play-again"
+                >
+                  Play Again
+                </Button>
+                <Button
+                  onClick={backToMenu}
+                  className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                  data-testid="button-main-menu"
+                >
+                  Main Menu
+                </Button>
+                <TryAnotherGameButton currentSlug="letter-balance" />
                 {canContinue && (
                   <Button
                     className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0"
@@ -1017,21 +1050,6 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={backToLevelMenu}
-                  data-testid="button-level-menu"
-                >
-                  Choose Another Level
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={backToMenu}
-                  data-testid="button-main-menu"
-                >
-                  Main Menu
-                </Button>
-                <TryAnotherGameButton currentSlug="letter-balance" />
               </div>
             )}
           </CardContent>
@@ -1091,24 +1109,25 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
             
             {!locked && (
-              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                  data-testid="button-replay"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
+                </Button>
                 <Button
                   onClick={() => selectedLevel && startGame(selectedLevel)}
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
-                  data-testid="button-try-again"
+                  data-testid="button-play-again"
                 >
-                  Try Again
+                  Play Again
                 </Button>
                 <Button
-                  variant="outline"
-                  onClick={backToLevelMenu}
-                  data-testid="button-level-menu"
-                >
-                  Choose Another Level
-                </Button>
-                <Button
-                  variant="ghost"
                   onClick={backToMenu}
+                  className="bg-amber-500 hover:bg-amber-600 text-white border-0"
                   data-testid="button-main-menu"
                 >
                   Main Menu

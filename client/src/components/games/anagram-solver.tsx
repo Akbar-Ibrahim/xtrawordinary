@@ -17,9 +17,11 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { useLocation } from "wouter";
 
 export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[] } = {}) {
   const { playSound } = useSound();
+  const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver", quizMode });
   const personalBest = usePersonalBest("anagram-solver");
   const seeded = groupSeed !== undefined;
@@ -364,9 +366,16 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex gap-2 justify-center flex-wrap">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Replay
+                    </Button>
                     <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
+                    </Button>
+                    <Button onClick={() => navigate("/games/anagram-solver")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                      Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="anagram-solver" />
                   </div>
