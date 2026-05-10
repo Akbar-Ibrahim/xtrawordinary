@@ -88,6 +88,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
   const chainRef = useRef<ChainEntry[]>([]);
   const scoreRef = useRef(0);
   const seedLenRef = useRef(0);
+  const currentSeedRef = useRef<number>(initialSeed);
 
   const { data: leaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
@@ -322,9 +323,9 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                     setInput("");
                     setCurrentWord("");
                     setGameStatus("playing");
-                    const newSeed = Math.floor(Math.random() * 100000);
+                    const replaySeed = currentSeedRef.current;
                     (async () => {
-                      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${newSeed}`, { credentials: "include" });
+                      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${replaySeed}`, { credentials: "include" });
                       if (!r.ok) return;
                       const p: PuzzleData = await r.json();
                       setPuzzle(p);
@@ -356,6 +357,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                     setCurrentWord("");
                     setGameStatus("playing");
                     const newSeed = Math.floor(Math.random() * 100000);
+                    currentSeedRef.current = newSeed;
                     (async () => {
                       const r = await fetch(`/api/games/word-bloom/puzzle?seed=${newSeed}`, { credentials: "include" });
                       if (!r.ok) return;

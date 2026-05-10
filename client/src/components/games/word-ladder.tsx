@@ -79,10 +79,13 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
     return puzzles[Math.floor(rng() * puzzles.length)];
   }, []);
 
-  const initGame = useCallback(() => {
+  const lastPuzzleRef = useRef<WordLadderPuzzle | null>(null);
+
+  const initGame = useCallback((overridePuzzle?: WordLadderPuzzle) => {
     resetRecorded();
-    const selected = selectPuzzle(allPuzzles);
+    const selected = overridePuzzle ?? selectPuzzle(allPuzzles);
     if (!selected) return;
+    lastPuzzleRef.current = selected;
     setPuzzle(selected);
     setLadder([selected.start]);
     setCurrentInput("");
@@ -646,7 +649,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2 mt-2">
-                    <Button onClick={() => initGame()} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastPuzzleRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
@@ -701,7 +704,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2 mt-2">
-                    <Button onClick={() => initGame()} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastPuzzleRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>

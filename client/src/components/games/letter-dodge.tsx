@@ -155,8 +155,10 @@ export function LetterDodgeGame({
     }, 1000);
   }, [stopTimer, playSound]);
 
+  const lastForbiddenLettersRef = useRef<string[]>([]);
+
   const startGame = useCallback(
-    (d: DodgeDifficulty) => {
+    (d: DodgeDifficulty, overrideLetters?: string[]) => {
       resetRecorded();
       stopTimer();
       isSurvivalRef.current = isSurvival;
@@ -169,17 +171,24 @@ export function LetterDodgeGame({
       setUserInput("");
       setFeedback(null);
 
-      if (groupSeed !== undefined) {
-        seedRngRef.current = makeSeededRng(groupSeed);
-      }
-      const rng = seedRngRef.current ?? Math.random;
-
-      if (initialForbiddenLetters && initialForbiddenLetters.length > 0) {
-        setForbiddenLetters(resolveForbiddenLetters(initialForbiddenLetters, rng));
+      if (overrideLetters) {
+        setForbiddenLetters(overrideLetters);
       } else {
-        const config = DIFFICULTY_CONFIG[d];
-        const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
-        setForbiddenLetters(pickForbiddenLetters(count, rng));
+        if (groupSeed !== undefined) {
+          seedRngRef.current = makeSeededRng(groupSeed);
+        }
+        const rng = seedRngRef.current ?? Math.random;
+
+        let chosen: string[];
+        if (initialForbiddenLetters && initialForbiddenLetters.length > 0) {
+          chosen = resolveForbiddenLetters(initialForbiddenLetters, rng);
+        } else {
+          const config = DIFFICULTY_CONFIG[d];
+          const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
+          chosen = pickForbiddenLetters(count, rng);
+        }
+        lastForbiddenLettersRef.current = chosen;
+        setForbiddenLetters(chosen);
       }
 
       setGameStatus("playing");
@@ -640,7 +649,7 @@ export function LetterDodgeGame({
 
         <div className="flex flex-wrap justify-center gap-2">
           <Button
-            onClick={() => startGame(difficulty)}
+            onClick={() => startGame(difficulty, lastForbiddenLettersRef.current.length > 0 ? lastForbiddenLettersRef.current : undefined)}
             className="bg-sky-500 hover:bg-sky-600 text-white border-0"
             data-testid="button-replay"
           >

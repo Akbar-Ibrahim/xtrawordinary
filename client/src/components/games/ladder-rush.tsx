@@ -58,10 +58,12 @@ interface LadderRushPlayProps {
   doubleSwap?: boolean;
   onExit: () => void;
   onPlayAgain: () => void;
+  onReplay: (startWord: string) => void;
+  initialStartWord?: string;
   locked?: boolean;
 }
 
-function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleSwap, onExit, onPlayAgain, locked }: LadderRushPlayProps) {
+function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleSwap, onExit, onPlayAgain, onReplay, initialStartWord, locked }: LadderRushPlayProps) {
   const { playSound } = useSound();
   const swapCount = doubleSwap ? 2 : 1;
   const baseSlug = doubleSwap ? `ladder-rush-double-${wordLength}` : `ladder-rush-${wordLength}`;
@@ -131,9 +133,12 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
     }, 1000);
   }, [endGame]);
 
+  const lastStartWordRef = useRef<string>("");
+
   useEffect(() => {
-    const startWord = pickStartWord();
+    const startWord = initialStartWord || pickStartWord();
     if (!startWord) return;
+    lastStartWordRef.current = startWord;
     recordedRef.current = false;
     const initialChain = [startWord];
     chainRef.current = initialChain;
@@ -363,7 +368,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
-                  onClick={onPlayAgain}
+                  onClick={() => onReplay(lastStartWordRef.current)}
                   data-testid="button-replay"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
@@ -563,6 +568,7 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGame
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const [playing, setPlaying] = useState(false);
   const [playKey, setPlayKey] = useState(0);
+  const [replayStartWord, setReplayStartWord] = useState<string | undefined>(undefined);
 
   const { data: puzzles = [], isLoading } = useQuery<LadderRushPuzzle[]>({
     queryKey: ["/api/games/ladder-rush/puzzles", selectedLength],
@@ -585,11 +591,14 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGame
         isSurvival={isSurvival}
         survivalTime={survivalTime}
         doubleSwap={doubleSwap}
+        initialStartWord={replayStartWord}
         onExit={() => {
           setPlaying(false);
           setSelectedLength(null);
+          setReplayStartWord(undefined);
         }}
-        onPlayAgain={() => setPlayKey(k => k + 1)}
+        onPlayAgain={() => { setReplayStartWord(undefined); setPlayKey(k => k + 1); }}
+        onReplay={(startWord) => { setReplayStartWord(startWord); setPlayKey(k => k + 1); }}
         locked={locked}
       />
     );

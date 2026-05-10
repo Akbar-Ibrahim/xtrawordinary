@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,7 @@ type Variation = 1 | 2;
 type Level = 1 | 2;
 
 export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number } = {}) {
+  const [, navigate] = useLocation();
   const { playSound } = useSound();
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
@@ -641,7 +643,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     <Button onClick={() => setGameStatus("menu")} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
-                    <Button onClick={() => setGameStatus("menu")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    <Button onClick={() => navigate("/games/word-chain")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
                       Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-chain" />

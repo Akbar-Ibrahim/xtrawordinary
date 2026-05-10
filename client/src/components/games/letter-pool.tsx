@@ -109,7 +109,9 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     setUsedWords((prev) => new Set(Array.from(prev).concat(nextWord.word)));
   }, [usedWords, activeWords, setupWord, playSound, seeded]);
 
-  const initGame = useCallback((v: Variation) => {
+  const lastFirstWordRef = useRef<(typeof words)[0] | null>(null);
+
+  const initGame = useCallback((v: Variation, overrideFirstWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
     const freshWords = words;
@@ -122,7 +124,8 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const firstWord = seeded ? freshWords[0] : freshWords[Math.floor(Math.random() * freshWords.length)];
+    const firstWord = overrideFirstWord ?? (seeded ? freshWords[0] : freshWords[Math.floor(Math.random() * freshWords.length)]);
+    lastFirstWordRef.current = firstWord;
     setCurrentWord(firstWord);
     setupWord(firstWord);
     setUsedWords(new Set([firstWord.word]));
@@ -252,6 +255,10 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
 
   const restartGame = useCallback(() => {
     if (variation) initGame(variation);
+  }, [variation, initGame]);
+
+  const replayGame = useCallback(() => {
+    if (variation) initGame(variation, lastFirstWordRef.current ?? undefined);
   }, [variation, initGame]);
 
   if (isLoading) {
@@ -571,7 +578,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={restartGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={replayGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>

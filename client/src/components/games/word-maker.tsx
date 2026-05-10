@@ -81,7 +81,9 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedBaseWords, activeWords]);
 
-  const initGame = useCallback(() => {
+  const lastWordRef = useRef<(typeof words)[0] | null>(null);
+
+  const initGame = useCallback((overrideWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
     setActiveWords(words);
@@ -92,7 +94,8 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
     setUsedBaseWords(new Set());
     setFoundWords(new Set());
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = words[Math.floor(rng() * words.length)];
+    const randomWord = overrideWord ?? words[Math.floor(rng() * words.length)];
+    lastWordRef.current = randomWord;
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedBaseWords(new Set([randomWord.baseWord]));
@@ -225,7 +228,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
             <Button
               variant="outline"
               size="sm"
-              onClick={initGame}
+              onClick={() => initGame()}
               className="gap-1.5"
               data-testid="button-restart"
             >
@@ -414,11 +417,11 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastWordRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <Button onClick={() => navigate("/games/word-maker")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
@@ -477,11 +480,11 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastWordRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <Button onClick={() => navigate("/games/word-maker")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">

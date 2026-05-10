@@ -94,6 +94,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   const puzzleRef = useRef<PuzzleData | null>(null);
   const accumulatedScoreRef = useRef(0);
   const survivalSolvedCountRef = useRef(0);
+  const sessionSeedRef = useRef<number>(initialSeed);
 
   const { data: solutions } = useQuery<string[]>({
     queryKey: ["/api/games/word-stretch/solutions", finalSeed],
@@ -397,11 +398,11 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                     setAccumulatedScore(0);
                     setSurvivalSolvedCount(0);
                     setGameStatus("playing");
-                    const newSeed = Math.floor(Math.random() * 100000);
-                    setSeed(newSeed);
-                    fetchPuzzle(newSeed).then(p => {
+                    const replaySeed = sessionSeedRef.current;
+                    setSeed(replaySeed);
+                    fetchPuzzle(replaySeed).then(p => {
                       if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      startTimer(newSeed);
+                      startTimer(replaySeed);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     });
                   }}
@@ -425,6 +426,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                     setSurvivalSolvedCount(0);
                     setGameStatus("playing");
                     const newSeed = Math.floor(Math.random() * 100000);
+                    sessionSeedRef.current = newSeed;
                     setSeed(newSeed);
                     fetchPuzzle(newSeed).then(p => {
                       if (p) { setPuzzle(p); puzzleRef.current = p; }

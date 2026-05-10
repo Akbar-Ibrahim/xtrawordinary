@@ -208,6 +208,8 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     }, 1000);
   }, [stopTimer, timePerVariation, survivalTime]);
 
+  const lastConstraintRef = useRef<LevelConstraint | null>(null);
+
   const startGame = useCallback((varId: number, survival: boolean, pinnedConstraint?: LevelConstraint) => {
     resetRecorded();
     stopTimer();
@@ -220,7 +222,9 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     setUsedWords(new Set());
     setUserInput("");
     setFeedback(null);
-    setConstraint(pinnedConstraint ?? generateConstraint(varId, seedRngRef.current));
+    const chosenConstraint = pinnedConstraint ?? generateConstraint(varId, seedRngRef.current);
+    lastConstraintRef.current = chosenConstraint;
+    setConstraint(chosenConstraint);
     setGameStatus("playing");
     startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
@@ -627,7 +631,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button 
-                      onClick={() => startGame(variation, isSurvival)} 
+                      onClick={() => startGame(variation, isSurvival, lastConstraintRef.current ?? undefined)} 
                       className="bg-sky-500 hover:bg-sky-600 text-white border-0"
                       data-testid="button-replay"
                     >

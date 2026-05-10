@@ -76,7 +76,9 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedWords, activeWords, playSound]);
 
-  const initGame = useCallback(() => {
+  const lastWordRef = useRef<(typeof words)[0] | null>(null);
+
+  const initGame = useCallback((overrideWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
     setActiveWords(words);
@@ -89,7 +91,8 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
     setAnswerRevealed(false);
     setFeedback(null);
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = words[Math.floor(rng() * words.length)];
+    const randomWord = overrideWord ?? words[Math.floor(rng() * words.length)];
+    lastWordRef.current = randomWord;
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
@@ -190,7 +193,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
             <Button
               variant="outline"
               size="sm"
-              onClick={initGame}
+              onClick={() => initGame()}
               className="gap-1.5"
               data-testid="button-restart"
             >
@@ -453,11 +456,11 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastWordRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
                     <Button onClick={() => navigate("/games/definition-match")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
                       Main Menu
                     </Button>
@@ -505,11 +508,11 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastWordRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">Play Again</Button>
                     <Button onClick={() => navigate("/games/definition-match")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
                       Main Menu
                     </Button>

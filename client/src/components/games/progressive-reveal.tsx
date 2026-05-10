@@ -105,7 +105,9 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     }
   }, [seeded, setupWord, playSound]);
 
-  const initGame = useCallback(() => {
+  const lastWordRef = useRef<(typeof words)[0] | null>(null);
+
+  const initGame = useCallback((overrideWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
     wordIndexRef.current = 1;
@@ -116,7 +118,8 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const firstWord = seeded ? words[0] : words[Math.floor(Math.random() * words.length)];
+    const firstWord = overrideWord ?? (seeded ? words[0] : words[Math.floor(Math.random() * words.length)]);
+    lastWordRef.current = firstWord;
     setCurrentWord(firstWord);
     setupWord(firstWord);
     const initialUsed = new Set([firstWord.word]);
@@ -255,7 +258,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
             <Button
               variant="outline"
               size="sm"
-              onClick={initGame}
+              onClick={() => initGame()}
               className="gap-1.5"
               data-testid="button-restart"
             >
@@ -459,11 +462,11 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastWordRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <Button onClick={() => navigate("/games/progressive-reveal")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,7 @@ export function ShellWordsGame({
   locked,
   initialMode,
 }: { groupSeed?: number; locked?: boolean; initialMode?: "blitz" | "wrapper" } = {}) {
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -879,7 +881,7 @@ export function ShellWordsGame({
                 </Button>
                 <Button
                   className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-                  onClick={() => setGameStatus("idle")}
+                  onClick={() => navigate("/games/shell-words")}
                   data-testid="button-main-menu"
                 >
                   Main Menu

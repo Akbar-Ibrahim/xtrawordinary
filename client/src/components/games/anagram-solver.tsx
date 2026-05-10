@@ -70,7 +70,9 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedSets, activeWordSets]);
 
-  const initGame = useCallback(() => {
+  const lastSetRef = useRef<(typeof wordSets)[0] | null>(null);
+
+  const initGame = useCallback((overrideSet?: (typeof wordSets)[0]) => {
     if (wordSets.length === 0) return;
     resetRecorded();
     setActiveWordSets(wordSets);
@@ -82,10 +84,12 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
     setWordsSolved(0);
     const rng = seedRngRef.current ?? Math.random;
     const randomIndex = Math.floor(rng() * wordSets.length);
-    const newSet = wordSets[randomIndex];
+    const newSet = overrideSet ?? wordSets[randomIndex];
+    lastSetRef.current = newSet;
     setCurrentSet(newSet);
     setUserInput("");
-    setUsedSets(new Set([randomIndex]));
+    const idx = overrideSet ? wordSets.findIndex(s => s === overrideSet) : randomIndex;
+    setUsedSets(new Set([idx >= 0 ? idx : 0]));
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [wordSets, resetRecorded]);
 
@@ -207,7 +211,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
             <Button
               variant="outline"
               size="sm"
-              onClick={initGame}
+              onClick={() => initGame()}
               className="gap-1.5"
               data-testid="button-restart"
             >
@@ -367,11 +371,11 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => initGame(lastSetRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
-                    <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    <Button onClick={() => initGame()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
                     <Button onClick={() => navigate("/games/anagram-solver")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
