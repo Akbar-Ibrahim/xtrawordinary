@@ -552,8 +552,13 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
     startTimer();
   }, [startTimer]);
 
+  const lastPuzzleDataRef = useRef<WordUnpackPuzzle | null>(null);
+
   useEffect(() => {
-    if (puzzleData && gameStatus === "loading") buildPuzzle(puzzleData);
+    if (puzzleData && gameStatus === "loading") {
+      lastPuzzleDataRef.current = puzzleData;
+      buildPuzzle(puzzleData);
+    }
   }, [puzzleData, gameStatus, buildPuzzle]);
 
   const initGame = useCallback(async () => {
@@ -561,8 +566,18 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
     stopTimer();
     setGameStatus("loading");
     const result = await refetch();
-    if (result.data) buildPuzzle(result.data);
+    if (result.data) {
+      lastPuzzleDataRef.current = result.data;
+      buildPuzzle(result.data);
+    }
   }, [refetch, buildPuzzle, resetRecorded, stopTimer]);
+
+  const replayUnpackGame = useCallback(() => {
+    if (!lastPuzzleDataRef.current) return;
+    resetRecorded();
+    stopTimer();
+    buildPuzzle(lastPuzzleDataRef.current);
+  }, [buildPuzzle, resetRecorded, stopTimer]);
 
   useEffect(() => {
     if (gameStatus === "ended") {
@@ -772,8 +787,11 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
             )}
             {!locked && (
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                <Button onClick={replayUnpackGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                   <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
+                </Button>
+                <Button onClick={initGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   Play Again
                 </Button>
                 <Button onClick={() => navigateSweep("/games/word-sweep")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">

@@ -144,7 +144,9 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  const startGame = useCallback((diff: Difficulty) => {
+  const lastFirstPuzzleRef = useRef<typeof puzzles[0] | null>(null);
+
+  const startGame = useCallback((diff: Difficulty, overrideFirstPuzzle?: typeof puzzles[0]) => {
     if (puzzles.length === 0) return;
 
     seededQueueRef.current = [];
@@ -170,8 +172,9 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     resetRecorded();
 
     const puzzleList = filtered.length > 0 ? filtered : puzzles;
-    const puzzle = puzzleList[Math.floor(Math.random() * puzzleList.length)];
+    const puzzle = overrideFirstPuzzle ?? puzzleList[Math.floor(Math.random() * puzzleList.length)];
     if (puzzle) {
+      lastFirstPuzzleRef.current = puzzle;
       setUsedPuzzles(new Set<string>([puzzle.targetWord]));
       startPuzzle(puzzle);
     }
@@ -481,7 +484,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
               )}
               {!locked && (
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                  <Button onClick={() => difficulty && startGame(difficulty, lastFirstPuzzleRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Replay
                   </Button>
@@ -557,7 +560,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
               )}
               {!locked && (
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button onClick={() => difficulty && startGame(difficulty)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                  <Button onClick={() => difficulty && startGame(difficulty, lastFirstPuzzleRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Replay
                   </Button>

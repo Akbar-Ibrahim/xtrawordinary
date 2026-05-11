@@ -209,7 +209,10 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     }, 1000);
   }, [stopTimer, timePerChallenge, survivalTime]);
 
-  const startGame = useCallback((c: Challenge, survival: boolean) => {
+  const lastConstraintRef = useRef<FrequencyConstraint | null>(null);
+  const lastMultiConstraintRef = useRef<MultiLetterConstraint | null>(null);
+
+  const startGame = useCallback((c: Challenge, survival: boolean, overrideConstraint?: FrequencyConstraint, overrideMultiConstraint?: MultiLetterConstraint) => {
     resetRecorded();
     stopTimer();
     isSurvivalRef.current = survival;
@@ -224,14 +227,21 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     if (c === "multi") {
       setConstraint(null);
       const rng = seedRngRef.current ?? Math.random;
-      if (initialLettersRef.current && initialLettersRef.current.length > 0) {
-        setMultiConstraint({ letters: resolveMultiLetters(initialLettersRef.current, rng), minCount: 2 });
+      let mc: MultiLetterConstraint;
+      if (overrideMultiConstraint) {
+        mc = overrideMultiConstraint;
+      } else if (initialLettersRef.current && initialLettersRef.current.length > 0) {
+        mc = { letters: resolveMultiLetters(initialLettersRef.current, rng), minCount: 2 };
       } else {
-        setMultiConstraint(generateMultiLetterConstraint(rng));
+        mc = generateMultiLetterConstraint(rng);
       }
+      lastMultiConstraintRef.current = mc;
+      setMultiConstraint(mc);
     } else {
       setMultiConstraint(null);
-      setConstraint(generateConstraint(c, seedRngRef.current, initialLetterRef.current));
+      const fc = overrideConstraint ?? generateConstraint(c, seedRngRef.current, initialLetterRef.current);
+      lastConstraintRef.current = fc;
+      setConstraint(fc);
     }
     setGameStatus("playing");
     startTimer(survival);
@@ -665,7 +675,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => startGame(challenge, isSurvival, lastConstraintRef.current ?? undefined, lastMultiConstraintRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
@@ -740,7 +750,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={() => startGame(challenge, isSurvival, lastConstraintRef.current ?? undefined, lastMultiConstraintRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>
