@@ -640,10 +640,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={() => setGameStatus("menu")} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    <Button onClick={() => startGame(variation, level)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
-                    <Button onClick={() => navigate("/games/word-chain")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    <Button onClick={() => setGameStatus("menu")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
                       Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-chain" />

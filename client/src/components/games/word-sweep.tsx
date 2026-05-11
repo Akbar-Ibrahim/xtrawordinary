@@ -75,6 +75,8 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
     },
   });
 
+  const lastGridDataRef = useRef<WordSweepGrid | null>(null);
+
   const buildGrid = useCallback((data: WordSweepGrid) => {
     const cells: GridCell[] = [];
     let id = 0;
@@ -89,7 +91,10 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   }, []);
 
   useEffect(() => {
-    if (gridData && gameStatus === "loading") buildGrid(gridData);
+    if (gridData && gameStatus === "loading") {
+      lastGridDataRef.current = gridData;
+      buildGrid(gridData);
+    }
   }, [gridData, gameStatus, buildGrid]);
 
   const initGame = useCallback(async () => {
@@ -102,8 +107,23 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
     setCompletionMessage("");
     setIsSubmitting(false);
     const result = await refetch();
-    if (result.data) buildGrid(result.data);
+    if (result.data) {
+      lastGridDataRef.current = result.data;
+      buildGrid(result.data);
+    }
   }, [refetch, buildGrid, resetRecorded]);
+
+  const replayGame = useCallback(() => {
+    if (!lastGridDataRef.current) return;
+    resetRecorded();
+    setScore(0);
+    setWordsFound([]);
+    setShufflesLeft(MAX_SHUFFLES);
+    setFeedback(null);
+    setCompletionMessage("");
+    setIsSubmitting(false);
+    buildGrid(lastGridDataRef.current);
+  }, [buildGrid, resetRecorded]);
 
   useEffect(() => {
     if (gameStatus === "ended") reportResult(score, remainingLetters === 0, wordsFound.length);
@@ -429,7 +449,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                 )}
                 {!locked && (
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button onClick={initGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <Button onClick={replayGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />
                       Replay
                     </Button>

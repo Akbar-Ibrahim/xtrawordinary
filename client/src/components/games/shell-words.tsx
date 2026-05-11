@@ -239,7 +239,10 @@ export function ShellWordsGame({
     [endGame, fetchCrackPair]
   );
 
-  const startGame = useCallback(async () => {
+  const lastWrapperSeedRef = useRef<number | null>(null);
+  const lastCrackSeedBaseRef = useRef<number | null>(null);
+
+  const startGame = useCallback(async (overrideWrapperSeed?: number, overrideCrackSeedBase?: number) => {
     resetRecorded();
     foundSet.current = new Set();
     scoreRef.current = 0;
@@ -253,7 +256,8 @@ export function ShellWordsGame({
     setWrapperTransitioning(false);
 
     if (variation === "wrapper") {
-      const seed = groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000);
+      const seed = overrideWrapperSeed ?? (groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000));
+      lastWrapperSeedRef.current = seed;
       setWrapperSeed(seed);
       try {
         const puzzle = await fetchWrapperPuzzle(seed);
@@ -264,7 +268,8 @@ export function ShellWordsGame({
         return;
       }
     } else if (variation === "crack") {
-      const seedBase = Math.floor(Math.random() * 100000);
+      const seedBase = overrideCrackSeedBase ?? Math.floor(Math.random() * 100000);
+      lastCrackSeedBaseRef.current = seedBase;
       setCrackSeedBase(seedBase);
       setCrackRound(0);
       try {
@@ -600,7 +605,7 @@ export function ShellWordsGame({
                 </p>
                 <p className="text-xs text-muted-foreground">{MODE_SCORING[modeKey]}</p>
               </div>
-              <Button onClick={startGame} size="lg" data-testid="button-start-game">
+              <Button onClick={() => startGame()} size="lg" data-testid="button-start-game">
                 Start Game
               </Button>
             </div>
@@ -866,7 +871,7 @@ export function ShellWordsGame({
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
-                  onClick={() => switchMode(variation, subMode)}
+                  onClick={() => startGame(lastWrapperSeedRef.current ?? undefined, lastCrackSeedBaseRef.current ?? undefined)}
                   data-testid="button-replay"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
@@ -874,7 +879,7 @@ export function ShellWordsGame({
                 </Button>
                 <Button
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
-                  onClick={() => switchMode(variation, subMode)}
+                  onClick={() => startGame()}
                   data-testid="button-play-again"
                 >
                   Play Again
