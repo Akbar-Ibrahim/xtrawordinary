@@ -629,41 +629,46 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                   </div>
                 )}
                 {!locked && (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button 
-                      onClick={() => startGame(variation, isSurvival, lastConstraintRef.current ?? undefined)} 
-                      className="bg-sky-500 hover:bg-sky-600 text-white border-0"
-                      data-testid="button-replay"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Replay
-                    </Button>
-                    <Button 
-                      onClick={() => startGame(variation, isSurvival)} 
-                      className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
-                      data-testid="button-play-again"
-                    >
-                      Play Again
-                    </Button>
-                    <Button 
-                      onClick={() => { stopTimer(); setGameStatus("menu"); }} 
-                      className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-                      data-testid="button-main-menu"
-                    >
-                      Main Menu
-                    </Button>
-                    <TryAnotherGameButton currentSlug="word-length" />
-                    {gameStatus === "won" && variation < 5 && (
+                  <>
+                    <div className="flex flex-wrap justify-center gap-2">
                       <Button 
-                        onClick={() => startGame(variation + 1, isSurvival)} 
-                        className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
-                        data-testid="button-next-challenge"
+                        onClick={() => startGame(variation, isSurvival, lastConstraintRef.current ?? undefined)} 
+                        className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                        data-testid="button-replay"
                       >
-                        Next Challenge
-                        <ArrowRight className="h-4 w-4" />
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Replay
                       </Button>
+                      <Button 
+                        onClick={() => startGame(variation, isSurvival)} 
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                        data-testid="button-play-again"
+                      >
+                        Play Again
+                      </Button>
+                      <Button 
+                        onClick={() => { stopTimer(); setGameStatus("menu"); }} 
+                        className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                        data-testid="button-main-menu"
+                      >
+                        Main Menu
+                      </Button>
+                      <TryAnotherGameButton currentSlug="word-length" />
+                    </div>
+                    {gameStatus === "won" && variation < 5 && (
+                      <div className="flex justify-center">
+                        <Button 
+                          onClick={() => startGame(variation + 1, isSurvival)} 
+                          variant="outline"
+                          className="gap-1.5"
+                          data-testid="button-next-challenge"
+                        >
+                          Next Challenge
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>

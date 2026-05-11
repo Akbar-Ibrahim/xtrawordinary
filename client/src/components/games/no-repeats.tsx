@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -137,6 +138,8 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
       startGame(initialChallenge, false);
     }
   }, []);
+
+  const [, navigate] = useLocation();
 
   const returnToMenu = useCallback(() => {
     stopTimer();
@@ -394,25 +397,29 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
             )}
 
             {!locked && (
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Replay
-                </Button>
-                <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
-                  Play Again
-                </Button>
-                <Button onClick={returnToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
-                  Main Menu
-                </Button>
-                <TryAnotherGameButton currentSlug="no-repeats" />
-                {nextChallenge && gameStatus === "won" && (
-                  <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-next-challenge">
-                    Next Challenge
-                    <ArrowRight className="w-4 h-4" />
+              <>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Replay
                   </Button>
+                  <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                    Play Again
+                  </Button>
+                  <Button onClick={() => navigate("/games/no-repeats")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    Main Menu
+                  </Button>
+                  <TryAnotherGameButton currentSlug="no-repeats" />
+                </div>
+                {nextChallenge && gameStatus === "won" && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => startGame(nextChallenge, isSurvival)} className="gap-2" variant="outline" data-testid="button-next-challenge">
+                      Next Challenge
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </CardContent>
         </Card>

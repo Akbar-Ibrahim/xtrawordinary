@@ -492,6 +492,8 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   };
 
   // Start game with selected category and level
+  const lastInitialConstraintRef = useRef<GameConstraint | null>(null);
+
   const startGame = useCallback((level: LevelType, consonantCount?: number) => {
     if (!selectedCategory) return;
     
@@ -509,14 +511,31 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     setFeedback(null);
     
     const constraint = generateConstraint(selectedCategory, level, 0, seedRngRef.current, consonantCount);
+    lastInitialConstraintRef.current = constraint;
     setCurrentConstraint(constraint);
     setGameState("playing");
     startTimer(isSurvivalRef.current);
   }, [selectedCategory, startTimer, clearTimer, resetRecorded]);
 
+  const replayGame = useCallback(() => {
+    if (!lastInitialConstraintRef.current) return;
+    resetRecorded();
+    clearTimer();
+    setScore(0);
+    setStreak(0);
+    setWordsCompleted(0);
+    setUsedWords(new Set());
+    setUserInput("");
+    setFeedback(null);
+    setCurrentConstraint(lastInitialConstraintRef.current);
+    setGameState("playing");
+    startTimer(isSurvivalRef.current);
+  }, [resetRecorded, clearTimer, startTimer]);
+
   useEffect(() => {
     if (customConstraint && (customConstraint.vowels !== undefined || customConstraint.consonants !== undefined || customConstraint.length !== undefined)) {
       const synth = generateCustomLbConstraint(customConstraint);
+      lastInitialConstraintRef.current = synth;
       resetRecorded();
       clearTimer();
       setScore(0);
@@ -940,6 +959,10 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
             {!locked && (
               <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={replayGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Replay
+                </Button>
                 <Button onClick={() => setGameState("level_menu")} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   Play Again
                 </Button>
@@ -1016,41 +1039,46 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
             
             {!locked && (
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button
-                  onClick={() => selectedLevel && startGame(selectedLevel)}
-                  className="bg-sky-500 hover:bg-sky-600 text-white border-0"
-                  data-testid="button-replay"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Replay
-                </Button>
-                <Button
-                  onClick={() => selectedLevel && startGame(selectedLevel)}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
-                  data-testid="button-play-again"
-                >
-                  Play Again
-                </Button>
-                <Button
-                  onClick={backToMenu}
-                  className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-                  data-testid="button-main-menu"
-                >
-                  Main Menu
-                </Button>
-                <TryAnotherGameButton currentSlug="letter-balance" />
-                {canContinue && (
+              <>
+                <div className="flex flex-wrap justify-center gap-2">
                   <Button
-                    className="gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0"
-                    onClick={continueToNextLevel}
-                    data-testid="button-next-level"
+                    onClick={replayGame}
+                    className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+                    data-testid="button-replay"
                   >
-                    Next Level
-                    <ArrowRight className="h-4 w-4" />
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Replay
                   </Button>
+                  <Button
+                    onClick={() => selectedLevel && startGame(selectedLevel)}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+                    data-testid="button-play-again"
+                  >
+                    Play Again
+                  </Button>
+                  <Button
+                    onClick={backToMenu}
+                    className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+                    data-testid="button-main-menu"
+                  >
+                    Main Menu
+                  </Button>
+                  <TryAnotherGameButton currentSlug="letter-balance" />
+                </div>
+                {canContinue && (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={continueToNextLevel}
+                      data-testid="button-next-level"
+                    >
+                      Next Level
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -1111,7 +1139,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             {!locked && (
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
-                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  onClick={replayGame}
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
                   data-testid="button-replay"
                 >
@@ -1119,7 +1147,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                   Replay
                 </Button>
                 <Button
-                  onClick={() => selectedLevel && startGame(selectedLevel)}
+                  onClick={() => selectedLevel ? startGame(selectedLevel) : replayGame()}
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   data-testid="button-play-again"
                 >
