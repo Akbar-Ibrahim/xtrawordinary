@@ -963,7 +963,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Replay
                 </Button>
-                <Button onClick={() => setGameState("level_menu")} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                <Button onClick={replayGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   Play Again
                 </Button>
                 <Button onClick={backToMenu} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
