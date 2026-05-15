@@ -776,6 +776,7 @@ export default function DuelRoom() {
               latestMessage={latestGameMessage}
               onGameOver={handleGameOver}
               adapter={adapter}
+              variationLabel={variationLabel}
             />
           </motion.div>
         )}

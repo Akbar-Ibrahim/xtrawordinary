@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Heart, HeartOff, Clock, Loader2, WifiOff, ScrollText } from "lucide-react";
+import { Clock, Loader2, WifiOff, Info } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
@@ -84,27 +84,9 @@ export interface DuelTurnEngineProps {
   latestMessage: DuelServerMessage | null;
   onGameOver: (result: GameResult) => void;
   adapter: DuelGameAdapter;
+  /** Human-readable variation label (e.g. "Letter R", "5-letter words"). Shown as a banner during play. */
+  variationLabel?: string | null;
   turnTimeSeconds?: number;
-}
-
-// ─── Lives display ─────────────────────────────────────────────────────────────
-
-function Lives({
-  count,
-  max = 3,
-  ...domProps
-}: { count: number; max?: number } & React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div className="flex gap-1" aria-label={`${count} of ${max} lives`} {...domProps}>
-      {Array.from({ length: max }).map((_, i) =>
-        i < count ? (
-          <Heart key={i} className="h-4 w-4 fill-red-500 text-red-500" />
-        ) : (
-          <HeartOff key={i} className="h-4 w-4 text-muted-foreground" />
-        ),
-      )}
-    </div>
-  );
 }
 
 // ─── DuelTurnEngine ────────────────────────────────────────────────────────────
@@ -121,6 +103,7 @@ export function DuelTurnEngine({
   latestMessage,
   onGameOver,
   adapter,
+  variationLabel,
   turnTimeSeconds = 8,
 }: DuelTurnEngineProps) {
   const [currentWord, setCurrentWord] = useState(initialState.currentWord);
@@ -135,8 +118,9 @@ export function DuelTurnEngine({
   const [forfeitPending, setForfeitPending] = useState(false);
   const forfeitReasonRef = useRef<"disconnect" | "manual" | undefined>(undefined);
 
-  // Per-player word tracking (refs — only needed at game-end)
-  // Pre-seed from reconnect snapshot if available so post-match lists are complete
+  // Per-player word tracking — state for live display, refs for game-end payload
+  const [myWordsList, setMyWordsList] = useState<string[]>(initialState.myWords ?? []);
+  const [opponentWordsList, setOpponentWordsList] = useState<string[]>(initialState.opponentWords ?? []);
   const myWordsRef = useRef<string[]>(initialState.myWords ?? []);
   const opponentWordsRef = useRef<string[]>(initialState.opponentWords ?? []);
 
@@ -233,6 +217,7 @@ export function DuelTurnEngine({
       setCurrentWord(upper);
       setUsedWords((prev) => [...prev, upper]);
       myWordsRef.current = [...myWordsRef.current, upper];
+      setMyWordsList((prev) => [...prev, upper]);
 
       sendWs({ type: "game:move", payload: adapter.buildWordPayload(upper, myLives) });
       setIsMyTurn(false);
@@ -256,6 +241,7 @@ export function DuelTurnEngine({
           setCurrentWord(upper);
           setUsedWords((prev) => [...prev, upper]);
           opponentWordsRef.current = [...opponentWordsRef.current, upper];
+          setOpponentWordsList((prev) => [...prev, upper]);
         }
         // Update lives — timedOutUserId is present on server-generated timeouts.
         // When present: route to myLives if I was the one who timed out,
@@ -305,6 +291,7 @@ export function DuelTurnEngine({
         if (rollbackRef.current) {
           const { currentWord: prev, usedWords: prevUsed } = rollbackRef.current;
           myWordsRef.current = myWordsRef.current.slice(0, -1);
+          setMyWordsList((prev) => prev.slice(0, -1));
           setCurrentWord(prev);
           setUsedWords(prevUsed);
           rollbackRef.current = null;
@@ -410,7 +397,7 @@ export function DuelTurnEngine({
           className={isMyTurn ? "border-primary shadow-md" : ""}
           data-testid="card-player-me"
         >
-          <CardContent className="py-3 px-4 space-y-1">
+          <CardContent className="py-3 px-4">
             <div className="flex items-center gap-2 min-w-0">
               <UserAvatar name={myName} avatarUrl={myAvatarUrl} className="h-6 w-6 shrink-0" />
               <p className="text-xs font-medium truncate flex-1">{myName}</p>
@@ -420,7 +407,6 @@ export function DuelTurnEngine({
                 </Badge>
               )}
             </div>
-            <Lives count={myLives} data-testid="lives-me" />
           </CardContent>
         </Card>
 
@@ -428,7 +414,7 @@ export function DuelTurnEngine({
           className={!isMyTurn ? "border-primary shadow-md" : ""}
           data-testid="card-opponent"
         >
-          <CardContent className="py-3 px-4 space-y-1">
+          <CardContent className="py-3 px-4">
             <div className="flex items-center gap-2 min-w-0">
               <UserAvatar
                 name={opponentName}
@@ -446,7 +432,6 @@ export function DuelTurnEngine({
                 </Badge>
               )}
             </div>
-            <Lives count={opponentLives} data-testid="lives-opponent" />
           </CardContent>
         </Card>
       </div>
@@ -467,6 +452,17 @@ export function DuelTurnEngine({
             className={`h-2 ${timerLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"}`}
             data-testid="progress-timer"
           />
+        </div>
+      )}
+
+      {/* Constraint banner */}
+      {variationLabel && (
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/8 border border-primary/20 text-primary text-xs font-medium"
+          data-testid="banner-variation"
+        >
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          {variationLabel}
         </div>
       )}
 
@@ -496,30 +492,47 @@ export function DuelTurnEngine({
         </CardContent>
       </Card>
 
-      {/* Shared used-words panel — visible to both players */}
-      {usedWords.length > 1 && (
-        <Card>
+      {/* Two-column word history — one column per player */}
+      {(myWordsList.length > 0 || opponentWordsList.length > 0) && (
+        <Card data-testid="panel-used-words">
           <CardContent className="py-3 px-4">
-            <div className="flex items-center gap-2 mb-2">
-              <ScrollText className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Words Played ({usedWords.length - 1})
-              </p>
-            </div>
-            <div
-              className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto"
-              data-testid="panel-used-words"
-            >
-              {usedWords.slice(1).map((w, i) => (
-                <Badge
-                  key={i}
-                  variant="secondary"
-                  className="text-xs font-mono"
-                  data-testid={`word-played-${i}`}
-                >
-                  {w}
-                </Badge>
-              ))}
+            <div className="grid grid-cols-2 divide-x divide-border">
+              {/* My words */}
+              <div className="pr-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 truncate">
+                  {myName} <span className="font-normal">({myWordsList.length})</span>
+                </p>
+                <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                  {[...myWordsList].reverse().map((w, i) => (
+                    <Badge
+                      key={i}
+                      variant="secondary"
+                      className="text-xs font-mono justify-start w-fit"
+                      data-testid={`word-me-${i}`}
+                    >
+                      {w}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              {/* Opponent words */}
+              <div className="pl-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 truncate">
+                  {opponentName} <span className="font-normal">({opponentWordsList.length})</span>
+                </p>
+                <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                  {[...opponentWordsList].reverse().map((w, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="text-xs font-mono justify-start w-fit"
+                      data-testid={`word-opponent-${i}`}
+                    >
+                      {w}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -298,7 +298,7 @@ type DuelRoom = {
   racePendingMoves: Set<number>;
 };
 
-const INITIAL_LIVES = 3;
+const INITIAL_LIVES = 1;
 /** Must match the client's default turnTimeSeconds (8 s). */
 const TURN_DURATION_MS = 8_500; // 500 ms of grace over client's 8 s UI timer
 
