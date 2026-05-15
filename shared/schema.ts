@@ -564,6 +564,7 @@ export const DUEL_HUNT_LETTERS = ["R", "T", "L", "S", "N", "M", "B", "D", "F", "
 export const DUEL_WORD_LENGTHS = ["4", "5", "6", "7"] as const;
 export const DUEL_POSITIONS = [2, 3, 4, 5] as const;
 export const DUEL_BALANCE_CONSTRAINTS = ["2V", "3V", "4V", "2C", "3C", "4C"] as const;
+export const DUEL_NO_REPEATS_LENGTHS = ["4", "5", "6", "7"] as const;
 export const DUEL_DEFINITION_CATEGORIES = ["ANIMALS", "COLORS", "FOODS", "SPORTS", "SCIENCE"] as const;
 
 export const duelChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "expired", "completed"]);

@@ -2843,7 +2843,7 @@ export async function registerRoutes(
       }
       const {
         DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS,
-        DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES,
+        DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_NO_REPEATS_LENGTHS, DUEL_DEFINITION_CATEGORIES,
       } = await import("@shared/schema");
       if (!DUEL_GAME_SLUGS.has(gameSlug)) {
         return res.status(400).json({ error: "That game does not support duels" });
@@ -2889,7 +2889,7 @@ export async function registerRoutes(
             valid = (DUEL_BALANCE_CONSTRAINTS as readonly string[]).includes(sw);
             break;
           case "no-repeats":
-            valid = ["4", "5", "6", "7"].includes(sw);
+            valid = (DUEL_NO_REPEATS_LENGTHS as readonly string[]).includes(sw);
             break;
           case "definition-match":
             valid = (DUEL_DEFINITION_CATEGORIES as readonly string[]).includes(sw);
@@ -3065,7 +3065,14 @@ export async function registerRoutes(
       let roomCode = challenge.roomCode;
       if (!roomCode) {
         const { duelRegistry } = await import("./duel-ws");
-        const created = duelRegistry.createRoom(challenge.gameSlug, challenge.challengerId);
+        const created = duelRegistry.createRoom(
+          challenge.gameSlug,
+          challenge.challengerId,
+          (challenge.format ?? "turn") as "turn" | "race",
+          challenge.raceTarget ?? 15,
+          challenge.raceTimeLimit ?? 300,
+          challenge.startWord ?? undefined,
+        );
         roomCode = created.roomCode;
         await storage.updateDuelChallengeStatus(id, challenge.status as DuelChallengeStatus, created.roomCode, created.seed, created.startWord);
       }

@@ -6,7 +6,7 @@ import { log } from "./index";
 import { storage } from "./storage";
 import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
-import { DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS } from "@shared/schema";
+import { DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES } from "@shared/schema";
 import { resolveWordWarsGame } from "./word-wars-engine";
 
 interface DuelWebSocket extends WebSocket {
@@ -149,10 +149,8 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
       return RACE_MAKER_WORDS[seed % RACE_MAKER_WORDS.length].toUpperCase();
     case "word-split":
       return RACE_SPLIT_WORDS[seed % RACE_SPLIT_WORDS.length].toUpperCase();
-    case "definition-match": {
-      const cats = ["ANIMALS", "COLORS", "FOODS", "SPORTS", "SCIENCE"];
-      return cats[seed % cats.length];
-    }
+    case "definition-match":
+      return DUEL_DEFINITION_CATEGORIES[seed % DUEL_DEFINITION_CATEGORIES.length];
     default:
       return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
   }
