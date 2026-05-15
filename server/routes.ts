@@ -3814,7 +3814,7 @@ export async function registerRoutes(
         roundDeadlineHours: Number(roundDeadlineHours ?? 24),
         minGroups: Number(minGroups ?? 2),
         maxGroups: maxGroups ? Number(maxGroups) : null,
-        createdBy: (req.user as any).id,
+        createdBy: req.user!.id,
       });
       res.status(201).json(tournament);
     } catch (err) {
@@ -3886,7 +3886,7 @@ export async function registerRoutes(
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
 
-      const userId = (req.user as any).id;
+      const userId = req.user!.id;
       const { groupId } = req.body;
       if (!groupId) return res.status(400).json({ error: "groupId is required" });
 
@@ -3927,7 +3927,7 @@ export async function registerRoutes(
       const tournamentId = parseInt(req.params.id);
       if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
 
-      const userId = (req.user as any).id;
+      const userId = req.user!.id;
       const { groupId } = req.body;
       if (!groupId) return res.status(400).json({ error: "groupId is required" });
 
@@ -4001,7 +4001,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Match is already resolved" });
       }
 
-      const userId = (req.user as any).id;
+      const userId = req.user!.id;
 
       // Any admin of either competing group may start a game
       const [mem1, mem2] = await Promise.all([
@@ -4054,12 +4054,13 @@ export async function registerRoutes(
         }
       }
 
-      // Generate room code + seed, then create an accepted DuelChallenge so the WS can look it up
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-      let roomCode = "";
-      for (let i = 0; i < 8; i++) roomCode += chars[Math.floor(Math.random() * chars.length)];
-      const seed = Math.floor(Math.random() * 1_000_000);
+      // Create duel room eagerly via registry (same as Huddle flow)
+      const { duelRegistry } = await import("./duel-ws");
+      const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
+        matchGame.gameSlug, reg1.registeredBy, "race", 10, 180,
+      );
 
+      // Also persist an accepted DuelChallenge so the WS can resolve the room after a process restart
       await storage.createDuelChallenge({
         challengerId: reg1.registeredBy,
         challengeeId: reg2.registeredBy,
@@ -4067,8 +4068,8 @@ export async function registerRoutes(
         message: `Guild Wars Match ${matchId} — Game ${gameNumber}`,
         status: "accepted",
         roomCode,
-        seed,
-        startWord: null,
+        seed: roomSeed,
+        startWord: roomStartWord ?? null,
         format: "race",
         raceTarget: 10,
         raceTimeLimit: 180,
@@ -4081,7 +4082,7 @@ export async function registerRoutes(
         await storage.updateGuildWarsMatch(matchId, { status: "active" });
       }
 
-      // Notify both typists (and any other group members via guild_war_round_start)
+      // Notify both typists
       const typistIds = [reg1.registeredBy, reg2.registeredBy];
       try {
         await Promise.all(

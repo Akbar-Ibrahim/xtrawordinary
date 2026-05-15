@@ -2186,6 +2186,7 @@ export class MySQLStorage implements IStorage {
       id: row.id,
       tournamentId: row.tournamentId,
       groupId: row.groupId,
+      tournamentName: row.tournamentName ?? "",
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     };
   }
@@ -2358,11 +2359,44 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.toGuildWarsMatchGame(rows[0]) : undefined;
   }
 
-  async createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion> {
+  async createGuildWarsChampion(tournamentId: number, groupId: number, tournamentName: string): Promise<GuildWarsChampion> {
     const db = await this.getDb();
-    const result = await db.insert(schema.guildWarsChampions).values({ tournamentId, groupId });
+    const result = await db.insert(schema.guildWarsChampions).values({ tournamentId, groupId, tournamentName });
     const rows = await db.select().from(schema.guildWarsChampions).where(eq(schema.guildWarsChampions.id, result[0].insertId)).limit(1);
     return this.toGuildWarsChampion(rows[0]);
+  }
+
+  async getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const db = await this.getDb();
+    const members = await this.getGroupMembers(groupId);
+    const memberIds = members.map(m => m.user.id);
+    if (memberIds.length === 0) return { tournamentsEntered: 0, matchWins: 0, matchLosses: 0 };
+
+    const regRows = await db.select().from(schema.wordWarsRegistrations)
+      .where(inArray(schema.wordWarsRegistrations.userId, memberIds));
+    const tournamentsEntered = new Set(regRows.map(r => r.tournamentId)).size;
+
+    const matchRows = await db.select().from(schema.wordWarsMatches)
+      .where(
+        and(
+          or(
+            inArray(schema.wordWarsMatches.player1Id, memberIds),
+            inArray(schema.wordWarsMatches.player2Id, memberIds)
+          ),
+          or(
+            eq(schema.wordWarsMatches.status, "completed"),
+            eq(schema.wordWarsMatches.status, "forfeited")
+          )
+        )
+      );
+
+    let matchWins = 0;
+    let matchLosses = 0;
+    for (const m of matchRows) {
+      if (m.winnerId !== null && memberIds.includes(m.winnerId)) matchWins++;
+      else if (m.winnerId !== null) matchLosses++;
+    }
+    return { tournamentsEntered, matchWins, matchLosses };
   }
 
   async getGuildWarsChampionsForTournament(tournamentId: number): Promise<GuildWarsChampion[]> {

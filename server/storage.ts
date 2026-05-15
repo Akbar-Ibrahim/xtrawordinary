@@ -271,11 +271,12 @@ export interface IStorage {
   updateGuildWarsMatchGame(id: number, updates: Partial<Pick<GuildWarsMatchGame, "status" | "winnerGroupId" | "roomCode">>): Promise<GuildWarsMatchGame | undefined>;
   getGuildWarsMatchGameByRoomCode(roomCode: string): Promise<GuildWarsMatchGame | undefined>;
 
-  createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion>;
+  createGuildWarsChampion(tournamentId: number, groupId: number, tournamentName: string): Promise<GuildWarsChampion>;
   getGuildWarsChampionsForTournament(tournamentId: number): Promise<GuildWarsChampion[]>;
   getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]>;
   listAllGuildWarsChampions(): Promise<GuildWarsChampion[]>;
   getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
+  getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
 }
 
 export { MemStorage } from "./mem-storage";

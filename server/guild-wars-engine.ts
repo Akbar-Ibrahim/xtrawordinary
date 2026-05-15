@@ -366,7 +366,7 @@ async function _advanceGuildBracket(tournamentId: number, round: number): Promis
     if (tournament.status === "completed") return;
     const championGroupId = roundWinners[0];
     await storage.updateGuildWarsTournament(tournamentId, { status: "completed" });
-    await storage.createGuildWarsChampion(tournamentId, championGroupId);
+    await storage.createGuildWarsChampion(tournamentId, championGroupId, tournament.name);
 
     await notifyGroupMembers(
       championGroupId,

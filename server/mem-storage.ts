@@ -1780,6 +1780,25 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const members = await this.getGroupMembers(groupId);
+    const memberIds = new Set(members.map(m => m.user.id));
+    const tournamentsEntered = new Set(
+      this.wordWarsRegistrations.filter(r => memberIds.has(r.userId)).map(r => r.tournamentId)
+    ).size;
+    const memberMatches = this.wordWarsMatches.filter(
+      m => (memberIds.has(m.player1Id) || memberIds.has(m.player2Id)) &&
+        (m.status === "completed" || m.status === "forfeited")
+    );
+    let matchWins = 0;
+    let matchLosses = 0;
+    for (const m of memberMatches) {
+      if (m.winnerId !== null && memberIds.has(m.winnerId)) matchWins++;
+      else if (m.winnerId !== null) matchLosses++;
+    }
+    return { tournamentsEntered, matchWins, matchLosses };
+  }
+
   async getWordWarsStatsForUser(userId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
     const tournamentsEntered = this.wordWarsRegistrations.filter(r => r.userId === userId).length;
     const userMatches = this.wordWarsMatches.filter(
@@ -1903,11 +1922,12 @@ export class MemStorage implements IStorage {
     return this.guildWarsMatchGames.find(g => g.roomCode === roomCode);
   }
 
-  async createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion> {
+  async createGuildWarsChampion(tournamentId: number, groupId: number, tournamentName: string): Promise<GuildWarsChampion> {
     const c: GuildWarsChampion = {
       id: this.guildWarsChampionIdCounter++,
       tournamentId,
       groupId,
+      tournamentName,
       createdAt: new Date().toISOString(),
     };
     this.guildWarsChampions.push(c);

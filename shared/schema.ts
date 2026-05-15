@@ -890,6 +890,7 @@ export const guildWarsChampionSchema = z.object({
   id: z.number(),
   tournamentId: z.number(),
   groupId: z.number(),
+  tournamentName: z.string(),
   createdAt: z.string(),
 });
 export type GuildWarsChampion = z.infer<typeof guildWarsChampionSchema>;

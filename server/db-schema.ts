@@ -541,6 +541,7 @@ export const guildWarsChampions = mysqlTable("guild_wars_champions", {
   id: int("id").primaryKey().autoincrement(),
   tournamentId: int("tournament_id").notNull(),
   groupId: int("group_id").notNull(),
+  tournamentName: varchar("tournament_name", { length: 255 }).notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("gc_tournament_idx").on(table.tournamentId),
