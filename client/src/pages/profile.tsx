@@ -143,6 +143,18 @@ export default function Profile() {
     enabled: userId > 0,
   });
 
+  const { data: guildWarsChampionships = [] } = useQuery<Array<{
+    id: number; tournamentId: number; groupId: number; tournamentName: string; groupName: string; createdAt: string;
+  }>>({
+    queryKey: ["/api/users", userId, "guild-wars-championships"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/guild-wars-championships`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: userId > 0,
+  });
+
   type DuelHistoryEntry = {
     id: number;
     roomCode: string;
@@ -306,6 +318,12 @@ export default function Profile() {
                       Word Wars Champion{championships.length > 1 ? ` ×${championships.length}` : ""}
                     </Badge>
                   )}
+                  {guildWarsChampionships.length > 0 && (
+                    <Badge className="gap-1 bg-purple-400/20 text-purple-700 dark:text-purple-300 border border-purple-400/40 hover:bg-purple-400/25" data-testid="badge-guild-wars-champion">
+                      <Swords className="h-3 w-3" />
+                      Guild Wars Champion{guildWarsChampionships.length > 1 ? ` ×${guildWarsChampionships.length}` : ""}
+                    </Badge>
+                  )}
                   {isOwnProfile && (
                     <button
                       onClick={openEdit}
@@ -396,6 +414,48 @@ export default function Profile() {
                     </Link>
                   )}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {guildWarsChampionships.length > 0 && (
+          <Card className="border-purple-300 dark:border-purple-700" data-testid="card-guild-wars-stats">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Swords className="h-5 w-5 text-purple-500 shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm">Guild Wars</p>
+                  <p className="text-xs text-muted-foreground">
+                    {guildWarsChampionships.length} {guildWarsChampionships.length === 1 ? "championship" : "championships"}
+                  </p>
+                </div>
+                <div className="ml-auto">
+                  <Link href="/guild-wars">
+                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer" data-testid="link-guild-wars-profile">
+                      View tournaments
+                    </span>
+                  </Link>
+                </div>
+              </div>
+              <div className="space-y-1">
+                {guildWarsChampionships.map((c) => (
+                  <Link key={c.id} href={`/guild-wars/${c.tournamentId}`}>
+                    <div
+                      className="flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer gap-2"
+                      data-testid={`row-gw-championship-${c.id}`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Crown className="h-3 w-3 text-purple-500 shrink-0 fill-current" />
+                        <span className="font-medium truncate">{c.tournamentName}</span>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1 text-purple-500/70">
+                        <span className="text-muted-foreground">({c.groupName})</span>
+                        <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </CardContent>
           </Card>

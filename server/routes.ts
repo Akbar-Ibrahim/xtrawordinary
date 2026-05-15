@@ -3696,6 +3696,24 @@ export async function registerRoutes(
     }
   });
 
+  // GET /api/users/:id/guild-wars-championships — groups this user belongs to that have won Guild Wars
+  app.get("/api/users/:id/guild-wars-championships", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const groups = await storage.getUserGroups(id);
+      const allChampionships = await Promise.all(groups.map(async (g) => {
+        const champs = await storage.getGuildWarsChampionshipsForGroup(g.id);
+        return champs.map((c) => ({ ...c, groupName: g.name }));
+      }));
+      const flat = allChampionships.flat();
+      flat.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      res.json(flat);
+    } catch {
+      res.status(500).json({ error: "Failed to get Guild Wars championships" });
+    }
+  });
+
   app.post("/api/word-wars/matches/:matchId/games/:gameNumber/start", requireAuth, async (req, res) => {
     try {
       const matchId = parseInt(req.params.matchId);
@@ -3858,18 +3876,22 @@ export async function registerRoutes(
     }
   });
 
-  // GET /api/guild-wars/champions — Hall of Fame
+  // GET /api/guild-wars/champions — Hall of Fame (enriched with group name)
   app.get("/api/guild-wars/champions", async (req, res) => {
     try {
       const champions = await storage.listAllGuildWarsChampions();
-      res.json(champions);
+      const enriched = await Promise.all(champions.map(async (c) => {
+        const group = await storage.getGroup(c.groupId);
+        return { ...c, groupName: group?.name ?? null };
+      }));
+      res.json(enriched);
     } catch (err) {
       console.error("[guild-wars] champions error", err);
       res.status(500).json({ error: "Failed to fetch champions" });
     }
   });
 
-  // GET /api/guild-wars/:id — tournament detail with registrations + matches
+  // GET /api/guild-wars/:id — tournament detail with registrations + matches + groups map
   app.get("/api/guild-wars/:id", async (req, res) => {
     try {
       const tournamentId = parseInt(req.params.id);
@@ -3897,10 +3919,41 @@ export async function registerRoutes(
         }),
       );
 
-      res.json({ ...tournament, registrations: enriched, matches: matchesWithGames });
+      // Build a groups map for the bracket (groupId → { id, name })
+      const groupIds = new Set<number>();
+      enriched.forEach((r) => groupIds.add(r.groupId));
+      matchesWithGames.forEach((m) => {
+        if (m.group1Id) groupIds.add(m.group1Id);
+        if (m.group2Id) groupIds.add(m.group2Id);
+        if (m.winnerGroupId) groupIds.add(m.winnerGroupId);
+      });
+      const groupsMap: Record<number, { id: number; name: string }> = {};
+      await Promise.all(Array.from(groupIds).map(async (gid) => {
+        const g = await storage.getGroup(gid);
+        if (g) groupsMap[gid] = { id: g.id, name: g.name };
+      }));
+
+      res.json({ ...tournament, registrations: enriched, matches: matchesWithGames, groups: groupsMap });
     } catch (err) {
       console.error("[guild-wars] get tournament error", err);
       res.status(500).json({ error: "Failed to fetch tournament" });
+    }
+  });
+
+  // GET /api/groups/:id/guild-wars — tournaments a group is registered in
+  app.get("/api/groups/:id/guild-wars", requireAuth, async (req, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const regs = await storage.getGuildWarsRegistrationsForGroup(groupId);
+      const entries = await Promise.all(regs.map(async (r) => {
+        const t = await storage.getGuildWarsTournament(r.tournamentId);
+        return t ? { registration: r, tournament: t } : null;
+      }));
+      res.json(entries.filter(Boolean));
+    } catch (err) {
+      console.error("[guild-wars] group guild wars error", err);
+      res.status(500).json({ error: "Failed to fetch group tournaments" });
     }
   });
 

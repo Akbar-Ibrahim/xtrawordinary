@@ -178,6 +178,7 @@ export function Navigation() {
     { href: "/daily", label: "Daily", icon: Calendar },
     { href: "/duels", label: "Duels", icon: Swords },
     { href: "/word-wars", label: "Word Wars", icon: Sword },
+    { href: "/guild-wars", label: "Guild Wars", icon: Swords },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/stats", label: "Stats", icon: BarChart3 },
     { href: "/achievements", label: "Badges", icon: Award },
