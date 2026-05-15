@@ -30,6 +30,7 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
   const [duelWordLength, setDuelWordLength] = useState<4 | 5 | 6>(5);
 
   useEffect(() => {
+    setDuelSearchId(null);
     if (!duelSearchInput.trim()) {
       setDuelSearch("");
       return;
