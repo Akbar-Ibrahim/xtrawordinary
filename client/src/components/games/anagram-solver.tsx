@@ -49,6 +49,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong"; message: string } | null>(null);
   const [usedSets, setUsedSets] = useState<Set<number>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
+  const [solvedWords, setSolvedWords] = useState<string[]>([]);
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +83,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
     setGameStatus("playing");
     setUsedSets(new Set());
     setWordsSolved(0);
+    setSolvedWords([]);
     const rng = seedRngRef.current ?? Math.random;
     const randomIndex = Math.floor(rng() * wordSets.length);
     const newSet = overrideSet ?? wordSets[randomIndex];
@@ -131,6 +133,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
       playSound("correct");
       setFeedback({ type: "correct", message: "Correct!" });
       setWordsSolved(prev => prev + 1);
+      setSolvedWords(prev => [...prev, currentSet.original]);
       setScore(prev => prev + 100 + (streak * 10));
       setStreak(prev => prev + 1);
       setUserInput("");
@@ -360,6 +363,16 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
                   score={score}
                   isWin={gameStatus === "won"}
                 />
+                {solvedWords.length > 0 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words solved ({solvedWords.length}):</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {solvedWords.map((word, i) => (
+                        <Badge key={i} variant="secondary" className="text-sm">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

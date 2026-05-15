@@ -555,6 +555,20 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   </p>
                 )}
 
+                {ladder.length > 1 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Your path ({steps} steps):</p>
+                    <div className="flex flex-wrap gap-1 justify-center max-h-32 overflow-y-auto">
+                      {ladder.map((word, wordIdx) => (
+                        <span key={wordIdx} className="flex items-center gap-1">
+                          <Badge variant={wordIdx === 0 || wordIdx === ladder.length - 1 ? "default" : "secondary"} className="text-sm">{word}</Badge>
+                          {wordIdx < ladder.length - 1 && <span className="text-muted-foreground text-xs">→</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -693,6 +707,19 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   score={score}
                   isWin={false}
                 />
+                {ladder.length > 1 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Steps taken ({ladder.length - 1}):</p>
+                    <div className="flex flex-wrap gap-1 justify-center max-h-32 overflow-y-auto">
+                      {ladder.map((word, wordIdx) => (
+                        <span key={wordIdx} className="flex items-center gap-1">
+                          <Badge variant={wordIdx === 0 ? "default" : "secondary"} className="text-sm">{word}</Badge>
+                          {wordIdx < ladder.length - 1 && <span className="text-muted-foreground text-xs">→</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

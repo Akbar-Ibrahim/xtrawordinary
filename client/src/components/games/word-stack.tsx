@@ -67,6 +67,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
+  const [wordHistory, setWordHistory] = useState<string[]>([]);
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +147,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     setScore(0);
     setStreak(0);
     setPuzzlesCompleted(0);
+    setWordHistory([]);
     setGameStatus("playing");
     setUsedPuzzles(new Set());
     setShowHint(false);
@@ -181,6 +183,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
       setScore(0);
       setStreak(0);
       setPuzzlesCompleted(0);
+      setWordHistory([]);
       setGameStatus("playing");
       setUsedPuzzles(new Set([seededPuzzle.targetWord]));
       setShowHint(false);
@@ -277,6 +280,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
 
       const newStack = [...stack, upperInput];
       setStack(newStack);
+      setWordHistory(prev => [...prev, upperInput]);
       setUserInput("");
       setStreak(prev => prev + 1);
       
@@ -408,6 +412,16 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
               challengeName={selectedChallenge === "build-up" ? "Build Up" : "Break Down"}
               isWin={true}
             />
+            {wordHistory.length > 0 && (
+              <div className="text-left">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({wordHistory.length}):</p>
+                <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                  {wordHistory.map((word, i) => (
+                    <Badge key={i} variant="secondary" className="text-sm">{word}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />

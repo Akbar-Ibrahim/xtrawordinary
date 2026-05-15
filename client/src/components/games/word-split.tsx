@@ -118,6 +118,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
   const [streak, setStreak] = useState(0);
   const [puzzlesCompleted, setPuzzlesCompleted] = useState(0);
   const [puzzlesSkipped, setPuzzlesSkipped] = useState(0);
+  const [allWordsUsed, setAllWordsUsed] = useState<string[]>([]);
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid" | "doesnt-fit"; message: string } | null>(null);
   const [completionMessage, setCompletionMessage] = useState("");
@@ -167,6 +168,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setStreak(0);
     setPuzzlesCompleted(0);
     setPuzzlesSkipped(0);
+    setAllWordsUsed([]);
     setUsedPuzzles(new Set());
     setGameState("playing");
     resetRecorded();
@@ -204,6 +206,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       setStreak(0);
       setPuzzlesCompleted(0);
       setPuzzlesSkipped(0);
+      setAllWordsUsed([]);
       setUsedPuzzles(new Set([seededPuzzle.targetWord]));
       setGameState("playing");
       resetRecorded();
@@ -294,6 +297,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setStreak(prev => prev + 1);
     const newSubmitted = [...submittedWords, word];
     setSubmittedWords(newSubmitted);
+    setAllWordsUsed(prev => [...prev, word]);
     setRemainingPool(newPool);
     setScore(prev => prev + word.length * 10);
     setUserInput("");
@@ -474,6 +478,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
                 isWin={allSolved}
               />
+              {allWordsUsed.length > 0 && (
+                <div className="text-left">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({allWordsUsed.length}):</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                    {allWordsUsed.map((word, i) => (
+                      <Badge key={i} variant="secondary" className="text-sm">{word}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               {!user && (
                 <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                   <LogIn className="h-4 w-4 shrink-0" />
@@ -550,6 +564,16 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 challengeName={difficulty ? DIFFICULTY_CONFIG[difficulty].label : undefined}
                 isWin={false}
               />
+              {allWordsUsed.length > 0 && (
+                <div className="text-left">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({allWordsUsed.length}):</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                    {allWordsUsed.map((word, i) => (
+                      <Badge key={i} variant="secondary" className="text-sm">{word}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               {!user && (
                 <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                   <LogIn className="h-4 w-4 shrink-0" />

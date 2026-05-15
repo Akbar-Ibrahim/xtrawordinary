@@ -952,6 +952,16 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               <p className="text-sm text-muted-foreground" data-testid="text-personal-best">Personal Best: {personalBest} pts</p>
             )}
             <ShareResults gameName="Letter Balance" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} />
+            {usedWords.size > 0 && (
+              <div className="text-left">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
+                <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                  {Array.from(usedWords).map((word) => (
+                    <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />
@@ -1025,6 +1035,16 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={true}
             />
+            {usedWords.size > 0 && (
+              <div className="text-left">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
+                <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                  {Array.from(usedWords).map((word) => (
+                    <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />
@@ -1123,6 +1143,16 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={false}
             />
+            {usedWords.size > 0 && (
+              <div className="text-left">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
+                <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                  {Array.from(usedWords).map((word) => (
+                    <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />

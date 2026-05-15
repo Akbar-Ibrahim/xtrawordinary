@@ -665,6 +665,16 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />
@@ -744,6 +754,16 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

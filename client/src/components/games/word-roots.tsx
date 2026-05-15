@@ -208,18 +208,20 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
             {roundResults.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Your answers</p>
-                {roundResults.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm bg-muted/30 rounded px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      {r.canonical
-                        ? <Star className="h-4 w-4 text-yellow-500" />
-                        : <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                      <span className="font-mono font-semibold">{r.word}</span>
-                      {r.canonical && <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">exact</Badge>}
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {roundResults.map((r, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm bg-muted/30 rounded px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        {r.canonical
+                          ? <Star className="h-4 w-4 text-yellow-500" />
+                          : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                        <span className="font-mono font-semibold">{r.word}</span>
+                        {r.canonical && <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-400">exact</Badge>}
+                      </div>
+                      <span className="text-muted-foreground">+{r.points}</span>
                     </div>
-                    <span className="text-muted-foreground">+{r.points}</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
 

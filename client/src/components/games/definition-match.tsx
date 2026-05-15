@@ -430,7 +430,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Vocabulary Master!</h3>
-                <p className="text-muted-foreground">You matched all the definitions!</p>
+                <p className="text-muted-foreground">You matched all {wordsCompleted} definitions!</p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 {personalBest > 0 && (
@@ -445,6 +445,16 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   wordsCompleted={wordsCompleted}
                   isWin={true}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({usedWords.size}):</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />
@@ -482,7 +492,11 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
                 <h3 className="text-2xl font-bold">Game Over</h3>
-                <p className="text-muted-foreground">You ended the game early.</p>
+                <p className="text-muted-foreground">
+                  {wordsCompleted > 0
+                    ? `You matched ${wordsCompleted} definition${wordsCompleted !== 1 ? "s" : ""} before ending.`
+                    : "You ended the game early."}
+                </p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                 {personalBest > 0 && (
@@ -497,6 +511,16 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   wordsCompleted={wordsCompleted}
                   isWin={false}
                 />
+                {usedWords.size > 0 && (
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({usedWords.size}):</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
+                      {Array.from(usedWords).map((word) => (
+                        <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />
