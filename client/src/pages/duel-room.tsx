@@ -748,6 +748,13 @@ export default function DuelRoom() {
                     </p>
                   </motion.div>
                 </AnimatePresence>
+                {variationLabel && (
+                  <div className="flex justify-center mt-6">
+                    <Badge variant="outline" className="text-xs gap-1.5 border-primary/40 text-primary" data-testid="badge-variation-countdown">
+                      Variation: {variationLabel}
+                    </Badge>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
