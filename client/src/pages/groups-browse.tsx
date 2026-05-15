@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, Globe, ChevronRight, Star, LogIn, X, UserPlus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Users, Globe, ChevronRight, Star, LogIn, X, UserPlus, Search } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
@@ -20,6 +21,13 @@ export default function GroupsBrowse() {
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [textSearch, setTextSearch] = useState("");
+  const [textFilter, setTextFilter] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTextFilter(textSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [textSearch]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -48,8 +56,14 @@ export default function GroupsBrowse() {
     },
   });
 
-  const featuredGroups = (allPublic || []).filter(g => g.isFeatured);
-  const otherGroups = (allPublic || []).filter(g => !g.isFeatured);
+  const lowerSearch = textFilter.toLowerCase();
+  const matchesText = (g: Group) =>
+    !lowerSearch ||
+    g.name.toLowerCase().includes(lowerSearch) ||
+    (g.description ?? "").toLowerCase().includes(lowerSearch);
+
+  const featuredGroups = (allPublic || []).filter(g => g.isFeatured && matchesText(g));
+  const otherGroups = (allPublic || []).filter(g => !g.isFeatured && matchesText(g));
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -64,6 +78,26 @@ export default function GroupsBrowse() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Browse Groups</h1>
           <p className="text-muted-foreground mt-1">Discover public groups to join</p>
+        </div>
+
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search groups by name..."
+            value={textSearch}
+            onChange={e => setTextSearch(e.target.value)}
+            className="pl-9 pr-9"
+            data-testid="input-browse-search"
+          />
+          {textSearch && (
+            <button
+              onClick={() => { setTextSearch(""); setTextFilter(""); }}
+              className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="button-clear-browse-search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap mb-6">
@@ -127,17 +161,30 @@ export default function GroupsBrowse() {
               </section>
             )}
 
-            {!allPublic?.length && (
+            {!featuredGroups.length && !otherGroups.length && (
               <Card>
                 <CardContent className="p-10 text-center">
                   <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground">
-                    {activeTag ? `No public groups tagged "${activeTag}".` : "No public groups yet. Be the first to create one!"}
+                    {lowerSearch
+                      ? `No groups found for "${textSearch}".`
+                      : activeTag
+                      ? `No public groups tagged "${activeTag}".`
+                      : "No public groups yet. Be the first to create one!"}
                   </p>
-                  {activeTag && (
-                    <Button variant="outline" size="sm" className="mt-4" onClick={() => setActiveTag(null)}>
-                      <X className="h-3.5 w-3.5 mr-1.5" />Clear filter
-                    </Button>
+                  {(activeTag || lowerSearch) && (
+                    <div className="flex justify-center gap-2 mt-4">
+                      {lowerSearch && (
+                        <Button variant="outline" size="sm" onClick={() => setTextSearch("")}>
+                          <X className="h-3.5 w-3.5 mr-1.5" />Clear search
+                        </Button>
+                      )}
+                      {activeTag && (
+                        <Button variant="outline" size="sm" onClick={() => setActiveTag(null)}>
+                          <X className="h-3.5 w-3.5 mr-1.5" />Clear tag
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

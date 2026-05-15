@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { AuthModal } from "@/components/auth-modal";
 import { PremiumBanner } from "@/components/premium-banner";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
-import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Star, Search, Trophy, BarChart3 } from "lucide-react";
+import { Users, Plus, LogIn, Globe, Lock, Copy, ChevronRight, Star, Search, Trophy, BarChart3, X } from "lucide-react";
 import type { Group } from "@shared/schema";
 
 const SIGNUP_PERKS = [
@@ -47,6 +47,13 @@ export default function Groups() {
   const [createPublic, setCreatePublic] = useState(false);
   const [createTags, setCreateTags] = useState<string[]>([]);
   const [joinCode, setJoinCode] = useState("");
+  const [discoverSearch, setDiscoverSearch] = useState("");
+  const [discoverFilter, setDiscoverFilter] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDiscoverFilter(discoverSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [discoverSearch]);
 
   const { data, isLoading } = useQuery<GroupsResponse>({
     queryKey: ["/api/groups"],
@@ -240,19 +247,55 @@ export default function Groups() {
             {(data?.discover.length ?? 0) > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Discover Public Groups</h2>
-                <div className="space-y-3">
-                  {data?.discover.map(group => (
-                    <GroupCard
-                      key={group.id}
-                      group={group}
-                      isDiscover
-                      onJoin={() => requireAuthThen(() => {
-                        setJoinCode(group.inviteCode);
-                        setJoinOpen(true);
-                      })}
-                    />
-                  ))}
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    placeholder="Search groups..."
+                    value={discoverSearch}
+                    onChange={e => setDiscoverSearch(e.target.value)}
+                    className="pl-9 pr-9"
+                    data-testid="input-discover-search"
+                  />
+                  {discoverSearch && (
+                    <button
+                      onClick={() => { setDiscoverSearch(""); setDiscoverFilter(""); }}
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-clear-discover-search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
+                {(() => {
+                  const lowerSearch = discoverFilter.toLowerCase();
+                  const filtered = (data?.discover ?? []).filter(g =>
+                    !lowerSearch ||
+                    g.name.toLowerCase().includes(lowerSearch) ||
+                    (g.description ?? "").toLowerCase().includes(lowerSearch)
+                  );
+                  if (!filtered.length) {
+                    return (
+                      <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-discover-results">
+                        No groups found for "{discoverSearch}"
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {filtered.map(group => (
+                        <GroupCard
+                          key={group.id}
+                          group={group}
+                          isDiscover
+                          onJoin={() => requireAuthThen(() => {
+                            setJoinCode(group.inviteCode);
+                            setJoinOpen(true);
+                          })}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
               </section>
             )}
 

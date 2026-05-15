@@ -236,7 +236,7 @@ export default function Friends() {
     }
     const timer = setTimeout(() => {
       searchMutation.mutate(searchQuery);
-    }, 350);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
