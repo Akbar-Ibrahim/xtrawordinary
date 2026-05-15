@@ -9,6 +9,7 @@ export type UnseenChallenge = {
   challengeeName: string | null;
   challengeeAvatarUrl?: string | null;
   gameSlug: string;
+  startWord: string | null;
   roomCode: string;
 };
 
@@ -35,6 +36,7 @@ type OutgoingChallenge = {
   challengeeAvatarUrl?: string | null;
   status: string;
   gameSlug: string;
+  startWord: string | null;
   roomCode: string | null;
 };
 
@@ -114,6 +116,7 @@ export function DuelNotificationsProvider({ children }: { children: React.ReactN
           challengeeName: c.challengeeName,
           challengeeAvatarUrl: c.challengeeAvatarUrl,
           gameSlug: c.gameSlug,
+          startWord: c.startWord,
           roomCode: c.roomCode,
         });
       }
@@ -155,6 +158,7 @@ export function DuelNotificationsProvider({ children }: { children: React.ReactN
       challengeeName: c.challengeeName,
       challengeeAvatarUrl: c.challengeeAvatarUrl,
       gameSlug: c.gameSlug,
+      startWord: c.startWord,
       roomCode: c.roomCode as string,
     }));
 

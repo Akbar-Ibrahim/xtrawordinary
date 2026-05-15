@@ -380,7 +380,12 @@ function DuelNotificationsPanel({
                   {c.challengeeName ?? "Your opponent"} accepted your challenge!
                 </p>
                 <p className="text-xs text-green-700 dark:text-green-300">
-                  {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug} · Room ready
+                  {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
+                  {(() => {
+                    const v = formatDuelVariation(c.gameSlug, c.startWord);
+                    return v ? ` · ${v}` : "";
+                  })()}
+                  {" · "}Room ready
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">

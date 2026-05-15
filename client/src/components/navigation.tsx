@@ -16,6 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useToast } from "@/hooks/use-toast";
 import { useDuelNotifications } from "@/lib/duel-notifications-context";
+import { formatDuelVariation } from "@/lib/duel-variation";
 import type { Notification } from "@shared/schema";
 
 function slugToTitle(slug: string): string {
@@ -303,7 +304,12 @@ export function Navigation() {
                                     {c.challengeeName ?? "Someone"} accepted your challenge
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {slugToTitle(c.gameSlug)} · Room is ready
+                                    {slugToTitle(c.gameSlug)}
+                                    {(() => {
+                                      const v = formatDuelVariation(c.gameSlug, c.startWord);
+                                      return v ? ` · ${v}` : "";
+                                    })()}
+                                    {" · "}Room is ready
                                   </p>
                                 </div>
                                 <span className="shrink-0 mt-0.5 h-2 w-2 rounded-full bg-red-500" />

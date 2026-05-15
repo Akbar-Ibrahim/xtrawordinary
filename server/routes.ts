@@ -2835,6 +2835,45 @@ export async function registerRoutes(
 
   // ==================== DUELS ====================
 
+  function formatDuelVariationServer(gameSlug: string, startWord: string | null | undefined): string | null {
+    if (!startWord) return null;
+    switch (gameSlug) {
+      case "letter-hunt":
+      case "letter-frequency":
+        if (/^[A-Z]$/i.test(startWord)) return `Letter ${startWord.toUpperCase()}`;
+        return null;
+      case "word-length":
+        if (/^\d+$/.test(startWord)) return `${startWord}-letter words`;
+        return null;
+      case "letter-position": {
+        const parts = startWord.split(":");
+        if (parts.length === 2 && /^[A-Z]$/i.test(parts[0]) && /^\d+$/.test(parts[1]))
+          return `Letter ${parts[0].toUpperCase()} at position ${parts[1]}`;
+        return null;
+      }
+      case "letter-balance": {
+        const m = startWord.match(/^(\d+)([VC])$/i);
+        if (m) {
+          const count = parseInt(m[1]);
+          const type = m[2].toUpperCase() === "V" ? "vowel" : "consonant";
+          return `${count} ${type}${count !== 1 ? "s" : ""}`;
+        }
+        return null;
+      }
+      case "definition-match": {
+        const DUEL_DEF_CATS = ["ANIMALS", "COLORS", "FOODS", "SPORTS", "SCIENCE"] as const;
+        if ((DUEL_DEF_CATS as readonly string[]).includes(startWord.toUpperCase()))
+          return startWord.charAt(0).toUpperCase() + startWord.slice(1).toLowerCase();
+        return null;
+      }
+      case "no-repeats":
+        if (/^\d+$/.test(startWord)) return `${startWord}+ letter words`;
+        return null;
+      default:
+        return null;
+    }
+  }
+
   app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
       const { challengeeId, gameSlug, message, format, raceTarget, raceTimeLimit, startWord: requestedStartWord } = req.body;
@@ -2948,11 +2987,12 @@ export async function registerRoutes(
       // Notify the specific challengee that they received a duel challenge
       if (targetId !== null && challengee) {
         const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        const variationLabel = formatDuelVariationServer(gameSlug, roomStartWord);
         createNotificationIfEnabled({
           userId: targetId,
           type: "duel_challenge_received",
           title: "You've been challenged to a duel!",
-          body: `${challenger?.name ?? "Someone"} challenged you to a ${gameTitle} duel`,
+          body: `${challenger?.name ?? "Someone"} challenged you to a ${gameTitle}${variationLabel ? ` (${variationLabel})` : ""} duel`,
           linkUrl: "/friends?tab=duels",
         });
       }
@@ -3090,11 +3130,12 @@ export async function registerRoutes(
       try {
         const accepterName = (req.user as any).name as string;
         const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        const variationLabel = formatDuelVariationServer(challenge.gameSlug, challenge.startWord);
         createNotificationIfEnabled({
           userId: challenge.challengerId,
           type: "duel_accepted",
           title: "Duel challenge accepted!",
-          body: `${accepterName} accepted your ${gameTitle} duel`,
+          body: `${accepterName} accepted your ${gameTitle}${variationLabel ? ` (${variationLabel})` : ""} duel`,
           linkUrl: roomCode ? `/duel/${roomCode}` : "/duels",
         });
       } catch {}
