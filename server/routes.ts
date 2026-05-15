@@ -3897,10 +3897,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Registration deadline has passed" });
       }
 
-      // Verify the user is admin of the group
+      // Verify the user is an owner or admin of the group
       const membership = await storage.getGroupMember(Number(groupId), userId);
-      if (!membership || membership.role !== "admin") {
-        return res.status(403).json({ error: "Only group admins can register a group" });
+      if (!membership || (membership.role !== "admin" && membership.role !== "owner")) {
+        return res.status(403).json({ error: "Only group owners or admins can register a group" });
       }
 
       const existing = await storage.getGuildWarsRegistration(tournamentId, Number(groupId));
@@ -3936,8 +3936,8 @@ export async function registerRoutes(
       if (tournament.status !== "registration") return res.status(400).json({ error: "Cannot withdraw after registration closes" });
 
       const membership = await storage.getGroupMember(Number(groupId), userId);
-      if (!membership || membership.role !== "admin") {
-        return res.status(403).json({ error: "Only group admins can withdraw a group" });
+      if (!membership || (membership.role !== "admin" && membership.role !== "owner")) {
+        return res.status(403).json({ error: "Only group owners or admins can withdraw a group" });
       }
 
       const existing = await storage.getGuildWarsRegistration(tournamentId, Number(groupId));
@@ -4009,10 +4009,10 @@ export async function registerRoutes(
         storage.getGroupMember(match.group2Id, userId),
       ]);
       const isGroupAdmin =
-        (mem1 && mem1.role === "admin") ||
-        (mem2 && mem2.role === "admin");
+        (mem1 && (mem1.role === "admin" || mem1.role === "owner")) ||
+        (mem2 && (mem2.role === "admin" || mem2.role === "owner"));
       if (!isGroupAdmin) {
-        return res.status(403).json({ error: "Only a group admin of one of the competing groups can start games" });
+        return res.status(403).json({ error: "Only a group owner or admin of one of the competing groups can start games" });
       }
 
       // Fetch registrations to get the designated typists (players)
