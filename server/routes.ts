@@ -2837,11 +2837,14 @@ export async function registerRoutes(
 
   app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
-      const { challengeeId, gameSlug, message, format, raceTarget, raceTimeLimit } = req.body;
+      const { challengeeId, gameSlug, message, format, raceTarget, raceTimeLimit, startWord: requestedStartWord } = req.body;
       if (!gameSlug) {
         return res.status(400).json({ error: "gameSlug is required" });
       }
-      const { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } = await import("@shared/schema");
+      const {
+        DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS,
+        DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES,
+      } = await import("@shared/schema");
       if (!DUEL_GAME_SLUGS.has(gameSlug)) {
         return res.status(400).json({ error: "That game does not support duels" });
       }
@@ -2862,6 +2865,42 @@ export async function registerRoutes(
       const parsedRaceTimeLimit = raceTimeLimit != null ? Number(raceTimeLimit) : 300;
       if (!validTimeLimits.includes(parsedRaceTimeLimit)) {
         return res.status(400).json({ error: "raceTimeLimit must be 180, 300, or 600 seconds" });
+      }
+      // Validate optional startWord override
+      let overrideStartWord: string | undefined;
+      if (requestedStartWord != null) {
+        const sw = String(requestedStartWord).toUpperCase().trim();
+        let valid = false;
+        switch (gameSlug) {
+          case "letter-hunt":
+          case "letter-frequency":
+            valid = (DUEL_HUNT_LETTERS as readonly string[]).includes(sw);
+            break;
+          case "word-length":
+            valid = (DUEL_WORD_LENGTHS as readonly string[]).includes(sw);
+            break;
+          case "letter-position": {
+            const [letter, posStr] = sw.split(":");
+            valid = (DUEL_HUNT_LETTERS as readonly string[]).includes(letter) &&
+                    (DUEL_POSITIONS as readonly number[]).includes(Number(posStr));
+            break;
+          }
+          case "letter-balance":
+            valid = (DUEL_BALANCE_CONSTRAINTS as readonly string[]).includes(sw);
+            break;
+          case "no-repeats":
+            valid = ["4", "5", "6", "7"].includes(sw);
+            break;
+          case "definition-match":
+            valid = (DUEL_DEFINITION_CATEGORIES as readonly string[]).includes(sw);
+            break;
+          default:
+            valid = false;
+        }
+        if (!valid) {
+          return res.status(400).json({ error: "Invalid startWord for this game" });
+        }
+        overrideStartWord = sw;
       }
       const challengerId = req.user.id;
       if (!req.user.isPremium) {
@@ -2884,7 +2923,7 @@ export async function registerRoutes(
       // Create the duel room immediately so the challenger can enter the waiting room right away.
       const { duelRegistry } = await import("./duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
-        gameSlug, challengerId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit,
+        gameSlug, challengerId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit, overrideStartWord,
       );
 
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();

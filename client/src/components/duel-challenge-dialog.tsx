@@ -8,7 +8,10 @@ import { Loader2, Swords } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
+import {
+  DUEL_TURN_SLUGS, DUEL_RACE_SLUGS,
+  DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES,
+} from "@shared/schema";
 
 interface Props {
   gameSlug: string;
@@ -28,6 +31,9 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
   const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
   const [duelWordLength, setDuelWordLength] = useState<4 | 5 | 6>(5);
+  const [duelStartWord, setDuelStartWord] = useState("");
+  const [duelPosLetter, setDuelPosLetter] = useState("");
+  const [duelPosPos, setDuelPosPos] = useState("");
 
   useEffect(() => {
     setDuelSearchId(null);
@@ -66,6 +72,10 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
         body.raceTarget = duelRaceTarget;
         body.raceTimeLimit = duelRaceTimeLimit;
       }
+      const startWordValue = gameSlug === "letter-position"
+        ? (duelPosLetter && duelPosPos ? `${duelPosLetter}:${duelPosPos}` : "")
+        : duelStartWord;
+      if (startWordValue) body.startWord = startWordValue;
       const res = await apiRequest("POST", "/api/duels/challenges", body);
       return res.json() as Promise<{ id: number; status: string; roomCode: string | null }>;
     },
@@ -95,6 +105,9 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
       setDuelFormat(defaultFmt);
       setDuelRaceTarget(15);
       setDuelRaceTimeLimit(300);
+      setDuelStartWord("");
+      setDuelPosLetter("");
+      setDuelPosPos("");
     }
     onOpenChange(nextOpen);
   }
@@ -161,6 +174,181 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
                     data-testid={`button-word-length-${len}`}
                   >
                     {len} letters {len === 4 ? "(Easy)" : len === 5 ? "(Medium)" : "(Hard)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Variation pickers — shown for supported games, after the format toggle */}
+          {(gameSlug === "letter-hunt" || gameSlug === "letter-frequency") && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Letter</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                  onClick={() => setDuelStartWord("")}
+                  data-testid="button-variation-random"
+                >
+                  Random
+                </button>
+                {DUEL_HUNT_LETTERS.map((letter) => (
+                  <button
+                    key={letter}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === letter ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelStartWord(letter)}
+                    data-testid={`button-variation-letter-${letter}`}
+                  >
+                    {letter}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {gameSlug === "word-length" && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Word Length</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                  onClick={() => setDuelStartWord("")}
+                  data-testid="button-variation-random"
+                >
+                  Random
+                </button>
+                {DUEL_WORD_LENGTHS.map((len) => (
+                  <button
+                    key={len}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === len ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelStartWord(len)}
+                    data-testid={`button-variation-length-${len}`}
+                  >
+                    {len} letters
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {gameSlug === "letter-position" && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Letter & Position</p>
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelPosLetter === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelPosLetter("")}
+                    data-testid="button-variation-pos-letter-any"
+                  >
+                    Any letter
+                  </button>
+                  {DUEL_HUNT_LETTERS.map((letter) => (
+                    <button
+                      key={letter}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${duelPosLetter === letter ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                      onClick={() => setDuelPosLetter(letter)}
+                      data-testid={`button-variation-pos-letter-${letter}`}
+                    >
+                      {letter}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelPosPos === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelPosPos("")}
+                    data-testid="button-variation-pos-any"
+                  >
+                    Any position
+                  </button>
+                  {DUEL_POSITIONS.map((pos) => (
+                    <button
+                      key={pos}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${duelPosPos === String(pos) ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                      onClick={() => setDuelPosPos(String(pos))}
+                      data-testid={`button-variation-pos-${pos}`}
+                    >
+                      Position {pos}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {duelPosLetter && duelPosPos && (
+                <p className="text-xs text-violet-600 dark:text-violet-400">
+                  Letter <strong>{duelPosLetter}</strong> at position <strong>{duelPosPos}</strong>
+                </p>
+              )}
+            </div>
+          )}
+          {gameSlug === "letter-balance" && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Balance Constraint</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                  onClick={() => setDuelStartWord("")}
+                  data-testid="button-variation-random"
+                >
+                  Random
+                </button>
+                {DUEL_BALANCE_CONSTRAINTS.map((c) => {
+                  const count = c[0];
+                  const label = c[1] === "V" ? "vowels" : "cons.";
+                  return (
+                    <button
+                      key={c}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === c ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                      onClick={() => setDuelStartWord(c)}
+                      data-testid={`button-variation-balance-${c}`}
+                    >
+                      {count} {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {gameSlug === "no-repeats" && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Min Word Length</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                  onClick={() => setDuelStartWord("")}
+                  data-testid="button-variation-random"
+                >
+                  Random
+                </button>
+                {(["4", "5", "6", "7"] as const).map((len) => (
+                  <button
+                    key={len}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === len ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelStartWord(len)}
+                    data-testid={`button-variation-norepeats-${len}`}
+                  >
+                    {len}+ letters
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {gameSlug === "definition-match" && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</p>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === "" ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                  onClick={() => setDuelStartWord("")}
+                  data-testid="button-variation-random"
+                >
+                  Random
+                </button>
+                {DUEL_DEFINITION_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${duelStartWord === cat ? "bg-violet-600 text-white border-violet-600" : "border-border hover:bg-muted"}`}
+                    onClick={() => setDuelStartWord(cat)}
+                    data-testid={`button-variation-category-${cat}`}
+                  >
+                    {cat.charAt(0) + cat.slice(1).toLowerCase()}
                   </button>
                 ))}
               </div>

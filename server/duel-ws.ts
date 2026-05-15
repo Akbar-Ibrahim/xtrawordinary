@@ -6,6 +6,7 @@ import { log } from "./index";
 import { storage } from "./storage";
 import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
+import { DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS } from "@shared/schema";
 import { resolveWordWarsGame } from "./word-wars-engine";
 
 interface DuelWebSocket extends WebSocket {
@@ -26,14 +27,6 @@ const DUEL_START_WORDS = [
   "WATER", "YIELD",
 ];
 
-/** Target letters used for Letter Hunt, Letter Frequency, and Letter Position duels. */
-const DUEL_HUNT_LETTERS = ["R", "T", "L", "S", "N", "M", "B", "D", "F", "G", "P", "C"];
-/** Word-length targets (as strings) used for Word Length duels. */
-const DUEL_WORD_LENGTHS = ["4", "5", "6", "7"];
-/** Letter Balance constraints: N vowels ("NV") or N consonants ("NC"). Counts 2-4. */
-const DUEL_BALANCE_CONSTRAINTS = ["2V", "3V", "4V", "2C", "3C", "4C"];
-/** Positions used for Letter Position duels (2–5). */
-const DUEL_POSITIONS = [2, 3, 4, 5];
 
 /** Deterministic Fisher-Yates shuffle driven by an integer seed. */
 function seededShuffle<T>(arr: T[], seed: number): T[] {
@@ -470,6 +463,7 @@ export class DuelRoomRegistry {
     format: "turn" | "race" = "turn",
     raceTarget = 15,
     raceTimeLimitSecs = 300,
+    overrideStartWord?: string,
   ): { roomCode: string; seed: number; startWord: string } {
     let roomCode: string;
     do {
@@ -477,7 +471,7 @@ export class DuelRoomRegistry {
     } while (this.rooms.has(roomCode));
 
     const seed = Math.floor(Math.random() * 1_000_000);
-    const startWord = getDuelGameInit(gameSlug, seed);
+    const startWord = overrideStartWord ?? getDuelGameInit(gameSlug, seed);
 
     const room: DuelRoom = {
       roomCode,
