@@ -4054,13 +4054,32 @@ export async function registerRoutes(
         }
       }
 
-      // Create duel room eagerly via registry (same as Huddle flow)
+      // Create duel room eagerly via registry (mirrors Huddle flow)
       const { duelRegistry } = await import("./duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
         matchGame.gameSlug, reg1.registeredBy, "race", 10, 180,
       );
 
-      // Also persist an accepted DuelChallenge so the WS can resolve the room after a process restart
+      const gameExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+      // Persist a HuddleChallenge record so the group-vs-group battle is formally tracked
+      await storage.createHuddleChallenge({
+        challengerGroupId: match.group1Id,
+        challengeeGroupId: match.group2Id,
+        challengerAdminId: reg1.registeredBy,
+        challengeeAdminId: reg2.registeredBy,
+        gameSlug: matchGame.gameSlug,
+        format: "race",
+        raceTarget: 10,
+        raceTimeLimit: 180,
+        status: "accepted",
+        roomCode,
+        seed: roomSeed,
+        startWord: roomStartWord ?? null,
+        expiresAt: gameExpiresAt,
+      });
+
+      // Also persist an accepted DuelChallenge so the WS can fall back after a process restart
       await storage.createDuelChallenge({
         challengerId: reg1.registeredBy,
         challengeeId: reg2.registeredBy,
@@ -4082,11 +4101,18 @@ export async function registerRoutes(
         await storage.updateGuildWarsMatch(matchId, { status: "active" });
       }
 
-      // Notify both typists
-      const typistIds = [reg1.registeredBy, reg2.registeredBy];
+      // Notify all admins of both competing groups
       try {
+        const [group1Members, group2Members] = await Promise.all([
+          storage.getGroupMembers(match.group1Id),
+          storage.getGroupMembers(match.group2Id),
+        ]);
+        const adminIds = new Set<number>();
+        for (const m of [...group1Members, ...group2Members]) {
+          if (m.role === "admin" || m.role === "owner") adminIds.add(m.userId);
+        }
         await Promise.all(
-          typistIds.map(async (pid) => {
+          Array.from(adminIds).map(async (pid) => {
             const prefs = await storage.getNotificationPreferences(pid);
             if (prefs["guild_war_round_start"]) {
               await storage.createNotification({
