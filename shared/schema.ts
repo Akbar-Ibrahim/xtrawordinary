@@ -852,6 +852,8 @@ export const guildWarsRegistrationSchema = z.object({
   createdAt: z.string(),
 });
 export type GuildWarsRegistration = z.infer<typeof guildWarsRegistrationSchema>;
+export const insertGuildWarsRegistrationSchema = guildWarsRegistrationSchema.omit({ id: true, createdAt: true });
+export type InsertGuildWarsRegistration = z.infer<typeof insertGuildWarsRegistrationSchema>;
 
 export const guildWarsMatchStatusSchema = z.enum(["pending", "active", "completed", "forfeited", "bye"]);
 export type GuildWarsMatchStatus = z.infer<typeof guildWarsMatchStatusSchema>;
@@ -871,6 +873,8 @@ export const guildWarsMatchSchema = z.object({
   createdAt: z.string(),
 });
 export type GuildWarsMatch = z.infer<typeof guildWarsMatchSchema>;
+export const insertGuildWarsMatchSchema = guildWarsMatchSchema.omit({ id: true, createdAt: true });
+export type InsertGuildWarsMatch = z.infer<typeof insertGuildWarsMatchSchema>;
 
 export const guildWarsMatchGameStatusSchema = z.enum(["pending", "active", "completed"]);
 export type GuildWarsMatchGameStatus = z.infer<typeof guildWarsMatchGameStatusSchema>;
@@ -885,6 +889,8 @@ export const guildWarsMatchGameSchema = z.object({
   status: guildWarsMatchGameStatusSchema,
 });
 export type GuildWarsMatchGame = z.infer<typeof guildWarsMatchGameSchema>;
+export const insertGuildWarsMatchGameSchema = guildWarsMatchGameSchema.omit({ id: true });
+export type InsertGuildWarsMatchGame = z.infer<typeof insertGuildWarsMatchGameSchema>;
 
 export const guildWarsChampionSchema = z.object({
   id: z.number(),
@@ -894,6 +900,8 @@ export const guildWarsChampionSchema = z.object({
   createdAt: z.string(),
 });
 export type GuildWarsChampion = z.infer<typeof guildWarsChampionSchema>;
+export const insertGuildWarsChampionSchema = guildWarsChampionSchema.omit({ id: true, createdAt: true });
+export type InsertGuildWarsChampion = z.infer<typeof insertGuildWarsChampionSchema>;
 
 // ==================== CHALLENGES ====================
 
