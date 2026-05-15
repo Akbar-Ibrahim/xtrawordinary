@@ -16,6 +16,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
+import { formatDuelVariation } from "@/lib/duel-variation";
 
 type EnrichedDuelChallenge = DuelChallenge & {
   challengerName: string | null;
@@ -481,6 +482,14 @@ export default function Friends() {
                               <p className="text-xs text-muted-foreground" data-testid={`text-duel-game-${d.id}`}>
                                 {d.gameSlug ? d.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Word Chain"} Duel · Waiting for your response
                               </p>
+                              {(() => {
+                                const variation = formatDuelVariation(d.gameSlug ?? "", d.startWord);
+                                return variation ? (
+                                  <p className="text-xs text-violet-600 dark:text-violet-400 font-medium" data-testid={`text-duel-variation-${d.id}`}>
+                                    Variation: {variation}
+                                  </p>
+                                ) : null;
+                              })()}
                             </div>
                           </div>
                           <div className="flex gap-2">

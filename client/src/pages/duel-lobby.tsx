@@ -22,6 +22,7 @@ import { DuelChallengeDialog } from "@/components/duel-challenge-dialog";
 import type { UnseenChallenge } from "@/lib/duel-notifications-context";
 import { DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
+import { formatDuelVariation } from "@/lib/duel-variation";
 
 function timeAgo(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -43,6 +44,7 @@ interface OpenChallenge {
   roomCode: string | null;
   createdAt: string;
   expiresAt: string | null;
+  startWord: string | null;
 }
 
 function ChallengeCountdown({ expiresAt }: { expiresAt: string | null }) {
@@ -172,6 +174,14 @@ function OpenChallengeCard({
                   <Badge variant="secondary" className="text-xs shrink-0">
                     {ALL_GAME_LABELS[c.gameSlug] ?? c.gameSlug}
                   </Badge>
+                  {(() => {
+                    const variation = formatDuelVariation(c.gameSlug, c.startWord);
+                    return variation ? (
+                      <Badge variant="outline" className="text-xs shrink-0 text-violet-600 dark:text-violet-400 border-violet-300 dark:border-violet-700" data-testid={`text-open-challenge-variation-${c.id}`}>
+                        {variation}
+                      </Badge>
+                    ) : null;
+                  })()}
                   {c.message && (
                     <span className="text-xs text-muted-foreground truncate">"{c.message}"</span>
                   )}
