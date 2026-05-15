@@ -399,10 +399,6 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
             {!locked && (
               <>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button onClick={() => startGame(challenge, isSurvival)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Replay
-                  </Button>
                   <Button onClick={() => startGame(challenge, isSurvival)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                     Play Again
                   </Button>

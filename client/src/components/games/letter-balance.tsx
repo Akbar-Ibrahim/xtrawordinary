@@ -959,10 +959,6 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
             {!locked && (
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={replayGame} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Replay
-                </Button>
                 <Button onClick={replayGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   Play Again
                 </Button>
