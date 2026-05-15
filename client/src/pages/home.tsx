@@ -64,6 +64,18 @@ export default function Home() {
     enabled: !openTournament && hasAnyTournament,
   });
 
+  const { data: guildWarsTournaments = [] } = useQuery<Array<{ id: number; status: string; name: string; registrationDeadline: string; minGroups: number }>>({
+    queryKey: ["/api/guild-wars"],
+  });
+
+  const openGuildWar = guildWarsTournaments.find(t => t.status === "active") ?? guildWarsTournaments.find(t => t.status === "registration");
+  const hasAnyGuildWar = guildWarsTournaments.length > 0;
+
+  const { data: gwHallOfFame = [] } = useQuery<Array<{ id: number; tournamentId: number; groupId: number; tournamentName: string; groupName: string | null; createdAt: string }>>({
+    queryKey: ["/api/guild-wars/champions"],
+    enabled: !openGuildWar && hasAnyGuildWar,
+  });
+
   const stats = useMemo(() => loadStats(), []);
   const streak = useMemo(() => loadStreak(), []);
   const [favorites, setFavorites] = useState(() => loadFavorites());
@@ -429,20 +441,41 @@ export default function Home() {
               transition={{ delay: 0.27 }}
               className="flex flex-col flex-1 min-w-[200px]"
             >
-              <Link href="/guild-wars" className="flex-1 flex flex-col">
-                <Card className="hover-elevate cursor-pointer h-full" data-testid="card-guild-wars-shortcut">
-                  <CardContent className="p-4 flex items-center gap-3 h-full">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500">
-                      <Swords className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">Guild Wars</p>
-                      <p className="text-xs text-muted-foreground truncate">Group bracket tournaments</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </Link>
+              {(() => {
+                let gwSubLabel: string;
+                if (openGuildWar) {
+                  if (openGuildWar.status === "registration") {
+                    gwSubLabel = `Registration open · closes ${new Date(openGuildWar.registrationDeadline).toLocaleDateString()}`;
+                  } else {
+                    gwSubLabel = "In Progress";
+                  }
+                } else if (gwHallOfFame.length > 0 && gwHallOfFame[0].groupName) {
+                  gwSubLabel = `Last champion: ${gwHallOfFame[0].groupName}`;
+                } else if (hasAnyGuildWar) {
+                  gwSubLabel = "View past tournaments";
+                } else {
+                  gwSubLabel = "Group bracket tournaments";
+                }
+                return (
+                  <Link href="/guild-wars" className="flex-1 flex flex-col">
+                    <Card
+                      className={`hover-elevate cursor-pointer h-full${openGuildWar ? " border-purple-400/40" : ""}`}
+                      data-testid="card-guild-wars-shortcut"
+                    >
+                      <CardContent className="p-4 flex items-center gap-3 h-full">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500">
+                          <Swords className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">Guild Wars</p>
+                          <p className="text-xs text-muted-foreground truncate">{gwSubLabel}</p>
+                        </div>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })()}
             </motion.div>
 
             <motion.div

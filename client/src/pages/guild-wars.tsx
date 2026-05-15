@@ -200,16 +200,15 @@ function TournamentCard({
                 >
                   {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Withdraw"}
                 </Button>
-              ) : (
+              ) : unregisteredGroups.length > 0 ? (
                 <Button
                   size="sm"
                   onClick={() => setRegisterOpen(true)}
-                  disabled={unregisteredGroups.length === 0}
                   data-testid={`button-register-${tournament.id}`}
                 >
                   Enter the War
                 </Button>
-              )
+              ) : null
             )}
             <Link href={`/guild-wars/${tournament.id}`}>
               <Button size="sm" variant="ghost" data-testid={`link-gw-bracket-${tournament.id}`}>
@@ -429,6 +428,9 @@ export default function GuildWarsLobby() {
                               {c.tournamentName}
                             </p>
                           </Link>
+                          <p className="text-[10px] text-muted-foreground/70" data-testid={`text-gw-champion-date-${c.id}`}>
+                            {new Date(c.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
                         <Crown className="h-3.5 w-3.5 text-purple-500 shrink-0" data-testid={`badge-gw-champion-${c.id}`} />
                       </CardContent>
