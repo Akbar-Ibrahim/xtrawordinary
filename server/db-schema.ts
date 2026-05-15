@@ -476,6 +476,78 @@ export const wordWarsChampions = mysqlTable("word_wars_champions", {
   uniqueIndex("wc_tournament_user_idx").on(table.tournamentId, table.userId),
 ]);
 
+export const guildWarsTournaments = mysqlTable("guild_wars_tournaments", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("registration"),
+  registrationDeadline: timestamp("registration_deadline").notNull(),
+  roundDeadlineHours: int("round_deadline_hours").notNull().default(24),
+  minGroups: int("min_groups").notNull().default(2),
+  maxGroups: int("max_groups"),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gt_status_idx").on(table.status),
+  index("gt_deadline_idx").on(table.registrationDeadline),
+  index("gt_created_by_idx").on(table.createdBy),
+]);
+
+export const guildWarsRegistrations = mysqlTable("guild_wars_registrations", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  groupId: int("group_id").notNull(),
+  registeredBy: int("registered_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gr_tournament_idx").on(table.tournamentId),
+  index("gr_group_idx").on(table.groupId),
+  uniqueIndex("gr_tournament_group_idx").on(table.tournamentId, table.groupId),
+]);
+
+export const guildWarsMatches = mysqlTable("guild_wars_matches", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  round: int("round").notNull(),
+  group1Id: int("group1_id"),
+  group2Id: int("group2_id"),
+  winnerGroupId: int("winner_group_id"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  deadline: timestamp("deadline"),
+  game1Slug: varchar("game1_slug", { length: 100 }).notNull(),
+  game2Slug: varchar("game2_slug", { length: 100 }).notNull(),
+  game3Slug: varchar("game3_slug", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gm_tournament_idx").on(table.tournamentId),
+  index("gm_round_idx").on(table.tournamentId, table.round),
+  index("gm_status_idx").on(table.status),
+]);
+
+export const guildWarsMatchGames = mysqlTable("guild_wars_match_games", {
+  id: int("id").primaryKey().autoincrement(),
+  matchId: int("match_id").notNull(),
+  gameNumber: int("game_number").notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  roomCode: varchar("room_code", { length: 12 }),
+  winnerGroupId: int("winner_group_id"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+}, (table) => [
+  index("gmg_match_idx").on(table.matchId),
+  uniqueIndex("gmg_match_game_idx").on(table.matchId, table.gameNumber),
+  index("gmg_room_code_idx").on(table.roomCode),
+]);
+
+export const guildWarsChampions = mysqlTable("guild_wars_champions", {
+  id: int("id").primaryKey().autoincrement(),
+  tournamentId: int("tournament_id").notNull(),
+  groupId: int("group_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gc_tournament_idx").on(table.tournamentId),
+  index("gc_group_idx").on(table.groupId),
+  uniqueIndex("gc_tournament_group_idx").on(table.tournamentId, table.groupId),
+]);
+
 export const notifications = mysqlTable("notifications", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),

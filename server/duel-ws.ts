@@ -8,6 +8,7 @@ import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
 import { DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES } from "@shared/schema";
 import { resolveWordWarsGame } from "./word-wars-engine";
+import { resolveGuildWarsGame } from "./guild-wars-engine";
 
 interface DuelWebSocket extends WebSocket {
   userId: number;
@@ -421,6 +422,8 @@ async function finalizeGame(room: DuelRoom, winnerId: number, isForfeit = false)
 
   // Word Wars integration — fire-and-forget; errors are logged inside
   void resolveWordWarsGame(room.roomCode, winnerId);
+  // Guild Wars integration — fire-and-forget; errors are logged inside
+  void resolveGuildWarsGame(room.roomCode, winnerId);
 }
 
 export class DuelRoomRegistry {

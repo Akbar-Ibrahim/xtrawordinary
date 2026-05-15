@@ -130,11 +130,54 @@ function scheduleWordWarsJobs() {
   setInterval(runWordWarsJobs, 60_000);
 }
 
+async function runGuildWarsJobs() {
+  try {
+    const st = getStorage();
+    const { executeGuildBracketDraw, checkAndForfeitExpiredGuildMatches } = await import("./guild-wars-engine");
+    const tournaments = await st.listGuildWarsTournaments();
+    const now = new Date();
+
+    for (const t of tournaments) {
+      if (t.status === "registration" && new Date(t.registrationDeadline) <= now) {
+        log(`[guild-wars] Tournament ${t.id} registration closed — auto-drawing bracket`, "guild-wars");
+        const result = await executeGuildBracketDraw(t.id);
+        if ("error" in result) {
+          log(`[guild-wars] Tournament ${t.id} auto-draw failed: ${result.error}`, "guild-wars");
+        } else {
+          log(`[guild-wars] Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "guild-wars");
+        }
+        continue;
+      }
+
+      if (t.status === "active") {
+        await checkAndForfeitExpiredGuildMatches(t);
+
+        const matches = await st.listGuildWarsMatchesForTournament(t.id);
+        const unresolvedMatches = matches.filter(
+          m => m.status !== "completed" && m.status !== "forfeited" && m.status !== "bye",
+        );
+        if (unresolvedMatches.length === 0 && matches.length > 0) {
+          await st.updateGuildWarsTournament(t.id, { status: "completed" });
+          log(`[guild-wars] Tournament ${t.id} completed`, "guild-wars");
+        }
+      }
+    }
+  } catch (err) {
+    log(`[guild-wars] Scheduler error: ${err}`, "guild-wars");
+  }
+}
+
+function scheduleGuildWarsJobs() {
+  runGuildWarsJobs();
+  setInterval(runGuildWarsJobs, 60_000);
+}
+
 (async () => {
   await initStorage();
   runPruneJob();
   setInterval(runPruneJob, PRUNE_INTERVAL_MS);
   scheduleWordWarsJobs();
+  scheduleGuildWarsJobs();
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);

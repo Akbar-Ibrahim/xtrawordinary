@@ -9,6 +9,7 @@ import { requireAuth, requireAdmin } from "./auth";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { registerSchema, loginSchema, statsInputSchema, leaderboardInputSchema } from "./validators";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, type NotificationType, notificationTypeSchema, type InsertNotification } from "@shared/schema";
+import { executeGuildBracketDraw } from "./guild-wars-engine";
 import { executeBracketDraw, checkAndForfeitExpiredMatches } from "./word-wars-engine";
 import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "./word-wars-sse";
 import { seededShuffle } from "./seeded-rng";
@@ -3794,6 +3795,282 @@ export async function registerRoutes(
       res.json({ roomCode });
     } catch (err) {
       console.error("[word-wars] start game error", err);
+      res.status(500).json({ error: "Failed to start game" });
+    }
+  });
+
+  // ==================== GUILD WARS ====================
+
+  // POST /api/guild-wars — admin creates a tournament
+  app.post("/api/guild-wars", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { name, registrationDeadline, roundDeadlineHours, minGroups, maxGroups } = req.body;
+      if (!name || !registrationDeadline) {
+        return res.status(400).json({ error: "name and registrationDeadline are required" });
+      }
+      const tournament = await storage.createGuildWarsTournament({
+        name: String(name),
+        registrationDeadline: new Date(registrationDeadline).toISOString(),
+        roundDeadlineHours: Number(roundDeadlineHours ?? 24),
+        minGroups: Number(minGroups ?? 2),
+        maxGroups: maxGroups ? Number(maxGroups) : null,
+        createdBy: (req.user as any).id,
+      });
+      res.status(201).json(tournament);
+    } catch (err) {
+      console.error("[guild-wars] create tournament error", err);
+      res.status(500).json({ error: "Failed to create tournament" });
+    }
+  });
+
+  // GET /api/guild-wars — list all tournaments
+  app.get("/api/guild-wars", async (req, res) => {
+    try {
+      const tournaments = await storage.listGuildWarsTournaments();
+      res.json(tournaments);
+    } catch (err) {
+      console.error("[guild-wars] list tournaments error", err);
+      res.status(500).json({ error: "Failed to list tournaments" });
+    }
+  });
+
+  // GET /api/guild-wars/champions — Hall of Fame
+  app.get("/api/guild-wars/champions", async (req, res) => {
+    try {
+      const champions = await storage.listAllGuildWarsChampions();
+      res.json(champions);
+    } catch (err) {
+      console.error("[guild-wars] champions error", err);
+      res.status(500).json({ error: "Failed to fetch champions" });
+    }
+  });
+
+  // GET /api/guild-wars/:id — tournament detail with registrations + matches
+  app.get("/api/guild-wars/:id", async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
+
+      const [tournament, registrations, matches] = await Promise.all([
+        storage.getGuildWarsTournament(tournamentId),
+        storage.getGuildWarsRegistrationsForTournament(tournamentId),
+        storage.listGuildWarsMatchesForTournament(tournamentId),
+      ]);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+
+      const matchesWithGames = await Promise.all(
+        matches.map(async (m) => ({
+          ...m,
+          games: await storage.getGuildWarsMatchGames(m.id),
+        })),
+      );
+
+      // Enrich registrations with group names
+      const enriched = await Promise.all(
+        registrations.map(async (r) => {
+          const group = await storage.getGroup(r.groupId);
+          return { ...r, groupName: group?.name ?? null };
+        }),
+      );
+
+      res.json({ ...tournament, registrations: enriched, matches: matchesWithGames });
+    } catch (err) {
+      console.error("[guild-wars] get tournament error", err);
+      res.status(500).json({ error: "Failed to fetch tournament" });
+    }
+  });
+
+  // POST /api/guild-wars/:id/register — group admin registers their group
+  app.post("/api/guild-wars/:id/register", requireAuth, async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
+
+      const userId = (req.user as any).id;
+      const { groupId } = req.body;
+      if (!groupId) return res.status(400).json({ error: "groupId is required" });
+
+      const tournament = await storage.getGuildWarsTournament(tournamentId);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Registration is closed" });
+      if (new Date(tournament.registrationDeadline) <= new Date()) {
+        return res.status(400).json({ error: "Registration deadline has passed" });
+      }
+
+      // Verify the user is admin of the group
+      const membership = await storage.getGroupMember(Number(groupId), userId);
+      if (!membership || membership.role !== "admin") {
+        return res.status(403).json({ error: "Only group admins can register a group" });
+      }
+
+      const existing = await storage.getGuildWarsRegistration(tournamentId, Number(groupId));
+      if (existing) return res.status(409).json({ error: "Group is already registered" });
+
+      if (tournament.maxGroups) {
+        const regs = await storage.getGuildWarsRegistrationsForTournament(tournamentId);
+        if (regs.length >= tournament.maxGroups) {
+          return res.status(400).json({ error: "Tournament is full" });
+        }
+      }
+
+      const reg = await storage.createGuildWarsRegistration(tournamentId, Number(groupId), userId);
+      res.status(201).json(reg);
+    } catch (err) {
+      console.error("[guild-wars] register error", err);
+      res.status(500).json({ error: "Failed to register group" });
+    }
+  });
+
+  // DELETE /api/guild-wars/:id/register — group admin withdraws their group
+  app.delete("/api/guild-wars/:id/register", requireAuth, async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
+
+      const userId = (req.user as any).id;
+      const { groupId } = req.body;
+      if (!groupId) return res.status(400).json({ error: "groupId is required" });
+
+      const tournament = await storage.getGuildWarsTournament(tournamentId);
+      if (!tournament) return res.status(404).json({ error: "Tournament not found" });
+      if (tournament.status !== "registration") return res.status(400).json({ error: "Cannot withdraw after registration closes" });
+
+      const membership = await storage.getGroupMember(Number(groupId), userId);
+      if (!membership || membership.role !== "admin") {
+        return res.status(403).json({ error: "Only group admins can withdraw a group" });
+      }
+
+      const existing = await storage.getGuildWarsRegistration(tournamentId, Number(groupId));
+      if (!existing) return res.status(404).json({ error: "Group is not registered" });
+
+      await storage.deleteGuildWarsRegistration(tournamentId, Number(groupId));
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[guild-wars] unregister error", err);
+      res.status(500).json({ error: "Failed to withdraw group" });
+    }
+  });
+
+  // POST /api/guild-wars/:id/draw — admin manually draws the bracket
+  app.post("/api/guild-wars/:id/draw", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      if (isNaN(tournamentId)) return res.status(400).json({ error: "Invalid tournament ID" });
+
+      const result = await executeGuildBracketDraw(tournamentId);
+      if ("error" in result) {
+        return res.status(400).json({ error: result.error });
+      }
+      res.json({ success: true, matchCount: result.matches.length });
+    } catch (err) {
+      console.error("[guild-wars] draw error", err);
+      res.status(500).json({ error: "Failed to draw bracket" });
+    }
+  });
+
+  // GET /api/guild-wars/matches/:matchId — match detail with games
+  app.get("/api/guild-wars/matches/:matchId", async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      if (isNaN(matchId)) return res.status(400).json({ error: "Invalid match ID" });
+
+      const match = await storage.getGuildWarsMatch(matchId);
+      if (!match) return res.status(404).json({ error: "Match not found" });
+
+      const games = await storage.getGuildWarsMatchGames(matchId);
+      res.json({ ...match, games });
+    } catch (err) {
+      console.error("[guild-wars] match detail error", err);
+      res.status(500).json({ error: "Failed to fetch match" });
+    }
+  });
+
+  // POST /api/guild-wars/matches/:matchId/games/:gameNumber/start — group admin starts a match game (creates duel room)
+  app.post("/api/guild-wars/matches/:matchId/games/:gameNumber/start", requireAuth, async (req, res) => {
+    try {
+      const matchId = parseInt(req.params.matchId);
+      const gameNumber = parseInt(req.params.gameNumber);
+      if (isNaN(matchId) || isNaN(gameNumber)) return res.status(400).json({ error: "Invalid params" });
+
+      const match = await storage.getGuildWarsMatch(matchId);
+      if (!match) return res.status(404).json({ error: "Match not found" });
+      if (!match.group1Id || !match.group2Id) return res.status(400).json({ error: "Match has a bye" });
+      if (match.status === "completed" || match.status === "bye" || match.status === "forfeited") {
+        return res.status(400).json({ error: "Match is already resolved" });
+      }
+
+      const userId = (req.user as any).id;
+
+      // Caller must be the registered typist for one of the groups
+      const [reg1, reg2] = await Promise.all([
+        storage.getGuildWarsRegistration(match.tournamentId, match.group1Id),
+        storage.getGuildWarsRegistration(match.tournamentId, match.group2Id),
+      ]);
+
+      const isTypist = reg1?.registeredBy === userId || reg2?.registeredBy === userId;
+      if (!isTypist) {
+        return res.status(403).json({ error: "Only the registered typist for a group can start games" });
+      }
+
+      const matchGame = await storage.getGuildWarsMatchGame(matchId, gameNumber);
+      if (!matchGame) return res.status(404).json({ error: "Match game not found" });
+      if (matchGame.status !== "pending") return res.status(400).json({ error: "Game already started or completed" });
+
+      // Only the first game of each match can be started without game 1 being complete,
+      // and game 2 requires game 1 to be done, etc.
+      if (gameNumber > 1) {
+        const prevGame = await storage.getGuildWarsMatchGame(matchId, gameNumber - 1);
+        if (prevGame?.status !== "completed") {
+          return res.status(400).json({ error: `Game ${gameNumber - 1} must be completed first` });
+        }
+        // Check if series is already decided
+        const allGames = await storage.getGuildWarsMatchGames(matchId);
+        const completedGames = allGames.filter(g => g.status === "completed" && g.gameNumber < gameNumber);
+        let g1Wins = 0, g2Wins = 0;
+        for (const g of completedGames) {
+          if (g.winnerGroupId === match.group1Id) g1Wins++;
+          else if (g.winnerGroupId === match.group2Id) g2Wins++;
+        }
+        if (g1Wins >= 2 || g2Wins >= 2) {
+          return res.status(400).json({ error: "Series is already decided" });
+        }
+      }
+
+      // Generate a room code and create the duel room via WS registry lazy-creation
+      const roomCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+
+      // Activate the match if not already active
+      if (match.status === "pending") {
+        await storage.updateGuildWarsMatch(matchId, { status: "active" });
+      }
+
+      // Assign room code to the match game
+      await storage.updateGuildWarsMatchGame(matchGame.id, { status: "active", roomCode });
+
+      // Notify both typists
+      const player1UserId = reg1?.registeredBy;
+      const player2UserId = reg2?.registeredBy;
+
+      await Promise.all([
+        player1UserId ? storage.createNotification({
+          userId: player1UserId,
+          type: "guild_war_round_start",
+          title: `Game ${gameNumber} — Enter the arena`,
+          body: `Game ${gameNumber} of ${gameNumber === 1 ? match.game1Slug : gameNumber === 2 ? match.game2Slug : match.game3Slug} is ready. Join the room.`,
+          linkUrl: `/duel/${roomCode}`,
+        }) : null,
+        player2UserId && player2UserId !== player1UserId ? storage.createNotification({
+          userId: player2UserId,
+          type: "guild_war_round_start",
+          title: `Game ${gameNumber} — Enter the arena`,
+          body: `Game ${gameNumber} of ${gameNumber === 1 ? match.game1Slug : gameNumber === 2 ? match.game2Slug : match.game3Slug} is ready. Join the room.`,
+          linkUrl: `/duel/${roomCode}`,
+        }) : null,
+      ]);
+
+      res.json({ roomCode, gameSlug: matchGame.gameSlug });
+    } catch (err) {
+      console.error("[guild-wars] start game error", err);
       res.status(500).json({ error: "Failed to start game" });
     }
   });

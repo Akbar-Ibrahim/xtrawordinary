@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -44,6 +44,17 @@ export class MemStorage implements IStorage {
   private wordWarsMatchGameIdCounter = 1;
   private wordWarsChampions: WordWarsChampion[] = [];
   private wordWarsChampionIdCounter = 1;
+
+  private guildWarsTournaments: GuildWarsTournament[] = [];
+  private guildWarsTournamentIdCounter = 1;
+  private guildWarsRegistrations: GuildWarsRegistration[] = [];
+  private guildWarsRegistrationIdCounter = 1;
+  private guildWarsMatches: GuildWarsMatch[] = [];
+  private guildWarsMatchIdCounter = 1;
+  private guildWarsMatchGames: GuildWarsMatchGame[] = [];
+  private guildWarsMatchGameIdCounter = 1;
+  private guildWarsChampions: GuildWarsChampion[] = [];
+  private guildWarsChampionIdCounter = 1;
 
   private notifications: Notification[] = [];
   private notificationIdCounter = 1;
@@ -1617,7 +1628,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;
@@ -1631,7 +1642,7 @@ export class MemStorage implements IStorage {
   }
 
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"];
     for (const type of types) {
       this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
     }
@@ -1777,6 +1788,154 @@ export class MemStorage implements IStorage {
     );
     const matchWins = userMatches.filter(m => m.winnerId === userId).length;
     const matchLosses = userMatches.filter(m => m.winnerId !== null && m.winnerId !== userId).length;
+    return { tournamentsEntered, matchWins, matchLosses };
+  }
+
+  // ==================== GUILD WARS ====================
+
+  async createGuildWarsTournament(data: InsertGuildWarsTournament): Promise<GuildWarsTournament> {
+    const t: GuildWarsTournament = {
+      ...data,
+      id: this.guildWarsTournamentIdCounter++,
+      status: "registration",
+      createdAt: new Date().toISOString(),
+    };
+    this.guildWarsTournaments.push(t);
+    return t;
+  }
+
+  async getGuildWarsTournament(id: number): Promise<GuildWarsTournament | undefined> {
+    return this.guildWarsTournaments.find(t => t.id === id);
+  }
+
+  async listGuildWarsTournaments(): Promise<GuildWarsTournament[]> {
+    return [...this.guildWarsTournaments].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateGuildWarsTournament(id: number, updates: Partial<Pick<GuildWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minGroups" | "maxGroups">>): Promise<GuildWarsTournament | undefined> {
+    const t = this.guildWarsTournaments.find(t => t.id === id);
+    if (!t) return undefined;
+    Object.assign(t, updates);
+    return t;
+  }
+
+  async createGuildWarsRegistration(tournamentId: number, groupId: number, registeredBy: number): Promise<GuildWarsRegistration> {
+    const r: GuildWarsRegistration = {
+      id: this.guildWarsRegistrationIdCounter++,
+      tournamentId,
+      groupId,
+      registeredBy,
+      createdAt: new Date().toISOString(),
+    };
+    this.guildWarsRegistrations.push(r);
+    return r;
+  }
+
+  async getGuildWarsRegistration(tournamentId: number, groupId: number): Promise<GuildWarsRegistration | undefined> {
+    return this.guildWarsRegistrations.find(r => r.tournamentId === tournamentId && r.groupId === groupId);
+  }
+
+  async deleteGuildWarsRegistration(tournamentId: number, groupId: number): Promise<void> {
+    this.guildWarsRegistrations = this.guildWarsRegistrations.filter(
+      r => !(r.tournamentId === tournamentId && r.groupId === groupId)
+    );
+  }
+
+  async getGuildWarsRegistrationsForTournament(tournamentId: number): Promise<GuildWarsRegistration[]> {
+    return this.guildWarsRegistrations.filter(r => r.tournamentId === tournamentId);
+  }
+
+  async getGuildWarsRegistrationsForGroup(groupId: number): Promise<GuildWarsRegistration[]> {
+    return this.guildWarsRegistrations.filter(r => r.groupId === groupId);
+  }
+
+  async createGuildWarsMatch(data: Omit<GuildWarsMatch, "id" | "createdAt">): Promise<GuildWarsMatch> {
+    const m: GuildWarsMatch = {
+      ...data,
+      id: this.guildWarsMatchIdCounter++,
+      createdAt: new Date().toISOString(),
+    };
+    this.guildWarsMatches.push(m);
+    return m;
+  }
+
+  async getGuildWarsMatch(id: number): Promise<GuildWarsMatch | undefined> {
+    return this.guildWarsMatches.find(m => m.id === id);
+  }
+
+  async listGuildWarsMatchesForTournament(tournamentId: number): Promise<GuildWarsMatch[]> {
+    return this.guildWarsMatches
+      .filter(m => m.tournamentId === tournamentId)
+      .sort((a, b) => a.round - b.round);
+  }
+
+  async updateGuildWarsMatch(id: number, updates: Partial<Pick<GuildWarsMatch, "status" | "winnerGroupId" | "deadline">>): Promise<GuildWarsMatch | undefined> {
+    const m = this.guildWarsMatches.find(m => m.id === id);
+    if (!m) return undefined;
+    Object.assign(m, updates);
+    return m;
+  }
+
+  async createGuildWarsMatchGame(data: Omit<GuildWarsMatchGame, "id">): Promise<GuildWarsMatchGame> {
+    const g: GuildWarsMatchGame = { ...data, id: this.guildWarsMatchGameIdCounter++ };
+    this.guildWarsMatchGames.push(g);
+    return g;
+  }
+
+  async getGuildWarsMatchGame(matchId: number, gameNumber: number): Promise<GuildWarsMatchGame | undefined> {
+    return this.guildWarsMatchGames.find(g => g.matchId === matchId && g.gameNumber === gameNumber);
+  }
+
+  async getGuildWarsMatchGames(matchId: number): Promise<GuildWarsMatchGame[]> {
+    return this.guildWarsMatchGames
+      .filter(g => g.matchId === matchId)
+      .sort((a, b) => a.gameNumber - b.gameNumber);
+  }
+
+  async updateGuildWarsMatchGame(id: number, updates: Partial<Pick<GuildWarsMatchGame, "status" | "winnerGroupId" | "roomCode">>): Promise<GuildWarsMatchGame | undefined> {
+    const g = this.guildWarsMatchGames.find(g => g.id === id);
+    if (!g) return undefined;
+    Object.assign(g, updates);
+    return g;
+  }
+
+  async getGuildWarsMatchGameByRoomCode(roomCode: string): Promise<GuildWarsMatchGame | undefined> {
+    return this.guildWarsMatchGames.find(g => g.roomCode === roomCode);
+  }
+
+  async createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion> {
+    const c: GuildWarsChampion = {
+      id: this.guildWarsChampionIdCounter++,
+      tournamentId,
+      groupId,
+      createdAt: new Date().toISOString(),
+    };
+    this.guildWarsChampions.push(c);
+    return c;
+  }
+
+  async getGuildWarsChampionsForTournament(tournamentId: number): Promise<GuildWarsChampion[]> {
+    return this.guildWarsChampions.filter(c => c.tournamentId === tournamentId);
+  }
+
+  async getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]> {
+    return this.guildWarsChampions.filter(c => c.groupId === groupId);
+  }
+
+  async listAllGuildWarsChampions(): Promise<GuildWarsChampion[]> {
+    return [...this.guildWarsChampions].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }
+
+  async getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const tournamentsEntered = this.guildWarsRegistrations.filter(r => r.groupId === groupId).length;
+    const groupMatches = this.guildWarsMatches.filter(
+      m => (m.group1Id === groupId || m.group2Id === groupId) &&
+        (m.status === "completed" || m.status === "forfeited")
+    );
+    const matchWins = groupMatches.filter(m => m.winnerGroupId === groupId).length;
+    const matchLosses = groupMatches.filter(m => m.winnerGroupId !== null && m.winnerGroupId !== groupId).length;
     return { tournamentsEntered, matchWins, matchLosses };
   }
 }

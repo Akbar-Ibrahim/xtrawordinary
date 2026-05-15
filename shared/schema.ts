@@ -696,6 +696,10 @@ export const notificationTypeSchema = z.enum([
   "word_war_round_start",
   "word_war_champion",
   "word_war_cancelled",
+  "guild_war_matched",
+  "guild_war_round_start",
+  "guild_war_champion",
+  "guild_war_cancelled",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -737,6 +741,10 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   word_war_round_start: "Word Wars — Battle begins now",
   word_war_champion: "Word Wars — You are champion",
   word_war_cancelled: "Word Wars — Tournament cancelled",
+  guild_war_matched: "Guild Wars — Your group has been matched",
+  guild_war_round_start: "Guild Wars — Battle begins now",
+  guild_war_champion: "Guild Wars — Your group is champion",
+  guild_war_cancelled: "Guild Wars — Tournament cancelled",
 };
 
 // ==================== WORD WARS ====================
@@ -814,6 +822,77 @@ export const wordWarsChampionSchema = z.object({
   createdAt: z.string(),
 });
 export type WordWarsChampion = z.infer<typeof wordWarsChampionSchema>;
+
+// ==================== GUILD WARS ====================
+
+export const guildWarsTournamentStatusSchema = z.enum(["registration", "active", "completed", "cancelled"]);
+export type GuildWarsTournamentStatus = z.infer<typeof guildWarsTournamentStatusSchema>;
+
+export const guildWarsTournamentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  status: guildWarsTournamentStatusSchema,
+  registrationDeadline: z.string(),
+  roundDeadlineHours: z.number(),
+  minGroups: z.number(),
+  maxGroups: z.number().nullable(),
+  createdBy: z.number(),
+  createdAt: z.string(),
+});
+export type GuildWarsTournament = z.infer<typeof guildWarsTournamentSchema>;
+
+export const insertGuildWarsTournamentSchema = guildWarsTournamentSchema.omit({ id: true, createdAt: true, status: true });
+export type InsertGuildWarsTournament = z.infer<typeof insertGuildWarsTournamentSchema>;
+
+export const guildWarsRegistrationSchema = z.object({
+  id: z.number(),
+  tournamentId: z.number(),
+  groupId: z.number(),
+  registeredBy: z.number(),
+  createdAt: z.string(),
+});
+export type GuildWarsRegistration = z.infer<typeof guildWarsRegistrationSchema>;
+
+export const guildWarsMatchStatusSchema = z.enum(["pending", "active", "completed", "forfeited", "bye"]);
+export type GuildWarsMatchStatus = z.infer<typeof guildWarsMatchStatusSchema>;
+
+export const guildWarsMatchSchema = z.object({
+  id: z.number(),
+  tournamentId: z.number(),
+  round: z.number(),
+  group1Id: z.number().nullable(),
+  group2Id: z.number().nullable(),
+  winnerGroupId: z.number().nullable(),
+  status: guildWarsMatchStatusSchema,
+  deadline: z.string().nullable(),
+  game1Slug: z.string(),
+  game2Slug: z.string(),
+  game3Slug: z.string(),
+  createdAt: z.string(),
+});
+export type GuildWarsMatch = z.infer<typeof guildWarsMatchSchema>;
+
+export const guildWarsMatchGameStatusSchema = z.enum(["pending", "active", "completed"]);
+export type GuildWarsMatchGameStatus = z.infer<typeof guildWarsMatchGameStatusSchema>;
+
+export const guildWarsMatchGameSchema = z.object({
+  id: z.number(),
+  matchId: z.number(),
+  gameNumber: z.number(),
+  gameSlug: z.string(),
+  roomCode: z.string().nullable(),
+  winnerGroupId: z.number().nullable(),
+  status: guildWarsMatchGameStatusSchema,
+});
+export type GuildWarsMatchGame = z.infer<typeof guildWarsMatchGameSchema>;
+
+export const guildWarsChampionSchema = z.object({
+  id: z.number(),
+  tournamentId: z.number(),
+  groupId: z.number(),
+  createdAt: z.string(),
+});
+export type GuildWarsChampion = z.infer<typeof guildWarsChampionSchema>;
 
 // ==================== CHALLENGES ====================
 

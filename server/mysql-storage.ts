@@ -1,5 +1,5 @@
 import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
-import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion } from "@shared/schema";
+import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1816,7 +1816,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
@@ -1833,7 +1833,7 @@ export class MySQLStorage implements IStorage {
 
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
     const db = await this.getDb();
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"];
     await Promise.all(
       types.map((type) =>
         db.insert(schema.notificationPreferences).values({ userId, type, enabled })
@@ -2122,6 +2122,296 @@ export class MySQLStorage implements IStorage {
     for (const m of matchRows) {
       if (m.winnerId === userId) matchWins++;
       else if (m.winnerId !== null) matchLosses++;
+    }
+    return { tournamentsEntered, matchWins, matchLosses };
+  }
+
+  // ==================== GUILD WARS ====================
+
+  private toGuildWarsTournament(row: any): GuildWarsTournament {
+    return {
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      registrationDeadline: row.registrationDeadline instanceof Date ? row.registrationDeadline.toISOString() : String(row.registrationDeadline),
+      roundDeadlineHours: row.roundDeadlineHours,
+      minGroups: row.minGroups ?? 2,
+      maxGroups: row.maxGroups ?? null,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toGuildWarsRegistration(row: any): GuildWarsRegistration {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      groupId: row.groupId,
+      registeredBy: row.registeredBy,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toGuildWarsMatch(row: any): GuildWarsMatch {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      round: row.round,
+      group1Id: row.group1Id ?? null,
+      group2Id: row.group2Id ?? null,
+      winnerGroupId: row.winnerGroupId ?? null,
+      status: row.status,
+      deadline: row.deadline ? (row.deadline instanceof Date ? row.deadline.toISOString() : String(row.deadline)) : null,
+      game1Slug: row.game1Slug,
+      game2Slug: row.game2Slug,
+      game3Slug: row.game3Slug,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  private toGuildWarsMatchGame(row: any): GuildWarsMatchGame {
+    return {
+      id: row.id,
+      matchId: row.matchId,
+      gameNumber: row.gameNumber,
+      gameSlug: row.gameSlug,
+      roomCode: row.roomCode ?? null,
+      winnerGroupId: row.winnerGroupId ?? null,
+      status: row.status,
+    };
+  }
+
+  private toGuildWarsChampion(row: any): GuildWarsChampion {
+    return {
+      id: row.id,
+      tournamentId: row.tournamentId,
+      groupId: row.groupId,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    };
+  }
+
+  async createGuildWarsTournament(data: InsertGuildWarsTournament): Promise<GuildWarsTournament> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.guildWarsTournaments).values({
+      name: data.name,
+      status: "registration",
+      registrationDeadline: new Date(data.registrationDeadline),
+      roundDeadlineHours: data.roundDeadlineHours,
+      minGroups: data.minGroups ?? 2,
+      maxGroups: data.maxGroups ?? null,
+      createdBy: data.createdBy,
+    });
+    const created = await this.getGuildWarsTournament(result[0].insertId);
+    return created!;
+  }
+
+  async getGuildWarsTournament(id: number): Promise<GuildWarsTournament | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsTournaments).where(eq(schema.guildWarsTournaments.id, id)).limit(1);
+    return rows[0] ? this.toGuildWarsTournament(rows[0]) : undefined;
+  }
+
+  async listGuildWarsTournaments(): Promise<GuildWarsTournament[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsTournaments).orderBy(desc(schema.guildWarsTournaments.createdAt));
+    return rows.map((r: any) => this.toGuildWarsTournament(r));
+  }
+
+  async updateGuildWarsTournament(id: number, updates: Partial<Pick<GuildWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minGroups" | "maxGroups">>): Promise<GuildWarsTournament | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.registrationDeadline !== undefined) dbUpdates.registrationDeadline = new Date(updates.registrationDeadline);
+    if (updates.roundDeadlineHours !== undefined) dbUpdates.roundDeadlineHours = updates.roundDeadlineHours;
+    if (updates.minGroups !== undefined) dbUpdates.minGroups = updates.minGroups;
+    if (updates.maxGroups !== undefined) dbUpdates.maxGroups = updates.maxGroups;
+    await db.update(schema.guildWarsTournaments).set(dbUpdates).where(eq(schema.guildWarsTournaments.id, id));
+    return this.getGuildWarsTournament(id);
+  }
+
+  async createGuildWarsRegistration(tournamentId: number, groupId: number, registeredBy: number): Promise<GuildWarsRegistration> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.guildWarsRegistrations).values({ tournamentId, groupId, registeredBy });
+    const rows = await db.select().from(schema.guildWarsRegistrations).where(eq(schema.guildWarsRegistrations.id, result[0].insertId)).limit(1);
+    return this.toGuildWarsRegistration(rows[0]);
+  }
+
+  async getGuildWarsRegistration(tournamentId: number, groupId: number): Promise<GuildWarsRegistration | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsRegistrations)
+      .where(and(eq(schema.guildWarsRegistrations.tournamentId, tournamentId), eq(schema.guildWarsRegistrations.groupId, groupId)))
+      .limit(1);
+    return rows[0] ? this.toGuildWarsRegistration(rows[0]) : undefined;
+  }
+
+  async deleteGuildWarsRegistration(tournamentId: number, groupId: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.guildWarsRegistrations)
+      .where(and(eq(schema.guildWarsRegistrations.tournamentId, tournamentId), eq(schema.guildWarsRegistrations.groupId, groupId)));
+  }
+
+  async getGuildWarsRegistrationsForTournament(tournamentId: number): Promise<GuildWarsRegistration[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsRegistrations)
+      .where(eq(schema.guildWarsRegistrations.tournamentId, tournamentId))
+      .orderBy(asc(schema.guildWarsRegistrations.createdAt));
+    return rows.map((r: any) => this.toGuildWarsRegistration(r));
+  }
+
+  async getGuildWarsRegistrationsForGroup(groupId: number): Promise<GuildWarsRegistration[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsRegistrations)
+      .where(eq(schema.guildWarsRegistrations.groupId, groupId))
+      .orderBy(desc(schema.guildWarsRegistrations.createdAt));
+    return rows.map((r: any) => this.toGuildWarsRegistration(r));
+  }
+
+  async createGuildWarsMatch(data: Omit<GuildWarsMatch, "id" | "createdAt">): Promise<GuildWarsMatch> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.guildWarsMatches).values({
+      tournamentId: data.tournamentId,
+      round: data.round,
+      group1Id: data.group1Id ?? null,
+      group2Id: data.group2Id ?? null,
+      winnerGroupId: data.winnerGroupId ?? null,
+      status: data.status,
+      deadline: data.deadline ? new Date(data.deadline) : null,
+      game1Slug: data.game1Slug,
+      game2Slug: data.game2Slug,
+      game3Slug: data.game3Slug,
+    });
+    const created = await this.getGuildWarsMatch(result[0].insertId);
+    return created!;
+  }
+
+  async getGuildWarsMatch(id: number): Promise<GuildWarsMatch | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsMatches).where(eq(schema.guildWarsMatches.id, id)).limit(1);
+    return rows[0] ? this.toGuildWarsMatch(rows[0]) : undefined;
+  }
+
+  async listGuildWarsMatchesForTournament(tournamentId: number): Promise<GuildWarsMatch[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsMatches)
+      .where(eq(schema.guildWarsMatches.tournamentId, tournamentId))
+      .orderBy(asc(schema.guildWarsMatches.round), asc(schema.guildWarsMatches.id));
+    return rows.map((r: any) => this.toGuildWarsMatch(r));
+  }
+
+  async updateGuildWarsMatch(id: number, updates: Partial<Pick<GuildWarsMatch, "status" | "winnerGroupId" | "deadline">>): Promise<GuildWarsMatch | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.winnerGroupId !== undefined) dbUpdates.winnerGroupId = updates.winnerGroupId;
+    if (updates.deadline !== undefined) dbUpdates.deadline = updates.deadline ? new Date(updates.deadline) : null;
+    await db.update(schema.guildWarsMatches).set(dbUpdates).where(eq(schema.guildWarsMatches.id, id));
+    return this.getGuildWarsMatch(id);
+  }
+
+  async createGuildWarsMatchGame(data: Omit<GuildWarsMatchGame, "id">): Promise<GuildWarsMatchGame> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.guildWarsMatchGames).values({
+      matchId: data.matchId,
+      gameNumber: data.gameNumber,
+      gameSlug: data.gameSlug,
+      roomCode: data.roomCode ?? null,
+      winnerGroupId: data.winnerGroupId ?? null,
+      status: data.status,
+    });
+    const rows = await db.select().from(schema.guildWarsMatchGames).where(eq(schema.guildWarsMatchGames.id, result[0].insertId)).limit(1);
+    return this.toGuildWarsMatchGame(rows[0]);
+  }
+
+  async getGuildWarsMatchGame(matchId: number, gameNumber: number): Promise<GuildWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsMatchGames)
+      .where(and(eq(schema.guildWarsMatchGames.matchId, matchId), eq(schema.guildWarsMatchGames.gameNumber, gameNumber)))
+      .limit(1);
+    return rows[0] ? this.toGuildWarsMatchGame(rows[0]) : undefined;
+  }
+
+  async getGuildWarsMatchGames(matchId: number): Promise<GuildWarsMatchGame[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsMatchGames)
+      .where(eq(schema.guildWarsMatchGames.matchId, matchId))
+      .orderBy(asc(schema.guildWarsMatchGames.gameNumber));
+    return rows.map((r: any) => this.toGuildWarsMatchGame(r));
+  }
+
+  async updateGuildWarsMatchGame(id: number, updates: Partial<Pick<GuildWarsMatchGame, "status" | "winnerGroupId" | "roomCode">>): Promise<GuildWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: any = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.winnerGroupId !== undefined) dbUpdates.winnerGroupId = updates.winnerGroupId;
+    if (updates.roomCode !== undefined) dbUpdates.roomCode = updates.roomCode;
+    await db.update(schema.guildWarsMatchGames).set(dbUpdates).where(eq(schema.guildWarsMatchGames.id, id));
+    const rows = await db.select().from(schema.guildWarsMatchGames).where(eq(schema.guildWarsMatchGames.id, id)).limit(1);
+    return rows[0] ? this.toGuildWarsMatchGame(rows[0]) : undefined;
+  }
+
+  async getGuildWarsMatchGameByRoomCode(roomCode: string): Promise<GuildWarsMatchGame | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsMatchGames)
+      .where(eq(schema.guildWarsMatchGames.roomCode, roomCode))
+      .limit(1);
+    return rows[0] ? this.toGuildWarsMatchGame(rows[0]) : undefined;
+  }
+
+  async createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.guildWarsChampions).values({ tournamentId, groupId });
+    const rows = await db.select().from(schema.guildWarsChampions).where(eq(schema.guildWarsChampions.id, result[0].insertId)).limit(1);
+    return this.toGuildWarsChampion(rows[0]);
+  }
+
+  async getGuildWarsChampionsForTournament(tournamentId: number): Promise<GuildWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsChampions)
+      .where(eq(schema.guildWarsChampions.tournamentId, tournamentId));
+    return rows.map((r: any) => this.toGuildWarsChampion(r));
+  }
+
+  async getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsChampions)
+      .where(eq(schema.guildWarsChampions.groupId, groupId))
+      .orderBy(desc(schema.guildWarsChampions.createdAt));
+    return rows.map((r: any) => this.toGuildWarsChampion(r));
+  }
+
+  async listAllGuildWarsChampions(): Promise<GuildWarsChampion[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.guildWarsChampions)
+      .orderBy(desc(schema.guildWarsChampions.createdAt));
+    return rows.map((r: any) => this.toGuildWarsChampion(r));
+  }
+
+  async getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
+    const db = await this.getDb();
+    const regRows = await db.select().from(schema.guildWarsRegistrations)
+      .where(eq(schema.guildWarsRegistrations.groupId, groupId));
+    const tournamentsEntered = regRows.length;
+
+    const matchRows = await db.select().from(schema.guildWarsMatches)
+      .where(
+        and(
+          or(
+            eq(schema.guildWarsMatches.group1Id, groupId),
+            eq(schema.guildWarsMatches.group2Id, groupId)
+          ),
+          or(
+            eq(schema.guildWarsMatches.status, "completed"),
+            eq(schema.guildWarsMatches.status, "forfeited")
+          )
+        )
+      );
+
+    let matchWins = 0;
+    let matchLosses = 0;
+    for (const m of matchRows) {
+      if (m.winnerGroupId === groupId) matchWins++;
+      else if (m.winnerGroupId !== null) matchLosses++;
     }
     return { tournamentsEntered, matchWins, matchLosses };
   }
