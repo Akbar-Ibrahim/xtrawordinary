@@ -150,16 +150,10 @@ async function runGuildWarsJobs() {
       }
 
       if (t.status === "active") {
+        // checkAndForfeitExpiredGuildMatches internally triggers bracket advancement,
+        // which is also the sole owner of marking the tournament "completed" and
+        // creating the champion record. Do NOT mark completed here to avoid a race.
         await checkAndForfeitExpiredGuildMatches(t);
-
-        const matches = await st.listGuildWarsMatchesForTournament(t.id);
-        const unresolvedMatches = matches.filter(
-          m => m.status !== "completed" && m.status !== "forfeited" && m.status !== "bye",
-        );
-        if (unresolvedMatches.length === 0 && matches.length > 0) {
-          await st.updateGuildWarsTournament(t.id, { status: "completed" });
-          log(`[guild-wars] Tournament ${t.id} completed`, "guild-wars");
-        }
       }
     }
   } catch (err) {
