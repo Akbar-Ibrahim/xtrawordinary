@@ -660,6 +660,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
+      inputRef.current?.focus();
 
       setTimeout(() => {
         setFeedback(null);

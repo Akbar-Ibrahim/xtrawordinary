@@ -214,6 +214,7 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
         playSound("correct");
         setFeedback({ type: "correct", message: `+${wordScore} points!` });
         setUserInput("");
+        inputRef.current?.focus();
 
         if (newWordsCompleted >= wordsPerChallenge) {
           stopTimer();

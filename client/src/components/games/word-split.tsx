@@ -297,6 +297,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setRemainingPool(newPool);
     setScore(prev => prev + word.length * 10);
     setUserInput("");
+    inputRef.current?.focus();
 
     const totalRemaining = getTotalRemaining(newPool);
 

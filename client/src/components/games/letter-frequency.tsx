@@ -348,6 +348,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
       }
 
       setUserInput("");
+      inputRef.current?.focus();
       setTimeout(() => {
         setFeedback(null);
         inputRef.current?.focus();
