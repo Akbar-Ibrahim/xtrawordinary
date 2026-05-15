@@ -36,11 +36,6 @@ GROUP VS GROUP CHALLENGES
    Design questions to resolve: player cap, score normalisation for
    unequal group sizes, quorum (min members needed to start).
 
-3. Relay Mode (Phase 3)
-   Teams rotate which member is the active typist each round — each
-   member gets a turn. Works for turn-based games.
-   Build after Huddle and Team Race are stable.
-
 ────────────────────────────────────────────────────────────
 WORD WARS — RECURRING COMPETITIVE EVENTS
 ────────────────────────────────────────────────────────────
