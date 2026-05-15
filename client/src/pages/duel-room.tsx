@@ -800,18 +800,12 @@ export default function DuelRoom() {
                       <div key={p.id} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/40 border">
                         <UserAvatar name={p.name} avatarUrl={p.avatar} className="h-14 w-14 text-lg" />
                         <p className="font-semibold text-sm text-center truncate max-w-full">{p.name}</p>
-                        {spectatorData.format === "race" ? (
-                          <div className="text-center">
-                            <p className="text-3xl font-black text-primary">{p.count}</p>
-                            <p className="text-xs text-muted-foreground">/ {spectatorData.raceTarget} words</p>
-                          </div>
-                        ) : (
-                          <div className="flex gap-0.5">
-                            {Array.from({ length: 3 }).map((_, i) => (
-                              <Heart key={i} className={`h-5 w-5 ${i < p.lives ? "text-red-500 fill-red-500" : "text-muted-foreground/30"}`} />
-                            ))}
-                          </div>
-                        )}
+                        <div className="text-center">
+                          <p className="text-3xl font-black text-primary">{p.count}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {spectatorData.format === "race" ? `/ ${spectatorData.raceTarget} words` : "words played"}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
