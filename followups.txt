@@ -47,6 +47,11 @@
 #294 - Add a shortcut to notification settings from the profile settings page
        (Button or link in the profile Settings tab pointing to /settings/notifications)
 
+## Groups
+#314 - Add text search to the groups browse page so you can find groups by keyword on mobile too
+       (Mobile layout currently only shows tag filters; a text search input above them would let
+        users search by group name/description without needing to know the exact tag)
+
 ## Friend Challenges
 #310 - Let players challenge anyone, not just existing friends
        (Currently "Challenge a Friend" is hidden entirely if you have zero friends; should allow
