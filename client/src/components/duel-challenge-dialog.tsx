@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,17 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
   const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
   const [duelWordLength, setDuelWordLength] = useState<4 | 5 | 6>(5);
+
+  useEffect(() => {
+    if (!duelSearchInput.trim()) {
+      setDuelSearch("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDuelSearch(duelSearchInput.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [duelSearchInput]);
 
   const isLadderRushDuel = gameSlug === "ladder-rush" || gameSlug === "ladder-rush-double";
   const duelGameSlug = isLadderRushDuel
