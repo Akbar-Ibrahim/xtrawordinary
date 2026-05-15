@@ -3805,15 +3805,37 @@ export async function registerRoutes(
   app.post("/api/guild-wars", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { name, registrationDeadline, roundDeadlineHours, minGroups, maxGroups } = req.body;
-      if (!name || !registrationDeadline) {
-        return res.status(400).json({ error: "name and registrationDeadline are required" });
+      if (!name || typeof name !== "string" || name.trim().length === 0) {
+        return res.status(400).json({ error: "name is required" });
+      }
+      if (!registrationDeadline) {
+        return res.status(400).json({ error: "registrationDeadline is required" });
+      }
+      const deadline = new Date(registrationDeadline);
+      if (isNaN(deadline.getTime())) {
+        return res.status(400).json({ error: "registrationDeadline must be a valid date" });
+      }
+      if (deadline <= new Date()) {
+        return res.status(400).json({ error: "registrationDeadline must be in the future" });
+      }
+      const parsedRoundHours = Number(roundDeadlineHours ?? 24);
+      if (isNaN(parsedRoundHours) || parsedRoundHours < 1 || parsedRoundHours > 168) {
+        return res.status(400).json({ error: "roundDeadlineHours must be between 1 and 168" });
+      }
+      const parsedMin = Number(minGroups ?? 2);
+      if (isNaN(parsedMin) || parsedMin < 2 || parsedMin > 64) {
+        return res.status(400).json({ error: "minGroups must be between 2 and 64" });
+      }
+      const parsedMax = maxGroups != null ? Number(maxGroups) : null;
+      if (parsedMax !== null && (isNaN(parsedMax) || parsedMax < parsedMin || parsedMax > 64)) {
+        return res.status(400).json({ error: "maxGroups must be between minGroups and 64" });
       }
       const tournament = await storage.createGuildWarsTournament({
-        name: String(name),
-        registrationDeadline: new Date(registrationDeadline).toISOString(),
-        roundDeadlineHours: Number(roundDeadlineHours ?? 24),
-        minGroups: Number(minGroups ?? 2),
-        maxGroups: maxGroups ? Number(maxGroups) : null,
+        name: name.trim(),
+        registrationDeadline: deadline.toISOString(),
+        roundDeadlineHours: parsedRoundHours,
+        minGroups: parsedMin,
+        maxGroups: parsedMax,
         createdBy: req.user!.id,
       });
       res.status(201).json(tournament);
@@ -3823,10 +3845,12 @@ export async function registerRoutes(
     }
   });
 
-  // GET /api/guild-wars — list all tournaments
+  // GET /api/guild-wars — list tournaments; optionally filter by ?status=registration|active|completed|cancelled
   app.get("/api/guild-wars", async (req, res) => {
     try {
-      const tournaments = await storage.listGuildWarsTournaments();
+      const all = await storage.listGuildWarsTournaments();
+      const { status } = req.query;
+      const tournaments = status ? all.filter((t) => t.status === status) : all;
       res.json(tournaments);
     } catch (err) {
       console.error("[guild-wars] list tournaments error", err);
