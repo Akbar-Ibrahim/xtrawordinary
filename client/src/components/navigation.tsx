@@ -34,6 +34,10 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   word_war_round_start: <Sword className="h-4 w-4 text-orange-500" />,
   word_war_champion: <Crown className="h-4 w-4 text-amber-500" />,
   word_war_cancelled: <Sword className="h-4 w-4 text-red-500" />,
+  guild_war_matched: <Sword className="h-4 w-4 text-purple-500" />,
+  guild_war_round_start: <Sword className="h-4 w-4 text-violet-500" />,
+  guild_war_champion: <Crown className="h-4 w-4 text-purple-500" />,
+  guild_war_cancelled: <Sword className="h-4 w-4 text-red-500" />,
 };
 
 const NOTIF_BG: Record<string, string> = {
@@ -47,6 +51,10 @@ const NOTIF_BG: Record<string, string> = {
   word_war_round_start: "bg-orange-500/10",
   word_war_champion: "bg-amber-500/10",
   word_war_cancelled: "bg-red-500/10",
+  guild_war_matched: "bg-purple-500/10",
+  guild_war_round_start: "bg-violet-500/10",
+  guild_war_champion: "bg-purple-500/10",
+  guild_war_cancelled: "bg-red-500/10",
 };
 
 function timeAgo(isoString: string): string {

@@ -3990,7 +3990,9 @@ export async function registerRoutes(
     try {
       const matchId = parseInt(req.params.matchId);
       const gameNumber = parseInt(req.params.gameNumber);
-      if (isNaN(matchId) || isNaN(gameNumber)) return res.status(400).json({ error: "Invalid params" });
+      if (isNaN(matchId) || isNaN(gameNumber) || gameNumber < 1 || gameNumber > 3) {
+        return res.status(400).json({ error: "Invalid match or game number" });
+      }
 
       const match = await storage.getGuildWarsMatch(matchId);
       if (!match) return res.status(404).json({ error: "Match not found" });
@@ -4001,33 +4003,49 @@ export async function registerRoutes(
 
       const userId = (req.user as any).id;
 
-      // Caller must be the registered typist for one of the groups
+      // Any admin of either competing group may start a game
+      const [mem1, mem2] = await Promise.all([
+        storage.getGroupMember(match.group1Id, userId),
+        storage.getGroupMember(match.group2Id, userId),
+      ]);
+      const isGroupAdmin =
+        (mem1 && mem1.role === "admin") ||
+        (mem2 && mem2.role === "admin");
+      if (!isGroupAdmin) {
+        return res.status(403).json({ error: "Only a group admin of one of the competing groups can start games" });
+      }
+
+      // Fetch registrations to get the designated typists (players)
       const [reg1, reg2] = await Promise.all([
         storage.getGuildWarsRegistration(match.tournamentId, match.group1Id),
         storage.getGuildWarsRegistration(match.tournamentId, match.group2Id),
       ]);
-
-      const isTypist = reg1?.registeredBy === userId || reg2?.registeredBy === userId;
-      if (!isTypist) {
-        return res.status(403).json({ error: "Only the registered typist for a group can start games" });
+      if (!reg1 || !reg2) {
+        return res.status(400).json({ error: "Missing group registrations — cannot create game room" });
       }
 
       const matchGame = await storage.getGuildWarsMatchGame(matchId, gameNumber);
       if (!matchGame) return res.status(404).json({ error: "Match game not found" });
-      if (matchGame.status !== "pending") return res.status(400).json({ error: "Game already started or completed" });
 
-      // Only the first game of each match can be started without game 1 being complete,
-      // and game 2 requires game 1 to be done, etc.
+      // Idempotent — return existing room code if already started
+      if (matchGame.roomCode) {
+        return res.json({ roomCode: matchGame.roomCode, gameSlug: matchGame.gameSlug });
+      }
+      if (matchGame.status !== "pending") {
+        return res.status(400).json({ error: "Game is already completed" });
+      }
+
+      // Game N requires game N-1 to be completed first; also skip if series is decided
       if (gameNumber > 1) {
         const prevGame = await storage.getGuildWarsMatchGame(matchId, gameNumber - 1);
         if (prevGame?.status !== "completed") {
           return res.status(400).json({ error: `Game ${gameNumber - 1} must be completed first` });
         }
-        // Check if series is already decided
         const allGames = await storage.getGuildWarsMatchGames(matchId);
-        const completedGames = allGames.filter(g => g.status === "completed" && g.gameNumber < gameNumber);
-        let g1Wins = 0, g2Wins = 0;
-        for (const g of completedGames) {
+        const completedBefore = allGames.filter(g => g.status === "completed" && g.gameNumber < gameNumber);
+        let g1Wins = 0;
+        let g2Wins = 0;
+        for (const g of completedBefore) {
           if (g.winnerGroupId === match.group1Id) g1Wins++;
           else if (g.winnerGroupId === match.group2Id) g2Wins++;
         }
@@ -4036,37 +4054,53 @@ export async function registerRoutes(
         }
       }
 
-      // Generate a room code and create the duel room via WS registry lazy-creation
-      const roomCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+      // Generate room code + seed, then create an accepted DuelChallenge so the WS can look it up
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let roomCode = "";
+      for (let i = 0; i < 8; i++) roomCode += chars[Math.floor(Math.random() * chars.length)];
+      const seed = Math.floor(Math.random() * 1_000_000);
 
-      // Activate the match if not already active
+      await storage.createDuelChallenge({
+        challengerId: reg1.registeredBy,
+        challengeeId: reg2.registeredBy,
+        gameSlug: matchGame.gameSlug,
+        message: `Guild Wars Match ${matchId} — Game ${gameNumber}`,
+        status: "accepted",
+        roomCode,
+        seed,
+        startWord: null,
+        format: "race",
+        raceTarget: 10,
+        raceTimeLimit: 180,
+        expiresAt: null,
+      });
+
+      await storage.updateGuildWarsMatchGame(matchGame.id, { roomCode, status: "active" });
+
       if (match.status === "pending") {
         await storage.updateGuildWarsMatch(matchId, { status: "active" });
       }
 
-      // Assign room code to the match game
-      await storage.updateGuildWarsMatchGame(matchGame.id, { status: "active", roomCode });
-
-      // Notify both typists
-      const player1UserId = reg1?.registeredBy;
-      const player2UserId = reg2?.registeredBy;
-
-      await Promise.all([
-        player1UserId ? storage.createNotification({
-          userId: player1UserId,
-          type: "guild_war_round_start",
-          title: `Game ${gameNumber} — Enter the arena`,
-          body: `Game ${gameNumber} of ${gameNumber === 1 ? match.game1Slug : gameNumber === 2 ? match.game2Slug : match.game3Slug} is ready. Join the room.`,
-          linkUrl: `/duel/${roomCode}`,
-        }) : null,
-        player2UserId && player2UserId !== player1UserId ? storage.createNotification({
-          userId: player2UserId,
-          type: "guild_war_round_start",
-          title: `Game ${gameNumber} — Enter the arena`,
-          body: `Game ${gameNumber} of ${gameNumber === 1 ? match.game1Slug : gameNumber === 2 ? match.game2Slug : match.game3Slug} is ready. Join the room.`,
-          linkUrl: `/duel/${roomCode}`,
-        }) : null,
-      ]);
+      // Notify both typists (and any other group members via guild_war_round_start)
+      const typistIds = [reg1.registeredBy, reg2.registeredBy];
+      try {
+        await Promise.all(
+          typistIds.map(async (pid) => {
+            const prefs = await storage.getNotificationPreferences(pid);
+            if (prefs["guild_war_round_start"]) {
+              await storage.createNotification({
+                userId: pid,
+                type: "guild_war_round_start",
+                title: "Room is live — join now!",
+                body: `Guild Wars Game ${gameNumber} (${matchGame.gameSlug}) is ready. Click to enter the duel room.`,
+                linkUrl: `/duel/${roomCode}`,
+              });
+            }
+          }),
+        );
+      } catch (notifErr) {
+        console.error("[guild-wars] start-game notification error", notifErr);
+      }
 
       res.json({ roomCode, gameSlug: matchGame.gameSlug });
     } catch (err) {

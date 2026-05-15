@@ -27,6 +27,11 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
     icon: Trophy,
     types: ["word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"],
   },
+  {
+    label: "Guild Wars",
+    icon: Trophy,
+    types: ["guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"],
+  },
 ];
 
 const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => c.types);

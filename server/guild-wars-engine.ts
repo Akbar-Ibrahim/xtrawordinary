@@ -259,7 +259,7 @@ export async function resolveGuildWarsGame(
     const match = await storage.getGuildWarsMatch(matchGame.matchId);
     if (!match || !match.group1Id || !match.group2Id) return;
 
-    // Map winnerUserId → winnerGroupId via registrations
+    // Map winnerUserId → winnerGroupId: check typist (registeredBy) first, then group membership
     let winnerGroupId: number | null = null;
     if (winnerUserId !== -1) {
       const [reg1, reg2] = await Promise.all([
@@ -271,8 +271,19 @@ export async function resolveGuildWarsGame(
       } else if (reg2?.registeredBy === winnerUserId) {
         winnerGroupId = match.group2Id;
       } else {
-        console.error("[guild-wars-engine] Cannot map winner userId", winnerUserId, "to a group in match", match.id);
-        winnerGroupId = null;
+        // Fallback: check group membership
+        const [mem1, mem2] = await Promise.all([
+          storage.getGroupMember(match.group1Id, winnerUserId),
+          storage.getGroupMember(match.group2Id, winnerUserId),
+        ]);
+        if (mem1) {
+          winnerGroupId = match.group1Id;
+        } else if (mem2) {
+          winnerGroupId = match.group2Id;
+        } else {
+          console.error("[guild-wars-engine] Cannot map winner userId", winnerUserId, "to a group in match", match.id);
+          winnerGroupId = null;
+        }
       }
     }
 
