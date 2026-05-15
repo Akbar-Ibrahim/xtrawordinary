@@ -27,10 +27,10 @@ export const wordChainDuelAdapter: DuelGameAdapter = {
     if (!upper) return "Please enter a word";
     const requiredLetter = currentWord[currentWord.length - 1];
     if (!upper.startsWith(requiredLetter)) {
-      return `Word must start with "${requiredLetter}"`;
+      return `"${upper}" must start with "${requiredLetter}"`;
     }
     if (usedWords.includes(upper)) {
-      return "That word was already used!";
+      return `"${upper}" was already used`;
     }
     return null;
   },
@@ -82,12 +82,12 @@ function WordChainInput({
     // time penalty even when the adapter short-circuits before calling onSubmit.
     const requiredLetter = currentWord[currentWord.length - 1];
     if (!upper.startsWith(requiredLetter)) {
-      setLocalFeedback(`Word must start with "${requiredLetter}"`);
+      setLocalFeedback(`"${upper}" must start with "${requiredLetter}"`);
       onInvalidMove();
       return;
     }
     if (usedWords.includes(upper)) {
-      setLocalFeedback("That word was already used!");
+      setLocalFeedback(`"${upper}" was already used`);
       onInvalidMove();
       return;
     }
@@ -108,7 +108,6 @@ function WordChainInput({
           value={value}
           onChange={(e) => {
             setValue(e.target.value.toUpperCase());
-            clearFeedback();
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSubmit();

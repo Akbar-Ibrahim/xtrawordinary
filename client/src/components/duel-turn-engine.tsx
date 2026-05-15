@@ -89,6 +89,67 @@ export interface DuelTurnEngineProps {
   turnTimeSeconds?: number;
 }
 
+// ─── Server error message mapper ──────────────────────────────────────────────
+
+/**
+ * Maps a raw server error string to a human-readable rejection message that
+ * names the actual word and explains the exact rule broken.
+ */
+function mapServerError(raw: string, word: string): string {
+  if (!raw) return "Invalid word";
+  const w = word ? `"${word}"` : "That word";
+
+  // Dictionary miss: `"WORD" is not a valid word`
+  if (/is not a valid word/i.test(raw)) {
+    return `${w} is not in the dictionary`;
+  }
+  // Already used: `That word was already used` / `You already used that word`
+  if (/already used/i.test(raw)) {
+    return `${w} was already used`;
+  }
+  // Must contain letter: `Word must contain the letter "R"`
+  const containsMatch = raw.match(/must contain the letter "([A-Z])"/i);
+  if (containsMatch) {
+    return `${w} doesn't contain the letter "${containsMatch[1].toUpperCase()}"`;
+  }
+  // Must be exactly N letters: `Word must be exactly N letters long`
+  const lengthExactMatch = raw.match(/must be exactly (\d+) letters long/i);
+  if (lengthExactMatch) {
+    return `${w} is not exactly ${lengthExactMatch[1]} letters long`;
+  }
+  // Must start with: `Word must start with "R"`
+  const startMatch = raw.match(/must start with "([A-Z])"/i);
+  if (startMatch) {
+    return `${w} must start with "${startMatch[1].toUpperCase()}"`;
+  }
+  // Letter at position: `Letter at position N must be "R"`
+  const posMatch = raw.match(/Letter at position (\d+) must be "([A-Z])"/i);
+  if (posMatch) {
+    return `${w} doesn't have "${posMatch[2].toUpperCase()}" at position ${posMatch[1]}`;
+  }
+  // Must have exactly N vowels/consonants
+  const balanceMatch = raw.match(/must have exactly (\d+) (vowel|consonant)s?/i);
+  if (balanceMatch) {
+    const n = parseInt(balanceMatch[1], 10);
+    return `${w} doesn't have exactly ${n} ${balanceMatch[2]}${n !== 1 ? "s" : ""}`;
+  }
+  // Must have at least N letters
+  const atLeastMatch = raw.match(/must have at least (\d+) letters/i);
+  if (atLeastMatch) {
+    return `${w} is too short (needs at least ${atLeastMatch[1]} letters)`;
+  }
+  // Must differ from previous word by exactly N letters (ladder-rush)
+  const differMatch = raw.match(/must differ from the previous word by exactly (\d+) letters?/i);
+  if (differMatch) {
+    const n = parseInt(differMatch[1], 10);
+    return `${w} must differ from the previous word by exactly ${n} letter${n !== 1 ? "s" : ""}`;
+  }
+  // Not your turn — pass through unchanged (handled separately by the engine)
+  if (/not your turn/i.test(raw)) return raw;
+  // Generic safe fallback: include the word if we have one
+  return word ? `"${word}" is not a valid move` : raw;
+}
+
 // ─── DuelTurnEngine ────────────────────────────────────────────────────────────
 
 export function DuelTurnEngine({
@@ -127,6 +188,8 @@ export function DuelTurnEngine({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gameEndedRef = useRef(false);
   const prevMsgRef = useRef<DuelServerMessage | null>(null);
+  // Tracks the last word submitted so server error messages can name it explicitly.
+  const lastSubmittedWordRef = useRef<string>("");
 
   // When true, startTimer resets the clock to turnTimeSeconds.
   // Set to false before restoring turn after a server rejection so the
@@ -209,6 +272,9 @@ export function DuelTurnEngine({
 
       setFeedback(null);
       stopTimer();
+
+      // Record submitted word so server error messages can name it explicitly.
+      lastSubmittedWordRef.current = upper;
 
       // Save rollback snapshot before optimistic state write
       rollbackRef.current = { currentWord, usedWords: [...usedWords] };
@@ -296,7 +362,11 @@ export function DuelTurnEngine({
           setUsedWords(prevUsed);
           rollbackRef.current = null;
         }
-        setFeedback(latestMessage.message);
+        setFeedback(
+          isOutOfTurnError
+            ? latestMessage.message
+            : mapServerError(latestMessage.message ?? "", lastSubmittedWordRef.current),
+        );
 
         if (isOutOfTurnError) {
           // Out-of-turn error: clear local turn state and wait for the server

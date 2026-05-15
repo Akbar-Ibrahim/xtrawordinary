@@ -19,7 +19,7 @@ export const wordLengthDuelAdapter: DuelGameAdapter = {
     if (!upper) return "Please enter a word";
     const targetLen = parseInt(currentWord, 10);
     if (upper.length !== targetLen) {
-      return `Word must be exactly ${targetLen} letters long`;
+      return `"${upper}" is not exactly ${targetLen} letters long`;
     }
     return null;
   },
@@ -67,12 +67,12 @@ function WordLengthInput({
     if (!upper || disabled) return;
 
     if (upper.length !== targetLen) {
-      setLocalFeedback(`Word must be exactly ${targetLen} letters long`);
+      setLocalFeedback(`"${upper}" is not exactly ${targetLen} letters long`);
       onInvalidMove();
       return;
     }
     if (usedWords.includes(upper)) {
-      setLocalFeedback("That word was already used!");
+      setLocalFeedback(`"${upper}" was already used`);
       onInvalidMove();
       return;
     }
@@ -90,7 +90,6 @@ function WordLengthInput({
           value={value}
           onChange={(e) => {
             setValue(e.target.value.toUpperCase());
-            clearFeedback();
           }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder={`Enter a ${targetLen}-letter word…`}

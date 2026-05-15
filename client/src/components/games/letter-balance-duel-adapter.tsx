@@ -38,7 +38,7 @@ export const letterBalanceDuelAdapter: DuelGameAdapter = {
     const actual = type === "V" ? countVowels(upper) : countConsonants(upper);
     if (actual !== count) {
       const typeName = type === "V" ? "vowel" : "consonant";
-      return `Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
+      return `"${upper}" doesn't have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`;
     }
     return null;
   },
@@ -88,12 +88,12 @@ function LetterBalanceInput({
 
     const actual = type === "V" ? countVowels(upper) : countConsonants(upper);
     if (actual !== count) {
-      setLocalFeedback(`Word must have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`);
+      setLocalFeedback(`"${upper}" doesn't have exactly ${count} ${typeName}${count !== 1 ? "s" : ""}`);
       onInvalidMove();
       return;
     }
     if (usedWords.includes(upper)) {
-      setLocalFeedback("That word was already used!");
+      setLocalFeedback(`"${upper}" was already used`);
       onInvalidMove();
       return;
     }
@@ -111,7 +111,6 @@ function LetterBalanceInput({
           value={value}
           onChange={(e) => {
             setValue(e.target.value.toUpperCase());
-            clearFeedback();
           }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder={`Enter a word with exactly ${count} ${typeName}${count !== 1 ? "s" : ""}…`}

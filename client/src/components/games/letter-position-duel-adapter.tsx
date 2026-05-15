@@ -25,10 +25,10 @@ export const letterPositionDuelAdapter: DuelGameAdapter = {
     if (!upper) return "Please enter a word";
     const { letter, position } = parseConstraint(currentWord);
     if (upper.length < position) {
-      return `Word must have at least ${position} letters`;
+      return `"${upper}" is too short (needs at least ${position} letters)`;
     }
     if (upper[position - 1] !== letter) {
-      return `Letter at position ${position} must be "${letter}"`;
+      return `"${upper}" doesn't have "${letter}" at position ${position}`;
     }
     return null;
   },
@@ -76,17 +76,17 @@ function LetterPositionInput({
     if (!upper || disabled) return;
 
     if (upper.length < position) {
-      setLocalFeedback(`Word must have at least ${position} letters`);
+      setLocalFeedback(`"${upper}" is too short (needs at least ${position} letters)`);
       onInvalidMove();
       return;
     }
     if (upper[position - 1] !== letter) {
-      setLocalFeedback(`Letter at position ${position} must be "${letter}"`);
+      setLocalFeedback(`"${upper}" doesn't have "${letter}" at position ${position}`);
       onInvalidMove();
       return;
     }
     if (usedWords.includes(upper)) {
-      setLocalFeedback("That word was already used!");
+      setLocalFeedback(`"${upper}" was already used`);
       onInvalidMove();
       return;
     }
@@ -104,7 +104,6 @@ function LetterPositionInput({
           value={value}
           onChange={(e) => {
             setValue(e.target.value.toUpperCase());
-            clearFeedback();
           }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder={`Enter a word with "${letter}" at position ${position}…`}

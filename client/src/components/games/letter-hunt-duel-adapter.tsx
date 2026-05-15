@@ -19,7 +19,7 @@ export const letterHuntDuelAdapter: DuelGameAdapter = {
     if (!upper) return "Please enter a word";
     const targetLetter = currentWord.toUpperCase();
     if (!upper.includes(targetLetter)) {
-      return `Word must contain the letter "${targetLetter}"`;
+      return `"${upper}" doesn't contain the letter "${targetLetter}"`;
     }
     return null;
   },
@@ -67,12 +67,12 @@ function LetterHuntInput({
     if (!upper || disabled) return;
 
     if (!upper.includes(targetLetter)) {
-      setLocalFeedback(`Word must contain the letter "${targetLetter}"`);
+      setLocalFeedback(`"${upper}" doesn't contain the letter "${targetLetter}"`);
       onInvalidMove();
       return;
     }
     if (usedWords.includes(upper)) {
-      setLocalFeedback("That word was already used!");
+      setLocalFeedback(`"${upper}" was already used`);
       onInvalidMove();
       return;
     }
@@ -90,7 +90,6 @@ function LetterHuntInput({
           value={value}
           onChange={(e) => {
             setValue(e.target.value.toUpperCase());
-            clearFeedback();
           }}
           onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
           placeholder={`Enter a word containing "${targetLetter}"…`}
