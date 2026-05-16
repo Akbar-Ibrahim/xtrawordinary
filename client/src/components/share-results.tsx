@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { SiX, SiFacebook, SiLinkedin } from "react-icons/si";
+import { SiX, SiFacebook, SiLinkedin, SiWhatsapp, SiReddit } from "react-icons/si";
 import { Copy, Check, Share2 } from "lucide-react";
 
 interface ShareResultsProps {
@@ -71,6 +71,16 @@ export function ShareResults({
     window.open(linkedInUrl, "_blank", "noopener,noreferrer");
   };
 
+  const handleShareWhatsApp = () => {
+    const whatsAppUrl = `https://wa.me/?text=${encodeURIComponent(fullShareText)}`;
+    window.open(whatsAppUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareReddit = () => {
+    const redditUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(gameUrl)}&title=${encodeURIComponent(shareText)}`;
+    window.open(redditUrl, "_blank", "noopener,noreferrer");
+  };
+
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
@@ -123,6 +133,24 @@ export function ShareResults({
         >
           <SiLinkedin className="w-4 h-4" />
           <span className="hidden sm:inline">LinkedIn</span>
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleShareWhatsApp}
+          className="gap-2 bg-[#25D366] text-white hover:bg-[#25D366]/80 border-0"
+          data-testid="button-share-whatsapp"
+        >
+          <SiWhatsapp className="w-4 h-4" />
+          <span className="hidden sm:inline">WhatsApp</span>
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleShareReddit}
+          className="gap-2 bg-[#FF4500] text-white hover:bg-[#FF4500]/80 border-0"
+          data-testid="button-share-reddit"
+        >
+          <SiReddit className="w-4 h-4" />
+          <span className="hidden sm:inline">Reddit</span>
         </Button>
         <Button
           variant="outline"
