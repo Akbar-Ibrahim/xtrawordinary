@@ -1657,6 +1657,25 @@ export async function registerRoutes(
     "word-sweep", "word-roots", "shell-words", "deep-shell-words",
   ];
 
+  // GET /api/groups/my/admin — groups where the authenticated user is owner or admin
+  app.get("/api/groups/my/admin", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const myGroups = await storage.getUserGroups(userId);
+      const adminGroups: typeof myGroups = [];
+      for (const g of myGroups) {
+        const membership = await storage.getGroupMember(g.id, userId);
+        if (membership && (membership.role === "owner" || membership.role === "admin")) {
+          adminGroups.push(g);
+        }
+      }
+      res.json(adminGroups);
+    } catch (err) {
+      console.error("[groups] admin-groups error", err);
+      res.status(500).json({ error: "Failed to fetch admin groups" });
+    }
+  });
+
   app.get("/api/groups", async (req, res) => {
     try {
       let publicGroups = await storage.getPublicGroups();
@@ -3868,8 +3887,13 @@ export async function registerRoutes(
     try {
       const all = await storage.listGuildWarsTournaments();
       const { status } = req.query;
-      const tournaments = status ? all.filter((t) => t.status === status) : all;
-      res.json(tournaments);
+      const filtered = status ? all.filter((t) => t.status === status) : all;
+      // Enrich with registration count
+      const enriched = await Promise.all(filtered.map(async (t) => {
+        const regs = await storage.getGuildWarsRegistrationsForTournament(t.id);
+        return { ...t, registrationCount: regs.length };
+      }));
+      res.json(enriched);
     } catch (err) {
       console.error("[guild-wars] list tournaments error", err);
       res.status(500).json({ error: "Failed to list tournaments" });

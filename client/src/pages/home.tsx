@@ -445,7 +445,8 @@ export default function Home() {
                 let gwSubLabel: string;
                 if (openGuildWar) {
                   if (openGuildWar.status === "registration") {
-                    gwSubLabel = `Registration open · closes ${new Date(openGuildWar.registrationDeadline).toLocaleDateString()}`;
+                    const count = (openGuildWar as any).registrationCount ?? 0;
+                    gwSubLabel = `${count} ${count === 1 ? "guild" : "guilds"} · closes ${new Date(openGuildWar.registrationDeadline).toLocaleDateString()}`;
                   } else {
                     gwSubLabel = "In Progress";
                   }

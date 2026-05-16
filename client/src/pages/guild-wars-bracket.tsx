@@ -53,12 +53,14 @@ function MatchCard({
   match,
   groups,
   userGroupIds,
+  adminGroupIds,
   tournamentId,
   isHighlighted,
 }: {
   match: MatchWithGames;
   groups: Record<number, GroupInfo>;
   userGroupIds: Set<number>;
+  adminGroupIds: Set<number>;
   tournamentId: number;
   isHighlighted?: boolean;
 }) {
@@ -124,7 +126,9 @@ function MatchCard({
         {!isBye && (
           <div className="space-y-1 pt-1 border-t">
             {match.games.map((game) => {
-              const isPlayable = isUserMatch && isActive && game.status !== "completed";
+              const isAdminMatch = (match.group1Id != null && adminGroupIds.has(match.group1Id))
+                || (match.group2Id != null && adminGroupIds.has(match.group2Id));
+              const isPlayable = isAdminMatch && isActive && game.status !== "completed";
               const isCompleted = game.status === "completed";
               const winnerGroup = game.winnerGroupId ? groups[game.winnerGroupId] : null;
               const userWon = game.winnerGroupId != null && userGroupIds.has(game.winnerGroupId);
@@ -179,12 +183,14 @@ function MyGroupMatchesSection({
   matches,
   groups,
   userGroupIds,
+  adminGroupIds,
   tournamentId,
   highlightMatchId,
 }: {
   matches: MatchWithGames[];
   groups: Record<number, GroupInfo>;
   userGroupIds: Set<number>;
+  adminGroupIds: Set<number>;
   tournamentId: number;
   highlightMatchId?: number;
 }) {
@@ -321,7 +327,7 @@ function MyGroupMatchesSection({
 
                   {matchStatusBadge}
 
-                  {nextPlayableGame && !isCompleted && (
+                  {nextPlayableGame && !isCompleted && adminGroupIds.has(myGroupId ?? -1) && (
                     <Button
                       size="sm"
                       className="h-7 gap-1"
@@ -506,7 +512,18 @@ export default function GuildWarsBracket() {
     enabled: !!user,
   });
 
+  const { data: adminGroups = [] } = useQuery<Group[]>({
+    queryKey: ["/api/groups/my/admin"],
+    queryFn: async () => {
+      const res = await fetch("/api/groups/my/admin", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
   const myGroupIds = new Set((groupsData?.myGroups ?? []).map((g) => g.id));
+  const myAdminGroupIds = new Set(adminGroups.map((g) => g.id));
 
   if (isLoading) {
     return (
@@ -560,6 +577,11 @@ export default function GuildWarsBracket() {
   const userParticipatingGroupIds = new Set(
     registrations
       .filter((r) => myGroupIds.has(r.groupId))
+      .map((r) => r.groupId)
+  );
+  const adminParticipatingGroupIds = new Set(
+    registrations
+      .filter((r) => myAdminGroupIds.has(r.groupId))
       .map((r) => r.groupId)
   );
 
@@ -647,6 +669,7 @@ export default function GuildWarsBracket() {
             matches={matches}
             groups={groups}
             userGroupIds={userParticipatingGroupIds}
+            adminGroupIds={adminParticipatingGroupIds}
             tournamentId={tournamentId}
             highlightMatchId={highlightMatchId}
           />
@@ -672,6 +695,7 @@ export default function GuildWarsBracket() {
                           match={match}
                           groups={groups}
                           userGroupIds={userParticipatingGroupIds}
+                          adminGroupIds={adminParticipatingGroupIds}
                           tournamentId={tournamentId}
                           isHighlighted={highlightMatchId === match.id}
                         />

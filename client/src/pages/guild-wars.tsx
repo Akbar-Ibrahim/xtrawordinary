@@ -69,11 +69,13 @@ function statusBadge(t: GuildWarsTournament) {
 function TournamentCard({
   tournament,
   isAuthenticated,
-  userGroups,
+  allUserGroups,
+  adminGroups,
 }: {
-  tournament: GuildWarsTournament;
+  tournament: GuildWarsTournament & { registrationCount?: number };
   isAuthenticated: boolean;
-  userGroups: Group[];
+  allUserGroups: Group[];
+  adminGroups: Group[];
 }) {
   const { toast } = useToast();
   const countdown = useCountdown(tournament.registrationDeadline, tournament.status === "registration");
@@ -90,9 +92,12 @@ function TournamentCard({
   });
 
   const registeredGroupIds = new Set((detail?.registrations ?? []).map((r) => r.groupId));
-  const userRegisteredGroup = userGroups.find((g) => registeredGroupIds.has(g.id));
+  // Any of the user's groups being registered → show "registered" indicator
+  const userRegisteredGroup = allUserGroups.find((g) => registeredGroupIds.has(g.id));
   const isRegistered = !!userRegisteredGroup;
-  const groupCount = detail?.registrations.length ?? 0;
+  // Only admin/owner groups that aren't already registered can register
+  const adminRegisteredGroup = adminGroups.find((g) => registeredGroupIds.has(g.id));
+  const groupCount = detail?.registrations.length ?? tournament.registrationCount ?? 0;
 
   const registerMutation = useMutation({
     mutationFn: async (groupId: number) => {
@@ -134,7 +139,7 @@ function TournamentCard({
   const showWarning = needsMore && closingSoon;
   const groupsNeeded = tournament.minGroups - groupCount;
 
-  const unregisteredGroups = userGroups.filter((g) => !registeredGroupIds.has(g.id));
+  const unregisteredAdminGroups = adminGroups.filter((g) => !registeredGroupIds.has(g.id));
 
   return (
     <Card className="hover:shadow-md transition-shadow" data-testid={`card-gw-tournament-${tournament.id}`}>
@@ -190,17 +195,17 @@ function TournamentCard({
 
           <div className="flex items-center gap-2 shrink-0">
             {isAuthenticated && canRegister && (
-              isRegistered && userRegisteredGroup ? (
+              adminRegisteredGroup ? (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => withdrawMutation.mutate(userRegisteredGroup.id)}
+                  onClick={() => withdrawMutation.mutate(adminRegisteredGroup.id)}
                   disabled={withdrawMutation.isPending}
                   data-testid={`button-withdraw-${tournament.id}`}
                 >
                   {withdrawMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Withdraw"}
                 </Button>
-              ) : unregisteredGroups.length > 0 ? (
+              ) : unregisteredAdminGroups.length > 0 ? (
                 <Button
                   size="sm"
                   onClick={() => setRegisterOpen(true)}
@@ -245,7 +250,7 @@ function TournamentCard({
                 <SelectValue placeholder="Choose a guild…" />
               </SelectTrigger>
               <SelectContent>
-                {unregisteredGroups.map((g) => (
+                {unregisteredAdminGroups.map((g) => (
                   <SelectItem key={g.id} value={String(g.id)} data-testid={`option-group-${g.id}`}>
                     {g.name}
                   </SelectItem>
@@ -287,9 +292,20 @@ export default function GuildWarsLobby() {
     enabled: isAuthenticated,
   });
 
-  const userGroups = groupsData?.myGroups ?? [];
+  const { data: adminGroups = [] } = useQuery<Group[]>({
+    queryKey: ["/api/groups/my/admin"],
+    queryFn: async () => {
+      const res = await fetch("/api/groups/my/admin", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
 
-  const active = tournaments.filter((t) => t.status === "registration" || t.status === "active");
+  const allUserGroups = groupsData?.myGroups ?? [];
+
+  const registrationOpen = tournaments.filter((t) => t.status === "registration");
+  const inProgress = tournaments.filter((t) => t.status === "active");
   const past = tournaments.filter((t) => t.status === "completed" || t.status === "cancelled");
 
   return (
@@ -327,7 +343,7 @@ export default function GuildWarsLobby() {
               </Card>
             )}
 
-            {isAuthenticated && userGroups.length === 0 && (
+            {isAuthenticated && allUserGroups.length === 0 && (
               <Card className="border-dashed border-purple-300/40 bg-purple-50/20 dark:bg-purple-950/10">
                 <CardContent className="py-6 text-center text-muted-foreground">
                   <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
@@ -341,35 +357,60 @@ export default function GuildWarsLobby() {
               </Card>
             )}
 
-            <section>
-              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                <Star className="h-5 w-5 text-purple-500" />
-                Active & Upcoming
-              </h2>
-              {isLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map((i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
-                </div>
-              ) : active.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="py-10 text-center text-muted-foreground">
-                    <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p>No active tournaments right now. Check back soon.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3" data-testid="list-gw-active-tournaments">
-                  {active.map((t) => (
+            {isLoading && (
+              <div className="space-y-3">
+                {[1, 2].map((i) => <Skeleton key={i} className="h-28 rounded-lg" />)}
+              </div>
+            )}
+
+            {!isLoading && registrationOpen.length === 0 && inProgress.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="py-10 text-center text-muted-foreground">
+                  <Swords className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p>No active tournaments right now. Check back soon.</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {registrationOpen.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Star className="h-5 w-5 text-emerald-500" />
+                  Registration Open
+                </h2>
+                <div className="space-y-3" data-testid="list-gw-registration-tournaments">
+                  {registrationOpen.map((t) => (
                     <TournamentCard
                       key={t.id}
                       tournament={t}
                       isAuthenticated={isAuthenticated}
-                      userGroups={userGroups}
+                      allUserGroups={allUserGroups}
+                      adminGroups={adminGroups}
                     />
                   ))}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
+
+            {inProgress.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <Swords className="h-5 w-5 text-orange-500" />
+                  In Progress
+                </h2>
+                <div className="space-y-3" data-testid="list-gw-active-tournaments">
+                  {inProgress.map((t) => (
+                    <TournamentCard
+                      key={t.id}
+                      tournament={t}
+                      isAuthenticated={isAuthenticated}
+                      allUserGroups={allUserGroups}
+                      adminGroups={adminGroups}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {past.length > 0 && (
               <section>
@@ -383,7 +424,8 @@ export default function GuildWarsLobby() {
                       key={t.id}
                       tournament={t}
                       isAuthenticated={isAuthenticated}
-                      userGroups={userGroups}
+                      allUserGroups={allUserGroups}
+                      adminGroups={adminGroups}
                     />
                   ))}
                 </div>
