@@ -490,6 +490,12 @@ export default function Leaderboard() {
   const [view, setView] = useState<LeaderboardView>("global");
   const { user } = useAuth();
 
+  const { data: friends = [] } = useQuery<Array<{ id: number }>>({
+    queryKey: ["/api/friends"],
+    enabled: !!user,
+  });
+  const hasFriends = friends.length > 0;
+
   const { data: games = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
@@ -629,8 +635,12 @@ export default function Leaderboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
-                  <TimeFilterBar value={timeFilter} onChange={setTimeFilter} />
-                  {user && <ViewToggle view={view} onChange={setView} />}
+                  {view === "global" && (
+                    <TimeFilterBar value={timeFilter} onChange={setTimeFilter} />
+                  )}
+                  {user && hasFriends && (
+                    <ViewToggle view={view} onChange={setView} />
+                  )}
                 </div>
 
                 {hasModes ? (

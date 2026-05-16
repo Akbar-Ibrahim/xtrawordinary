@@ -537,13 +537,13 @@ export class MySQLStorage implements IStorage {
       const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
         .from(schema.users).where(inArray(schema.users.id, uIds));
       const userMap = new Map(userRows.map(u => [u.id, u]));
-      return totals.map((r: any, i: number) => ({
+      return totals.map((r, i) => ({
         id: i + 1,
         userId: r.userId,
         playerName: userMap.get(r.userId)?.name || "Unknown",
         playerAvatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
         score: Number(r.totalScore),
-        playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
+        playedAt: r.latestPlayedAt instanceof Date ? (r.latestPlayedAt as Date).toISOString() : String(r.latestPlayedAt),
         gameSlug: "overall",
       }));
     }
