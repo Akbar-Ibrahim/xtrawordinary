@@ -296,7 +296,7 @@ export default function GameDetail() {
     enabled: !!slug,
   });
 
-  const { data: userStats = [] } = useQuery<Array<{ gameSlug: string; gamesPlayed: number }>>({
+  const { data: userStats = [] } = useQuery<Array<{ gameSlug: string; gamesPlayed: number; bestScore: number }>>({
     queryKey: ["/api/user/stats"],
     enabled: isAuthenticated,
   });
@@ -618,6 +618,11 @@ export default function GameDetail() {
                   {isAuthenticated && myGameStat && myGameStat.gamesPlayed > 0 && (
                     <span className="flex items-center gap-2 text-primary font-medium" data-testid="text-my-plays">
                       You've played {myGameStat.gamesPlayed.toLocaleString()} {myGameStat.gamesPlayed === 1 ? "time" : "times"}
+                    </span>
+                  )}
+                  {isAuthenticated && myGameStat && myGameStat.bestScore > 0 && (
+                    <span className="flex items-center gap-2 text-muted-foreground" data-testid="text-my-best">
+                      Personal best: <span className="font-semibold text-foreground">{myGameStat.bestScore.toLocaleString()}</span>
                     </span>
                   )}
                   {slug && (

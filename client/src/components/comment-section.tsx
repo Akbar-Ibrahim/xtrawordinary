@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth-context";
@@ -9,6 +9,8 @@ import { UserAvatar } from "@/components/user-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import type { Comment, CommentTargetType } from "@shared/schema";
+
+type SortOrder = "newest" | "oldest" | "most-liked";
 import { LikeButton } from "@/components/like-button";
 import {
   Dialog,
@@ -28,6 +30,7 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(true);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   const queryKey = ["/api/comments", targetType, targetId];
 
@@ -104,17 +107,42 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
 
   const totalCount = (comments ?? []).reduce((acc, c) => acc + 1 + (c.replies?.length ?? 0), 0);
 
+  const sortedComments = useMemo(() => {
+    if (!comments) return [];
+    const copy = [...comments];
+    if (sortOrder === "newest") copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    else if (sortOrder === "oldest") copy.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    else if (sortOrder === "most-liked") copy.sort((a, b) => (b.likeCount ?? 0) - (a.likeCount ?? 0));
+    return copy;
+  }, [comments, sortOrder]);
+
   return (
     <div className="mt-8 space-y-4">
-      <button
-        className="flex items-center gap-2 font-semibold text-base hover:text-primary transition-colors"
-        onClick={() => setExpanded(v => !v)}
-        data-testid="button-toggle-comments"
-      >
-        <MessageSquare className="h-5 w-5" />
-        Comments {totalCount > 0 && `(${totalCount})`}
-        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <button
+          className="flex items-center gap-2 font-semibold text-base hover:text-primary transition-colors"
+          onClick={() => setExpanded(v => !v)}
+          data-testid="button-toggle-comments"
+        >
+          <MessageSquare className="h-5 w-5" />
+          Comments {totalCount > 0 && `(${totalCount})`}
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+        {expanded && totalCount > 1 && (
+          <div className="flex items-center gap-1" data-testid="comment-sort-controls">
+            {(["newest", "oldest", "most-liked"] as SortOrder[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSortOrder(s)}
+                className={`text-xs px-2 py-1 rounded transition-colors ${sortOrder === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                data-testid={`button-sort-comments-${s}`}
+              >
+                {s === "newest" ? "Newest" : s === "oldest" ? "Oldest" : "Most liked"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {expanded && (
         <div className="space-y-4">
@@ -146,7 +174,7 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
             </p>
           ) : (
             <div className="space-y-3" data-testid="comments-list">
-              {comments.map(comment => (
+              {sortedComments.map(comment => (
                 <CommentItem
                   key={comment.id}
                   comment={comment}

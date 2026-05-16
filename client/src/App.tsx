@@ -9,6 +9,9 @@ import { AuthProvider } from "@/lib/auth-context";
 import { DuelNotificationsProvider } from "@/lib/duel-notifications-context";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { WhatsNewModal } from "@/components/whats-new-modal";
+import { MotionConfig } from "framer-motion";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
 import Stats from "@/pages/stats";
@@ -85,14 +88,19 @@ function App() {
           <SoundProvider>
             <DuelNotificationsProvider>
             <TooltipProvider>
+            <MotionConfig reducedMotion="user">
             <div className="min-h-screen bg-background flex flex-col">
               <Navigation />
               <main className="flex-1">
-                <Router />
+                <ErrorBoundary>
+                  <Router />
+                </ErrorBoundary>
               </main>
               <Footer />
             </div>
             <Toaster />
+            <WhatsNewModal />
+            </MotionConfig>
             </TooltipProvider>
             </DuelNotificationsProvider>
           </SoundProvider>

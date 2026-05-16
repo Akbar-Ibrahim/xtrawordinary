@@ -593,6 +593,10 @@ export default function Home() {
                 <div className="grid sm:grid-cols-2 gap-2">
                   {filteredGames.map((game) => {
                     const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
+                    const playedToday = (() => {
+                      const lp = stats.perGame[game.slug]?.lastPlayed;
+                      return !!lp && new Date(lp).toDateString() === new Date().toDateString();
+                    })();
                     return (
                       <Link key={game.id} href={`/game/${game.slug}`}>
                         <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-game-compact-${game.slug}`}>
@@ -607,7 +611,11 @@ export default function Home() {
                               <p className="font-semibold text-sm truncate mb-0.5">{game.name}</p>
                               <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
                             </div>
-                            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            {playedToday ? (
+                              <CheckCircle className="h-4 w-4 shrink-0 text-accent" data-testid={`badge-played-today-compact-${game.slug}`} />
+                            ) : (
+                              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            )}
                           </CardContent>
                         </Card>
                       </Link>
@@ -616,9 +624,13 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredGames.map((game, index) => (
-                    <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} />
-                  ))}
+                  {filteredGames.map((game, index) => {
+                    const lp = stats.perGame[game.slug]?.lastPlayed;
+                    const playedToday = !!lp && new Date(lp).toDateString() === new Date().toDateString();
+                    return (
+                      <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} playedToday={playedToday} />
+                    );
+                  })}
                 </div>
               )}
             </>

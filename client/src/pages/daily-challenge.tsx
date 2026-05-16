@@ -178,8 +178,25 @@ export default function DailyChallenge() {
   const [completed, setCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [attemptStarted, setAttemptStarted] = useState(false);
+  const [countdown, setCountdown] = useState("");
 
   const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !completed);
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - now.getTime();
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setCountdown(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const localRecord = data ? getDailyChallengeRecord(data.date) : null;
   const serverAttemptLoaded = !attemptLoading && attemptData !== undefined;
@@ -336,6 +353,11 @@ export default function DailyChallenge() {
                     <p className="text-sm text-muted-foreground">
                       Come back tomorrow for a new challenge!
                     </p>
+                    {countdown && (
+                      <p className="text-sm font-medium tabular-nums" data-testid="text-daily-countdown">
+                        Next challenge in: <span className="text-primary">{countdown}</span>
+                      </p>
+                    )}
                     <Link href="/">
                       <Button variant="outline" className="gap-2" data-testid="button-back-home">
                         <ArrowLeft className="h-4 w-4" />
