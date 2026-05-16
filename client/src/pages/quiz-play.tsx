@@ -114,7 +114,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const lfTl = !survival ? toNum(params?.timeLimit) : undefined;
       if (rawChallenge === "multi") {
         const lfMultiLetters = Array.isArray(params?.letters) ? params.letters as string[] : undefined;
-        return <LetterFrequencyGame initialChallenge="multi" initialLetters={lfMultiLetters} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
+        const lfMultiCounts = Array.isArray(params?.letterCounts) ? params.letterCounts as number[] : undefined;
+        return <LetterFrequencyGame initialChallenge="multi" initialLetters={lfMultiLetters} initialLetterCounts={lfMultiCounts} groupSeed={seed} locked quizMode initialSurvival={survival} initialWordCount={lfWc} initialTimeLimit={lfTl} />;
       }
       const challengeNum = toNum(rawChallenge);
       const rankNum = challengeNum && challengeNum >= 1 && challengeNum <= 4 ? Math.round(challengeNum) : null;

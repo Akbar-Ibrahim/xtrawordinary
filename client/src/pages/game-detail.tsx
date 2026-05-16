@@ -1024,6 +1024,7 @@ export default function GameDetail() {
                 })()}
                 initialLetter={customPlayFrozenParams.letter || undefined}
                 initialLetters={Array.isArray(customPlayFrozenParams.letters) ? customPlayFrozenParams.letters : undefined}
+                initialLetterCounts={Array.isArray(customPlayFrozenParams.letterCounts) ? customPlayFrozenParams.letterCounts as number[] : undefined}
                 initialSurvival={customPlayFrozenParams.survival === true}
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
@@ -1686,10 +1687,14 @@ export default function GameDetail() {
                             variant={(quizParams.letters?.length ?? 2) === n ? "default" : "outline"}
                             onClick={() => setQuizParams(p => {
                               const cur: string[] = p.letters ?? Array(2).fill("any");
+                              const curCounts: number[] = p.letterCounts ?? Array(2).fill(1);
                               const next = n > cur.length
                                 ? [...cur, ...Array(n - cur.length).fill("any")]
                                 : cur.slice(0, n);
-                              return { ...p, letters: next };
+                              const nextCounts = n > curCounts.length
+                                ? [...curCounts, ...Array(n - curCounts.length).fill(1)]
+                                : curCounts.slice(0, n);
+                              return { ...p, letters: next, letterCounts: nextCounts };
                             })}
                             data-testid={`button-quiz-freq-multi-count-${n}`}
                           >
@@ -1697,9 +1702,9 @@ export default function GameDetail() {
                           </Button>
                         ))}
                       </div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-3 flex-wrap">
                         {Array.from({ length: quizParams.letters?.length ?? 2 }).map((_, i) => (
-                          <div key={i} className="flex flex-col items-center gap-0.5">
+                          <div key={i} className="flex flex-col items-center gap-1">
                             <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
                             <Select
                               value={(quizParams.letters?.[i]) || "any"}
@@ -1715,10 +1720,29 @@ export default function GameDetail() {
                                 {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                               </SelectContent>
                             </Select>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3].map(cnt => (
+                                <Button
+                                  key={cnt}
+                                  type="button"
+                                  size="sm"
+                                  variant={(quizParams.letterCounts?.[i] ?? 1) === cnt ? "default" : "outline"}
+                                  className="h-6 w-6 p-0 text-xs"
+                                  onClick={() => setQuizParams(p => {
+                                    const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
+                                    counts[i] = cnt;
+                                    return { ...p, letterCounts: counts };
+                                  })}
+                                  data-testid={`button-quiz-freq-multi-lcount-${i}-${cnt}`}
+                                >
+                                  {cnt}
+                                </Button>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Each slot: pick a letter (or Any) and its required count.</p>
                     </div>
                   )}
                   {quizParams.challenge && quizParams.challenge !== "multi" && (
@@ -2750,10 +2774,14 @@ export default function GameDetail() {
                           variant={(customPlayParams.letters?.length ?? 2) === n ? "default" : "outline"}
                           onClick={() => setCustomPlayParams(p => {
                             const cur: string[] = p.letters ?? Array(2).fill("any");
+                            const curCounts: number[] = p.letterCounts ?? Array(2).fill(1);
                             const next = n > cur.length
                               ? [...cur, ...Array(n - cur.length).fill("any")]
                               : cur.slice(0, n);
-                            return { ...p, letters: next };
+                            const nextCounts = n > curCounts.length
+                              ? [...curCounts, ...Array(n - curCounts.length).fill(1)]
+                              : curCounts.slice(0, n);
+                            return { ...p, letters: next, letterCounts: nextCounts };
                           })}
                           data-testid={`button-custom-freq-multi-count-${n}`}
                         >
@@ -2761,9 +2789,9 @@ export default function GameDetail() {
                         </Button>
                       ))}
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-3 flex-wrap">
                       {Array.from({ length: customPlayParams.letters?.length ?? 2 }).map((_, i) => (
-                        <div key={i} className="flex flex-col items-center gap-0.5">
+                        <div key={i} className="flex flex-col items-center gap-1">
                           <span className="text-xs text-muted-foreground font-medium">Letter {i + 1}</span>
                           <Select
                             value={(customPlayParams.letters?.[i]) || "any"}
@@ -2779,10 +2807,29 @@ export default function GameDetail() {
                               {"ABCDEFGHILMNOPRSTUWY".split("").map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                             </SelectContent>
                           </Select>
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3].map(cnt => (
+                              <Button
+                                key={cnt}
+                                type="button"
+                                size="sm"
+                                variant={(customPlayParams.letterCounts?.[i] ?? 1) === cnt ? "default" : "outline"}
+                                className="h-6 w-6 p-0 text-xs"
+                                onClick={() => setCustomPlayParams(p => {
+                                  const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
+                                  counts[i] = cnt;
+                                  return { ...p, letterCounts: counts };
+                                })}
+                                data-testid={`button-custom-freq-multi-lcount-${i}-${cnt}`}
+                              >
+                                {cnt}
+                              </Button>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Each slot: pick a letter (or Any) and its required count.</p>
                   </div>
                 )}
                 {customPlayParams.challenge !== "multi" && customPlayParams.challenge !== undefined && (
