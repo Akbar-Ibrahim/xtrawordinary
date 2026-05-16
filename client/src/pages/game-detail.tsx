@@ -34,7 +34,7 @@ import {
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { DuelChallengeDialog } from "@/components/duel-challenge-dialog";
-import type { Game, FriendChallenge, QuizSession } from "@shared/schema";
+import type { Game, FriendChallenge, QuizSession, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS } from "@shared/schema";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -299,6 +299,17 @@ export default function GameDetail() {
   const { data: friends = [] } = useQuery<Array<{ id: number; friendUser: { id: number; name: string; avatarUrl: string | null } }>>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
+  });
+
+  const { data: openDuels = [] } = useQuery<Array<DuelChallenge & { challengerName: string | null; challengerAvatarUrl: string | null }>>({
+    queryKey: ["/api/duels/open", slug],
+    queryFn: async () => {
+      const res = await fetch(`/api/duels/open?gameSlug=${slug}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: isAuthenticated && DUEL_GAME_SLUGS.has(slug ?? ""),
+    refetchInterval: 15_000,
   });
 
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
@@ -706,6 +717,49 @@ export default function GameDetail() {
                       <Swords className="h-4 w-4" />
                       Duel a Player
                     </Button>
+                  )}
+                  {isAuthenticated && slug && DUEL_GAME_SLUGS.has(slug) && openDuels.length > 0 && (
+                    <div className="border border-violet-200 dark:border-violet-800 rounded-lg overflow-hidden">
+                      <div className="px-3 py-2 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800 flex items-center justify-between">
+                        <span className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                          <Swords className="h-3 w-3" />
+                          Players Waiting
+                        </span>
+                        <span className="text-xs text-violet-500" data-testid="text-open-duels-count">{openDuels.length}</span>
+                      </div>
+                      <div className="divide-y divide-border">
+                        {openDuels.slice(0, 5).map((challenge) => (
+                          <div key={challenge.id} className="flex items-center gap-2 px-3 py-2">
+                            <UserAvatar
+                              user={{ name: challenge.challengerName ?? "Player", avatarUrl: challenge.challengerAvatarUrl ?? null }}
+                              className="h-7 w-7 shrink-0"
+                            />
+                            <span className="text-sm font-medium flex-1 truncate" data-testid={`text-challenger-name-${challenge.id}`}>
+                              {challenge.challengerName ?? "Player"}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={`text-xs shrink-0 ${challenge.format === "race" ? "border-orange-400 text-orange-600" : "border-blue-400 text-blue-600"}`}
+                            >
+                              {challenge.format === "race" ? "Race" : "Turn"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              className="h-6 px-2 text-xs shrink-0 bg-violet-600 hover:bg-violet-700 text-white"
+                              onClick={() => navigate(`/duel/${challenge.roomCode}`)}
+                              data-testid={`button-join-duel-${challenge.id}`}
+                            >
+                              Join
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="px-3 py-2 border-t border-border bg-muted/30">
+                        <Link href="/duels" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                          View all live duels →
+                        </Link>
+                      </div>
+                    </div>
                   )}
                   {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
                     <Button
