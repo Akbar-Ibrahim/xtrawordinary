@@ -752,10 +752,26 @@ export class MemStorage implements IStorage {
     return newEntry;
   }
 
-  async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
+  private _timeFilterCutoff(timeFilter?: string): string | null {
+    if (timeFilter === "today") {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      return d.toISOString();
+    }
+    if (timeFilter === "week") {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - 7);
+      d.setUTCHours(0, 0, 0, 0);
+      return d.toISOString();
+    }
+    return null;
+  }
+
+  async getLeaderboard(gameSlug: string, limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
+    const cutoff = this._timeFilterCutoff(timeFilter);
     const seen = new Set<number>();
     return this.leaderboardEntries
-      .filter(e => e.gameSlug === gameSlug)
+      .filter(e => e.gameSlug === gameSlug && (!cutoff || e.playedAt >= cutoff))
       .sort((a, b) => b.score - a.score)
       .filter(e => {
         if (seen.has(e.userId)) return false;
@@ -777,9 +793,11 @@ export class MemStorage implements IStorage {
       });
   }
 
-  async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+  async getOverallLeaderboard(limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
+    const cutoff = this._timeFilterCutoff(timeFilter);
     const playerTotals = new Map<number, { userId: number; playerName: string; score: number; playedAt: string; gamesPlayed: number }>();
     for (const entry of this.leaderboardEntries) {
+      if (cutoff && entry.playedAt < cutoff) continue;
       const existing = playerTotals.get(entry.userId);
       if (existing) {
         existing.score += entry.score;
@@ -798,6 +816,69 @@ export class MemStorage implements IStorage {
       .map((p, i) => {
         const user = this.users.get(p.userId);
         return { id: i + 1, ...p, gameSlug: "overall", playerName: user?.name ?? p.playerName, playerAvatarUrl: user?.avatarUrl ?? null };
+      });
+  }
+
+  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null> {
+    const cutoff = this._timeFilterCutoff(timeFilter);
+    if (gameSlug === "overall") {
+      const allEntries = this.leaderboardEntries.filter(e => !cutoff || e.playedAt >= cutoff);
+      const playerTotals = new Map<number, number>();
+      for (const e of allEntries) {
+        playerTotals.set(e.userId, (playerTotals.get(e.userId) ?? 0) + e.score);
+      }
+      const userScore = playerTotals.get(userId);
+      if (userScore == null) return null;
+      const rank = Array.from(playerTotals.values()).filter(s => s > userScore).length + 1;
+      return { rank, score: userScore };
+    }
+    const seen = new Map<number, number>();
+    for (const e of this.leaderboardEntries) {
+      if (e.gameSlug !== gameSlug) continue;
+      if (cutoff && e.playedAt < cutoff) continue;
+      const cur = seen.get(e.userId);
+      if (cur == null || e.score > cur) seen.set(e.userId, e.score);
+    }
+    const userScore = seen.get(userId);
+    if (userScore == null) return null;
+    const rank = Array.from(seen.values()).filter(s => s > userScore).length + 1;
+    return { rank, score: userScore };
+  }
+
+  async getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]> {
+    const friendIds = this.friendshipsStore
+      .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
+      .map(f => f.requesterId === userId ? f.addresseeId : f.requesterId);
+    const allowedIds = new Set([userId, ...friendIds]);
+
+    if (gameSlug === "overall") {
+      const playerTotals = new Map<number, { score: number; playedAt: string }>();
+      for (const e of this.leaderboardEntries) {
+        if (!allowedIds.has(e.userId)) continue;
+        const cur = playerTotals.get(e.userId);
+        if (cur) { cur.score += e.score; if (e.playedAt > cur.playedAt) cur.playedAt = e.playedAt; }
+        else playerTotals.set(e.userId, { score: e.score, playedAt: e.playedAt });
+      }
+      return Array.from(playerTotals.entries())
+        .sort((a, b) => b[1].score - a[1].score)
+        .map(([uid, data], i) => {
+          const user = this.users.get(uid);
+          return { id: i + 1, userId: uid, gameSlug: "overall", score: data.score, playedAt: data.playedAt, playerName: user?.name ?? "Unknown", playerAvatarUrl: user?.avatarUrl ?? null };
+        });
+    }
+
+    const seen = new Map<number, LeaderboardEntry>();
+    for (const e of this.leaderboardEntries) {
+      if (e.gameSlug !== gameSlug || !allowedIds.has(e.userId)) continue;
+      const cur = seen.get(e.userId);
+      if (!cur || e.score > cur.score) seen.set(e.userId, e);
+    }
+    return Array.from(seen.values())
+      .sort((a, b) => b.score - a.score)
+      .map(e => {
+        const user = this.users.get(e.userId);
+        const stats = Array.from(this.userGameStatsMap.values()).find(s => s.userId === e.userId && s.gameSlug === gameSlug);
+        return { ...e, playerName: user?.name ?? e.playerName, playerAvatarUrl: user?.avatarUrl ?? null, gamesPlayed: stats?.gamesPlayed ?? undefined };
       });
   }
 

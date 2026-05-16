@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp } from "lucide-react";
+import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp, Users, Globe, CalendarDays, Calendar, Infinity } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useAuth } from "@/lib/auth-context";
@@ -14,26 +14,180 @@ import { AuthModal } from "@/components/auth-modal";
 import { motion } from "framer-motion";
 import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
 
+type TimeFilter = "all" | "today" | "week";
+type LeaderboardView = "global" | "friends";
+
 const RANK_ICONS = [Crown, Medal, Award];
 const RANK_COLORS = ["text-yellow-500", "text-gray-400", "text-amber-600"];
+
+const TIME_FILTER_OPTIONS: { value: TimeFilter; label: string; icon: typeof CalendarDays }[] = [
+  { value: "today", label: "Today", icon: CalendarDays },
+  { value: "week", label: "This Week", icon: Calendar },
+  { value: "all", label: "All Time", icon: Infinity },
+];
+
+function TimeFilterBar({
+  value,
+  onChange,
+}: {
+  value: TimeFilter;
+  onChange: (v: TimeFilter) => void;
+}) {
+  return (
+    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="filter-time">
+      {TIME_FILTER_OPTIONS.map(({ value: v, label, icon: Icon }) => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          data-testid={`filter-time-${v}`}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+            value === v
+              ? "bg-background shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: LeaderboardView;
+  onChange: (v: LeaderboardView) => void;
+}) {
+  return (
+    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-view">
+      <button
+        onClick={() => onChange("global")}
+        data-testid="toggle-view-global"
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+          view === "global"
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Globe className="h-3.5 w-3.5" />
+        Global
+      </button>
+      <button
+        onClick={() => onChange("friends")}
+        data-testid="toggle-view-friends"
+        className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+          view === "friends"
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Users className="h-3.5 w-3.5" />
+        Friends
+      </button>
+    </div>
+  );
+}
+
+function MyRankBanner({
+  slug,
+  timeFilter,
+  visibleUserIds,
+}: {
+  slug: string;
+  timeFilter: TimeFilter;
+  visibleUserIds: Set<number>;
+}) {
+  const { user } = useAuth();
+  const params = new URLSearchParams();
+  if (timeFilter !== "all") params.set("timeFilter", timeFilter);
+  const queryString = params.toString();
+  const apiSlug = slug === "overall" ? "overall" : slug;
+  const url = `/api/leaderboard/${apiSlug}/my-rank${queryString ? `?${queryString}` : ""}`;
+
+  const { data: rankData } = useQuery<{ rank: number; score: number } | null>({
+    queryKey: ["/api/leaderboard", apiSlug, "my-rank", timeFilter],
+    queryFn: async () => {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user && !visibleUserIds.has(user.id),
+  });
+
+  if (!user || visibleUserIds.has(user.id) || !rankData) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 border-dashed mt-2"
+      data-testid="banner-my-rank"
+    >
+      <div className="w-8 text-center font-bold text-muted-foreground text-sm">
+        #{rankData.rank}
+      </div>
+      <UserAvatar name={user.name} avatarUrl={user.avatarUrl ?? null} className="w-7 h-7 text-[10px]" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium truncate">{user.name}</span>
+          <Badge variant="secondary" className="text-xs" data-testid="badge-you-rank">You</Badge>
+        </div>
+        <span className="text-xs text-muted-foreground">Your current rank</span>
+      </div>
+      <div className="text-right">
+        <span className="font-bold text-lg" data-testid="text-my-score">{rankData.score.toLocaleString()}</span>
+        <span className="text-xs text-muted-foreground ml-1">pts</span>
+      </div>
+    </motion.div>
+  );
+}
 
 function LeaderboardEntries({
   slug,
   user,
   onSignIn,
+  timeFilter,
+  view,
 }: {
   slug: string;
   user: ReturnType<typeof useAuth>["user"];
   onSignIn: () => void;
+  timeFilter: TimeFilter;
+  view: LeaderboardView;
 }) {
-  const { data: entries = [], isLoading } = useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/leaderboard", slug],
+  const params = new URLSearchParams();
+  if (timeFilter !== "all") params.set("timeFilter", timeFilter);
+  const queryString = params.toString();
+
+  const isOverall = slug === "overall";
+  const baseUrl = isOverall ? "/api/leaderboard" : `/api/leaderboard/${slug}`;
+  const globalUrl = `${baseUrl}${queryString ? `?${queryString}` : ""}`;
+  const friendsUrl = isOverall ? `/api/leaderboard/overall/friends` : `/api/leaderboard/${slug}/friends`;
+
+  const { data: globalEntries = [], isLoading: globalLoading } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/leaderboard", slug, timeFilter],
     queryFn: async () => {
-      const url = slug === "overall" ? "/api/leaderboard" : `/api/leaderboard/${slug}`;
-      const res = await fetch(url);
+      const res = await fetch(globalUrl);
       return res.json();
     },
+    enabled: view === "global",
   });
+
+  const { data: friendEntries = [], isLoading: friendsLoading } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/leaderboard", slug, "friends"],
+    queryFn: async () => {
+      const res = await fetch(friendsUrl);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: view === "friends" && !!user,
+  });
+
+  const isLoading = view === "global" ? globalLoading : friendsLoading;
+  const entries = view === "friends" ? friendEntries : globalEntries;
 
   if (isLoading) {
     return (
@@ -45,12 +199,28 @@ function LeaderboardEntries({
     );
   }
 
+  if (view === "friends" && !user) {
+    return (
+      <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-friends-signin">
+        <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
+        <p>Sign in to see how you rank against your friends!</p>
+        <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-friends">
+          <LogIn className="h-4 w-4" /> Sign In
+        </Button>
+      </div>
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-no-entries">
         <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        <p>No scores yet. Be the first to play!</p>
-        {!user && (
+        {view === "friends" ? (
+          <p>None of your friends have played this yet. Challenge them!</p>
+        ) : (
+          <p>No scores yet. Be the first to play!</p>
+        )}
+        {!user && view === "global" && (
           <div className="space-y-2">
             <p className="text-sm">Sign in to track your scores and appear here.</p>
             <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard">
@@ -61,6 +231,8 @@ function LeaderboardEntries({
       </div>
     );
   }
+
+  const visibleUserIds = new Set(entries.map(e => e.userId));
 
   return (
     <>
@@ -126,7 +298,12 @@ function LeaderboardEntries({
           );
         })}
       </div>
-      {!user && entries.length > 0 && (
+
+      {view === "global" && user && (
+        <MyRankBanner slug={slug} timeFilter={timeFilter} visibleUserIds={visibleUserIds} />
+      )}
+
+      {!user && entries.length > 0 && view === "global" && (
         <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center space-y-2" data-testid="banner-signin-leaderboard">
           <p className="text-sm text-muted-foreground">Sign in to track your scores and appear on the leaderboard!</p>
           <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard-banner">
@@ -180,11 +357,15 @@ function ModeTabs({
   isSurvival,
   user,
   onSignIn,
+  timeFilter,
+  view,
 }: {
   modes: GameMode[];
   isSurvival: boolean;
   user: ReturnType<typeof useAuth>["user"];
   onSignIn: () => void;
+  timeFilter: TimeFilter;
+  view: LeaderboardView;
 }) {
   const [activeMode, setActiveMode] = useState(modes[0]?.slug ?? "");
   const effectiveSlug = isSurvival ? `${activeMode}-survival` : activeMode;
@@ -207,7 +388,7 @@ function ModeTabs({
           </button>
         ))}
       </div>
-      <LeaderboardEntries slug={effectiveSlug} user={user} onSignIn={onSignIn} />
+      <LeaderboardEntries slug={effectiveSlug} user={user} onSignIn={onSignIn} timeFilter={timeFilter} view={view} />
     </div>
   );
 }
@@ -305,12 +486,13 @@ export default function Leaderboard() {
   const [isSurvival, setIsSurvival] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [gameFilter, setGameFilter] = useState("");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+  const [view, setView] = useState<LeaderboardView>("global");
   const { user } = useAuth();
 
   const { data: games = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
-
 
   const filteredGames = gameFilter.trim()
     ? games.filter(g => g.name.toLowerCase().includes(gameFilter.trim().toLowerCase()))
@@ -445,7 +627,12 @@ export default function Leaderboard() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <TimeFilterBar value={timeFilter} onChange={setTimeFilter} />
+                  {user && <ViewToggle view={view} onChange={setView} />}
+                </div>
+
                 {hasModes ? (
                   <ModeTabs
                     key={selectedGame}
@@ -453,12 +640,16 @@ export default function Leaderboard() {
                     isSurvival={isSurvival}
                     user={user}
                     onSignIn={() => setAuthOpen(true)}
+                    timeFilter={timeFilter}
+                    view={view}
                   />
                 ) : (
                   <LeaderboardEntries
                     slug={noModeSlug}
                     user={user}
                     onSignIn={() => setAuthOpen(true)}
+                    timeFilter={timeFilter}
+                    view={view}
                   />
                 )}
               </CardContent>

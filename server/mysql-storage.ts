@@ -338,15 +338,35 @@ export class MySQLStorage implements IStorage {
     };
   }
 
-  async getLeaderboard(gameSlug: string, limit = 50): Promise<LeaderboardEntry[]> {
-    const db = await this.getDb();
+  private _timeFilterCutoff(timeFilter?: string): Date | null {
+    if (timeFilter === "today") {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      return d;
+    }
+    if (timeFilter === "week") {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - 7);
+      d.setUTCHours(0, 0, 0, 0);
+      return d;
+    }
+    return null;
+  }
 
-    // Step 1: MAX(score) per user for this game
+  async getLeaderboard(gameSlug: string, limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
+    const db = await this.getDb();
+    const cutoff = this._timeFilterCutoff(timeFilter);
+
+    const baseWhere = cutoff
+      ? and(eq(schema.leaderboardEntries.gameSlug, gameSlug), sql`${schema.leaderboardEntries.playedAt} >= ${cutoff}`)
+      : eq(schema.leaderboardEntries.gameSlug, gameSlug);
+
+    // Step 1: MAX(score) per user for this game (within time window)
     const maxScorePerUser = db.select({
       userId: schema.leaderboardEntries.userId,
       maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score"),
     }).from(schema.leaderboardEntries)
-      .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
+      .where(baseWhere)
       .groupBy(schema.leaderboardEntries.userId)
       .as("max_score_per_user");
 
@@ -359,7 +379,7 @@ export class MySQLStorage implements IStorage {
         eq(schema.leaderboardEntries.userId, maxScorePerUser.userId),
         eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore),
       ))
-      .where(eq(schema.leaderboardEntries.gameSlug, gameSlug))
+      .where(baseWhere)
       .groupBy(schema.leaderboardEntries.userId)
       .as("best_row_ids");
 
@@ -406,16 +426,23 @@ export class MySQLStorage implements IStorage {
     });
   }
 
-  async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+  async getOverallLeaderboard(limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
     const db = await this.getDb();
-    const totals = await db.select({
+    const cutoff = this._timeFilterCutoff(timeFilter);
+
+    const baseQuery = db.select({
       userId: schema.leaderboardEntries.userId,
       totalScore: sql<number>`SUM(${schema.leaderboardEntries.score})`,
       latestPlayedAt: sql<string>`MAX(${schema.leaderboardEntries.playedAt})`,
-    }).from(schema.leaderboardEntries)
+    }).from(schema.leaderboardEntries);
+
+    const totals = await (cutoff
+      ? baseQuery.where(sql`${schema.leaderboardEntries.playedAt} >= ${cutoff}`)
+      : baseQuery)
       .groupBy(schema.leaderboardEntries.userId)
       .orderBy(sql`SUM(${schema.leaderboardEntries.score}) DESC`)
       .limit(limit);
+
     if (totals.length === 0) return [];
     const userIds = totals.map(t => t.userId);
     const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
@@ -436,6 +463,134 @@ export class MySQLStorage implements IStorage {
       score: Number(r.totalScore),
       playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
       gameSlug: "overall",
+      gamesPlayed: statsMap.get(r.userId) ?? undefined,
+    }));
+  }
+
+  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null> {
+    const db = await this.getDb();
+    const cutoff = this._timeFilterCutoff(timeFilter);
+
+    if (gameSlug === "overall") {
+      const whereClause = cutoff ? sql`${schema.leaderboardEntries.playedAt} >= ${cutoff}` : undefined;
+      const totals = await (whereClause
+        ? db.select({ userId: schema.leaderboardEntries.userId, total: sql<number>`SUM(${schema.leaderboardEntries.score})` })
+            .from(schema.leaderboardEntries).where(whereClause)
+        : db.select({ userId: schema.leaderboardEntries.userId, total: sql<number>`SUM(${schema.leaderboardEntries.score})` })
+            .from(schema.leaderboardEntries))
+        .groupBy(schema.leaderboardEntries.userId);
+
+      const userRow = totals.find(t => t.userId === userId);
+      if (!userRow) return null;
+      const userScore = Number(userRow.total);
+      const rank = totals.filter(t => Number(t.total) > userScore).length + 1;
+      return { rank, score: userScore };
+    }
+
+    const baseWhere = cutoff
+      ? and(eq(schema.leaderboardEntries.gameSlug, gameSlug), sql`${schema.leaderboardEntries.playedAt} >= ${cutoff}`)
+      : eq(schema.leaderboardEntries.gameSlug, gameSlug);
+
+    const scores = await db.select({
+      userId: schema.leaderboardEntries.userId,
+      best: sql<number>`MAX(${schema.leaderboardEntries.score})`,
+    }).from(schema.leaderboardEntries)
+      .where(baseWhere)
+      .groupBy(schema.leaderboardEntries.userId);
+
+    const userRow = scores.find(s => s.userId === userId);
+    if (!userRow) return null;
+    const userScore = Number(userRow.best);
+    const rank = scores.filter(s => Number(s.best) > userScore).length + 1;
+    return { rank, score: userScore };
+  }
+
+  async getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]> {
+    const db = await this.getDb();
+
+    const friendships = await db.select({
+      requesterId: schema.friendships.requesterId,
+      addresseeId: schema.friendships.addresseeId,
+    }).from(schema.friendships)
+      .where(and(
+        eq(schema.friendships.status, "accepted"),
+        or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId)),
+      ));
+
+    const friendIds = friendships.map(f => f.requesterId === userId ? f.addresseeId : f.requesterId);
+    const allowedIds = [userId, ...friendIds];
+
+    if (allowedIds.length === 0) return [];
+
+    if (gameSlug === "overall") {
+      const totals = await db.select({
+        userId: schema.leaderboardEntries.userId,
+        totalScore: sql<number>`SUM(${schema.leaderboardEntries.score})`,
+        latestPlayedAt: sql<string>`MAX(${schema.leaderboardEntries.playedAt})`,
+      }).from(schema.leaderboardEntries)
+        .where(inArray(schema.leaderboardEntries.userId, allowedIds))
+        .groupBy(schema.leaderboardEntries.userId)
+        .orderBy(sql`SUM(${schema.leaderboardEntries.score}) DESC`);
+
+      if (totals.length === 0) return [];
+      const uIds = totals.map(t => t.userId);
+      const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+        .from(schema.users).where(inArray(schema.users.id, uIds));
+      const userMap = new Map(userRows.map(u => [u.id, u]));
+      return totals.map((r: any, i: number) => ({
+        id: i + 1,
+        userId: r.userId,
+        playerName: userMap.get(r.userId)?.name || "Unknown",
+        playerAvatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
+        score: Number(r.totalScore),
+        playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
+        gameSlug: "overall",
+      }));
+    }
+
+    const baseWhere = and(eq(schema.leaderboardEntries.gameSlug, gameSlug), inArray(schema.leaderboardEntries.userId, allowedIds));
+    const maxScorePerUser = db.select({
+      userId: schema.leaderboardEntries.userId,
+      maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score"),
+    }).from(schema.leaderboardEntries).where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("max_score_per_user");
+
+    const bestRowIds = db.select({
+      userId: schema.leaderboardEntries.userId,
+      bestId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("best_id"),
+    }).from(schema.leaderboardEntries)
+      .innerJoin(maxScorePerUser, and(eq(schema.leaderboardEntries.userId, maxScorePerUser.userId), eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore)))
+      .where(baseWhere)
+      .groupBy(schema.leaderboardEntries.userId)
+      .as("best_row_ids");
+
+    const rows = await db.select({
+      id: schema.leaderboardEntries.id,
+      userId: schema.leaderboardEntries.userId,
+      gameSlug: schema.leaderboardEntries.gameSlug,
+      score: schema.leaderboardEntries.score,
+      playerName: schema.leaderboardEntries.playerName,
+      playedAt: schema.leaderboardEntries.playedAt,
+    }).from(schema.leaderboardEntries)
+      .innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId))
+      .orderBy(desc(schema.leaderboardEntries.score));
+
+    if (rows.length === 0) return [];
+    const uIds = [...new Set(rows.map(r => r.userId))];
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users).where(inArray(schema.users.id, uIds));
+    const userMap = new Map(userRows.map(u => [u.id, u]));
+    const statsRows = await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed })
+      .from(schema.userGameStats)
+      .where(and(inArray(schema.userGameStats.userId, uIds), eq(schema.userGameStats.gameSlug, gameSlug)));
+    const statsMap = new Map(statsRows.map(s => [s.userId, s.gamesPlayed]));
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      gameSlug: r.gameSlug,
+      score: r.score,
+      playerName: userMap.get(r.userId)?.name ?? r.playerName,
+      playerAvatarUrl: userMap.get(r.userId)?.avatarUrl ?? null,
+      playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt),
       gamesPlayed: statsMap.get(r.userId) ?? undefined,
     }));
   }

@@ -80,8 +80,10 @@ export interface IStorage {
   getAllUserGameStats(userId: number): Promise<UserGameStats[]>;
 
   saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry>;
-  getLeaderboard(gameSlug: string, limit?: number): Promise<LeaderboardEntry[]>;
-  getOverallLeaderboard(limit?: number): Promise<LeaderboardEntry[]>;
+  getLeaderboard(gameSlug: string, limit?: number, timeFilter?: string): Promise<LeaderboardEntry[]>;
+  getOverallLeaderboard(limit?: number, timeFilter?: string): Promise<LeaderboardEntry[]>;
+  getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null>;
+  getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]>;
   incrementGamePlayCount(gameSlug: string): Promise<void>;
   getGamePlayCount(gameSlug: string): Promise<number>;
   getAllGamePlayCounts(): Promise<Record<string, number>>;

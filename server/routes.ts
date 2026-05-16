@@ -1018,7 +1018,7 @@ export async function registerRoutes(
 
   // ==================== LEADERBOARD ROUTES ====================
 
-  app.get("/api/leaderboard", async (_req, res) => {
+  app.get("/api/leaderboard", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
     //   const response = await axios.get(`${REMOTE_BASE_URL}/api/leaderboard`);
@@ -1030,10 +1030,33 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const entries = await storage.getOverallLeaderboard(50);
+      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const entries = await storage.getOverallLeaderboard(50, timeFilter);
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/:gameSlug/my-rank", requireAuth, async (req, res) => {
+    try {
+      const { gameSlug } = req.params;
+      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const result = await storage.getPlayerRank(gameSlug, req.user!.id, timeFilter);
+      if (!result) return res.json(null);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch player rank" });
+    }
+  });
+
+  app.get("/api/leaderboard/:gameSlug/friends", requireAuth, async (req, res) => {
+    try {
+      const { gameSlug } = req.params;
+      const entries = await storage.getFriendsLeaderboard(gameSlug, req.user!.id);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch friends leaderboard" });
     }
   });
 
@@ -1049,7 +1072,8 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const entries = await storage.getLeaderboard(req.params.gameSlug, 50);
+      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const entries = await storage.getLeaderboard(req.params.gameSlug, 50, timeFilter);
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
