@@ -432,12 +432,10 @@ export default function Leaderboard() {
                           )}
                         </div>
                       </div>
-                      {selectedGameObj.playCount > 0 && (
-                        <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground" data-testid="text-total-plays">
-                          <TrendingUp className="h-4 w-4" />
-                          {selectedGameObj.playCount.toLocaleString()} total {selectedGameObj.playCount === 1 ? "play" : "plays"}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground" data-testid="text-total-plays">
+                        <TrendingUp className="h-4 w-4" />
+                        {selectedGameObj.playCount.toLocaleString()} total {selectedGameObj.playCount === 1 ? "play" : "plays"}
+                      </span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
