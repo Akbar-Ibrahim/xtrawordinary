@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gamepad2, Flame, Trophy, Calendar, ArrowRight, CheckCircle, Shuffle, Swords, Search, X, Sparkles, Sword, LayoutGrid, List } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { Game, WordWarsTournament } from "@shared/schema";
+import type { Game, WordWarsTournament, GuildWarsTournament } from "@shared/schema";
 
 import { loadStats, loadStreak, loadFavorites, getDailyChallengeRecord } from "@/lib/game-stats";
 
@@ -445,7 +445,7 @@ export default function Home() {
                 let gwSubLabel: string;
                 if (openGuildWar) {
                   if (openGuildWar.status === "registration") {
-                    const count = (openGuildWar as any).registrationCount ?? 0;
+                    const count = (openGuildWar as GuildWarsTournament & { registrationCount?: number }).registrationCount ?? 0;
                     gwSubLabel = `${count} ${count === 1 ? "guild" : "guilds"} · closes ${new Date(openGuildWar.registrationDeadline).toLocaleDateString()}`;
                   } else {
                     gwSubLabel = "In Progress";

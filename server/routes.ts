@@ -3964,8 +3964,8 @@ export async function registerRoutes(
     }
   });
 
-  // GET /api/groups/:id/guild-wars — tournaments a group is registered in
-  app.get("/api/groups/:id/guild-wars", requireAuth, async (req, res) => {
+  // GET /api/groups/:id/guild-wars — tournaments a group is registered in (public)
+  app.get("/api/groups/:id/guild-wars", async (req, res) => {
     try {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
