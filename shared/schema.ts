@@ -249,6 +249,7 @@ export const leaderboardEntrySchema = z.object({
   playerName: z.string(),
   playerAvatarUrl: z.string().nullable().optional(),
   playedAt: z.string(),
+  gamesPlayed: z.number().optional(),
 });
 export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
 

@@ -1027,6 +1027,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/leaderboard/:gameSlug/total-plays", async (req, res) => {
+    try {
+      const total = await storage.getGamePlayCount(req.params.gameSlug);
+      res.json({ totalPlays: total });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch play count" });
+    }
+  });
+
   app.get("/api/leaderboard/:gameSlug", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {

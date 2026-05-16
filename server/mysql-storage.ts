@@ -383,6 +383,14 @@ export class MySQLStorage implements IStorage {
           .from(schema.users).where(inArray(schema.users.id, userIds))
       : [];
     const userMap = new Map(userRows.map(u => [u.id, u]));
+
+    const statsRows = userIds.length > 0
+      ? await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed })
+          .from(schema.userGameStats)
+          .where(and(inArray(schema.userGameStats.userId, userIds), eq(schema.userGameStats.gameSlug, gameSlug)))
+      : [];
+    const statsMap = new Map(statsRows.map(s => [s.userId, s.gamesPlayed]));
+
     return rows.map(r => {
       const user = userMap.get(r.userId);
       return {
@@ -393,6 +401,7 @@ export class MySQLStorage implements IStorage {
         playerName: user?.name ?? r.playerName,
         playerAvatarUrl: user?.avatarUrl ?? null,
         playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt),
+        gamesPlayed: statsMap.get(r.userId) ?? undefined,
       };
     });
   }
@@ -412,6 +421,13 @@ export class MySQLStorage implements IStorage {
     const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
       .from(schema.users).where(inArray(schema.users.id, userIds));
     const userMap = new Map(userRows.map(u => [u.id, u]));
+    const statsRows = await db.select({
+      userId: schema.userGameStats.userId,
+      gamesPlayed: sql<number>`SUM(${schema.userGameStats.gamesPlayed})`,
+    }).from(schema.userGameStats)
+      .where(inArray(schema.userGameStats.userId, userIds))
+      .groupBy(schema.userGameStats.userId);
+    const statsMap = new Map(statsRows.map(s => [s.userId, Number(s.gamesPlayed)]));
     return totals.map((r: any, i: number) => ({
       id: i + 1,
       userId: r.userId,
@@ -420,7 +436,17 @@ export class MySQLStorage implements IStorage {
       score: Number(r.totalScore),
       playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt),
       gameSlug: "overall",
+      gamesPlayed: statsMap.get(r.userId) ?? undefined,
     }));
+  }
+
+  async getGamePlayCount(gameSlug: string): Promise<number> {
+    const db = await this.getDb();
+    const rows = await db.select({
+      total: sql<number>`SUM(${schema.userGameStats.gamesPlayed})`,
+    }).from(schema.userGameStats)
+      .where(eq(schema.userGameStats.gameSlug, gameSlug));
+    return Number(rows[0]?.total ?? 0);
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {

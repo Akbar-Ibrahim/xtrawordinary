@@ -296,6 +296,13 @@ export default function GameDetail() {
     enabled: !!slug,
   });
 
+  const { data: userStats = [] } = useQuery<Array<{ gameSlug: string; gamesPlayed: number }>>({
+    queryKey: ["/api/stats"],
+    enabled: isAuthenticated,
+  });
+
+  const myGameStat = slug ? userStats.find(s => s.gameSlug === slug) : undefined;
+
   const { data: friends = [] } = useQuery<Array<{ id: number; friendUser: { id: number; name: string; avatarUrl: string | null } }>>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
@@ -608,6 +615,11 @@ export default function GameDetail() {
                     <TrendingUp className="h-5 w-5" />
                     {game.playCount.toLocaleString()} plays
                   </span>
+                  {isAuthenticated && myGameStat && myGameStat.gamesPlayed > 0 && (
+                    <span className="flex items-center gap-2 text-primary font-medium" data-testid="text-my-plays">
+                      You've played {myGameStat.gamesPlayed.toLocaleString()} {myGameStat.gamesPlayed === 1 ? "time" : "times"}
+                    </span>
+                  )}
                   {slug && (
                     <LikeButton
                       targetType="game"

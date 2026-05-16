@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search } from "lucide-react";
+import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useAuth } from "@/lib/auth-context";
@@ -107,9 +107,16 @@ function LeaderboardEntries({
                     <Badge variant="secondary" className="text-xs" data-testid="badge-you">You</Badge>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(entry.playedAt).toLocaleDateString()}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(entry.playedAt).toLocaleDateString()}
+                  </span>
+                  {entry.gamesPlayed != null && entry.gamesPlayed > 0 && (
+                    <span className="text-xs text-muted-foreground" data-testid={`text-games-played-${index}`}>
+                      · {entry.gamesPlayed} {entry.gamesPlayed === 1 ? "play" : "plays"}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="text-right">
                 <span className="font-bold text-lg" data-testid={`text-score-${index}`}>{entry.score.toLocaleString()}</span>
@@ -304,6 +311,15 @@ export default function Leaderboard() {
     queryKey: ["/api/games"],
   });
 
+  const { data: totalPlaysData } = useQuery<{ totalPlays: number }>({
+    queryKey: ["/api/leaderboard", selectedGame, "total-plays"],
+    queryFn: async () => {
+      const res = await fetch(`/api/leaderboard/${selectedGame}/total-plays`);
+      return res.json();
+    },
+    enabled: selectedGame !== "overall",
+  });
+
   const filteredGames = gameFilter.trim()
     ? games.filter(g => g.name.toLowerCase().includes(gameFilter.trim().toLowerCase()))
     : games;
@@ -404,24 +420,32 @@ export default function Leaderboard() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">
                   {selectedGameObj ? (
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: selectedGameObj.color }}
-                      >
-                        {(() => {
-                          const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[selectedGameObj.icon] ?? LucideIcons.Gamepad2;
-                          return <Icon className="h-4 w-4 text-white" />;
-                        })()}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: selectedGameObj.color }}
+                        >
+                          {(() => {
+                            const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[selectedGameObj.icon] ?? LucideIcons.Gamepad2;
+                            return <Icon className="h-4 w-4 text-white" />;
+                          })()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{selectedGameObj.name}</span>
+                          {showSurvivalToggle && (
+                            <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
+                              {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span>{selectedGameObj.name}</span>
-                        {showSurvivalToggle && (
-                          <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
-                            {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
-                          </Badge>
-                        )}
-                      </div>
+                      {totalPlaysData != null && totalPlaysData.totalPlays > 0 && (
+                        <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground" data-testid="text-total-plays">
+                          <TrendingUp className="h-4 w-4" />
+                          {totalPlaysData.totalPlays.toLocaleString()} total {totalPlaysData.totalPlays === 1 ? "play" : "plays"}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">

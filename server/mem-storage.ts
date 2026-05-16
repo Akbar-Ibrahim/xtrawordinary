@@ -764,29 +764,48 @@ export class MemStorage implements IStorage {
       .slice(0, limit)
       .map(e => {
         const user = this.users.get(e.userId);
+        const stats = Array.from(this.userGameStatsMap.values()).find(
+          s => s.userId === e.userId && s.gameSlug === gameSlug
+        );
         return {
           ...e,
           playerName: user?.name ?? e.playerName,
           playerAvatarUrl: user?.avatarUrl ?? null,
+          gamesPlayed: stats?.gamesPlayed ?? undefined,
         };
       });
   }
 
   async getOverallLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
-    const playerTotals = new Map<number, { userId: number; playerName: string; score: number; playedAt: string }>();
+    const playerTotals = new Map<number, { userId: number; playerName: string; score: number; playedAt: string; gamesPlayed: number }>();
     for (const entry of this.leaderboardEntries) {
       const existing = playerTotals.get(entry.userId);
       if (existing) {
         existing.score += entry.score;
         if (entry.playedAt > existing.playedAt) existing.playedAt = entry.playedAt;
       } else {
-        playerTotals.set(entry.userId, { userId: entry.userId, playerName: entry.playerName, score: entry.score, playedAt: entry.playedAt });
+        playerTotals.set(entry.userId, { userId: entry.userId, playerName: entry.playerName, score: entry.score, playedAt: entry.playedAt, gamesPlayed: 0 });
       }
+    }
+    for (const stats of this.userGameStatsMap.values()) {
+      const player = playerTotals.get(stats.userId);
+      if (player) player.gamesPlayed += stats.gamesPlayed;
     }
     return Array.from(playerTotals.values())
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
-      .map((p, i) => ({ id: i + 1, ...p, gameSlug: "overall" }));
+      .map((p, i) => {
+        const user = this.users.get(p.userId);
+        return { id: i + 1, ...p, gameSlug: "overall", playerName: user?.name ?? p.playerName, playerAvatarUrl: user?.avatarUrl ?? null };
+      });
+  }
+
+  async getGamePlayCount(gameSlug: string): Promise<number> {
+    let total = 0;
+    for (const stats of this.userGameStatsMap.values()) {
+      if (stats.gameSlug === gameSlug) total += stats.gamesPlayed;
+    }
+    return total;
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {
