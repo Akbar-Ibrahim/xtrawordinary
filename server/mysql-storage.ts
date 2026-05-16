@@ -440,21 +440,24 @@ export class MySQLStorage implements IStorage {
     }));
   }
 
+  async incrementGamePlayCount(gameSlug: string): Promise<void> {
+    const db = await this.getDb();
+    await db.insert(schema.gamePlayCounts)
+      .values({ gameSlug, count: 1 })
+      .onDuplicateKeyUpdate({ set: { count: sql`count + 1` } });
+  }
+
   async getGamePlayCount(gameSlug: string): Promise<number> {
     const db = await this.getDb();
-    const rows = await db.select({ count: sql<number>`COUNT(*)` })
-      .from(schema.leaderboardEntries)
-      .where(eq(schema.leaderboardEntries.gameSlug, gameSlug));
+    const rows = await db.select({ count: schema.gamePlayCounts.count })
+      .from(schema.gamePlayCounts)
+      .where(eq(schema.gamePlayCounts.gameSlug, gameSlug));
     return Number(rows[0]?.count ?? 0);
   }
 
   async getAllGamePlayCounts(): Promise<Record<string, number>> {
     const db = await this.getDb();
-    const rows = await db.select({
-      gameSlug: schema.leaderboardEntries.gameSlug,
-      count: sql<number>`COUNT(*)`,
-    }).from(schema.leaderboardEntries)
-      .groupBy(schema.leaderboardEntries.gameSlug);
+    const rows = await db.select().from(schema.gamePlayCounts);
     const result: Record<string, number> = {};
     for (const row of rows) result[row.gameSlug] = Number(row.count);
     return result;

@@ -633,6 +633,7 @@ export class MemStorage implements IStorage {
   private userGameStatsMap: Map<string, UserGameStats> = new Map();
   private ugsIdCounter = 1;
   private leaderboardEntries: LeaderboardEntry[] = [];
+  private gamePlayCountsMap: Map<string, number> = new Map();
   private lbIdCounter = 1;
   private userStreaks: Map<number, UserStreak> = new Map();
   private usIdCounter = 1;
@@ -800,16 +801,16 @@ export class MemStorage implements IStorage {
       });
   }
 
+  async incrementGamePlayCount(gameSlug: string): Promise<void> {
+    this.gamePlayCountsMap.set(gameSlug, (this.gamePlayCountsMap.get(gameSlug) ?? 0) + 1);
+  }
+
   async getGamePlayCount(gameSlug: string): Promise<number> {
-    return this.leaderboardEntries.filter(e => e.gameSlug === gameSlug).length;
+    return this.gamePlayCountsMap.get(gameSlug) ?? 0;
   }
 
   async getAllGamePlayCounts(): Promise<Record<string, number>> {
-    const counts: Record<string, number> = {};
-    for (const entry of this.leaderboardEntries) {
-      counts[entry.gameSlug] = (counts[entry.gameSlug] ?? 0) + 1;
-    }
-    return counts;
+    return Object.fromEntries(this.gamePlayCountsMap.entries());
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {

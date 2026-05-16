@@ -59,6 +59,11 @@ export const leaderboardEntries = mysqlTable("leaderboard_entries", {
   index("lb_played_at_idx").on(table.playedAt),
 ]);
 
+export const gamePlayCounts = mysqlTable("game_play_counts", {
+  gameSlug: varchar("game_slug", { length: 100 }).primaryKey(),
+  count: int("count").notNull().default(0),
+});
+
 export const userStreaks = mysqlTable("user_streaks", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull().unique(),

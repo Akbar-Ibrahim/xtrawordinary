@@ -1089,6 +1089,7 @@ export async function registerRoutes(
         playerName: req.user!.name,
         playedAt: new Date().toISOString(),
       });
+      await storage.incrementGamePlayCount(gameSlug);
       res.json(entry);
     } catch (error) {
       res.status(500).json({ error: "Failed to submit score" });
