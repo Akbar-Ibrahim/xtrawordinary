@@ -11,6 +11,7 @@ import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { WhatsNewModal } from "@/components/whats-new-modal";
+import { GoogleWelcomeModal } from "@/components/google-welcome-modal";
 import { MotionConfig } from "framer-motion";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
@@ -100,6 +101,7 @@ function App() {
             </div>
             <Toaster />
             <WhatsNewModal />
+            <GoogleWelcomeModal />
             </MotionConfig>
             </TooltipProvider>
             </DuelNotificationsProvider>

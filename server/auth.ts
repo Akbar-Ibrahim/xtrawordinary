@@ -141,8 +141,9 @@ export function setupAuth(app: Express) {
           clientID: googleClientId,
           clientSecret: googleClientSecret,
           callbackURL,
-        },
-        async (_accessToken, _refreshToken, profile, done) => {
+          passReqToCallback: true,
+        } as any,
+        async (req: any, _accessToken: string, _refreshToken: string, profile: any, done: any) => {
           try {
             let user = await storage.getUserByGoogleId(profile.id);
             if (user) {
@@ -176,6 +177,7 @@ export function setupAuth(app: Express) {
               isBanned: false,
               isPremium: false,
             });
+            req.session.isNewGoogleUser = true;
             return done(null, user);
           } catch (err) {
             return done(err);

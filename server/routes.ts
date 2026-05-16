@@ -792,8 +792,12 @@ export async function registerRoutes(
 
     app.get("/api/auth/google/callback",
       passport.authenticate("google", { failureRedirect: "/?auth=error" }),
-      (_req, res) => {
-        res.redirect("/?auth=success");
+      (req, res) => {
+        const isNew = (req.session as any).isNewGoogleUser;
+        if (isNew) {
+          delete (req.session as any).isNewGoogleUser;
+        }
+        res.redirect(isNew ? "/?auth=google-new" : "/?auth=success");
       }
     );
   }
