@@ -4,7 +4,8 @@ import { Link, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useAuth } from "@/lib/auth-context";
@@ -296,11 +297,16 @@ export default function Leaderboard() {
   const [selectedGame, setSelectedGame] = useState(initialGame);
   const [isSurvival, setIsSurvival] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [gameFilter, setGameFilter] = useState("");
   const { user } = useAuth();
 
   const { data: games = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
+
+  const filteredGames = gameFilter.trim()
+    ? games.filter(g => g.name.toLowerCase().includes(gameFilter.trim().toLowerCase()))
+    : games;
 
   const selectedGameObj = games.find(g => g.slug === selectedGame);
   const hasModes = !!(selectedGameObj?.modes && selectedGameObj.modes.length > 0);
@@ -352,6 +358,18 @@ export default function Leaderboard() {
               <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Games
               </p>
+              <div className="px-1 pb-1">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={gameFilter}
+                    onChange={(e) => setGameFilter(e.target.value)}
+                    placeholder="Filter games…"
+                    className="h-7 pl-8 text-xs"
+                    data-testid="input-game-filter"
+                  />
+                </div>
+              </div>
               <GameSidebarItem
                 slug="overall"
                 label="Overall"
@@ -359,7 +377,7 @@ export default function Leaderboard() {
                 onClick={() => handleGameChange("overall")}
               />
               <div className="h-px bg-border mx-2 my-1" />
-              {games.map((game) => (
+              {filteredGames.map((game) => (
                 <GameSidebarItem
                   key={game.slug}
                   slug={game.slug}
@@ -370,6 +388,9 @@ export default function Leaderboard() {
                   onClick={() => handleGameChange(game.slug)}
                 />
               ))}
+              {filteredGames.length === 0 && (
+                <p className="px-3 py-2 text-xs text-muted-foreground text-center">No games match</p>
+              )}
             </div>
           </aside>
 
