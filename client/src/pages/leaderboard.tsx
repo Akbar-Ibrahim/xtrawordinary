@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame } from "lucide-react";
@@ -139,7 +138,7 @@ function SurvivalToggle({
   onChange: (val: boolean) => void;
 }) {
   return (
-    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit mx-auto" data-testid="toggle-survival">
+    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-survival">
       <button
         onClick={() => onChange(false)}
         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
@@ -205,6 +204,92 @@ function ModeTabs({
   );
 }
 
+function GameSidebarItem({
+  slug,
+  label,
+  icon,
+  color,
+  isActive,
+  onClick,
+}: {
+  slug: string;
+  label: string;
+  icon?: string;
+  color?: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  const Icon = icon
+    ? ((LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[icon] ?? LucideIcons.Gamepad2)
+    : LucideIcons.Trophy;
+
+  return (
+    <button
+      onClick={onClick}
+      data-testid={`sidebar-game-${slug}`}
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors cursor-pointer ${
+        isActive
+          ? "bg-primary text-primary-foreground font-medium"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
+    >
+      <div
+        className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: isActive ? "rgba(255,255,255,0.2)" : (color ?? "hsl(var(--muted))") }}
+      >
+        <Icon className="h-3.5 w-3.5 text-white" />
+      </div>
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function MobileGameStrip({
+  games,
+  selectedGame,
+  onSelect,
+}: {
+  games: Game[];
+  selectedGame: string;
+  onSelect: (slug: string) => void;
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1" data-testid="mobile-game-strip">
+      <button
+        onClick={() => onSelect("overall")}
+        data-testid="strip-game-overall"
+        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
+          selectedGame === "overall"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-background text-muted-foreground border-border hover:text-foreground"
+        }`}
+      >
+        <Trophy className="h-3 w-3" />
+        Overall
+      </button>
+      {games.map((game) => {
+        const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] ?? LucideIcons.Gamepad2;
+        const isActive = selectedGame === game.slug;
+        return (
+          <button
+            key={game.slug}
+            onClick={() => onSelect(game.slug)}
+            data-testid={`strip-game-${game.slug}`}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
+              isActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-3 w-3" />
+            {game.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Leaderboard() {
   const search = useSearch();
   const initialGame = new URLSearchParams(search).get("game") ?? "overall";
@@ -233,7 +318,7 @@ export default function Leaderboard() {
   const noModeSlug = isSurvival ? `${selectedGame}-survival` : selectedGame;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -249,79 +334,102 @@ export default function Leaderboard() {
 
         <PremiumBanner />
 
-        <div className="flex justify-center">
-          <Select value={selectedGame} onValueChange={handleGameChange}>
-            <SelectTrigger className="w-64" data-testid="select-game-filter">
-              <SelectValue placeholder="Select a game" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overall" data-testid="option-overall">Overall</SelectItem>
-              {games.map((game) => (
-                <SelectItem key={game.slug} value={game.slug} data-testid={`option-${game.slug}`}>
-                  {game.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Mobile: horizontal scrollable strip */}
+        <div className="md:hidden">
+          <MobileGameStrip
+            games={games}
+            selectedGame={selectedGame}
+            onSelect={handleGameChange}
+          />
         </div>
 
-        {showSurvivalToggle && (
-          <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
-        )}
+        {/* Desktop: two-column layout */}
+        <div className="flex gap-6 items-start">
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">
-              {selectedGameObj ? (
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: selectedGameObj.color }}
-                  >
-                    {(() => {
-                      const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[selectedGameObj.icon] ?? LucideIcons.Gamepad2;
-                      return <Icon className="h-4 w-4 text-white" />;
-                    })()}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>{selectedGameObj.name}</span>
-                    {showSurvivalToggle && (
-                      <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
-                        {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span>{cardTitle}</span>
-                  {showSurvivalToggle && (
-                    <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
-                      {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {hasModes ? (
-              <ModeTabs
-                key={selectedGame}
-                modes={selectedGameObj!.modes!}
-                isSurvival={isSurvival}
-                user={user}
-                onSignIn={() => setAuthOpen(true)}
+          {/* Sidebar — desktop only */}
+          <aside className="hidden md:flex flex-col w-52 shrink-0 sticky top-4">
+            <div className="bg-card border rounded-xl p-2 space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto">
+              <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Games
+              </p>
+              <GameSidebarItem
+                slug="overall"
+                label="Overall"
+                isActive={selectedGame === "overall"}
+                onClick={() => handleGameChange("overall")}
               />
-            ) : (
-              <LeaderboardEntries
-                slug={noModeSlug}
-                user={user}
-                onSignIn={() => setAuthOpen(true)}
-              />
+              <div className="h-px bg-border mx-2 my-1" />
+              {games.map((game) => (
+                <GameSidebarItem
+                  key={game.slug}
+                  slug={game.slug}
+                  label={game.name}
+                  icon={game.icon}
+                  color={game.color}
+                  isActive={selectedGame === game.slug}
+                  onClick={() => handleGameChange(game.slug)}
+                />
+              ))}
+            </div>
+          </aside>
+
+          {/* Main content */}
+          <div className="flex-1 min-w-0 space-y-4">
+            {showSurvivalToggle && (
+              <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
             )}
-          </CardContent>
-        </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">
+                  {selectedGameObj ? (
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: selectedGameObj.color }}
+                      >
+                        {(() => {
+                          const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[selectedGameObj.icon] ?? LucideIcons.Gamepad2;
+                          return <Icon className="h-4 w-4 text-white" />;
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span>{selectedGameObj.name}</span>
+                        {showSurvivalToggle && (
+                          <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
+                            {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                      <span>{cardTitle}</span>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hasModes ? (
+                  <ModeTabs
+                    key={selectedGame}
+                    modes={selectedGameObj!.modes!}
+                    isSurvival={isSurvival}
+                    user={user}
+                    onSignIn={() => setAuthOpen(true)}
+                  />
+                ) : (
+                  <LeaderboardEntries
+                    slug={noModeSlug}
+                    user={user}
+                    onSignIn={() => setAuthOpen(true)}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </motion.div>
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
