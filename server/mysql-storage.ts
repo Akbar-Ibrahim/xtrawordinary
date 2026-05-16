@@ -442,11 +442,22 @@ export class MySQLStorage implements IStorage {
 
   async getGamePlayCount(gameSlug: string): Promise<number> {
     const db = await this.getDb();
+    const rows = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(schema.leaderboardEntries)
+      .where(eq(schema.leaderboardEntries.gameSlug, gameSlug));
+    return Number(rows[0]?.count ?? 0);
+  }
+
+  async getAllGamePlayCounts(): Promise<Record<string, number>> {
+    const db = await this.getDb();
     const rows = await db.select({
-      total: sql<number>`SUM(${schema.userGameStats.gamesPlayed})`,
-    }).from(schema.userGameStats)
-      .where(eq(schema.userGameStats.gameSlug, gameSlug));
-    return Number(rows[0]?.total ?? 0);
+      gameSlug: schema.leaderboardEntries.gameSlug,
+      count: sql<number>`COUNT(*)`,
+    }).from(schema.leaderboardEntries)
+      .groupBy(schema.leaderboardEntries.gameSlug);
+    const result: Record<string, number> = {};
+    for (const row of rows) result[row.gameSlug] = Number(row.count);
+    return result;
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {

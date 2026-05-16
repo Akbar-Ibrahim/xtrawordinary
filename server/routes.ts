@@ -48,8 +48,15 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const games = await dataSource.getGames();
-      res.json(games);
+      const [games, liveCounts] = await Promise.all([
+        dataSource.getGames(),
+        storage.getAllGamePlayCounts(),
+      ]);
+      const merged = games.map(g => ({
+        ...g,
+        playCount: g.playCount + (liveCounts[g.slug] ?? 0),
+      }));
+      res.json(merged);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch games" });
     }
@@ -679,11 +686,14 @@ export async function registerRoutes(
     // --- END REMOTE SERVER BLOCK ---
     try {
       const { slug } = req.params;
-      const game = await dataSource.getGameBySlug(slug);
+      const [game, liveCount] = await Promise.all([
+        dataSource.getGameBySlug(slug),
+        storage.getGamePlayCount(slug),
+      ]);
       if (!game) {
         return res.status(404).json({ message: "Game not found" });
       }
-      res.json(game);
+      res.json({ ...game, playCount: game.playCount + liveCount });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch game" });
     }

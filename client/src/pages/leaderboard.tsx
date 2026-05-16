@@ -311,14 +311,6 @@ export default function Leaderboard() {
     queryKey: ["/api/games"],
   });
 
-  const { data: totalPlaysData } = useQuery<{ totalPlays: number }>({
-    queryKey: ["/api/leaderboard", selectedGame, "total-plays"],
-    queryFn: async () => {
-      const res = await fetch(`/api/leaderboard/${selectedGame}/total-plays`);
-      return res.json();
-    },
-    enabled: selectedGame !== "overall",
-  });
 
   const filteredGames = gameFilter.trim()
     ? games.filter(g => g.name.toLowerCase().includes(gameFilter.trim().toLowerCase()))
@@ -440,10 +432,10 @@ export default function Leaderboard() {
                           )}
                         </div>
                       </div>
-                      {totalPlaysData != null && totalPlaysData.totalPlays > 0 && (
+                      {selectedGameObj.playCount > 0 && (
                         <span className="flex items-center gap-1.5 text-sm font-normal text-muted-foreground" data-testid="text-total-plays">
                           <TrendingUp className="h-4 w-4" />
-                          {totalPlaysData.totalPlays.toLocaleString()} total {totalPlaysData.totalPlays === 1 ? "play" : "plays"}
+                          {selectedGameObj.playCount.toLocaleString()} total {selectedGameObj.playCount === 1 ? "play" : "plays"}
                         </span>
                       )}
                     </div>

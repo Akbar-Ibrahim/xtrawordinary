@@ -297,7 +297,7 @@ export default function GameDetail() {
   });
 
   const { data: userStats = [] } = useQuery<Array<{ gameSlug: string; gamesPlayed: number }>>({
-    queryKey: ["/api/stats"],
+    queryKey: ["/api/user/stats"],
     enabled: isAuthenticated,
   });
 

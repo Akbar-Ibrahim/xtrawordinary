@@ -83,6 +83,7 @@ export interface IStorage {
   getLeaderboard(gameSlug: string, limit?: number): Promise<LeaderboardEntry[]>;
   getOverallLeaderboard(limit?: number): Promise<LeaderboardEntry[]>;
   getGamePlayCount(gameSlug: string): Promise<number>;
+  getAllGamePlayCounts(): Promise<Record<string, number>>;
 
   getUserStreak(userId: number): Promise<UserStreak | undefined>;
   saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak>;

@@ -801,11 +801,15 @@ export class MemStorage implements IStorage {
   }
 
   async getGamePlayCount(gameSlug: string): Promise<number> {
-    let total = 0;
-    for (const stats of this.userGameStatsMap.values()) {
-      if (stats.gameSlug === gameSlug) total += stats.gamesPlayed;
+    return this.leaderboardEntries.filter(e => e.gameSlug === gameSlug).length;
+  }
+
+  async getAllGamePlayCounts(): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (const entry of this.leaderboardEntries) {
+      counts[entry.gameSlug] = (counts[entry.gameSlug] ?? 0) + 1;
     }
-    return total;
+    return counts;
   }
 
   async getUserStreak(userId: number): Promise<UserStreak | undefined> {
