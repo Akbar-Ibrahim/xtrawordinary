@@ -34,7 +34,7 @@ const LETTER_MAX_FREQUENCIES: Record<string, number> = {
 
 const MULTI_LETTER_POOL = "ABCDEFGHILMNOPRSTUWY".split("");
 const MULTI_TIER3_LETTERS = ["E", "A", "I", "O"]; // high-frequency vowels: can realistically appear 3× in a word
-const MULTI_TIER2_LETTERS = ["A", "C", "D", "E", "I", "L", "M", "N", "O", "P", "R", "S", "T", "U"]; // letters that commonly double
+const MULTI_TIER2_LETTERS = ["C", "D", "L", "M", "N", "P", "R", "S", "T", "U"]; // common consonants/less-common vowels that regularly double
 
 type Challenge = 1 | 2 | 3 | 4 | "random" | "multi";
 

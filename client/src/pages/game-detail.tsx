@@ -1659,6 +1659,7 @@ export default function GameDetail() {
                           challenge: c === 0 ? undefined : c,
                           letter: c === "multi" ? undefined : p.letter,
                           letters: c !== "multi" ? undefined : (p.letters ?? ["any", "any"]),
+                          letterCounts: c !== "multi" ? undefined : (p.letterCounts ?? [2, 2]),
                         }));
                       }}
                     >
@@ -1687,12 +1688,12 @@ export default function GameDetail() {
                             variant={(quizParams.letters?.length ?? 2) === n ? "default" : "outline"}
                             onClick={() => setQuizParams(p => {
                               const cur: string[] = p.letters ?? Array(2).fill("any");
-                              const curCounts: number[] = p.letterCounts ?? Array(2).fill(1);
+                              const curCounts: number[] = p.letterCounts ?? Array(2).fill(2);
                               const next = n > cur.length
                                 ? [...cur, ...Array(n - cur.length).fill("any")]
                                 : cur.slice(0, n);
                               const nextCounts = n > curCounts.length
-                                ? [...curCounts, ...Array(n - curCounts.length).fill(1)]
+                                ? [...curCounts, ...Array(n - curCounts.length).fill(2)]
                                 : curCounts.slice(0, n);
                               return { ...p, letters: next, letterCounts: nextCounts };
                             })}
@@ -1726,7 +1727,7 @@ export default function GameDetail() {
                                   key={cnt}
                                   type="button"
                                   size="sm"
-                                  variant={(quizParams.letterCounts?.[i] ?? 1) === cnt ? "default" : "outline"}
+                                  variant={(quizParams.letterCounts?.[i] ?? 2) === cnt ? "default" : "outline"}
                                   className="h-6 w-6 p-0 text-xs"
                                   onClick={() => setQuizParams(p => {
                                     const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
@@ -2745,7 +2746,7 @@ export default function GameDetail() {
                           const validLetters = getLettersForCount(LETTER_FREQUENCY_CHALLENGE_COUNTS[c as 1 | 2 | 3 | 4]);
                           if (!validLetters.includes(p.letter)) newLetter = undefined;
                         }
-                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter, letters: c !== "multi" ? undefined : (p.letters ?? ["any", "any"]) };
+                        return { ...p, challenge: c === 0 ? undefined : c, letter: newLetter, letters: c !== "multi" ? undefined : (p.letters ?? ["any", "any"]), letterCounts: c !== "multi" ? undefined : (p.letterCounts ?? [2, 2]) };
                       });
                     }}
                   >
@@ -2774,12 +2775,12 @@ export default function GameDetail() {
                           variant={(customPlayParams.letters?.length ?? 2) === n ? "default" : "outline"}
                           onClick={() => setCustomPlayParams(p => {
                             const cur: string[] = p.letters ?? Array(2).fill("any");
-                            const curCounts: number[] = p.letterCounts ?? Array(2).fill(1);
+                            const curCounts: number[] = p.letterCounts ?? Array(2).fill(2);
                             const next = n > cur.length
                               ? [...cur, ...Array(n - cur.length).fill("any")]
                               : cur.slice(0, n);
                             const nextCounts = n > curCounts.length
-                              ? [...curCounts, ...Array(n - curCounts.length).fill(1)]
+                              ? [...curCounts, ...Array(n - curCounts.length).fill(2)]
                               : curCounts.slice(0, n);
                             return { ...p, letters: next, letterCounts: nextCounts };
                           })}
@@ -2813,7 +2814,7 @@ export default function GameDetail() {
                                 key={cnt}
                                 type="button"
                                 size="sm"
-                                variant={(customPlayParams.letterCounts?.[i] ?? 1) === cnt ? "default" : "outline"}
+                                variant={(customPlayParams.letterCounts?.[i] ?? 2) === cnt ? "default" : "outline"}
                                 className="h-6 w-6 p-0 text-xs"
                                 onClick={() => setCustomPlayParams(p => {
                                   const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
