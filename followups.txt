@@ -72,3 +72,10 @@
         tournaments entered, championships won, current active tournament status, and a list
         of past tournament results with bracket links. Pull from GET /api/groups/:id/guild-wars
         and enrich as needed. Both MemStorage and MySQLStorage must be updated.)
+
+## Duel Discovery
+#335 - Show a "players waiting" badge on game cards when duels are open
+       (When open duel challenges exist for a duel-eligible game, show a small badge on that
+        game's card in the main games browser — e.g. "2 waiting" — so players can spot active
+        games before visiting each detail page. Poll /api/duels/open on a ~60s interval from
+        the games list. Only show the badge for authenticated users.)
