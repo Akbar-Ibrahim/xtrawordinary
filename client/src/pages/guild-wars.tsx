@@ -465,7 +465,7 @@ export default function GuildWarsLobby() {
                           <span className="font-semibold text-sm truncate block" data-testid={`text-gw-champion-name-${c.id}`}>
                             {c.groupName ?? `Guild ${c.groupId}`}
                           </span>
-                          <Link href={`/guild-wars/${c.tournamentId}`}>
+                          <Link href={`/guild-wars/${c.tournamentId}`} data-testid={`link-gw-champion-tournament-${c.id}`}>
                             <p className="text-xs text-muted-foreground truncate hover:underline cursor-pointer">
                               {c.tournamentName}
                             </p>

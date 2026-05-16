@@ -333,13 +333,13 @@ function MyGroupMatchesSection({
                       className="h-7 gap-1"
                       onClick={() => startGame(match.id, nextPlayableGame.gameNumber)}
                       disabled={pendingGame?.matchId === match.id}
-                      data-testid={`button-play-gw-match-${match.id}`}
+                      data-testid={`button-start-match-${match.id}`}
                     >
                       {pendingGame?.matchId === match.id
                         ? <Loader2 className="h-3 w-3 animate-spin" />
                         : <Play className="h-3 w-3" />
                       }
-                      Play
+                      Start Match
                     </Button>
                   )}
 
@@ -546,7 +546,7 @@ export default function GuildWarsBracket() {
         <Swords className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-40" />
         <h1 className="text-2xl font-bold">Tournament not found</h1>
         <Link href="/guild-wars">
-          <Button className="mt-4" variant="outline">Back to Guild Wars</Button>
+          <Button className="mt-4" variant="outline" data-testid="link-back-guild-wars-notfound">Back to Guild Wars</Button>
         </Link>
       </div>
     );
