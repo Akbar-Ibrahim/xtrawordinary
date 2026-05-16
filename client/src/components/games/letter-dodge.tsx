@@ -19,12 +19,14 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 
 const DODGE_LETTER_POOL = ["E", "T", "A", "O", "I", "N", "S", "R", "H", "L", "D", "C", "U", "M", "F", "P", "G", "W", "Y", "B"];
+const VOWELS_SET = new Set(["A", "E", "I", "O", "U"]);
+const MAX_VOWELS = 3;
 
 const GAME_TIME = 90;
 const SURVIVAL_TIME = 8;
 const MIN_WORD_LENGTH = 4;
 
-type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "advanced";
+type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "savant" | "advanced";
 
 const DIFFICULTY_CONFIG: Record<DodgeDifficulty, { name: string; description: string; count: number | "random"; stars: string }> = {
   1:        { name: "Easy",     description: "Avoid 1 forbidden letter",             count: 1,        stars: "★" },
@@ -32,28 +34,39 @@ const DIFFICULTY_CONFIG: Record<DodgeDifficulty, { name: string; description: st
   3:        { name: "Hard",     description: "Avoid 3 forbidden letters",            count: 3,        stars: "★★★" },
   4:        { name: "Expert",   description: "Avoid 4 forbidden letters",            count: 4,        stars: "★★★★" },
   5:        { name: "Master",   description: "Avoid 5 forbidden letters",            count: 5,        stars: "★★★★★" },
+  savant:   { name: "Savant",   description: "Avoid 6–12 forbidden letters",         count: "random", stars: "★★★★★★" },
   advanced: { name: "Advanced", description: "Random forbidden letters each game!", count: "random", stars: "?" },
 };
 
 function pickForbiddenLetters(count: number, rng: () => number): string[] {
   const pool = [...DODGE_LETTER_POOL];
   const chosen: string[] = [];
+  let vowelCount = 0;
   for (let i = 0; i < count && pool.length > 0; i++) {
-    const idx = Math.floor(rng() * pool.length);
-    chosen.push(pool[idx]);
-    pool.splice(idx, 1);
+    const available = vowelCount >= MAX_VOWELS ? pool.filter(l => !VOWELS_SET.has(l)) : pool;
+    if (available.length === 0) break;
+    const idx = Math.floor(rng() * available.length);
+    const letter = available[idx];
+    chosen.push(letter);
+    if (VOWELS_SET.has(letter)) vowelCount++;
+    pool.splice(pool.indexOf(letter), 1);
   }
   return chosen.sort();
 }
 
 function resolveForbiddenLetters(template: string[], rng: () => number): string[] {
   const pinned = template.filter(l => l !== "any");
+  let vowelCount = pinned.filter(l => VOWELS_SET.has(l)).length;
   const available = [...DODGE_LETTER_POOL].filter(l => !pinned.includes(l));
   return template.map(l => {
     if (l !== "any") return l;
-    if (available.length === 0) return null;
-    const idx = Math.floor(rng() * available.length);
-    return available.splice(idx, 1)[0];
+    const pool = vowelCount >= MAX_VOWELS ? available.filter(x => !VOWELS_SET.has(x)) : available;
+    if (pool.length === 0) return null;
+    const idx = Math.floor(rng() * pool.length);
+    const picked = pool[idx];
+    if (VOWELS_SET.has(picked)) vowelCount++;
+    available.splice(available.indexOf(picked), 1);
+    return picked;
   }).filter((l): l is string => l !== null).sort();
 }
 
@@ -184,7 +197,12 @@ export function LetterDodgeGame({
           chosen = resolveForbiddenLetters(initialForbiddenLetters, rng);
         } else {
           const config = DIFFICULTY_CONFIG[d];
-          const count = config.count === "random" ? Math.floor(rng() * 5) + 1 : config.count;
+          let count: number;
+          if (config.count === "random") {
+            count = d === "savant" ? Math.floor(rng() * 7) + 6 : Math.floor(rng() * 5) + 1;
+          } else {
+            count = config.count;
+          }
           chosen = pickForbiddenLetters(count, rng);
         }
         lastForbiddenLettersRef.current = chosen;
@@ -344,13 +362,13 @@ export function LetterDodgeGame({
           </div>
 
           <div className="grid gap-3">
-            {([1, 2, 3, 4, 5, "advanced"] as DodgeDifficulty[]).map((d) => {
+            {([1, 2, 3, 4, 5, "savant", "advanced"] as DodgeDifficulty[]).map((d) => {
               const config = DIFFICULTY_CONFIG[d];
               return (
                 <Button
                   key={d}
                   onClick={() => startGame(d)}
-                  variant={d === "advanced" ? "default" : "outline"}
+                  variant={d === "savant" || d === "advanced" ? "default" : "outline"}
                   className="w-full justify-start gap-3 h-auto py-3"
                   data-testid={`button-difficulty-${d}`}
                 >

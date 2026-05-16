@@ -110,6 +110,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
         3: "Hard (3)",
         4: "Expert (4)",
         5: "Master (5)",
+        savant: "Savant (6–12)",
         advanced: "Advanced (random)",
       };
       const diff = p.difficulty ?? 3;

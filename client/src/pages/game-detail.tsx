@@ -1240,6 +1240,8 @@ export default function GameDetail() {
                           setQuizParams(p => { const n = { ...p }; delete n.difficulty; delete n.letters; return n; });
                         } else if (v === "advanced") {
                           setQuizParams(p => ({ ...p, difficulty: "advanced" as const, letters: undefined }));
+                        } else if (v === "savant") {
+                          setQuizParams(p => ({ ...p, difficulty: "savant" as const, letters: undefined }));
                         } else {
                           const c = Number(v) as 1 | 2 | 3 | 4 | 5;
                           setQuizParams(p => ({ ...p, difficulty: c, letters: Array(c).fill("any") }));
@@ -1256,6 +1258,7 @@ export default function GameDetail() {
                         <SelectItem value="3">Hard — 3 forbidden letters</SelectItem>
                         <SelectItem value="4">Expert — 4 forbidden letters</SelectItem>
                         <SelectItem value="5">Master — 5 forbidden letters</SelectItem>
+                        <SelectItem value="savant">Savant — 6–12 forbidden letters</SelectItem>
                         <SelectItem value="advanced">Advanced — random count</SelectItem>
                       </SelectContent>
                     </Select>
@@ -2567,6 +2570,8 @@ export default function GameDetail() {
                         setCustomPlayParams(p => { const n = { ...p }; delete n.difficulty; delete n.letters; return n; });
                       } else if (v === "advanced") {
                         setCustomPlayParams(p => ({ ...p, difficulty: "advanced" as const, letters: undefined }));
+                      } else if (v === "savant") {
+                        setCustomPlayParams(p => ({ ...p, difficulty: "savant" as const, letters: undefined }));
                       } else {
                         const c = Number(v) as 1 | 2 | 3 | 4 | 5;
                         setCustomPlayParams(p => ({ ...p, difficulty: c, letters: Array(c).fill("any") }));
@@ -2583,6 +2588,7 @@ export default function GameDetail() {
                       <SelectItem value="3">Hard — 3 forbidden letters</SelectItem>
                       <SelectItem value="4">Expert — 4 forbidden letters</SelectItem>
                       <SelectItem value="5">Master — 5 forbidden letters</SelectItem>
+                      <SelectItem value="savant">Savant — 6–12 forbidden letters</SelectItem>
                       <SelectItem value="advanced">Advanced — random count</SelectItem>
                     </SelectContent>
                   </Select>
