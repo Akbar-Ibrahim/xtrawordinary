@@ -30,6 +30,16 @@ const SURVIVAL_TIME_OPTIONS = [
 const EXCLUDED_LETTERS = new Set(["J", "Q", "V", "X", "Z"]);
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => !EXCLUDED_LETTERS.has(l));
 
+const HUNT_VOWELS = ["A", "E", "I", "O", "U"];
+const HUNT_COMMON_CONSONANTS = ["T", "N", "S", "R", "H", "L", "D", "C", "M", "F", "P"];
+const HUNT_UNCOMMON_CONSONANTS = ["G", "W", "B", "Y", "K"];
+// Weighted pool: vowels 3×, common consonants 2×, uncommon consonants 1×
+const HUNT_WEIGHTED_POOL = [
+  ...HUNT_VOWELS, ...HUNT_VOWELS, ...HUNT_VOWELS,
+  ...HUNT_COMMON_CONSONANTS, ...HUNT_COMMON_CONSONANTS,
+  ...HUNT_UNCOMMON_CONSONANTS,
+];
+
 type Challenge = 1 | 2 | 3 | 4 | 5 | "advanced";
 
 const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; letterCount: number | "random" }> = {
@@ -42,12 +52,32 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; l
 };
 
 function generateRandomLetters(count: number, rng: () => number = Math.random): string[] {
-  const letters: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(rng() * ALPHABET.length);
-    letters.push(ALPHABET[randomIndex]);
+  const pool = [...HUNT_WEIGHTED_POOL];
+  const selected: string[] = [];
+  // Guarantee minimum vowels: 2 for count ≥ 5, 1 for count ≥ 2
+  const minVowels = count >= 5 ? 2 : count >= 2 ? 1 : 0;
+  const availableVowels = [...HUNT_VOWELS];
+
+  for (let v = 0; v < minVowels && availableVowels.length > 0; v++) {
+    const idx = Math.floor(rng() * availableVowels.length);
+    const vowel = availableVowels.splice(idx, 1)[0];
+    selected.push(vowel);
+    for (let i = pool.length - 1; i >= 0; i--) {
+      if (pool[i] === vowel) pool.splice(i, 1);
+    }
   }
-  return letters;
+
+  // Fill remaining slots from weighted pool, no duplicates
+  while (selected.length < count && pool.length > 0) {
+    const idx = Math.floor(rng() * pool.length);
+    const letter = pool[idx];
+    selected.push(letter);
+    for (let i = pool.length - 1; i >= 0; i--) {
+      if (pool[i] === letter) pool.splice(i, 1);
+    }
+  }
+
+  return selected;
 }
 
 function getRandomLetterCount(rng: () => number = Math.random): number {

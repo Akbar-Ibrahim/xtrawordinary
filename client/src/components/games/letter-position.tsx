@@ -30,6 +30,18 @@ const SURVIVAL_TIME_OPTIONS = [
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const POSITION_ALPHABET = ALPHABET.filter(l => !["J", "Q", "X", "V", "Z"].includes(l));
 
+// Max sensible position per letter — rarer letters are capped lower
+// so players never get near-impossible constraints like "B at position 8"
+const LETTER_MAX_POSITION: Record<string, number> = {
+  E: 8, S: 8, T: 8, R: 8, N: 8, L: 8,   // very common — any position
+  A: 7, O: 7, I: 7, D: 7, C: 7,           // common — up to 7
+  H: 6, M: 6, F: 6, P: 6, U: 6,           // moderate — up to 6
+  G: 5, W: 5, B: 5, Y: 5, K: 5,           // less common — up to 5
+};
+
+// Position weights biased toward 1–5; higher positions are possible but rare
+const POSITION_WEIGHTS = [5, 5, 5, 5, 4, 3, 2, 1];
+
 type Challenge = 1 | 2;
 
 type PositionConstraint = {
@@ -43,8 +55,16 @@ const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; c
 };
 
 function generateRandomConstraint(rng: () => number = Math.random): PositionConstraint {
-  const position = Math.floor(rng() * 8) + 1;
   const letter = POSITION_ALPHABET[Math.floor(rng() * POSITION_ALPHABET.length)];
+  const maxPos = LETTER_MAX_POSITION[letter] ?? 6;
+  const weights = POSITION_WEIGHTS.slice(0, maxPos);
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let pick = rng() * totalWeight;
+  let position = 1;
+  for (let i = 0; i < weights.length; i++) {
+    pick -= weights[i];
+    if (pick <= 0) { position = i + 1; break; }
+  }
   return { position, letter };
 }
 
