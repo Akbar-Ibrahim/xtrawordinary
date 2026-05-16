@@ -79,3 +79,14 @@
         game's card in the main games browser — e.g. "2 waiting" — so players can spot active
         games before visiting each detail page. Poll /api/duels/open on a ~60s interval from
         the games list. Only show the badge for authenticated users.)
+
+## Leaderboard
+#338 - Make leaderboard game links shareable
+       (Selecting a game in the sidebar doesn't update the URL. Wiring up pushState so the
+        URL reflects the active game — e.g. /leaderboard?game=word-scramble — would let
+        players share direct links to specific game rankings.)
+
+#340 - Add the game filter to the mobile leaderboard strip
+       (The desktop sidebar got a search/filter box in Task #339, but the mobile horizontal
+        pill strip was left unchanged. Adding the same quick-filter there keeps both views
+        consistent for players on smaller screens.)
