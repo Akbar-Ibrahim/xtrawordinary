@@ -381,7 +381,7 @@ type GameState =
   | "level_complete" // Level finished, showing options
   | "game_over";     // Lost the game
 
-export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialTimeLimit, initialWordCount, onGameEnd }: { initialChallenge?: { category: VariationCategory; level: LevelType; consonantCount?: number }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialTimeLimit?: number; initialWordCount?: number; onGameEnd?: () => void } = {}) {
+export function LetterBalanceGame({ initialChallenge, customConstraint, groupSeed, locked, quizMode, customPlay, initialSurvival, initialTimeLimit, initialWordCount, onGameEnd, onPlayAgain }: { initialChallenge?: { category: VariationCategory; level: LevelType; consonantCount?: number }; customConstraint?: CustomLbConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialTimeLimit?: number; initialWordCount?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -951,7 +951,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             {personalBest > 0 && (
               <p className="text-sm text-muted-foreground" data-testid="text-personal-best">Personal Best: {personalBest} pts</p>
             )}
-            <ShareResults gameName="Letter Balance" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} />
+            <ShareResults gameName="Letter Balance" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} customPlay={customPlay} />
             {usedWords.size > 0 && (
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
@@ -968,7 +968,15 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 <span><button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}to save your score!</span>
               </div>
             )}
-            {!locked && (
+            {customPlay && (
+              <div className="flex justify-center">
+                <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Play Again
+                </Button>
+              </div>
+            )}
+            {!locked && !customPlay && (
               <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={replayGame} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                   Play Again
@@ -1034,6 +1042,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               wordsCompleted={wordsCompleted}
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={true}
+              customPlay={customPlay}
             />
             {usedWords.size > 0 && (
               <div className="text-left">
@@ -1055,7 +1064,15 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               </div>
             )}
             
-            {!locked && (
+            {customPlay && (
+              <div className="flex justify-center">
+                <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Play Again
+                </Button>
+              </div>
+            )}
+            {!locked && !customPlay && (
               <>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button
@@ -1142,6 +1159,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               wordsCompleted={wordsCompleted}
               challengeName={selectedCategory ? CATEGORIES.find(c => c.id === selectedCategory)?.name : undefined}
               isWin={false}
+              customPlay={customPlay}
             />
             {usedWords.size > 0 && (
               <div className="text-left">
@@ -1163,7 +1181,15 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               </div>
             )}
             
-            {!locked && (
+            {customPlay && (
+              <div className="flex justify-center">
+                <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Play Again
+                </Button>
+              </div>
+            )}
+            {!locked && !customPlay && (
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   onClick={replayGame}

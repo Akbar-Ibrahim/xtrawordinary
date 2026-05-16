@@ -89,7 +89,9 @@ export function LetterDodgeGame({
   groupSeed,
   locked,
   quizMode,
+  customPlay,
   onGameEnd,
+  onPlayAgain,
   initialDifficulty,
   initialSurvival,
   initialWordCount,
@@ -99,7 +101,9 @@ export function LetterDodgeGame({
   groupSeed?: number;
   locked?: boolean;
   quizMode?: boolean;
+  customPlay?: boolean;
   onGameEnd?: () => void;
+  onPlayAgain?: () => void;
   initialDifficulty?: DodgeDifficulty;
   initialSurvival?: boolean;
   initialWordCount?: number;
@@ -663,33 +667,47 @@ export function LetterDodgeGame({
           gameSlug={currentSlug}
           wordsCompleted={foundWords.length}
           isWin={score > 0}
+          customPlay={customPlay}
         />
 
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button
-            onClick={() => startGame(difficulty, lastForbiddenLettersRef.current.length > 0 ? lastForbiddenLettersRef.current : undefined)}
-            className="bg-sky-500 hover:bg-sky-600 text-white border-0"
-            data-testid="button-replay"
-          >
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Replay
-          </Button>
-          <Button
-            onClick={() => startGame(difficulty)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
-            data-testid="button-play-again"
-          >
-            Play Again
-          </Button>
-          <Button
-            onClick={() => setGameStatus("menu")}
-            className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-            data-testid="button-main-menu"
-          >
-            Main Menu
-          </Button>
-          <TryAnotherGameButton currentSlug="letter-dodge" />
-        </div>
+        {customPlay ? (
+          <div className="flex justify-center">
+            <Button
+              onClick={() => onPlayAgain?.()}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+              data-testid="button-play-again"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Play Again
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              onClick={() => startGame(difficulty, lastForbiddenLettersRef.current.length > 0 ? lastForbiddenLettersRef.current : undefined)}
+              className="bg-sky-500 hover:bg-sky-600 text-white border-0"
+              data-testid="button-replay"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Replay
+            </Button>
+            <Button
+              onClick={() => startGame(difficulty)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+              data-testid="button-play-again"
+            >
+              Play Again
+            </Button>
+            <Button
+              onClick={() => setGameStatus("menu")}
+              className="bg-amber-500 hover:bg-amber-600 text-white border-0"
+              data-testid="button-main-menu"
+            >
+              Main Menu
+            </Button>
+            <TryAnotherGameButton currentSlug="letter-dodge" />
+          </div>
+        )}
 
         {authOpen && <AuthModal open={authOpen} onOpenChange={setAuthOpen} />}
       </CardContent>

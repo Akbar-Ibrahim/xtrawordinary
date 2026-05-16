@@ -129,7 +129,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -749,6 +749,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
+                  customPlay={customPlay}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -771,7 +772,15 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                     </div>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <>
                     <div className="flex flex-wrap justify-center gap-2">
                       {lastGameSeedRef.current !== null && (
@@ -843,6 +852,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
+                  customPlay={customPlay}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -865,7 +875,15 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                     </div>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <div className="flex flex-wrap justify-center gap-2">
                     {lastGameSeedRef.current !== null && (
                       <Button onClick={() => startGame(challenge, ordered, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">

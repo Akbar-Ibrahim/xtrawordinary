@@ -130,7 +130,7 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
+export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -664,6 +664,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
+                  customPlay={customPlay}
                 />
                 {usedWords.size > 0 && (
                   <div className="text-left">
@@ -684,7 +685,15 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                     </span>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <>
                     <div className="flex flex-wrap justify-center gap-2">
                       <Button onClick={() => startGame(challenge, isSurvival, lastConstraintRef.current ?? undefined, lastMultiConstraintRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
@@ -753,6 +762,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
+                  customPlay={customPlay}
                 />
                 {usedWords.size > 0 && (
                   <div className="text-left">
@@ -773,7 +783,15 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                     </span>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <div className="flex flex-wrap justify-center gap-2">
                     <Button onClick={() => startGame(challenge, isSurvival, lastConstraintRef.current ?? undefined, lastMultiConstraintRef.current ?? undefined)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay">
                       <RotateCcw className="h-4 w-4 mr-2" />

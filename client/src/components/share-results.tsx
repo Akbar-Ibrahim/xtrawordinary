@@ -12,6 +12,7 @@ interface ShareResultsProps {
   challengeName?: string;
   isWin: boolean;
   customMessage?: string;
+  customPlay?: boolean;
 }
 
 export function ShareResults({
@@ -22,9 +23,12 @@ export function ShareResults({
   challengeName,
   isWin,
   customMessage,
+  customPlay,
 }: ShareResultsProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+
+  if (customPlay) return null;
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const gameUrl = `${baseUrl}/game/${gameSlug}`;

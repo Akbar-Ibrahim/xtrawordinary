@@ -143,7 +143,7 @@ function validateConstraint(word: string, constraint: LevelConstraint, variation
   return { valid: true, message: "" };
 }
 
-export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
+export function WordLengthGame({ initialChallenge, initialVariation, customConstraint, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: number; initialVariation?: 1 | 2 | 3 | 4 | 5; customConstraint?: LevelConstraint; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
   const resolvedInitialChallenge = initialVariation ?? initialChallenge;
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
@@ -607,6 +607,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                   score={score}
                   wordsCompleted={wordsCompleted}
                   isWin={gameStatus === "won"}
+                  customPlay={customPlay}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -629,7 +630,15 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                     </div>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <>
                     <div className="flex flex-wrap justify-center gap-2">
                       <Button 

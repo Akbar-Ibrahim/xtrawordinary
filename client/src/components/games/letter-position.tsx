@@ -80,7 +80,7 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -586,6 +586,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={true}
+                  customPlay={customPlay}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -608,7 +609,15 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     </div>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <>
                     <div className="flex flex-wrap justify-center gap-2">
                       {lastGameSeedRef.current !== null && (
@@ -680,6 +689,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   wordsCompleted={wordsCompleted}
                   challengeName={CHALLENGE_CONFIG[challenge].name}
                   isWin={false}
+                  customPlay={customPlay}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -702,7 +712,15 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     </div>
                   </div>
                 )}
-                {!locked && (
+                {customPlay && (
+                  <div className="flex justify-center">
+                    <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Play Again
+                    </Button>
+                  </div>
+                )}
+                {!locked && !customPlay && (
                   <div className="flex flex-wrap justify-center gap-2">
                     {lastGameSeedRef.current !== null && (
                       <Button onClick={() => startGame(challenge, isSurvival, lastGameSeedRef.current!)} className="bg-sky-500 hover:bg-sky-600 text-white border-0" data-testid="button-replay-same">

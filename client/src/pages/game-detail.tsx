@@ -809,18 +809,6 @@ export default function GameDetail() {
                 <h2 className="text-xl font-semibold">{game.name}</h2>
               </div>
               <div className="flex items-center gap-2">
-                {isCustomPlay && customPlayEnded && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
-                    className="gap-1.5"
-                    data-testid="button-custom-play-again"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Play Again
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -997,8 +985,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : isCustomPlay && slug === "letter-hunt" ? (
               <LetterHuntGame
@@ -1014,8 +1004,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : isCustomPlay && slug === "letter-frequency" ? (
               <LetterFrequencyGame
@@ -1036,8 +1028,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : isCustomPlay && slug === "letter-balance" ? (
               <LetterBalanceGame
@@ -1056,8 +1050,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : isCustomPlay && slug === "word-length" ? (
               <WordLengthGame
@@ -1068,8 +1064,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : isCustomPlay && slug === "letter-dodge" ? (
               <LetterDodgeGame
@@ -1085,8 +1083,10 @@ export default function GameDetail() {
                 initialWordCount={!customPlayFrozenParams.survival ? customPlayFrozenParams.wordCount : undefined}
                 initialTimeLimit={!customPlayFrozenParams.survival ? customPlayFrozenParams.timeLimit : undefined}
                 onGameEnd={() => setCustomPlayEnded(true)}
+                onPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
                 locked
                 quizMode
+                customPlay
               />
             ) : (isSenderMode || isReceiverMode) && slug === "letter-balance" ? (() => {
               const senderLbConfig = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
