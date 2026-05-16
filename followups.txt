@@ -57,3 +57,18 @@
        (Currently "Challenge a Friend" is hidden entirely if you have zero friends; should allow
         challenging any registered user — e.g. search by username — so the feature is usable
         without first going through the friends flow)
+
+## Guild Wars — Notifications & Alerts
+#332 - Alert group admins when a match is ready to play
+       (When the bracket is drawn and each round's matches are created, send an in-app
+        notification to the admin/owner of each participating group so they know it's their
+        turn to start a match. Notification type: guild_war_match_ready. Include match ID,
+        opponent group name, round number, and a link to the bracket page.
+        Both MemStorage and MySQLStorage must be updated.)
+
+## Guild Wars — Group Stats
+#333 - Add Guild Wars group stats to the group leaderboard tab
+       (Add a Guild Wars section to the group detail leaderboard/stats tab showing: total
+        tournaments entered, championships won, current active tournament status, and a list
+        of past tournament results with bracket links. Pull from GET /api/groups/:id/guild-wars
+        and enrich as needed. Both MemStorage and MySQLStorage must be updated.)
