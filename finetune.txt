@@ -117,20 +117,3 @@ WORD WARS — POST-LAUNCH IMPROVEMENTS
    have signed up and the deadline. Card links to /word-wars.
    File: client/src/pages/home.tsx
 
-7. Auto-forfeit inactive players when a round deadline passes
-   roundDeadlineHours exists in the data model but is never enforced. Add a
-   scheduled check (triggered on tournament-related API reads) that compares
-   match creation time + roundDeadlineHours against the current time. If a
-   match is still pending/active after the deadline, forfeit the player who
-   hasn't completed their games; advance the bracket automatically; notify
-   both players.
-   Files: server/word-wars-engine.ts (checkAndForfeitExpiredMatches),
-          server/routes.ts, server/storage.ts + mem/mysql implementations.
-
-8. Word Wars stats section on player profiles
-   Show a "Word Wars" section on profile pages: tournaments entered, matches
-   won/lost, and titles won (tournament name + date, linking to bracket).
-   May need a GET /api/users/:id/word-wars-stats endpoint that aggregates
-   match outcomes by userId across all tournaments.
-   Files: client/src/pages/profile.tsx, server/routes.ts,
-          server/storage.ts + mem/mysql implementations.
