@@ -1730,7 +1730,7 @@ export default function GameDetail() {
                                   variant={(quizParams.letterCounts?.[i] ?? 2) === cnt ? "default" : "outline"}
                                   className="h-6 w-6 p-0 text-xs"
                                   onClick={() => setQuizParams(p => {
-                                    const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
+                                    const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(2))];
                                     counts[i] = cnt;
                                     return { ...p, letterCounts: counts };
                                   })}
@@ -2817,7 +2817,7 @@ export default function GameDetail() {
                                 variant={(customPlayParams.letterCounts?.[i] ?? 2) === cnt ? "default" : "outline"}
                                 className="h-6 w-6 p-0 text-xs"
                                 onClick={() => setCustomPlayParams(p => {
-                                  const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(1))];
+                                  const counts = [...(p.letterCounts ?? Array(p.letters?.length ?? 2).fill(2))];
                                   counts[i] = cnt;
                                   return { ...p, letterCounts: counts };
                                 })}
