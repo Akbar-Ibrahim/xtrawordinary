@@ -1018,6 +1018,12 @@ export async function registerRoutes(
 
   // ==================== LEADERBOARD ROUTES ====================
 
+  const VALID_TIME_FILTERS = new Set(["today", "week", "all"]);
+  function parseTimeFilter(raw: unknown): string | undefined {
+    if (typeof raw === "string" && VALID_TIME_FILTERS.has(raw) && raw !== "all") return raw;
+    return undefined;
+  }
+
   app.get("/api/leaderboard", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
@@ -1030,7 +1036,7 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const timeFilter = parseTimeFilter(req.query.timeFilter);
       const entries = await storage.getOverallLeaderboard(50, timeFilter);
       res.json(entries);
     } catch (error) {
@@ -1041,7 +1047,7 @@ export async function registerRoutes(
   app.get("/api/leaderboard/:gameSlug/my-rank", requireAuth, async (req, res) => {
     try {
       const { gameSlug } = req.params;
-      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const timeFilter = parseTimeFilter(req.query.timeFilter);
       const result = await storage.getPlayerRank(gameSlug, req.user!.id, timeFilter);
       if (!result) return res.json(null);
       res.json(result);
@@ -1072,7 +1078,7 @@ export async function registerRoutes(
     // }
     // --- END REMOTE SERVER BLOCK ---
     try {
-      const timeFilter = (req.query.timeFilter as string) || undefined;
+      const timeFilter = parseTimeFilter(req.query.timeFilter);
       const entries = await storage.getLeaderboard(req.params.gameSlug, 50, timeFilter);
       res.json(entries);
     } catch (error) {
