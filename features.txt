@@ -161,7 +161,6 @@ SUGGESTIONS / NICE-TO-HAVES FOR GAMES:
 - In-game tutorial/walkthrough for first play (especially Shell Words,
   Word Bloom, Word Stretch which have complex mechanics)
 - Replay mode: after finishing, show all valid answers the player missed
-- Personal best displayed on the game detail page before starting
 - "Random game" button for discovery
 - Word Ladder: show the optimal path after finishing
 - Word Sweep: show a heat map of found vs missed words on the grid
@@ -334,9 +333,6 @@ MySQL storage uses optimised SQL aggregations for leaderboard queries
 rather than loading all entries into memory.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Time-filtered views: Today / This Week / This Month / All Time
-- "Your rank" shown even when the player isn't in the top N
-- Friend leaderboard tab: see only your friends' scores
 - Leaderboard notifications: "You've been overtaken by Alice in Word Ladder"
 - Score verification: flag suspicious outlier scores for admin review
 - Regional leaderboards (by country, if location data is ever collected)
@@ -502,7 +498,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - After completing, show how your score compares to today's average
 - Share daily result: a shareable summary card (like Wordle's grid)
   that doesn't spoil the answer
-- Countdown timer to next daily challenge on the page after completing
 - Optional difficulty toggle for the daily challenge (same game,
   different seed difficulty tier)
 - Historical archive: play any previous day's challenge
@@ -641,11 +636,8 @@ Notification dot system:
 - Query refetches every 60 seconds to stay current
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Separate bell icon for notifications with a dropdown list of items
-  (not just a dot — show the actual notification content)
-- Notification types beyond challenges: friend request received,
-  achievement unlocked, group round started, someone liked your comment
-- Mark all as read button
+- Notification types not yet wired up: friend request received,
+  achievement unlocked, someone liked your comment
 - Real-time notifications via WebSocket (currently polling every 60s)
 - Mobile bottom navigation bar (tab bar) for a more app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
@@ -718,5 +710,4 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Comprehensive end-to-end test coverage (Playwright)
 - Onboarding flow for new users: a guided tour of the homepage,
   daily challenge, and first game
-- "What's new" changelog modal shown after updates
 - Cookie consent banner (required for GDPR if analytics/ads are added)
