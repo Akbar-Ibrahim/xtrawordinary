@@ -596,48 +596,46 @@ export async function registerRoutes(
     }
   });
 
+  const DAILY_CHALLENGE_SLUGS = [
+    "word-ladder",
+    "anagram-solver",
+    "word-scramble",
+    "definition-match",
+    "letter-pool",
+    "word-maker",
+    "word-length",
+    "letter-position",
+    "letter-hunt",
+    "letter-balance",
+    "letter-frequency",
+    "no-repeats",
+    "word-sweep",
+    "word-roots",
+    "ladder-rush",
+    "shell-words",
+    "deep-shell-words",
+    "letter-dodge",
+  ];
+
+  function getDailySlugForDate(dateStr: string): string {
+    let hash = 0;
+    for (let i = 0; i < dateStr.length; i++) {
+      hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
+    }
+    hash = Math.abs(hash);
+    return DAILY_CHALLENGE_SLUGS[hash % DAILY_CHALLENGE_SLUGS.length];
+  }
+
   app.get("/api/daily-challenge", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/daily-challenge`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch daily challenge";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
-      const challengeGameSlugs = [
-        "word-ladder",
-        "anagram-solver",
-        "word-scramble",
-        "definition-match",
-        "letter-pool",
-        "word-maker",
-        "word-length",
-        "letter-position",
-        "letter-hunt",
-        "letter-balance",
-        "letter-frequency",
-        "no-repeats",
-        "word-sweep",
-        "word-roots",
-        "ladder-rush",
-        "shell-words",
-        "deep-shell-words",
-        "letter-dodge",
-      ];
       const today = new Date();
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
       let hash = 0;
       for (let i = 0; i < dateStr.length; i++) {
         hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
       }
       hash = Math.abs(hash);
-      const index = hash % challengeGameSlugs.length;
-      const slug = challengeGameSlugs[index];
+      const slug = DAILY_CHALLENGE_SLUGS[hash % DAILY_CHALLENGE_SLUGS.length];
       const game = await dataSource.getGameBySlug(slug);
       res.json({ date: dateStr, slug, game, seed: hash });
     } catch (error) {
@@ -648,10 +646,11 @@ export async function registerRoutes(
   app.post("/api/daily-challenge/score", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const bodySchema = z.object({ date: z.string(), gameSlug: z.string(), score: z.number().int().min(0) });
+      const bodySchema = z.object({ date: z.string(), score: z.number().int().min(0) });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
-      await storage.saveDailyChallengeScore(userId, parsed.data.date, parsed.data.gameSlug, parsed.data.score);
+      const gameSlug = getDailySlugForDate(parsed.data.date);
+      await storage.saveDailyChallengeScore(userId, parsed.data.date, gameSlug, parsed.data.score);
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Failed to save score" });
@@ -663,8 +662,7 @@ export async function registerRoutes(
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
       const date = (req.query.date as string) || todayStr;
-      const gameSlug = req.query.gameSlug as string;
-      if (!gameSlug) return res.status(400).json({ error: "gameSlug is required" });
+      const gameSlug = getDailySlugForDate(date);
       const requestingUserId = req.isAuthenticated() ? req.user!.id : undefined;
       const result = await storage.getDailyLeaderboard(date, gameSlug, requestingUserId);
       res.json(result);

@@ -203,13 +203,13 @@ export default function DailyChallenge() {
   }, []);
 
   const { data: leaderboardData } = useQuery<{ entries: DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>({
-    queryKey: ["/api/daily-challenge/leaderboard", data?.date, data?.slug],
+    queryKey: ["/api/daily-challenge/leaderboard", data?.date],
     queryFn: async () => {
-      const res = await fetch(`/api/daily-challenge/leaderboard?date=${data!.date}&gameSlug=${data!.slug}`, { credentials: "include" });
+      const res = await fetch(`/api/daily-challenge/leaderboard?date=${data!.date}`, { credentials: "include" });
       if (!res.ok) return { entries: [] };
       return res.json();
     },
-    enabled: !!(data?.date && data?.slug) && (completed || !!getDailyChallengeRecord(data?.date ?? "")),
+    enabled: !!data?.date && (completed || !!getDailyChallengeRecord(data?.date ?? "")),
     refetchInterval: completed ? 15000 : false,
   });
 
@@ -250,9 +250,9 @@ export default function DailyChallenge() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ date: data.date, gameSlug: data.slug, score }),
+          body: JSON.stringify({ date: data.date, score }),
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date, data.slug] });
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date] });
         }).catch(() => {});
       }
     };
