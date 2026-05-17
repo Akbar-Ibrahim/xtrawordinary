@@ -157,7 +157,6 @@ SUGGESTIONS / NICE-TO-HAVES FOR GAMES:
 - In-game tutorial/walkthrough for first play (especially Shell Words,
   Word Bloom, Word Stretch which have complex mechanics)
 - Replay mode: after finishing, show all valid answers the player missed
-- "Random game" button for discovery
 - Word Ladder: show the optimal path after finishing
 - Word Sweep: show a heat map of found vs missed words on the grid
 - Ladder Rush: ghost timer showing the player's previous best pace
@@ -359,7 +358,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Online indicator (last active within X minutes — privacy-toggle)
 - Block / report user (separate from unfriend)
 - Friend request message: optional note when sending a request
-- Friend count shown on profile page
 - "Friends who play this game" shown on game detail pages
 - Notification when a friend earns a new achievement
 - Friends sorted by: recent activity, name, most challenges played
@@ -451,8 +449,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Pinned announcement on group page for important news (column exists)
 - Group discovery: a public groups browse page for featured/public groups
 - Group tags: categorize groups (school, family, competitive, casual)
-- Score reactions: emoji reactions on individual scores in round results
-  (group_score_reactions table already exists)
 - Per-member stats within a group: rounds played, average score, rank
 - Group chat / comment thread per round
 - Group invite via link (shareable URL, not just code)
@@ -483,11 +479,6 @@ stored server-side but is tracked in localStorage to prevent replaying.
 SUGGESTIONS / NICE-TO-HAVES:
 - Daily challenge streak separate from the general play streak
   (currently the same — could be a distinct "daily dedication" streak)
-- Global daily challenge leaderboard: how does your score compare
-  to everyone else who played today's challenge
-- After completing, show how your score compares to today's average
-- Share daily result: a shareable summary card (like Wordle's grid)
-  that doesn't spoil the answer
 - Optional difficulty toggle for the daily challenge (same game,
   different seed difficulty tier)
 - Historical archive: play any previous day's challenge
