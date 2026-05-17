@@ -1,8 +1,11 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
 import type { Achievement } from "@/lib/game-stats";
 import { useAuth } from "@/lib/auth-context";
+
+const GUEST_NUDGE_KEY = "xw_guest_nudge_shown";
 
 interface GameResultOptions {
   slug: string;
@@ -52,7 +55,7 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
 export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const quizModeRef = useRef(quizMode);
 
   const challengeIdRef = useRef<number | undefined | null>(null);
@@ -127,6 +130,23 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
             body: JSON.stringify({ score }),
           }).catch(() => {});
         }
+      }
+
+      if (!isAuthenticatedRef.current && !quizModeRef.current) {
+        try {
+          const alreadyShown = sessionStorage.getItem(GUEST_NUDGE_KEY);
+          if (!alreadyShown) {
+            sessionStorage.setItem(GUEST_NUDGE_KEY, "1");
+            setTimeout(() => {
+              toast({
+                title: "Your progress is saved locally",
+                description: "Sign in to keep your stats and scores across all your devices.",
+                action: ToastAction({ altText: "Sign in", onClick: openAuthModal, children: "Sign in" }),
+                duration: 8000,
+              });
+            }, 1200);
+          }
+        } catch {}
       }
 
       return result;

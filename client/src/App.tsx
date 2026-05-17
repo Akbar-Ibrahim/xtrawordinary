@@ -5,13 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { SoundProvider } from "@/lib/sound-provider";
-import { AuthProvider } from "@/lib/auth-context";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { DuelNotificationsProvider } from "@/lib/duel-notifications-context";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { WhatsNewModal } from "@/components/whats-new-modal";
 import { GoogleWelcomeModal } from "@/components/google-welcome-modal";
+import { AuthModal } from "@/components/auth-modal";
 import { MotionConfig } from "framer-motion";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
@@ -42,6 +43,11 @@ import GuildWarsLobby from "@/pages/guild-wars";
 import GuildWarsBracket from "@/pages/guild-wars-bracket";
 import NotificationSettings from "@/pages/notification-settings";
 import NotFound from "@/pages/not-found";
+
+function GlobalAuthModal() {
+  const { authModalOpen, setAuthModalOpen } = useAuth();
+  return <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />;
+}
 
 function Router() {
   return (
@@ -102,6 +108,7 @@ function App() {
             <Toaster />
             <WhatsNewModal />
             <GoogleWelcomeModal />
+            <GlobalAuthModal />
             </MotionConfig>
             </TooltipProvider>
             </DuelNotificationsProvider>

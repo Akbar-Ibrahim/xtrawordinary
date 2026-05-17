@@ -11,6 +11,9 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginWithGoogle: () => void;
   refreshUser: () => Promise<void>;
+  openAuthModal: () => void;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,6 +21,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const openAuthModal = useCallback(() => setAuthModalOpen(true), []);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -80,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         loginWithGoogle,
         refreshUser,
+        openAuthModal,
+        authModalOpen,
+        setAuthModalOpen,
       }}
     >
       {children}
