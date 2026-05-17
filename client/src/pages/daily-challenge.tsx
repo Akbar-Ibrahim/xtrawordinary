@@ -414,7 +414,7 @@ export default function DailyChallenge() {
                       </Link>
                     </div>
 
-                    {leaderboardData && leaderboardData.entries.length > 0 && (
+                    {showCompleted && (
                       <div className="mt-4 border rounded-lg overflow-hidden">
                         <button
                           type="button"
@@ -430,7 +430,12 @@ export default function DailyChallenge() {
                         </button>
                         {leaderboardOpen && (
                           <div className="p-3 space-y-1.5">
-                            {leaderboardData.entries.map((entry) => (
+                            {(!leaderboardData || leaderboardData.entries.length === 0) && (
+                              <p className="text-sm text-muted-foreground text-center py-3" data-testid="text-leaderboard-empty">
+                                No scores yet — be the first!
+                              </p>
+                            )}
+                            {leaderboardData?.entries.map((entry) => (
                               <div
                                 key={entry.userId}
                                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
@@ -448,7 +453,7 @@ export default function DailyChallenge() {
                                 <span className="font-semibold tabular-nums">{entry.score.toLocaleString()}</span>
                               </div>
                             ))}
-                            {leaderboardData.myRank && !leaderboardData.entries.find(e => user && e.userId === user.id) && (
+                            {leaderboardData?.myRank && !leaderboardData.entries.find(e => user && e.userId === user.id) && (
                               <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-my-rank">
                                 Your rank: #{leaderboardData.myRank} · Score: {leaderboardData.myScore?.toLocaleString()}
                               </p>

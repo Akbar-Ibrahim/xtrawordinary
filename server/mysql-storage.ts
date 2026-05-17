@@ -1290,21 +1290,11 @@ export class MySQLStorage implements IStorage {
 
   async saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void> {
     const db = await this.getDb();
-    const existing = await db.select().from(schema.dailyChallengeScores)
-      .where(and(eq(schema.dailyChallengeScores.userId, userId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)))
-      .limit(1);
-    if (existing[0]) {
-      if (score > existing[0].score) {
-        await db.update(schema.dailyChallengeScores).set({ score })
-          .where(and(eq(schema.dailyChallengeScores.userId, userId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)));
-      }
-    } else {
-      try {
-        await db.insert(schema.dailyChallengeScores).values({ userId, challengeDate, gameSlug, score });
-      } catch (err: unknown) {
-        if ((err as { code?: string })?.code !== "ER_DUP_ENTRY") throw err;
-      }
-    }
+    await db.execute(
+      sql`INSERT INTO daily_challenge_scores (user_id, challenge_date, game_slug, score)
+          VALUES (${userId}, ${challengeDate}, ${gameSlug}, ${score})
+          ON DUPLICATE KEY UPDATE score = GREATEST(score, ${score})`
+    );
   }
 
   async getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
