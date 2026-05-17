@@ -276,6 +276,7 @@ export class MySQLStorage implements IStorage {
         gamesWon: stats.gamesWon,
         wordsFound: stats.wordsFound,
         lastPlayedAt: new Date(stats.lastPlayedAt),
+        lastScore: stats.lastScore ?? null,
       }).where(eq(schema.userGameStats.id, existing.id));
       return { ...existing, ...stats };
     }
@@ -287,6 +288,7 @@ export class MySQLStorage implements IStorage {
       gamesWon: stats.gamesWon,
       wordsFound: stats.wordsFound,
       lastPlayedAt: new Date(stats.lastPlayedAt),
+      lastScore: stats.lastScore ?? null,
     });
     return { ...stats, id: result[0].insertId };
   }
@@ -298,13 +300,13 @@ export class MySQLStorage implements IStorage {
       .limit(1);
     if (!rows[0]) return undefined;
     const r = rows[0];
-    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, bestScore: r.bestScore, gamesPlayed: r.gamesPlayed, gamesWon: r.gamesWon, wordsFound: r.wordsFound, lastPlayedAt: r.lastPlayedAt instanceof Date ? r.lastPlayedAt.toISOString() : String(r.lastPlayedAt) };
+    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, bestScore: r.bestScore, gamesPlayed: r.gamesPlayed, gamesWon: r.gamesWon, wordsFound: r.wordsFound, lastPlayedAt: r.lastPlayedAt instanceof Date ? r.lastPlayedAt.toISOString() : String(r.lastPlayedAt), lastScore: r.lastScore ?? null };
   }
 
   async getAllUserGameStats(userId: number): Promise<UserGameStats[]> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.userGameStats).where(eq(schema.userGameStats.userId, userId));
-    return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, bestScore: r.bestScore, gamesPlayed: r.gamesPlayed, gamesWon: r.gamesWon, wordsFound: r.wordsFound, lastPlayedAt: r.lastPlayedAt instanceof Date ? r.lastPlayedAt.toISOString() : String(r.lastPlayedAt) }));
+    return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, bestScore: r.bestScore, gamesPlayed: r.gamesPlayed, gamesWon: r.gamesWon, wordsFound: r.wordsFound, lastPlayedAt: r.lastPlayedAt instanceof Date ? r.lastPlayedAt.toISOString() : String(r.lastPlayedAt), lastScore: r.lastScore ?? null }));
   }
 
   async saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry> {

@@ -235,6 +235,7 @@ export const userGameStatsSchema = z.object({
   gamesWon: z.number(),
   wordsFound: z.number(),
   lastPlayedAt: z.string(),
+  lastScore: z.number().nullable().optional(),
 });
 export type UserGameStats = z.infer<typeof userGameStatsSchema>;
 

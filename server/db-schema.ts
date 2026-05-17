@@ -42,6 +42,7 @@ export const userGameStats = mysqlTable("user_game_stats", {
   gamesWon: int("games_won").notNull().default(0),
   wordsFound: int("words_found").notNull().default(0),
   lastPlayedAt: timestamp("last_played_at").notNull().defaultNow(),
+  lastScore: int("last_score").default(0),
 }, (table) => [
   uniqueIndex("ugs_user_game_idx").on(table.userId, table.gameSlug),
 ]);

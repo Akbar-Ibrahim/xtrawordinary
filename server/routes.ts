@@ -925,7 +925,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
-      const { gameSlug, bestScore, gamesPlayed, gamesWon, wordsFound } = parsed.data;
+      const { gameSlug, bestScore, gamesPlayed, gamesWon, wordsFound, lastScore } = parsed.data;
       const stats = await storage.saveUserGameStats({
         userId: req.user!.id,
         gameSlug,
@@ -933,6 +933,7 @@ export async function registerRoutes(
         gamesPlayed,
         gamesWon,
         wordsFound,
+        lastScore: lastScore ?? null,
         lastPlayedAt: new Date().toISOString(),
       });
       res.json(stats);

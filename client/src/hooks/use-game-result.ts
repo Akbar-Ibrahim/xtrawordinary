@@ -25,6 +25,7 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
           gamesPlayed: gameStats.gamesPlayed,
           gamesWon: gameStats.gamesWon,
           wordsFound: gameStats.totalWordsFound,
+          lastScore: score,
         }),
       });
     }

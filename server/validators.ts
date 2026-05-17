@@ -17,6 +17,7 @@ export const statsInputSchema = z.object({
   gamesPlayed: z.number().int().min(0).max(100000).default(0),
   gamesWon: z.number().int().min(0).max(100000).default(0),
   wordsFound: z.number().int().min(0).max(100000).default(0),
+  lastScore: z.number().int().min(0).max(100000).optional(),
 });
 
 export const leaderboardInputSchema = z.object({
