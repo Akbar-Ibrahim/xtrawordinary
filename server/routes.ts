@@ -767,6 +767,10 @@ export async function registerRoutes(
       }
       req.logIn(user, (err) => {
         if (err) return next(err);
+        const rememberMe = req.body.rememberMe === true;
+        req.session.cookie.maxAge = rememberMe
+          ? 30 * 24 * 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000;
         res.json({ user: sanitizeUser(user) });
       });
     })(req, res, next);
@@ -1152,17 +1156,19 @@ export async function registerRoutes(
       const schema = z.object({
         name: z.string().min(1).max(50).optional(),
         avatarUrl: z.union([z.string().url(), z.null()]).optional(),
+        bio: z.union([z.string().max(200), z.null()]).optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-      const { name, avatarUrl } = parsed.data;
-      const updates: { name?: string; avatarUrl?: string | null } = {};
+      const { name, avatarUrl, bio } = parsed.data;
+      const updates: { name?: string; avatarUrl?: string | null; bio?: string | null } = {};
       if (name !== undefined) updates.name = name;
       if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl;
+      if (bio !== undefined) updates.bio = bio;
       if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No fields to update" });
       const updated = await storage.updateUser(req.user!.id, updates);
       if (!updated) return res.status(404).json({ error: "User not found" });
-      res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl ?? null });
+      res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl ?? null, bio: updated.bio ?? null });
     } catch (error) {
       res.status(500).json({ error: "Failed to update profile" });
     }

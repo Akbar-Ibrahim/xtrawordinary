@@ -82,6 +82,8 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
       const currentSlug = slugRef.current;
       const currentBest = getPersonalBest(currentSlug);
 
+      const streakBefore = loadStreak().currentStreak;
+
       const result = recordGameResult({
         slug: currentSlug,
         score,
@@ -89,6 +91,20 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
         wordsFound,
         timestamp: Date.now(),
       });
+
+      const streakAfter = loadStreak().currentStreak;
+      const STREAK_MILESTONES: Record<number, { title: string; description: string }> = {
+        7:   { title: "7-Day Streak!", description: "One whole week of word games. You're on a roll!" },
+        30:  { title: "30-Day Streak!", description: "A full month of daily play. Incredible dedication!" },
+        100: { title: "100-Day Streak!", description: "Triple digits! You're a true word master." },
+        365: { title: "365-Day Streak!", description: "A full year! Legendary status achieved." },
+      };
+      if (streakAfter > streakBefore && STREAK_MILESTONES[streakAfter]) {
+        const milestone = STREAK_MILESTONES[streakAfter];
+        setTimeout(() => {
+          toast({ title: `🔥 ${milestone.title}`, description: milestone.description, duration: 6000 });
+        }, 1800);
+      }
 
       if (result.isNewBest && score > 0) {
         toast({

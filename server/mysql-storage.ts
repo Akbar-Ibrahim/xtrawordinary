@@ -170,6 +170,7 @@ export class MySQLStorage implements IStorage {
       isAdmin: !!row.isAdmin,
       isBanned: !!row.isBanned,
       isPremium: !!row.isPremium,
+      bio: row.bio || null,
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     };
   }
@@ -222,6 +223,7 @@ export class MySQLStorage implements IStorage {
     if (updates.isAdmin !== undefined) dbUpdates.isAdmin = updates.isAdmin;
     if (updates.isBanned !== undefined) dbUpdates.isBanned = updates.isBanned;
     if (updates.isPremium !== undefined) dbUpdates.isPremium = updates.isPremium;
+    if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
     await db.update(schema.users).set(dbUpdates).where(eq(schema.users.id, id));
     return this.getUserById(id);
   }
@@ -711,7 +713,7 @@ export class MySQLStorage implements IStorage {
     const userRows = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
     if (!userRows[0]) return null;
     const u = userRows[0];
-    const user = { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt), isPremium: u.isPremium ?? false };
+    const user = { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null, createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt), isPremium: u.isPremium ?? false, bio: u.bio || null };
 
     const stats = await this.getAllUserGameStats(userId);
     const achievements = await this.getUserAchievements(userId);

@@ -154,10 +154,6 @@ Seeds with ≥4 solutions including ≥1 middle insertion.
 APIs: puzzle (seed), validate (stretched + seedWord), solutions (seed).
 
 SUGGESTIONS / NICE-TO-HAVES FOR GAMES:
-- Favourites: let users star games to pin them at the top of the homepage
-- "New" badge on recently added games (within last 30 days)
-- Game difficulty filter and tag filter on homepage
-- "Played today" indicator on game cards so users know what they've done
 - In-game tutorial/walkthrough for first play (especially Shell Words,
   Word Bloom, Word Stretch which have complex mechanics)
 - Replay mode: after finishing, show all valid answers the player missed
@@ -195,11 +191,8 @@ Auth modal: a single modal handles sign-in, sign-up, forgot password,
 and reset password flows with animated transitions between views.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- "Continue as guest" prompt that reminds the user they'll lose progress
-  if they don't sign in (shown after completing a game as guest)
 - Apple Sign-In (important for iOS users if a mobile app is ever added)
 - Magic link / passwordless login option
-- Remember me (longer session TTL)
 - Two-factor authentication for accounts with social/leaderboard data
 - Account deletion with full data wipe (GDPR compliance)
 - Username/display name separate from email (currently uses full name)
@@ -220,14 +213,12 @@ Each signed-in user has a public profile page at /profile/:id showing:
 Profile visibility is public — any visitor can view a profile by ID.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Custom bio / tagline field
 - "Favourite game" shown prominently on profile
 - Privacy settings: make profile private or hide specific stats
 - Activity feed: "played Word Ladder, earned X achievement" timeline
 - Follow system (lighter than friends — no mutual requirement)
 - Profile themes/frames for paid users (Pro badge, custom colours)
 - Share profile card as an image (e.g. for social media)
-- Profile completion percentage nudge ("Add a bio to complete your profile")
 
 
 ========================================================================
@@ -277,7 +268,6 @@ when the user submits game results.
 
 SUGGESTIONS / NICE-TO-HAVES:
 - Streak shield (paid feature): protect against one missed day per month
-- Streak milestone celebrations (7, 30, 100, 365 days) with confetti
 - Streak leaderboard: who has the longest current streak globally
 - Streak recovery: if you miss a day, a grace period (e.g. 2-hour window
   after midnight) before the streak resets
@@ -534,7 +524,6 @@ REST routes:
 
 SUGGESTIONS / NICE-TO-HAVES:
 - Rich text: basic markdown (bold, italic) or emoji picker
-- Comment sorting: newest, oldest, most liked
 - Comment search within a game's discussion
 - Pinned comment: game creator or admin can pin an important comment
 - Mention (@username) with notification to the mentioned user
@@ -694,9 +683,8 @@ Data layer:
 - express-mysql-session for persistent sessions in production
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Progressive Web App (PWA): add a manifest and service worker so users
-  can install xtraWordinary to their home screen
-- Offline mode: cache the daily challenge so it works without internet
+- PWA service worker: add offline caching so the daily challenge works
+  without internet (manifest.json is already in place)
 - Keyboard accessibility audit: ensure all interactive elements are
   reachable and operable via keyboard
 - Screen reader / ARIA audit: particularly for game grids and timers

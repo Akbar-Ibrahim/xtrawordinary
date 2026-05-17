@@ -27,6 +27,7 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginRememberMe, setLoginRememberMe] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
   const [regName, setRegName] = useState("");
@@ -40,7 +41,7 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
-    const result = await login(loginEmail, loginPassword);
+    const result = await login(loginEmail, loginPassword, loginRememberMe);
     setLoginLoading(false);
     if (result.error) {
       toast({ title: "Sign in failed", description: result.error, variant: "destructive" });
@@ -161,6 +162,17 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
                   required
                   data-testid="input-login-password"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={loginRememberMe}
+                  onChange={(e) => setLoginRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
+                  data-testid="checkbox-remember-me"
+                />
+                <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer">Remember me for 30 days</Label>
               </div>
               <Button type="submit" className="w-full" disabled={loginLoading} data-testid="button-signin">
                 {loginLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}

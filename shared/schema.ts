@@ -200,6 +200,7 @@ export const userSchema = z.object({
   isAdmin: z.boolean(),
   isBanned: z.boolean(),
   isPremium: z.boolean(),
+  bio: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type User = z.infer<typeof userSchema>;

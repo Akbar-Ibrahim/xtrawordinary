@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useSearch } from "wouter";
+import { Link, useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -481,6 +481,7 @@ function MobileGameStrip({
 
 export default function Leaderboard() {
   const search = useSearch();
+  const [, setLocation] = useLocation();
   const initialGame = new URLSearchParams(search).get("game") ?? "overall";
   const [selectedGame, setSelectedGame] = useState(initialGame);
   const [isSurvival, setIsSurvival] = useState(false);
@@ -515,6 +516,9 @@ export default function Leaderboard() {
   function handleGameChange(slug: string) {
     setSelectedGame(slug);
     setIsSurvival(false);
+    const params = new URLSearchParams();
+    if (slug !== "overall") params.set("game", slug);
+    setLocation(`/leaderboard${params.toString() ? `?${params.toString()}` : ""}`, { replace: true });
   }
 
   const noModeSlug = isSurvival ? `${selectedGame}-survival` : selectedGame;

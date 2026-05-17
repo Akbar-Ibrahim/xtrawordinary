@@ -6,7 +6,7 @@ interface AuthContextType {
   user: PublicUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<{ error?: string }>;
   register: (name: string, email: string, password: string) => Promise<{ error?: string; message?: string }>;
   logout: () => Promise<void>;
   loginWithGoogle: () => void;
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, rememberMe?: boolean) => {
     try {
-      const res = await apiRequest("POST", "/api/auth/login", { email, password });
+      const res = await apiRequest("POST", "/api/auth/login", { email, password, rememberMe: !!rememberMe });
       const data = await res.json();
       setUser(data.user);
       return {};

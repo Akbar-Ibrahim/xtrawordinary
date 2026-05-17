@@ -36,6 +36,7 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
+  const [editBio, setEditBio] = useState("");
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -80,7 +81,7 @@ export default function Profile() {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (data: { name?: string; avatarUrl?: string | null }) =>
+    mutationFn: (data: { name?: string; avatarUrl?: string | null; bio?: string | null }) =>
       apiRequest("PATCH", "/api/users/me", data),
     onSuccess: async () => {
       toast({ title: "Profile updated!" });
@@ -248,17 +249,22 @@ export default function Profile() {
     if (!profile) return;
     setEditName(profile.user.name);
     setEditAvatarUrl(profile.user.avatarUrl ?? "");
+    setEditBio((profile.user as any).bio ?? "");
     setEditOpen(true);
   }
 
   function handleSave() {
-    const data: { name?: string; avatarUrl?: string | null } = {};
+    const data: { name?: string; avatarUrl?: string | null; bio?: string | null } = {};
     if (editName.trim() && editName.trim() !== profile?.user.name) {
       data.name = editName.trim();
     }
     const url = editAvatarUrl.trim() || null;
     if (url !== (profile?.user.avatarUrl ?? null)) {
       data.avatarUrl = url;
+    }
+    const bioVal = editBio.trim() || null;
+    if (bioVal !== ((profile?.user as any)?.bio ?? null)) {
+      data.bio = bioVal;
     }
     if (Object.keys(data).length === 0) {
       setEditOpen(false);
@@ -346,6 +352,9 @@ export default function Profile() {
                   >
                     Remove Premium (testing)
                   </Button>
+                )}
+                {(profile.user as any).bio && (
+                  <p className="text-sm text-muted-foreground mt-0.5 max-w-md" data-testid="text-profile-bio">{(profile.user as any).bio}</p>
                 )}
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
@@ -998,6 +1007,20 @@ export default function Profile() {
                 data-testid="input-edit-avatar-url"
               />
               <p className="text-xs text-muted-foreground">Paste a link to your photo. Leave blank to use your initials.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-bio">Bio <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <textarea
+                id="edit-bio"
+                value={editBio}
+                onChange={e => setEditBio(e.target.value)}
+                maxLength={200}
+                placeholder="A short tagline or description about you…"
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                data-testid="input-edit-bio"
+              />
+              <p className="text-xs text-muted-foreground text-right">{editBio.length}/200</p>
             </div>
           </div>
           <DialogFooter>
