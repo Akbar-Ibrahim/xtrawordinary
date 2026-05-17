@@ -156,8 +156,8 @@ export interface IStorage {
   getGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt | undefined>;
   createDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt>;
   getDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt | undefined>;
-  saveDailyChallengeScore(userId: number, challengeDate: string, score: number): Promise<void>;
-  getDailyLeaderboard(challengeDate: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>;
+  saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void>;
+  getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>;
 
   // Comments
   createComment(comment: InsertComment): Promise<Comment>;

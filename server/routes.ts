@@ -648,10 +648,10 @@ export async function registerRoutes(
   app.post("/api/daily-challenge/score", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const schema = z.object({ date: z.string(), score: z.number().int().min(0) });
-      const parsed = schema.safeParse(req.body);
+      const bodySchema = z.object({ date: z.string(), gameSlug: z.string(), score: z.number().int().min(0) });
+      const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
-      await storage.saveDailyChallengeScore(userId, parsed.data.date, parsed.data.score);
+      await storage.saveDailyChallengeScore(userId, parsed.data.date, parsed.data.gameSlug, parsed.data.score);
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Failed to save score" });
@@ -660,12 +660,13 @@ export async function registerRoutes(
 
   app.get("/api/daily-challenge/leaderboard", async (req, res) => {
     try {
-      const date = (req.query.date as string) || (() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      })();
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      const date = (req.query.date as string) || todayStr;
+      const gameSlug = req.query.gameSlug as string;
+      if (!gameSlug) return res.status(400).json({ error: "gameSlug is required" });
       const requestingUserId = req.isAuthenticated() ? req.user!.id : undefined;
-      const result = await storage.getDailyLeaderboard(date, requestingUserId);
+      const result = await storage.getDailyLeaderboard(date, gameSlug, requestingUserId);
       res.json(result);
     } catch {
       res.status(500).json({ error: "Failed to fetch leaderboard" });

@@ -216,10 +216,11 @@ export const dailyChallengeScores = mysqlTable("daily_challenge_scores", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),
   challengeDate: varchar("challenge_date", { length: 20 }).notNull(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
   score: int("score").notNull().default(0),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
 }, (table) => [
-  index("dcs_date_idx").on(table.challengeDate),
+  index("dcs_date_slug_idx").on(table.challengeDate, table.gameSlug),
   index("dcs_user_idx").on(table.userId),
   uniqueIndex("dcs_user_date_idx").on(table.userId, table.challengeDate),
 ]);

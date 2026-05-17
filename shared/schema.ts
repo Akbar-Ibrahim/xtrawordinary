@@ -399,6 +399,7 @@ export const dailyChallengeScoreSchema = z.object({
   id: z.number(),
   userId: z.number(),
   challengeDate: z.string(),
+  gameSlug: z.string(),
   score: z.number(),
   submittedAt: z.string(),
 });

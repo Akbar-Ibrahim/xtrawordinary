@@ -1288,7 +1288,7 @@ export class MySQLStorage implements IStorage {
     return { id: r.id, userId: r.userId, challengeDate: r.challengeDate, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
   }
 
-  async saveDailyChallengeScore(userId: number, challengeDate: string, score: number): Promise<void> {
+  async saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void> {
     const db = await this.getDb();
     const existing = await db.select().from(schema.dailyChallengeScores)
       .where(and(eq(schema.dailyChallengeScores.userId, userId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)))
@@ -1300,14 +1300,14 @@ export class MySQLStorage implements IStorage {
       }
     } else {
       try {
-        await db.insert(schema.dailyChallengeScores).values({ userId, challengeDate, score });
+        await db.insert(schema.dailyChallengeScores).values({ userId, challengeDate, gameSlug, score });
       } catch (err: unknown) {
         if ((err as { code?: string })?.code !== "ER_DUP_ENTRY") throw err;
       }
     }
   }
 
-  async getDailyLeaderboard(challengeDate: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
+  async getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
     const db = await this.getDb();
     const rows = await db.select({
       userId: schema.dailyChallengeScores.userId,
@@ -1317,7 +1317,10 @@ export class MySQLStorage implements IStorage {
     })
       .from(schema.dailyChallengeScores)
       .innerJoin(schema.users, eq(schema.dailyChallengeScores.userId, schema.users.id))
-      .where(eq(schema.dailyChallengeScores.challengeDate, challengeDate))
+      .where(and(
+        eq(schema.dailyChallengeScores.challengeDate, challengeDate),
+        eq(schema.dailyChallengeScores.gameSlug, gameSlug),
+      ))
       .orderBy(desc(schema.dailyChallengeScores.score))
       .limit(20);
 
@@ -1338,11 +1341,19 @@ export class MySQLStorage implements IStorage {
         myScore = myEntry.score;
       } else {
         const myRow = await db.select().from(schema.dailyChallengeScores)
-          .where(and(eq(schema.dailyChallengeScores.userId, requestingUserId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)))
+          .where(and(
+            eq(schema.dailyChallengeScores.userId, requestingUserId),
+            eq(schema.dailyChallengeScores.challengeDate, challengeDate),
+            eq(schema.dailyChallengeScores.gameSlug, gameSlug),
+          ))
           .limit(1);
         if (myRow[0]) {
           const countAbove = await db.select({ cnt: sql<number>`count(*)` }).from(schema.dailyChallengeScores)
-            .where(and(eq(schema.dailyChallengeScores.challengeDate, challengeDate), sql`${schema.dailyChallengeScores.score} > ${myRow[0].score}`));
+            .where(and(
+              eq(schema.dailyChallengeScores.challengeDate, challengeDate),
+              eq(schema.dailyChallengeScores.gameSlug, gameSlug),
+              sql`${schema.dailyChallengeScores.score} > ${myRow[0].score}`,
+            ));
           myRank = (Number(countAbove[0]?.cnt) || 0) + 1;
           myScore = myRow[0].score;
         }

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal } from "lucide-react";
+import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal, ChevronDown, ChevronUp } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, DailyLeaderboardEntry } from "@shared/schema";
 import { getDailyChallengeRecord, saveDailyChallengeRecord } from "@/lib/game-stats";
@@ -182,6 +182,7 @@ export default function DailyChallenge() {
   const [finalScore, setFinalScore] = useState(0);
   const [attemptStarted, setAttemptStarted] = useState(false);
   const [countdown, setCountdown] = useState("");
+  const [leaderboardOpen, setLeaderboardOpen] = useState(true);
 
   const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !completed);
 
@@ -202,13 +203,13 @@ export default function DailyChallenge() {
   }, []);
 
   const { data: leaderboardData } = useQuery<{ entries: DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>({
-    queryKey: ["/api/daily-challenge/leaderboard", data?.date],
+    queryKey: ["/api/daily-challenge/leaderboard", data?.date, data?.slug],
     queryFn: async () => {
-      const res = await fetch(`/api/daily-challenge/leaderboard?date=${data!.date}`, { credentials: "include" });
+      const res = await fetch(`/api/daily-challenge/leaderboard?date=${data!.date}&gameSlug=${data!.slug}`, { credentials: "include" });
       if (!res.ok) return { entries: [] };
       return res.json();
     },
-    enabled: !!(data?.date) && (completed || !!getDailyChallengeRecord(data?.date ?? "")),
+    enabled: !!(data?.date && data?.slug) && (completed || !!getDailyChallengeRecord(data?.date ?? "")),
     refetchInterval: completed ? 15000 : false,
   });
 
@@ -249,9 +250,9 @@ export default function DailyChallenge() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ date: data.date, score }),
+          body: JSON.stringify({ date: data.date, gameSlug: data.slug, score }),
         }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date] });
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date, data.slug] });
         }).catch(() => {});
       }
     };
@@ -383,9 +384,11 @@ export default function DailyChallenge() {
                           className="gap-2"
                           data-testid="button-share-daily"
                           onClick={() => {
-                            const score = completed ? finalScore : localRecord?.score ?? 0;
+                            const scoreVal = completed ? finalScore : localRecord?.score ?? 0;
                             const displayDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                            const text = `I scored ${score} on xtraWordinary's Daily Challenge (${game.name} · ${displayDate})!\nCan you beat it? ${window.location.origin}/daily`;
+                            const rankLine = leaderboardData?.myRank ? ` · Rank #${leaderboardData.myRank}` : "";
+                            const tierEmoji = scoreVal >= 1000 ? "🏆🔥✨" : scoreVal >= 500 ? "⭐⭐⭐" : scoreVal >= 200 ? "⭐⭐" : "⭐";
+                            const text = `${tierEmoji} xtraWordinary Daily Challenge\n${game.name} · ${displayDate}${rankLine}\nScore: ${scoreVal.toLocaleString()}\nCan you beat it? ${window.location.origin}/daily`;
                             navigator.clipboard.writeText(text).then(() => {
                               toast({ title: "Result copied!", description: "Share it with your friends." });
                             }).catch(() => {
@@ -412,35 +415,45 @@ export default function DailyChallenge() {
                     </div>
 
                     {leaderboardData && leaderboardData.entries.length > 0 && (
-                      <div className="mt-4">
-                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                          <Medal className="h-4 w-4 text-chart-2" />
-                          Today's Leaderboard
-                        </h3>
-                        <div className="space-y-2">
-                          {leaderboardData.entries.map((entry) => (
-                            <div
-                              key={entry.userId}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
-                                user && entry.userId === user.id
-                                  ? "bg-primary/10 ring-1 ring-primary/30"
-                                  : "bg-muted/50"
-                              }`}
-                              data-testid={`leaderboard-entry-${entry.userId}`}
-                            >
-                              <span className="w-6 text-center font-bold text-muted-foreground shrink-0">
-                                {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
-                              </span>
-                              <UserAvatar name={entry.playerName} avatarUrl={entry.avatarUrl} className="h-6 w-6 text-xs" />
-                              <span className="flex-1 font-medium truncate">{entry.playerName}</span>
-                              <span className="font-semibold tabular-nums">{entry.score.toLocaleString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                        {leaderboardData.myRank && !leaderboardData.entries.find(e => user && e.userId === user.id) && (
-                          <p className="text-xs text-muted-foreground text-center mt-2" data-testid="text-my-rank">
-                            Your rank: #{leaderboardData.myRank} · Score: {leaderboardData.myScore?.toLocaleString()}
-                          </p>
+                      <div className="mt-4 border rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-semibold"
+                          onClick={() => setLeaderboardOpen(o => !o)}
+                          data-testid="button-toggle-leaderboard"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Medal className="h-4 w-4 text-chart-2" />
+                            Today's Leaderboard
+                          </span>
+                          {leaderboardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                        </button>
+                        {leaderboardOpen && (
+                          <div className="p-3 space-y-1.5">
+                            {leaderboardData.entries.map((entry) => (
+                              <div
+                                key={entry.userId}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+                                  user && entry.userId === user.id
+                                    ? "bg-primary/10 ring-1 ring-primary/30"
+                                    : "bg-muted/50"
+                                }`}
+                                data-testid={`leaderboard-entry-${entry.userId}`}
+                              >
+                                <span className="w-6 text-center font-bold text-muted-foreground shrink-0">
+                                  {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
+                                </span>
+                                <UserAvatar name={entry.playerName} avatarUrl={entry.avatarUrl} className="h-6 w-6 text-xs" />
+                                <span className="flex-1 font-medium truncate">{entry.playerName}</span>
+                                <span className="font-semibold tabular-nums">{entry.score.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            {leaderboardData.myRank && !leaderboardData.entries.find(e => user && e.userId === user.id) && (
+                              <p className="text-xs text-muted-foreground text-center pt-1" data-testid="text-my-rank">
+                                Your rank: #{leaderboardData.myRank} · Score: {leaderboardData.myScore?.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

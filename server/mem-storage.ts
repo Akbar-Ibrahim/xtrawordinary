@@ -1295,21 +1295,21 @@ export class MemStorage implements IStorage {
     return this.dailyChallengeAttemptsStore.find(a => a.userId === userId && a.challengeDate === challengeDate);
   }
 
-  private dailyChallengeScoresStore: Array<{ id: number; userId: number; challengeDate: string; score: number; submittedAt: string }> = [];
+  private dailyChallengeScoresStore: Array<{ id: number; userId: number; challengeDate: string; gameSlug: string; score: number; submittedAt: string }> = [];
   private dcsIdCounter = 1;
 
-  async saveDailyChallengeScore(userId: number, challengeDate: string, score: number): Promise<void> {
+  async saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void> {
     const existing = this.dailyChallengeScoresStore.find(s => s.userId === userId && s.challengeDate === challengeDate);
     if (existing) {
       if (score > existing.score) existing.score = score;
     } else {
-      this.dailyChallengeScoresStore.push({ id: this.dcsIdCounter++, userId, challengeDate, score, submittedAt: new Date().toISOString() });
+      this.dailyChallengeScoresStore.push({ id: this.dcsIdCounter++, userId, challengeDate, gameSlug, score, submittedAt: new Date().toISOString() });
     }
   }
 
-  async getDailyLeaderboard(challengeDate: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
+  async getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
     const dayScores = this.dailyChallengeScoresStore
-      .filter(s => s.challengeDate === challengeDate)
+      .filter(s => s.challengeDate === challengeDate && s.gameSlug === gameSlug)
       .sort((a, b) => b.score - a.score)
       .slice(0, 20);
     const entries = dayScores.map((s, i) => {
@@ -1324,10 +1324,10 @@ export class MemStorage implements IStorage {
         myRank = myEntry.rank;
         myScore = myEntry.score;
       } else {
-        const myRecord = this.dailyChallengeScoresStore.find(s => s.userId === requestingUserId && s.challengeDate === challengeDate);
+        const myRecord = this.dailyChallengeScoresStore.find(s => s.userId === requestingUserId && s.challengeDate === challengeDate && s.gameSlug === gameSlug);
         if (myRecord) {
           myScore = myRecord.score;
-          myRank = this.dailyChallengeScoresStore.filter(s => s.challengeDate === challengeDate && s.score > myRecord.score).length + 1;
+          myRank = this.dailyChallengeScoresStore.filter(s => s.challengeDate === challengeDate && s.gameSlug === gameSlug && s.score > myRecord.score).length + 1;
         }
       }
     }
