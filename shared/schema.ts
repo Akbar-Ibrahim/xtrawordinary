@@ -395,6 +395,24 @@ export const dailyChallengeAttemptSchema = z.object({
 });
 export type DailyChallengeAttempt = z.infer<typeof dailyChallengeAttemptSchema>;
 
+export const dailyChallengeScoreSchema = z.object({
+  id: z.number(),
+  userId: z.number(),
+  challengeDate: z.string(),
+  score: z.number(),
+  submittedAt: z.string(),
+});
+export type DailyChallengeScore = z.infer<typeof dailyChallengeScoreSchema>;
+
+export const dailyLeaderboardEntrySchema = z.object({
+  rank: z.number(),
+  userId: z.number(),
+  playerName: z.string(),
+  avatarUrl: z.string().nullable(),
+  score: z.number(),
+});
+export type DailyLeaderboardEntry = z.infer<typeof dailyLeaderboardEntrySchema>;
+
 export const groupActivityEntrySchema = z.object({
   id: z.number(),
   groupId: z.number(),

@@ -1295,6 +1295,45 @@ export class MemStorage implements IStorage {
     return this.dailyChallengeAttemptsStore.find(a => a.userId === userId && a.challengeDate === challengeDate);
   }
 
+  private dailyChallengeScoresStore: Array<{ id: number; userId: number; challengeDate: string; score: number; submittedAt: string }> = [];
+  private dcsIdCounter = 1;
+
+  async saveDailyChallengeScore(userId: number, challengeDate: string, score: number): Promise<void> {
+    const existing = this.dailyChallengeScoresStore.find(s => s.userId === userId && s.challengeDate === challengeDate);
+    if (existing) {
+      if (score > existing.score) existing.score = score;
+    } else {
+      this.dailyChallengeScoresStore.push({ id: this.dcsIdCounter++, userId, challengeDate, score, submittedAt: new Date().toISOString() });
+    }
+  }
+
+  async getDailyLeaderboard(challengeDate: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
+    const dayScores = this.dailyChallengeScoresStore
+      .filter(s => s.challengeDate === challengeDate)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 20);
+    const entries = dayScores.map((s, i) => {
+      const user = this.users.get(s.userId);
+      return { rank: i + 1, userId: s.userId, playerName: user?.name ?? "Unknown", avatarUrl: user?.avatarUrl ?? null, score: s.score };
+    });
+    let myRank: number | undefined;
+    let myScore: number | undefined;
+    if (requestingUserId) {
+      const myEntry = entries.find(e => e.userId === requestingUserId);
+      if (myEntry) {
+        myRank = myEntry.rank;
+        myScore = myEntry.score;
+      } else {
+        const myRecord = this.dailyChallengeScoresStore.find(s => s.userId === requestingUserId && s.challengeDate === challengeDate);
+        if (myRecord) {
+          myScore = myRecord.score;
+          myRank = this.dailyChallengeScoresStore.filter(s => s.challengeDate === challengeDate && s.score > myRecord.score).length + 1;
+        }
+      }
+    }
+    return { entries, myRank, myScore };
+  }
+
   private commentsStore: Comment[] = [];
   private commentReportsStore: CommentReport[] = [];
   private cmtIdCounter = 1;

@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { Game } from "@shared/schema";
+import type { Game, DailyLeaderboardEntry } from "@shared/schema";
 import { getDailyChallengeRecord, saveDailyChallengeRecord } from "@/lib/game-stats";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { UserAvatar } from "@/components/user-avatar";
 import { WordLadderGame } from "@/components/games/word-ladder";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
@@ -158,6 +160,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
 
 export default function DailyChallenge() {
   const { toast } = useToast();
+  const { isAuthenticated, user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
 
   const { data, isLoading, error } = useQuery<DailyChallengeResponse>({
@@ -198,6 +201,17 @@ export default function DailyChallenge() {
     return () => clearInterval(id);
   }, []);
 
+  const { data: leaderboardData } = useQuery<{ entries: DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>({
+    queryKey: ["/api/daily-challenge/leaderboard", data?.date],
+    queryFn: async () => {
+      const res = await fetch(`/api/daily-challenge/leaderboard?date=${data!.date}`, { credentials: "include" });
+      if (!res.ok) return { entries: [] };
+      return res.json();
+    },
+    enabled: !!(data?.date) && (completed || !!getDailyChallengeRecord(data?.date ?? "")),
+    refetchInterval: completed ? 15000 : false,
+  });
+
   const localRecord = data ? getDailyChallengeRecord(data.date) : null;
   const serverAttemptLoaded = !attemptLoading && attemptData !== undefined;
   const serverAuthenticated = serverAttemptLoaded && attemptData?.authenticated === true;
@@ -219,20 +233,31 @@ export default function DailyChallenge() {
     const handleGameResult = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (primarySlug(detail.slug) !== data.slug) return;
+      const score = detail.score ?? 0;
       saveDailyChallengeRecord({
         date: data.date,
         slug: data.slug,
-        score: detail.score ?? 0,
+        score,
         completedAt: Date.now(),
       });
-      setFinalScore(detail.score ?? 0);
+      setFinalScore(score);
       setCompleted(true);
       setAttemptStarted(false);
       setIsPlaying(false);
+      if (isAuthenticated) {
+        fetch("/api/daily-challenge/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ date: data.date, score }),
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date] });
+        }).catch(() => {});
+      }
     };
     window.addEventListener("wordplay-game-result", handleGameResult);
     return () => window.removeEventListener("wordplay-game-result", handleGameResult);
-  }, [data, isPlaying, completed]);
+  }, [data, isPlaying, completed, isAuthenticated]);
 
   const handleStartChallenge = async () => {
     if (data?.date) {
@@ -331,39 +356,94 @@ export default function DailyChallenge() {
                 </div>
 
                 {showCompleted ? (
-                  <div className="text-center py-4 space-y-4">
-                    <div className="inline-flex items-center gap-2 text-accent">
-                      <CheckCircle className="h-6 w-6" />
-                      <span className="font-semibold text-lg">
-                        {localRecord || completed ? "Challenge Complete" : "Already Attempted"}
-                      </span>
-                    </div>
-                    {(localRecord || completed) ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Trophy className="h-5 w-5 text-chart-2" />
-                        <span className="text-lg font-medium">
-                          Score: {completed ? finalScore : localRecord?.score ?? 0}
+                  <div className="py-4 space-y-4">
+                    <div className="text-center space-y-3">
+                      <div className="inline-flex items-center gap-2 text-accent">
+                        <CheckCircle className="h-6 w-6" />
+                        <span className="font-semibold text-lg">
+                          {localRecord || completed ? "Challenge Complete" : "Already Attempted"}
                         </span>
                       </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        You already started today's challenge. Each challenge can only be played once.
-                      </p>
+                      {(localRecord || completed) ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <Trophy className="h-5 w-5 text-chart-2" />
+                          <span className="text-lg font-medium" data-testid="text-daily-score">
+                            Score: {completed ? finalScore : localRecord?.score ?? 0}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          You already started today's challenge. Each challenge can only be played once.
+                        </p>
+                      )}
+                      {(localRecord || completed) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          data-testid="button-share-daily"
+                          onClick={() => {
+                            const score = completed ? finalScore : localRecord?.score ?? 0;
+                            const displayDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                            const text = `I scored ${score} on xtraWordinary's Daily Challenge (${game.name} · ${displayDate})!\nCan you beat it? ${window.location.origin}/daily`;
+                            navigator.clipboard.writeText(text).then(() => {
+                              toast({ title: "Result copied!", description: "Share it with your friends." });
+                            }).catch(() => {
+                              toast({ title: "Couldn't copy", description: text, variant: "destructive" });
+                            });
+                          }}
+                        >
+                          <Share2 className="h-4 w-4" />
+                          Share Result
+                        </Button>
+                      )}
+                      <p className="text-sm text-muted-foreground">Come back tomorrow for a new challenge!</p>
+                      {countdown && (
+                        <p className="text-sm font-medium tabular-nums" data-testid="text-daily-countdown">
+                          Next challenge in: <span className="text-primary">{countdown}</span>
+                        </p>
+                      )}
+                      <Link href="/">
+                        <Button variant="outline" className="gap-2" data-testid="button-back-home">
+                          <ArrowLeft className="h-4 w-4" />
+                          Back to Games
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {leaderboardData && leaderboardData.entries.length > 0 && (
+                      <div className="mt-4">
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <Medal className="h-4 w-4 text-chart-2" />
+                          Today's Leaderboard
+                        </h3>
+                        <div className="space-y-2">
+                          {leaderboardData.entries.map((entry) => (
+                            <div
+                              key={entry.userId}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${
+                                user && entry.userId === user.id
+                                  ? "bg-primary/10 ring-1 ring-primary/30"
+                                  : "bg-muted/50"
+                              }`}
+                              data-testid={`leaderboard-entry-${entry.userId}`}
+                            >
+                              <span className="w-6 text-center font-bold text-muted-foreground shrink-0">
+                                {entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`}
+                              </span>
+                              <UserAvatar name={entry.playerName} avatarUrl={entry.avatarUrl} className="h-6 w-6 text-xs" />
+                              <span className="flex-1 font-medium truncate">{entry.playerName}</span>
+                              <span className="font-semibold tabular-nums">{entry.score.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {leaderboardData.myRank && !leaderboardData.entries.find(e => user && e.userId === user.id) && (
+                          <p className="text-xs text-muted-foreground text-center mt-2" data-testid="text-my-rank">
+                            Your rank: #{leaderboardData.myRank} · Score: {leaderboardData.myScore?.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                     )}
-                    <p className="text-sm text-muted-foreground">
-                      Come back tomorrow for a new challenge!
-                    </p>
-                    {countdown && (
-                      <p className="text-sm font-medium tabular-nums" data-testid="text-daily-countdown">
-                        Next challenge in: <span className="text-primary">{countdown}</span>
-                      </p>
-                    )}
-                    <Link href="/">
-                      <Button variant="outline" className="gap-2" data-testid="button-back-home">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Games
-                      </Button>
-                    </Link>
                   </div>
                 ) : (
                   <Button

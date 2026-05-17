@@ -1288,6 +1288,69 @@ export class MySQLStorage implements IStorage {
     return { id: r.id, userId: r.userId, challengeDate: r.challengeDate, startedAt: r.startedAt instanceof Date ? r.startedAt.toISOString() : String(r.startedAt) };
   }
 
+  async saveDailyChallengeScore(userId: number, challengeDate: string, score: number): Promise<void> {
+    const db = await this.getDb();
+    const existing = await db.select().from(schema.dailyChallengeScores)
+      .where(and(eq(schema.dailyChallengeScores.userId, userId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)))
+      .limit(1);
+    if (existing[0]) {
+      if (score > existing[0].score) {
+        await db.update(schema.dailyChallengeScores).set({ score })
+          .where(and(eq(schema.dailyChallengeScores.userId, userId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)));
+      }
+    } else {
+      try {
+        await db.insert(schema.dailyChallengeScores).values({ userId, challengeDate, score });
+      } catch (err: unknown) {
+        if ((err as { code?: string })?.code !== "ER_DUP_ENTRY") throw err;
+      }
+    }
+  }
+
+  async getDailyLeaderboard(challengeDate: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> {
+    const db = await this.getDb();
+    const rows = await db.select({
+      userId: schema.dailyChallengeScores.userId,
+      score: schema.dailyChallengeScores.score,
+      playerName: schema.users.name,
+      avatarUrl: schema.users.avatarUrl,
+    })
+      .from(schema.dailyChallengeScores)
+      .innerJoin(schema.users, eq(schema.dailyChallengeScores.userId, schema.users.id))
+      .where(eq(schema.dailyChallengeScores.challengeDate, challengeDate))
+      .orderBy(desc(schema.dailyChallengeScores.score))
+      .limit(20);
+
+    const entries = rows.map((r, i) => ({
+      rank: i + 1,
+      userId: r.userId,
+      playerName: r.playerName,
+      avatarUrl: r.avatarUrl || null,
+      score: r.score,
+    }));
+
+    let myRank: number | undefined;
+    let myScore: number | undefined;
+    if (requestingUserId) {
+      const myEntry = entries.find(e => e.userId === requestingUserId);
+      if (myEntry) {
+        myRank = myEntry.rank;
+        myScore = myEntry.score;
+      } else {
+        const myRow = await db.select().from(schema.dailyChallengeScores)
+          .where(and(eq(schema.dailyChallengeScores.userId, requestingUserId), eq(schema.dailyChallengeScores.challengeDate, challengeDate)))
+          .limit(1);
+        if (myRow[0]) {
+          const countAbove = await db.select({ cnt: sql<number>`count(*)` }).from(schema.dailyChallengeScores)
+            .where(and(eq(schema.dailyChallengeScores.challengeDate, challengeDate), sql`${schema.dailyChallengeScores.score} > ${myRow[0].score}`));
+          myRank = (Number(countAbove[0]?.cnt) || 0) + 1;
+          myScore = myRow[0].score;
+        }
+      }
+    }
+    return { entries, myRank, myScore };
+  }
+
   private mapDbRowToComment(r: typeof schema.comments.$inferSelect, user?: { id: number; name: string; avatarUrl: string | null }): Comment {
     return {
       id: r.id,
