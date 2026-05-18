@@ -1011,6 +1011,30 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/users/:id/streak", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) return res.status(400).json({ error: "Invalid user ID" });
+      const streak = await storage.getUserStreak(userId);
+      res.json(streak || { currentStreak: 0, longestStreak: 0, lastPlayedDate: null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch streak" });
+    }
+  });
+
+  app.get("/api/streaks/batch", async (req, res) => {
+    try {
+      const raw = req.query.userIds as string;
+      if (!raw) return res.json({});
+      const userIds = raw.split(",").map(Number).filter(n => !isNaN(n) && n > 0);
+      if (userIds.length === 0) return res.json({});
+      const batch = await storage.getStreakBatch(userIds);
+      res.json(batch);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch streaks" });
+    }
+  });
+
   app.get("/api/user/achievements", requireAuth, async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
     // try {
@@ -1058,6 +1082,15 @@ export async function registerRoutes(
     if (typeof raw === "string" && VALID_TIME_FILTERS.has(raw) && raw !== "all") return raw;
     return undefined;
   }
+
+  app.get("/api/leaderboard/streaks", async (req, res) => {
+    try {
+      const streaks = await storage.getTopStreaks(50);
+      res.json(streaks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch streak leaderboard" });
+    }
+  });
 
   app.get("/api/leaderboard", async (req, res) => {
     // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---

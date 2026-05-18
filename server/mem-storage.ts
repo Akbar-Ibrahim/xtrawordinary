@@ -911,6 +911,26 @@ export class MemStorage implements IStorage {
     return streak;
   }
 
+  async getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
+    const results: Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }> = [];
+    for (const [uid, streak] of this.userStreaks.entries()) {
+      if (streak.currentStreak > 0) {
+        const u = this.users.get(uid);
+        if (u) results.push({ userId: uid, name: u.name, avatarUrl: u.avatarUrl ?? null, currentStreak: streak.currentStreak, longestStreak: streak.longestStreak });
+      }
+    }
+    return results.sort((a, b) => b.currentStreak - a.currentStreak).slice(0, limit);
+  }
+
+  async getStreakBatch(userIds: number[]): Promise<Record<number, number>> {
+    const result: Record<number, number> = {};
+    for (const id of userIds) {
+      const streak = this.userStreaks.get(id);
+      result[id] = streak?.currentStreak ?? 0;
+    }
+    return result;
+  }
+
   async getUserAchievements(userId: number): Promise<UserAchievement[]> {
     return this.userAchievements.filter(a => a.userId === userId);
   }

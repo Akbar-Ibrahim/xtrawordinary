@@ -264,12 +264,9 @@ when the user submits game results.
 
 SUGGESTIONS / NICE-TO-HAVES:
 - Streak shield (paid feature): protect against one missed day per month
-- Streak leaderboard: who has the longest current streak globally
 - Streak recovery: if you miss a day, a grace period (e.g. 2-hour window
   after midnight) before the streak resets
 - "Streak at risk" push notification (if notifications are ever added)
-- Visual streak flame on leaderboard entries
-- Friends streak comparison: "Alice has a 14-day streak, you have 9"
 
 
 ========================================================================

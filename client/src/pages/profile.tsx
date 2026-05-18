@@ -146,7 +146,17 @@ export default function Profile() {
 
   const { data: ownStreak } = useQuery<{ currentStreak: number; longestStreak: number; lastPlayedDate: string | null }>({
     queryKey: ["/api/user/streak"],
-    enabled: isOwnProfile && isAuthenticated,
+    enabled: isAuthenticated,
+  });
+
+  const { data: viewedStreak } = useQuery<{ currentStreak: number; longestStreak: number; lastPlayedDate: string | null }>({
+    queryKey: ["/api/users", userId, "streak"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/streak`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !isOwnProfile && userId > 0,
   });
 
   const { data: guildWarsChampionships = [] } = useQuery<Array<{
@@ -586,6 +596,28 @@ export default function Profile() {
               </div>
 
               <TabsContent value="stats" className="mt-4">
+                {!isOwnProfile && viewedStreak && (viewedStreak.currentStreak > 0 || viewedStreak.longestStreak > 0) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 mb-4" data-testid="card-streak-comparison">
+                    <Flame className="h-5 w-5 text-orange-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Daily Streak</p>
+                      <p className="font-bold text-orange-600 dark:text-orange-400" data-testid="text-viewed-streak">
+                        {profile.user.name.split(" ")[0]} · {viewedStreak.currentStreak} {viewedStreak.currentStreak === 1 ? "day" : "days"}
+                      </p>
+                      {isAuthenticated && ownStreak && (
+                        <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-own-streak-comparison">
+                          {ownStreak.currentStreak > 0
+                            ? `You · ${ownStreak.currentStreak} ${ownStreak.currentStreak === 1 ? "day" : "days"}`
+                            : "You don't have an active streak yet"}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground">Best</p>
+                      <p className="font-semibold text-sm" data-testid="text-viewed-longest-streak">{viewedStreak.longestStreak}d</p>
+                    </div>
+                  </div>
+                )}
                 {isOwnProfile && ownStreak && (ownStreak.currentStreak > 0 || ownStreak.longestStreak > 0) && (
                   <div className="flex items-center gap-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 mb-4" data-testid="card-streak">
                     <div className="flex items-center gap-2 flex-1">

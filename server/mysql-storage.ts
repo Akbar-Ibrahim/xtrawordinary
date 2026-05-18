@@ -641,6 +641,36 @@ export class MySQLStorage implements IStorage {
     return { id: result[0].insertId, userId, currentStreak, longestStreak, lastPlayedDate };
   }
 
+  async getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
+    const db = await this.getDb();
+    const rows = await db
+      .select({
+        userId: schema.userStreaks.userId,
+        name: schema.users.name,
+        avatarUrl: schema.users.avatarUrl,
+        currentStreak: schema.userStreaks.currentStreak,
+        longestStreak: schema.userStreaks.longestStreak,
+      })
+      .from(schema.userStreaks)
+      .innerJoin(schema.users, eq(schema.userStreaks.userId, schema.users.id))
+      .where(sql`${schema.userStreaks.currentStreak} > 0`)
+      .orderBy(desc(schema.userStreaks.currentStreak))
+      .limit(limit);
+    return rows.map(r => ({ userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, currentStreak: r.currentStreak, longestStreak: r.longestStreak }));
+  }
+
+  async getStreakBatch(userIds: number[]): Promise<Record<number, number>> {
+    if (userIds.length === 0) return {};
+    const db = await this.getDb();
+    const rows = await db
+      .select({ userId: schema.userStreaks.userId, currentStreak: schema.userStreaks.currentStreak })
+      .from(schema.userStreaks)
+      .where(inArray(schema.userStreaks.userId, userIds));
+    const result: Record<number, number> = {};
+    for (const row of rows) result[row.userId] = row.currentStreak;
+    return result;
+  }
+
   async getUserAchievements(userId: number): Promise<UserAchievement[]> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.userAchievements).where(eq(schema.userAchievements.userId, userId));

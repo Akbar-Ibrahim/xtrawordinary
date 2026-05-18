@@ -17,6 +17,129 @@ import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
 type TimeFilter = "all" | "today" | "week";
 type LeaderboardView = "global" | "friends";
 
+type StreakEntry = { userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number };
+
+function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth>["user"]; onSignIn: () => void }) {
+  const { data: entries = [], isLoading } = useQuery<StreakEntry[]>({
+    queryKey: ["/api/leaderboard/streaks"],
+    queryFn: async () => {
+      const res = await fetch("/api/leaderboard/streaks");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-no-streaks">
+        <Flame className="h-12 w-12 mx-auto mb-4 opacity-30" />
+        <p>No active streaks yet. Start playing daily to build yours!</p>
+        {!user && (
+          <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-streaks">
+            <LogIn className="h-4 w-4" /> Sign In
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const userInList = user ? entries.some(e => e.userId === user.id) : false;
+  const myEntry = user ? entries.find(e => e.userId === user.id) : undefined;
+
+  return (
+    <div className="space-y-2">
+      {entries.map((entry, index) => {
+        const isCurrentUser = user && entry.userId === user.id;
+        const RankIcon = index < 3 ? RANK_ICONS[index] : null;
+        const rankColor = index < 3 ? RANK_COLORS[index] : "";
+        return (
+          <motion.div
+            key={entry.userId}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05 }}
+            className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+              isCurrentUser ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
+            }`}
+            data-testid={`row-streak-${index}`}
+          >
+            <div className="w-8 text-center font-bold">
+              {RankIcon ? (
+                <RankIcon className={`h-5 w-5 mx-auto ${rankColor}`} />
+              ) : (
+                <span className="text-muted-foreground">{index + 1}</span>
+              )}
+            </div>
+            <Link href={`/profile/${entry.userId}`}>
+              <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
+            </Link>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Link href={`/profile/${entry.userId}`}>
+                  <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-streak-player-${index}`}>
+                    {entry.name}
+                  </span>
+                </Link>
+                {isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
+              </div>
+              <span className="text-xs text-muted-foreground">Best: {entry.longestStreak}d</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-right">
+              <Flame className="h-4 w-4 text-orange-500 shrink-0" />
+              <span className="font-bold text-lg text-orange-600 dark:text-orange-400" data-testid={`text-streak-days-${index}`}>
+                {entry.currentStreak}
+              </span>
+              <span className="text-xs text-muted-foreground">days</span>
+            </div>
+          </motion.div>
+        );
+      })}
+
+      {user && !userInList && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20 border-dashed mt-2"
+          data-testid="banner-my-streak"
+        >
+          <div className="w-8" />
+          <UserAvatar name={user.name} avatarUrl={user.avatarUrl ?? null} className="w-7 h-7 text-[10px]" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium truncate">{user.name}</span>
+              <Badge variant="secondary" className="text-xs">You</Badge>
+            </div>
+            <span className="text-xs text-muted-foreground">No active streak yet</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Flame className="h-4 w-4 text-muted-foreground" />
+            <span className="font-bold text-lg text-muted-foreground">0</span>
+            <span className="text-xs text-muted-foreground">days</span>
+          </div>
+        </motion.div>
+      )}
+
+      {!user && (
+        <div className="mt-4 p-3 rounded-lg bg-muted/50 text-center space-y-2" data-testid="banner-signin-streak-board">
+          <p className="text-sm text-muted-foreground">Sign in to track your streak and appear here!</p>
+          <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-streak-banner">
+            <LogIn className="h-4 w-4" /> Sign In
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const RANK_ICONS = [Crown, Medal, Award];
 const RANK_COLORS = ["text-yellow-500", "text-gray-400", "text-amber-600"];
 
@@ -189,6 +312,18 @@ function LeaderboardEntries({
   const isLoading = view === "global" ? globalLoading : friendsLoading;
   const entries = view === "friends" ? friendEntries : globalEntries;
 
+  const batchKey = [...entries.map(e => e.userId)].sort((a, b) => a - b).join(",");
+  const { data: streakMap = {} } = useQuery<Record<string, number>>({
+    queryKey: ["/api/streaks/batch", batchKey],
+    queryFn: async () => {
+      if (!batchKey) return {};
+      const res = await fetch(`/api/streaks/batch?userIds=${batchKey}`);
+      return res.json();
+    },
+    enabled: entries.length > 0,
+    staleTime: 60_000,
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -277,6 +412,11 @@ function LeaderboardEntries({
                   </Link>
                   {isCurrentUser && (
                     <Badge variant="secondary" className="text-xs" data-testid="badge-you">You</Badge>
+                  )}
+                  {(streakMap[String(entry.userId)] ?? 0) > 0 && (
+                    <span title={`${streakMap[String(entry.userId)]}-day streak`} className="flex items-center">
+                      <Flame className="h-3.5 w-3.5 text-orange-500" />
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -445,6 +585,18 @@ function MobileGameStrip({
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1" data-testid="mobile-game-strip">
       <button
+        onClick={() => onSelect("streaks")}
+        data-testid="strip-game-streaks"
+        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
+          selectedGame === "streaks"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-background text-muted-foreground border-border hover:text-foreground"
+        }`}
+      >
+        <Flame className="h-3 w-3" />
+        Streaks
+      </button>
+      <button
         onClick={() => onSelect("overall")}
         data-testid="strip-game-overall"
         className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
@@ -509,8 +661,11 @@ export default function Leaderboard() {
   const hasModes = !!(selectedGameObj?.modes && selectedGameObj.modes.length > 0);
   const showSurvivalToggle = !!(selectedGameObj?.hasSurvival);
 
+  const isStreaks = selectedGame === "streaks";
   const cardTitle = selectedGame === "overall"
     ? "Overall Rankings"
+    : isStreaks
+    ? "Streak Rankings"
     : selectedGameObj?.name || "Rankings";
 
   function handleGameChange(slug: string) {
@@ -581,6 +736,14 @@ export default function Leaderboard() {
                 </div>
               </div>
               <GameSidebarItem
+                slug="streaks"
+                label="Streaks"
+                icon="Flame"
+                color="hsl(24, 95%, 53%)"
+                isActive={selectedGame === "streaks"}
+                onClick={() => handleGameChange("streaks")}
+              />
+              <GameSidebarItem
                 slug="overall"
                 label="Overall"
                 isActive={selectedGame === "overall"}
@@ -606,7 +769,7 @@ export default function Leaderboard() {
 
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-4">
-            {showSurvivalToggle && (
+            {showSurvivalToggle && !isStreaks && (
               <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
             )}
 
@@ -639,6 +802,11 @@ export default function Leaderboard() {
                         {selectedGameObj.playCount.toLocaleString()} total {selectedGameObj.playCount === 1 ? "play" : "plays"}
                       </span>
                     </div>
+                  ) : isStreaks ? (
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-5 w-5 text-orange-500" />
+                      <span>{cardTitle}</span>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <Trophy className="h-5 w-5 text-yellow-500" />
@@ -648,16 +816,20 @@ export default function Leaderboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  {view === "global" && (
-                    <TimeFilterBar value={timeFilter} onChange={setTimeFilter} />
-                  )}
-                  {user && hasFriends && (
-                    <ViewToggle view={view} onChange={setView} />
-                  )}
-                </div>
+                {!isStreaks && (
+                  <div className="flex flex-wrap items-center gap-3">
+                    {view === "global" && (
+                      <TimeFilterBar value={timeFilter} onChange={setTimeFilter} />
+                    )}
+                    {user && hasFriends && (
+                      <ViewToggle view={view} onChange={setView} />
+                    )}
+                  </div>
+                )}
 
-                {hasModes ? (
+                {isStreaks ? (
+                  <StreakLeaderboard user={user} onSignIn={() => setAuthOpen(true)} />
+                ) : hasModes ? (
                   <ModeTabs
                     key={selectedGame}
                     modes={selectedGameObj!.modes!}
