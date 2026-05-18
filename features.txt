@@ -157,7 +157,6 @@ SUGGESTIONS / NICE-TO-HAVES FOR GAMES:
 - In-game tutorial/walkthrough for first play (especially Shell Words,
   Word Bloom, Word Stretch which have complex mechanics)
 - Replay mode: after finishing, show all valid answers the player missed
-- Word Ladder: show the optimal path after finishing
 - Word Sweep: show a heat map of found vs missed words on the grid
 - Ladder Rush: ghost timer showing the player's previous best pace
 - Shell Words / Deep Shell Words: hint that reveals the boundary letters
@@ -269,7 +268,7 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Streak recovery: if you miss a day, a grace period (e.g. 2-hour window
   after midnight) before the streak resets
 - "Streak at risk" push notification (if notifications are ever added)
-- Visual streak flame on the user's profile and leaderboard entry
+- Visual streak flame on leaderboard entries
 - Friends streak comparison: "Alice has a 14-day streak, you have 9"
 
 
@@ -441,7 +440,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Round announcement: admin posts a message when starting a round
   (already partially in group_activity)
 - Pinned announcement on group page for important news (column exists)
-- Group discovery: a public groups browse page for featured/public groups
 - Group tags: categorize groups (school, family, competitive, casual)
 - Per-member stats within a group: rounds played, average score, rank
 - Group chat / comment thread per round
@@ -513,7 +511,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Mention (@username) with notification to the mentioned user
 - Pagination or infinite scroll for games with many comments
 - Nested replies beyond one level (careful — can get complex)
-- Comment count shown on game card on the homepage
 - Spam filtering: rate limit comments per user per hour
 
 
@@ -541,8 +538,6 @@ The LikeButton component handles optimistic updates and renders in two
 sizes: default (game detail page) and small (inline on comments).
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Like count shown on game cards on the homepage (social proof)
-- "Most liked" sort option on the game library homepage
 - Notification when your comment gets a like
 - Reaction variety: expand beyond ❤️ to 👍 🔥 😂 😮 (optional complexity)
 - Like history page: see everything you've liked
@@ -569,8 +564,6 @@ MySQL storage uses optimised SQL aggregations for admin stats rather
 than loading all data into memory.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Game management: toggle game isActive flag from dashboard (show/hide
-  games from homepage without code changes)
 - Announcement system: post a sitewide banner (e.g. maintenance notice,
   new game launch)
 - Revenue dashboard tab (once Stripe is integrated)
