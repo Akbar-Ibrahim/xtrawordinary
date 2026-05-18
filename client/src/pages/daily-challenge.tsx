@@ -128,9 +128,8 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <WordSweepGame mode={sweepMode} groupSeed={seed} locked />;
     }
     case "word-chain": {
-      const variation = ((seed % 2) + 1) as 1 | 2;
       const level = ((seed >> 2) % 2 + 1) as 1 | 2;
-      return <WordChainGame initialChallenge={{ variation, level }} locked />;
+      return <WordChainGame initialChallenge={{ variation: 1, level }} locked />;
     }
     case "word-split": {
       const difficulties = ["short", "medium", "long"] as const;

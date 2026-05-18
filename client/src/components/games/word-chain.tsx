@@ -82,12 +82,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
 
   const getConstraint = useCallback(() => {
     if (!currentWord) return null;
-    if (variation === 1) {
-      return { startsWith: currentWord[currentWord.length - 1] };
-    } else {
-      return { startsWith: currentWord.slice(-2) };
-    }
-  }, [currentWord, variation]);
+    return { startsWith: currentWord[currentWord.length - 1] };
+  }, [currentWord]);
 
   const validateUserWord = useCallback((word: string): { valid: boolean; message: string } => {
     const upperWord = word.toUpperCase();
@@ -249,7 +245,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       const newUsedWords = new Set(newUsedWordsArray);
       setUsedWords(newUsedWords);
       setChainHistory(prev => [...prev, { word: upperWord, isPlayer: true }]);
-      setScore((prev) => prev + 50 + level * 25 + variation * 10);
+      setScore((prev) => prev + 50 + level * 25);
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
       setUserInput("");
@@ -328,7 +324,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <Link className="h-12 w-12 mx-auto text-primary" />
             <h3 className="text-xl font-bold">Choose Your Challenge</h3>
             <p className="text-muted-foreground text-sm">
-              Select a difficulty and variation to start the word chain!
+              Select a level to start the word chain!
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
               {SURVIVAL_TIME_OPTIONS.map(opt => (
@@ -346,31 +342,23 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <p className="text-xs text-muted-foreground">{survivalTime}s per word — timer resets on each correct answer!</p>
           </div>
           
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <h4 className="font-semibold">Variation 1: Last Letter</h4>
-              <p className="text-sm text-muted-foreground">Use the last letter of our word to form yours</p>
-              <div className="flex gap-2">
-                <Button onClick={() => startGame(1, 1)} className="flex-1" data-testid="button-v1-l1">
-                  Level 1
-                </Button>
-                <Button onClick={() => startGame(1, 2)} variant="secondary" className="flex-1" data-testid="button-v1-l2">
-                  Level 2 (Match Length)
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h4 className="font-semibold">Variation 2: Last Two Letters</h4>
-              <p className="text-sm text-muted-foreground">Use the last two letters of our word to form yours</p>
-              <div className="flex gap-2">
-                <Button onClick={() => startGame(2, 1)} className="flex-1" data-testid="button-v2-l1">
-                  Level 1
-                </Button>
-                <Button onClick={() => startGame(2, 2)} variant="secondary" className="flex-1" data-testid="button-v2-l2">
-                  Level 2 (Match Length)
-                </Button>
-              </div>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Start your word with the <strong>last letter</strong> of the previous word
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={() => startGame(1, 1)} className="flex-1 h-auto py-3" data-testid="button-level-1">
+                <div className="text-center">
+                  <div className="font-semibold">Level 1</div>
+                  <div className="text-xs opacity-75 mt-0.5">Last letter only</div>
+                </div>
+              </Button>
+              <Button onClick={() => startGame(1, 2)} variant="secondary" className="flex-1 h-auto py-3" data-testid="button-level-2">
+                <div className="text-center">
+                  <div className="font-semibold">Level 2</div>
+                  <div className="text-xs opacity-75 mt-0.5">+ Match word length</div>
+                </div>
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -439,14 +427,11 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-2">
                   <Badge variant="secondary" className="text-xs">
-                    Variation {variation} - Level {level}
-                    {level === 2 && " (Match Length)"}
+                    Level {level}{level === 2 && " · Match Length"}
                   </Badge>
                   <p className="text-sm text-muted-foreground">
-                    {variation === 1 
-                      ? `Start with '${currentWord[currentWord.length - 1]}'`
-                      : `Start with '${currentWord.slice(-2)}'`}
-                    {level === 2 && ` (${currentWord.length} letters)`}
+                    Start with '{currentWord[currentWord.length - 1]}'
+                    {level === 2 && ` · ${currentWord.length} letters`}
                   </p>
                   <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                 </div>
@@ -462,9 +447,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                       <div
                         key={idx}
                         className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-lg font-bold rounded-lg ${
-                          variation === 1 && idx === currentWord.length - 1
-                            ? "bg-primary text-primary-foreground"
-                            : variation === 2 && idx >= currentWord.length - 2
+                          idx === currentWord.length - 1
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}

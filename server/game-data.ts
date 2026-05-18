@@ -883,12 +883,10 @@ export const gamesData: Game[] = [
     slug: "word-chain",
     name: "Word Chain",
     description: "Create words using the ending letters of the previous word in a back-and-forth chain.",
-    longDescription: "Engage in a word chain battle! We give you a word, and you must form a new word starting with its last letter (or last two letters in advanced modes). The chain goes back and forth - we respond with our word, and you counter. Complete 100 words per level to advance! Quick thinking required as the timer runs for each word.",
+    longDescription: "Engage in a word chain battle! We give you a word, and you must form a new word starting with its last letter. The chain goes back and forth - we respond with our word, and you counter. Complete 100 words per level to advance! Quick thinking required as the timer runs for each word.",
     rules: [
-      "Variation 1, Level 1: Your word must start with the last letter of our word",
-      "Variation 1, Level 2: Same as above, plus your word must match our word's length",
-      "Variation 2, Level 1: Your word must start with the last TWO letters of our word",
-      "Variation 2, Level 2: Same as above, plus your word must match our word's length",
+      "Level 1: Your word must start with the last letter of our word",
+      "Level 2: Same as Level 1, plus your word must match our word's length",
       "Complete 100 valid words per level to advance",
       "Beat the timer for each word or lose!"
     ],
