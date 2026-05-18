@@ -2578,6 +2578,15 @@ export async function registerRoutes(
     }
   };
 
+  app.get("/api/achievements/rarity", async (_req, res) => {
+    try {
+      const rarities = await storage.getAchievementRarities();
+      res.json(rarities);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch achievement rarities" });
+    }
+  });
+
   app.get("/api/comments", fetchComments);
   app.get("/api/comments/:targetType/:targetId", fetchComments);
 
@@ -2654,6 +2663,23 @@ export async function registerRoutes(
       res.status(201).json(comment);
     } catch {
       res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.patch("/api/comments/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
+      const { content } = req.body;
+      if (!content || typeof content !== "string" || !content.trim() || content.length > 500) {
+        return res.status(400).json({ error: "Content must be 1–500 characters" });
+      }
+      const updated = await storage.updateComment(id, userId, content.trim());
+      if (!updated) return res.status(403).json({ error: "Cannot edit this comment" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update comment" });
     }
   });
 

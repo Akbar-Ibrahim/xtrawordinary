@@ -439,6 +439,7 @@ export type Comment = {
   content: string;
   isDeleted: boolean;
   createdAt: string;
+  updatedAt?: string | null;
   user?: { id: number; name: string; avatarUrl: string | null };
   replies?: Comment[];
   likeCount?: number;
@@ -454,6 +455,7 @@ export const commentSchema: z.ZodType<Comment> = z.object({
   content: z.string(),
   isDeleted: z.boolean(),
   createdAt: z.string(),
+  updatedAt: z.string().nullable().optional(),
   user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).optional(),
   replies: z.array(z.lazy(() => commentSchema)).optional(),
   likeCount: z.number().optional(),

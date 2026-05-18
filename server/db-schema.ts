@@ -268,6 +268,7 @@ export const comments = mysqlTable("comments", {
   content: text("content").notNull(),
   isDeleted: boolean("is_deleted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at"),
 }, (table) => [
   index("cmt_target_idx").on(table.targetType, table.targetId),
   index("cmt_user_idx").on(table.userId),

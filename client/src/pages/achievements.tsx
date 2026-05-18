@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,19 @@ export default function Achievements() {
     });
   }, []);
 
+  const { data: rarities = {} } = useQuery<Record<string, number>>({
+    queryKey: ["/api/achievements/rarity"],
+  });
+
   const unlocked = achievements.filter((a) => a.unlockedAt !== null);
   const locked = achievements.filter((a) => a.unlockedAt === null);
+
+  function rarityLabel(id: string): string | null {
+    const pct = rarities[id];
+    if (pct == null) return null;
+    if (pct < 1) return "< 1% of players";
+    return `${pct}% of players`;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -49,6 +61,7 @@ export default function Achievements() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {unlocked.map((achievement, idx) => {
                 const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[achievement.icon] || Award;
+                const rarity = rarityLabel(achievement.id);
                 return (
                   <motion.div
                     key={achievement.id}
@@ -72,11 +85,18 @@ export default function Achievements() {
                             <p className="text-sm text-muted-foreground mt-0.5">
                               {achievement.description}
                             </p>
-                            {achievement.unlockedAt && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {new Date(achievement.unlockedAt).toLocaleDateString()}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {achievement.unlockedAt && (
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(achievement.unlockedAt).toLocaleDateString()}
+                                </p>
+                              )}
+                              {rarity && (
+                                <span className="text-xs text-primary/70 font-medium" data-testid={`text-rarity-${achievement.id}`}>
+                                  {rarity}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </CardContent>
@@ -92,27 +112,35 @@ export default function Achievements() {
           <div>
             <h2 className="text-lg font-semibold mb-4">Locked</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {locked.map((achievement) => (
-                <Card
-                  key={achievement.id}
-                  className="opacity-60"
-                  data-testid={`card-achievement-locked-${achievement.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted shrink-0">
-                        <Lock className="h-5 w-5 text-muted-foreground" />
+              {locked.map((achievement) => {
+                const rarity = rarityLabel(achievement.id);
+                return (
+                  <Card
+                    key={achievement.id}
+                    className="opacity-60"
+                    data-testid={`card-achievement-locked-${achievement.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted shrink-0">
+                          <Lock className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold">{achievement.title}</h3>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            {achievement.description}
+                          </p>
+                          {rarity && (
+                            <span className="text-xs text-muted-foreground mt-1 block" data-testid={`text-rarity-locked-${achievement.id}`}>
+                              {rarity}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold">{achievement.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          {achievement.description}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}

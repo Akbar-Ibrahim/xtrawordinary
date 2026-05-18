@@ -163,10 +163,13 @@ export interface IStorage {
   createComment(comment: InsertComment): Promise<Comment>;
   getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]>;
   getCommentById(id: number): Promise<Comment | null>;
+  updateComment(id: number, userId: number, content: string): Promise<Comment | null>;
   deleteComment(id: number, userId: number, isAdmin?: boolean): Promise<boolean>;
   reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport>;
   getCommentReports(): Promise<CommentReport[]>;
   deleteCommentAdmin(id: number): Promise<void>;
+
+  getAchievementRarities(): Promise<Record<string, number>>;
 
   // Likes
   toggleLike(userId: number, targetType: LikeTargetType, targetId: string): Promise<{ liked: boolean; count: number }>;

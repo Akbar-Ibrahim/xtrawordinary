@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/user-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn } from "lucide-react";
+import { MessageSquare, Trash2, Flag, Reply, ChevronDown, ChevronUp, LogIn, Pencil } from "lucide-react";
 import type { Comment, CommentTargetType } from "@shared/schema";
 
 type SortOrder = "newest" | "oldest" | "most-liked";
@@ -98,6 +98,29 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  const editMutation = useMutation({
+    mutationFn: async ({ id, content }: { id: number; content: string }) => {
+      const res = await apiRequest("PATCH", `/api/comments/${id}`, { content });
+      return res.json();
+    },
+    onMutate: async ({ id, content }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<Comment[]>(queryKey);
+      queryClient.setQueryData<Comment[]>(queryKey, (old = []) =>
+        old.map(c => {
+          if (c.id === id) return { ...c, content, updatedAt: new Date().toISOString() };
+          return { ...c, replies: (c.replies ?? []).map(r => r.id === id ? { ...r, content, updatedAt: new Date().toISOString() } : r) };
+        })
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+      toast({ title: "Failed to edit comment", variant: "destructive" });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+  });
+
   const reportMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: number; reason: string }) =>
       apiRequest("POST", `/api/comments/${id}/report`, { reason }),
@@ -181,10 +204,12 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
                   currentUserId={user?.id}
                   isAdmin={user?.isAdmin}
                   onDelete={(id) => deleteMutation.mutate(id)}
+                  onEdit={(id, content) => editMutation.mutate({ id, content })}
                   onReport={(id, reason) => reportMutation.mutate({ id, reason })}
                   onReply={(content, parentId) => createMutation.mutate({ content, parentId })}
                   isAuthenticated={isAuthenticated}
                   isDeleting={deleteMutation.isPending}
+                  isEditing={editMutation.isPending}
                   isReplying={createMutation.isPending}
                 />
               ))}
@@ -258,10 +283,12 @@ function CommentItem({
   currentUserId,
   isAdmin,
   onDelete,
+  onEdit,
   onReport,
   onReply,
   isAuthenticated,
   isDeleting,
+  isEditing,
   isReplying,
   isReply = false,
 }: {
@@ -269,19 +296,30 @@ function CommentItem({
   currentUserId?: number;
   isAdmin?: boolean;
   onDelete: (id: number) => void;
+  onEdit: (id: number, content: string) => void;
   onReport: (id: number, reason: string) => void;
   onReply: (content: string, parentId: number) => void;
   isAuthenticated: boolean;
   isDeleting: boolean;
+  isEditing: boolean;
   isReplying: boolean;
   isReply?: boolean;
 }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editContent, setEditContent] = useState("");
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportReason, setReportReason] = useState("");
 
   const canDelete = !!currentUserId && (currentUserId === comment.userId || isAdmin);
+  const canEdit = !!currentUserId && currentUserId === comment.userId && !comment.isDeleted;
   const canReport = !!currentUserId && currentUserId !== comment.userId && isAuthenticated;
+
+  function openEdit() {
+    setEditContent(comment.content);
+    setShowEditForm(true);
+    setShowReplyForm(false);
+  }
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -311,12 +349,46 @@ function CommentItem({
                 {comment.user?.name ?? "Unknown"}
               </span>
               <span className="text-xs text-muted-foreground">{timeAgo(comment.createdAt)}</span>
+              {comment.updatedAt && !comment.isDeleted && (
+                <span className="text-xs text-muted-foreground italic" data-testid={`comment-edited-${comment.id}`}>(edited)</span>
+              )}
               {comment.isDeleted && (
                 <span className="text-xs text-muted-foreground italic">(deleted)</span>
               )}
             </div>
             {comment.isDeleted ? (
               <p className="text-sm text-muted-foreground italic">[deleted]</p>
+            ) : showEditForm ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={editContent}
+                  onChange={e => setEditContent(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                  maxLength={500}
+                  data-testid={`input-edit-comment-${comment.id}`}
+                />
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs text-muted-foreground ${editContent.length > 450 ? "text-orange-500" : ""}`}>
+                    {editContent.length}/500
+                  </span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setShowEditForm(false)} data-testid={`button-cancel-edit-${comment.id}`}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={isEditing || !editContent.trim() || editContent.length > 500 || editContent.trim() === comment.content}
+                      onClick={() => {
+                        onEdit(comment.id, editContent.trim());
+                        setShowEditForm(false);
+                      }}
+                      data-testid={`button-save-edit-${comment.id}`}
+                    >
+                      {isEditing ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <p className="text-sm whitespace-pre-wrap break-words" data-testid={`comment-content-${comment.id}`}>
                 {comment.content}
@@ -333,6 +405,16 @@ function CommentItem({
                 initialLikedByMe={comment.likedByMe ?? false}
                 size="sm"
               />
+              {canEdit && (
+                <button
+                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                  onClick={openEdit}
+                  data-testid={`button-edit-comment-${comment.id}`}
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit
+                </button>
+              )}
               {isAuthenticated && !isReply && (
                 <button
                   className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
@@ -391,10 +473,12 @@ function CommentItem({
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                   onReport={onReport}
                   onReply={onReply}
                   isAuthenticated={isAuthenticated}
                   isDeleting={isDeleting}
+                  isEditing={isEditing}
                   isReplying={isReplying}
                   isReply
                 />

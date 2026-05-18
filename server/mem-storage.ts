@@ -1415,6 +1415,14 @@ export class MemStorage implements IStorage {
     return c ? this.commentToPublic(c) : null;
   }
 
+  async updateComment(id: number, userId: number, content: string): Promise<Comment | null> {
+    const c = this.commentsStore.find(c => c.id === id);
+    if (!c || c.isDeleted || c.userId !== userId) return null;
+    c.content = content;
+    c.updatedAt = new Date().toISOString();
+    return this.commentToPublic(c);
+  }
+
   async deleteComment(id: number, userId: number, isAdmin = false): Promise<boolean> {
     const c = this.commentsStore.find(c => c.id === id);
     if (!c) return false;
@@ -1422,6 +1430,20 @@ export class MemStorage implements IStorage {
     c.isDeleted = true;
     c.content = "";
     return true;
+  }
+
+  async getAchievementRarities(): Promise<Record<string, number>> {
+    const totalUsers = this.users.size;
+    if (totalUsers === 0) return {};
+    const counts: Record<string, number> = {};
+    for (const a of this.userAchievements) {
+      counts[a.achievementId] = (counts[a.achievementId] ?? 0) + 1;
+    }
+    const result: Record<string, number> = {};
+    for (const [id, count] of Object.entries(counts)) {
+      result[id] = Math.round((count / totalUsers) * 100 * 10) / 10;
+    }
+    return result;
   }
 
   async reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport> {

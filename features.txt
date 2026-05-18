@@ -296,7 +296,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Shareable achievement cards ("I just unlocked X on xtraWordinary!")
 - Game-specific achievement sets (e.g. Shell Words-specific badges)
 - Seasonal achievements (e.g. "Played on New Year's Day 2026")
-- Achievement rarity display: "Only 3% of players have this"
 - More achievement definitions (currently 19 — could grow to 50+)
 
 
@@ -512,7 +511,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Comment search within a game's discussion
 - Pinned comment: game creator or admin can pin an important comment
 - Mention (@username) with notification to the mentioned user
-- Comment editing (with "edited" timestamp shown)
 - Pagination or infinite scroll for games with many comments
 - Nested replies beyond one level (careful — can get complex)
 - Comment count shown on game card on the homepage

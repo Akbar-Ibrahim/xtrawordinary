@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart, Sword } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart, Sword, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 
@@ -142,6 +142,11 @@ export default function Profile() {
       return res.json();
     },
     enabled: userId > 0,
+  });
+
+  const { data: ownStreak } = useQuery<{ currentStreak: number; longestStreak: number; lastPlayedDate: string | null }>({
+    queryKey: ["/api/user/streak"],
+    enabled: isOwnProfile && isAuthenticated,
   });
 
   const { data: guildWarsChampionships = [] } = useQuery<Array<{
@@ -581,6 +586,23 @@ export default function Profile() {
               </div>
 
               <TabsContent value="stats" className="mt-4">
+                {isOwnProfile && ownStreak && (ownStreak.currentStreak > 0 || ownStreak.longestStreak > 0) && (
+                  <div className="flex items-center gap-4 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 mb-4" data-testid="card-streak">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Flame className="h-5 w-5 text-orange-500 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Daily Streak</p>
+                        <p className="font-bold text-orange-600 dark:text-orange-400" data-testid="text-current-streak">
+                          {ownStreak.currentStreak} {ownStreak.currentStreak === 1 ? "day" : "days"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground">Best streak</p>
+                      <p className="font-semibold text-sm" data-testid="text-longest-streak">{ownStreak.longestStreak}d</p>
+                    </div>
+                  </div>
+                )}
                 {profile.stats.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
                     <Gamepad2 className="h-10 w-10 mx-auto mb-3 opacity-30" />

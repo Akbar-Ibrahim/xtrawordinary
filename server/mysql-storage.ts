@@ -1362,6 +1362,7 @@ export class MySQLStorage implements IStorage {
       content: r.isDeleted ? "" : r.content,
       isDeleted: r.isDeleted,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+      updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt ? String(r.updatedAt) : null),
       user,
     };
   }
@@ -1495,9 +1496,37 @@ export class MySQLStorage implements IStorage {
     }));
   }
 
+  async updateComment(id: number, userId: number, content: string): Promise<Comment | null> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
+    if (!rows[0] || rows[0].isDeleted || rows[0].userId !== userId) return null;
+    const now = new Date();
+    await db.update(schema.comments).set({ content, updatedAt: now }).where(eq(schema.comments.id, id));
+    const updated = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    const user = userRows[0] ? { id: userRows[0].id, name: userRows[0].name, avatarUrl: userRows[0].avatarUrl || null } : undefined;
+    return this.mapDbRowToComment(updated[0], user);
+  }
+
   async deleteCommentAdmin(id: number): Promise<void> {
     const db = await this.getDb();
     await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
+  }
+
+  async getAchievementRarities(): Promise<Record<string, number>> {
+    const db = await this.getDb();
+    const [{ total }] = await db.select({ total: sql<number>`COUNT(*)` }).from(schema.users);
+    const totalUsers = Number(total);
+    if (totalUsers === 0) return {};
+    const rows = await db
+      .select({ achievementId: schema.userAchievements.achievementId, count: sql<number>`COUNT(*)` })
+      .from(schema.userAchievements)
+      .groupBy(schema.userAchievements.achievementId);
+    const result: Record<string, number> = {};
+    for (const r of rows) {
+      result[r.achievementId] = Math.round((Number(r.count) / totalUsers) * 100 * 10) / 10;
+    }
+    return result;
   }
 
   private generateShareCode(): string {
