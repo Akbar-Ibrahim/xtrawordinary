@@ -63,6 +63,7 @@ export default function Friends() {
     setActiveTab(getTabFromSearch());
   }, [location]);
 
+  const [friendSort, setFriendSort] = useState<"az" | "za">("az");
   const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
@@ -368,7 +369,28 @@ export default function Friends() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {friends.map((f) => (
+                    <div className="flex justify-end pb-1">
+                      <div className="flex rounded-md border overflow-hidden text-xs">
+                        <button
+                          onClick={() => setFriendSort("az")}
+                          className={`px-2.5 py-1 transition-colors ${friendSort === "az" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                          data-testid="button-sort-az"
+                        >
+                          A → Z
+                        </button>
+                        <button
+                          onClick={() => setFriendSort("za")}
+                          className={`px-2.5 py-1 border-l transition-colors ${friendSort === "za" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                          data-testid="button-sort-za"
+                        >
+                          Z → A
+                        </button>
+                      </div>
+                    </div>
+                    {[...friends].sort((a, b) => {
+                      const cmp = a.friendUser.name.localeCompare(b.friendUser.name);
+                      return friendSort === "za" ? -cmp : cmp;
+                    }).map((f) => (
                       <div key={f.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-friend-${f.friendUser.id}`}>
                         <Link href={`/profile/${f.friendUser.id}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
@@ -623,13 +645,29 @@ export default function Friends() {
                               </div>
                             </div>
 
-                            {!isSender && isPending && (
-                              <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
-                                <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
-                                  <Gamepad2 className="h-4 w-4 mr-1" /> Play
+                            <div className="flex flex-col gap-1.5 shrink-0">
+                              {!isSender && isPending && (
+                                <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
+                                  <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
+                                    <Gamepad2 className="h-4 w-4 mr-1" /> Play
+                                  </Button>
+                                </Link>
+                              )}
+                              {isCompleted && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const opponentId = isSender ? c.receiverId : c.senderId;
+                                    const seed = Math.floor(Math.random() * 1_000_000);
+                                    navigate(`/game/${c.gameSlug}?challenge-new=${opponentId}&seed=${seed}`);
+                                  }}
+                                  data-testid={`button-rematch-${c.id}`}
+                                >
+                                  <Swords className="h-3.5 w-3.5 mr-1" /> Rematch
                                 </Button>
-                              </Link>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       );

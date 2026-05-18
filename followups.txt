@@ -44,9 +44,6 @@
 #293 - Add per-category 'disable section' buttons to notification settings
        (One toggle to mute all Social / all Duels / all Word Wars notifications at once)
 
-#294 - Add a shortcut to notification settings from the profile settings page
-       (Button or link in the profile Settings tab pointing to /settings/notifications)
-
 ## Friend Challenges
 #310 - Let players challenge anyone, not just existing friends
        (Currently "Challenge a Friend" is hidden entirely if you have zero friends; should allow
@@ -75,8 +72,3 @@
         games before visiting each detail page. Poll /api/duels/open on a ~60s interval from
         the games list. Only show the badge for authenticated users.)
 
-## Leaderboard
-#340 - Add the game filter to the mobile leaderboard strip
-       (The desktop sidebar got a search/filter box in Task #339, but the mobile horizontal
-        pill strip was left unchanged. Adding the same quick-filter there keeps both views
-        consistent for players on smaller screens.)

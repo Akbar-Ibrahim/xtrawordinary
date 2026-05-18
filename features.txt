@@ -357,7 +357,7 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Friend request message: optional note when sending a request
 - "Friends who play this game" shown on game detail pages
 - Notification when a friend earns a new achievement
-- Friends sorted by: recent activity, name, most challenges played
+- Friends sorted by: recent activity, most challenges played
 
 
 ========================================================================
@@ -399,7 +399,6 @@ SEEDED_GAME_SLUGS in shared/schema.ts (single source of truth).
 
 SUGGESTIONS / NICE-TO-HAVES:
 - Challenge expiry: auto-cancel pending challenges after N days (e.g. 7)
-- Rematch button on completed challenge result card
 - Challenge history page (beyond the current flat list on Friends tab)
 - "Best of 3" or multi-round challenge mode
 - Challenge leaderboard: who has the best win record against whom
