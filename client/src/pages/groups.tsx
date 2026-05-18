@@ -55,6 +55,15 @@ export default function Groups() {
     return () => clearTimeout(timer);
   }, [discoverSearch]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    if (code) {
+      setJoinCode(code.toUpperCase());
+      setJoinOpen(true);
+    }
+  }, []);
+
   const { data, isLoading } = useQuery<GroupsResponse>({
     queryKey: ["/api/groups"],
   });
@@ -420,8 +429,9 @@ function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: b
   const { toast } = useToast();
 
   function copyInviteCode() {
-    navigator.clipboard.writeText(group.inviteCode);
-    toast({ title: "Invite code copied!" });
+    const url = `${window.location.origin}/groups?code=${group.inviteCode}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "Invite link copied!" });
   }
 
   return (

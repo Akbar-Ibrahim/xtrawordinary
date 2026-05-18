@@ -212,7 +212,6 @@ Each signed-in user has a public profile page at /profile/:id showing:
 Profile visibility is public — any visitor can view a profile by ID.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- "Favourite game" shown prominently on profile
 - Privacy settings: make profile private or hide specific stats
 - Activity feed: "played Word Ladder, earned X achievement" timeline
 - Follow system (lighter than friends — no mutual requirement)
@@ -241,7 +240,6 @@ across all games they've played, sorted by games played or best score.
 
 SUGGESTIONS / NICE-TO-HAVES:
 - Score trend chart over time (line graph per game)
-- Average score per game (not just best)
 - Session count vs words found ratio (words per session efficiency)
 - "Your best day" highlight (highest total score in a single day)
 - Percentile ranking: "You scored better than 78% of players today"
@@ -295,7 +293,6 @@ SUGGESTIONS / NICE-TO-HAVES:
   (e.g. Play 10 games → 50 games → 200 games)
 - Secret achievements: hidden until unlocked (adds discovery excitement)
 - Achievement points total: a score representing overall platform mastery
-- Achievement unlock notification in-app (toast + animation)
 - Shareable achievement cards ("I just unlocked X on xtraWordinary!")
 - Game-specific achievement sets (e.g. Shell Words-specific badges)
 - Seasonal achievements (e.g. "Played on New Year's Day 2026")
@@ -439,11 +436,10 @@ DB tables: groups, group_members, group_rounds, group_round_scores,
 group_round_attempts (tracks who has started a round), group_activity
 (activity feed), group_score_reactions (emoji reactions on scores).
 
-closesAt field exists on group_rounds for deadline support (UI not yet built).
+closesAt field exists on group_rounds. Admins can set a closing time when
+creating a round; the deadline date is shown on past round cards.
 
 SUGGESTIONS / NICE-TO-HAVES:
-- Round deadline UI: set a close date when creating a round so it auto-
-  locks after the date (schema already has closesAt column)
 - Round announcement: admin posts a message when starting a round
   (already partially in group_activity)
 - Pinned announcement on group page for important news (column exists)
@@ -451,7 +447,6 @@ SUGGESTIONS / NICE-TO-HAVES:
 - Group tags: categorize groups (school, family, competitive, casual)
 - Per-member stats within a group: rounds played, average score, rank
 - Group chat / comment thread per round
-- Group invite via link (shareable URL, not just code)
 - Group rounds history: archive of past rounds with full results
 - Admin tools: kick a member, transfer ownership, promote/demote admins
 - Maximum member limit per group (free vs paid tier gating)

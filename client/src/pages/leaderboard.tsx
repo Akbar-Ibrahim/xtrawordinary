@@ -540,10 +540,20 @@ export default function Leaderboard() {
 
         <PremiumBanner />
 
-        {/* Mobile: horizontal scrollable strip */}
-        <div className="md:hidden">
+        {/* Mobile: search + horizontal pill strip */}
+        <div className="md:hidden space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              value={gameFilter}
+              onChange={(e) => setGameFilter(e.target.value)}
+              placeholder="Search games…"
+              className="w-full h-8 pl-8 pr-3 text-xs rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              data-testid="input-mobile-game-filter"
+            />
+          </div>
           <MobileGameStrip
-            games={games}
+            games={filteredGames}
             selectedGame={selectedGame}
             onSelect={handleGameChange}
           />

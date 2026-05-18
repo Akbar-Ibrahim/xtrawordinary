@@ -378,6 +378,14 @@ export default function Stats() {
                                   Best: {gs.bestScore}
                                 </span>
                               </div>
+                              {gs.gamesPlayed > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <TrendingUp className="h-3.5 w-3.5 text-chart-3" />
+                                  <span className="text-sm" data-testid={`text-avg-${gs.slug}`}>
+                                    Avg: {Math.round(gs.totalScore / gs.gamesPlayed)}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1">
                                 <Target className="h-3.5 w-3.5 text-accent" />
                                 <span className="text-sm" data-testid={`text-winrate-${gs.slug}`}>

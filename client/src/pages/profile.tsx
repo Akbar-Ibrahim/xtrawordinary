@@ -589,6 +589,24 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div className="space-y-2">
+                    {(() => {
+                      const fav = profile.stats.reduce((best, s) => s.gamesPlayed > best.gamesPlayed ? s : best, profile.stats[0]);
+                      return (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20 mb-3" data-testid="card-favourite-game">
+                          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Trophy className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Favourite Game</p>
+                            <p className="font-semibold truncate" data-testid="text-favourite-game-name">{formatGameName(fav.gameSlug)}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-primary" data-testid="text-favourite-game-plays">{fav.gamesPlayed}</p>
+                            <p className="text-xs text-muted-foreground">plays</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {profile.stats.map((stat) => {
                       return (
                         <div key={stat.gameSlug} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-game-stat-${stat.gameSlug}`}>

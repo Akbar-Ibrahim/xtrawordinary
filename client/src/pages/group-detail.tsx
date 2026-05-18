@@ -577,8 +577,9 @@ export default function GroupDetail() {
 
   function copyInviteCode() {
     if (!data?.group.inviteCode) return;
-    navigator.clipboard.writeText(data.group.inviteCode);
-    toast({ title: "Invite code copied!" });
+    const url = `${window.location.origin}/groups?code=${data.group.inviteCode}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "Invite link copied!" });
   }
 
   function toggleEditTag(tag: string) {
@@ -898,7 +899,10 @@ export default function GroupDetail() {
                                 <div>
                                   <p className="font-medium">{GAME_NAMES[round.gameSlug] || round.gameSlug}</p>
                                   {(() => { const s = getLfLettersSummary(round); return s ? <p className="text-xs text-primary/70" data-testid={`text-round-letters-${round.id}`}>Letters: {s}</p> : null; })()}
-                                  <p className="text-xs text-muted-foreground">{new Date(round.createdAt).toLocaleDateString()}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(round.createdAt).toLocaleDateString()}
+                                    {round.closesAt && <> · Closed {new Date(round.closesAt).toLocaleDateString()}</>}
+                                  </p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Badge variant="outline">Closed</Badge>
