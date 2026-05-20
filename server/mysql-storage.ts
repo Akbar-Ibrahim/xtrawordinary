@@ -304,13 +304,136 @@ export class MySQLStorage implements IStorage {
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
-  async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateShellWord(word); }
-  async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getShellWordPuzzle(seed); }
-  async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return this.gameData.getCrackPuzzle(seed); }
-  async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> { return this.gameData.validateDeepShellWord(word); }
-  async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return this.gameData.getDeepShellWordPuzzle(seed); }
-  async getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return this.gameData.getDeepCrackPuzzle(seed); }
-  async getDeepCrackAnswer(seed: number): Promise<string | null> { return this.gameData.getDeepCrackAnswer(seed); }
+  async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
+    try {
+      const db = await this.getDb();
+      const upper = word.toUpperCase().trim();
+      if (upper.length < 4) return { valid: false, innerWord: null };
+      const rows = await db.select({ id: schema.shellWords.id })
+        .from(schema.shellWords)
+        .where(and(eq(schema.shellWords.outerWord, upper), eq(schema.shellWords.shellDepth, 1)))
+        .limit(1);
+      if (rows.length > 0) return { valid: true, innerWord: upper.slice(1, -1) };
+      return { valid: false, innerWord: null };
+    } catch {
+      return this.gameData.validateShellWord(word);
+    }
+  }
+
+  async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> {
+    try {
+      const db = await this.getDb();
+      const groups = await db.select({
+        innerWord: schema.shellWords.innerWord,
+        cnt: sql<number>`COUNT(*)`,
+      })
+        .from(schema.shellWords)
+        .where(eq(schema.shellWords.shellDepth, 1))
+        .groupBy(schema.shellWords.innerWord)
+        .having(sql`COUNT(*) >= 3`)
+        .orderBy(schema.shellWords.innerWord);
+      if (groups.length === 0) return this.gameData.getShellWordPuzzle(seed);
+      const idx = ((seed % groups.length) + groups.length) % groups.length;
+      return { middle: groups[idx].innerWord, count: groups[idx].cnt };
+    } catch {
+      return this.gameData.getShellWordPuzzle(seed);
+    }
+  }
+
+  async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> {
+    try {
+      const db = await this.getDb();
+      const pairs = await db.select({
+        first: sql<string>`LEFT(${schema.shellWords.outerWord}, 1)`,
+        last: sql<string>`RIGHT(${schema.shellWords.outerWord}, 1)`,
+      })
+        .from(schema.shellWords)
+        .where(eq(schema.shellWords.shellDepth, 1))
+        .groupBy(sql`LEFT(${schema.shellWords.outerWord}, 1)`, sql`RIGHT(${schema.shellWords.outerWord}, 1)`)
+        .having(sql`COUNT(*) >= 2`)
+        .orderBy(sql`LEFT(${schema.shellWords.outerWord}, 1)`, sql`RIGHT(${schema.shellWords.outerWord}, 1)`);
+      if (pairs.length === 0) return this.gameData.getCrackPuzzle(seed);
+      const idx = ((seed % pairs.length) + pairs.length) % pairs.length;
+      return pairs[idx];
+    } catch {
+      return this.gameData.getCrackPuzzle(seed);
+    }
+  }
+
+  async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
+    try {
+      const db = await this.getDb();
+      const upper = word.toUpperCase().trim();
+      if (upper.length < 7) return { valid: false, innerWord: null };
+      const rows = await db.select({ id: schema.shellWords.id })
+        .from(schema.shellWords)
+        .where(and(eq(schema.shellWords.outerWord, upper), eq(schema.shellWords.shellDepth, 2)))
+        .limit(1);
+      if (rows.length > 0) return { valid: true, innerWord: upper.slice(2, -2) };
+      return { valid: false, innerWord: null };
+    } catch {
+      return this.gameData.validateDeepShellWord(word);
+    }
+  }
+
+  async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> {
+    try {
+      const db = await this.getDb();
+      const groups = await db.select({
+        innerWord: schema.shellWords.innerWord,
+        cnt: sql<number>`COUNT(*)`,
+      })
+        .from(schema.shellWords)
+        .where(eq(schema.shellWords.shellDepth, 2))
+        .groupBy(schema.shellWords.innerWord)
+        .having(sql`COUNT(*) >= 3`)
+        .orderBy(schema.shellWords.innerWord);
+      if (groups.length === 0) return this.gameData.getDeepShellWordPuzzle(seed);
+      const idx = ((seed % groups.length) + groups.length) % groups.length;
+      return { middle: groups[idx].innerWord, count: groups[idx].cnt };
+    } catch {
+      return this.gameData.getDeepShellWordPuzzle(seed);
+    }
+  }
+
+  async getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> {
+    try {
+      const db = await this.getDb();
+      const pairs = await db.select({
+        first: sql<string>`LEFT(${schema.shellWords.outerWord}, 2)`,
+        last: sql<string>`RIGHT(${schema.shellWords.outerWord}, 2)`,
+      })
+        .from(schema.shellWords)
+        .where(eq(schema.shellWords.shellDepth, 2))
+        .groupBy(sql`LEFT(${schema.shellWords.outerWord}, 2)`, sql`RIGHT(${schema.shellWords.outerWord}, 2)`)
+        .having(sql`COUNT(*) >= 2`)
+        .orderBy(sql`LEFT(${schema.shellWords.outerWord}, 2)`, sql`RIGHT(${schema.shellWords.outerWord}, 2)`);
+      if (pairs.length === 0) return this.gameData.getDeepCrackPuzzle(seed);
+      const idx = ((seed % pairs.length) + pairs.length) % pairs.length;
+      return pairs[idx];
+    } catch {
+      return this.gameData.getDeepCrackPuzzle(seed);
+    }
+  }
+
+  async getDeepCrackAnswer(seed: number): Promise<string | null> {
+    try {
+      const db = await this.getDb();
+      const pair = await this.getDeepCrackPuzzle(seed);
+      if (!pair) return null;
+      const rows = await db.select({ innerWord: schema.shellWords.innerWord })
+        .from(schema.shellWords)
+        .where(and(
+          eq(schema.shellWords.shellDepth, 2),
+          sql`LEFT(${schema.shellWords.outerWord}, 2) = ${pair.first}`,
+          sql`RIGHT(${schema.shellWords.outerWord}, 2) = ${pair.last}`
+        ))
+        .limit(1);
+      return rows.length > 0 ? rows[0].innerWord : null;
+    } catch {
+      return this.gameData.getDeepCrackAnswer(seed);
+    }
+  }
   async getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }> { return this.gameData.getWordStretchPuzzle(seed); }
   async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordStretch(stretched, seedWord); }
   async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }

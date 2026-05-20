@@ -131,6 +131,16 @@ export const words = mysqlTable("words", {
   index("words_stack_idx").on(table.isWordStack),
 ]);
 
+export const shellWords = mysqlTable("shell_words", {
+  id: int("id").primaryKey().autoincrement(),
+  outerWord: varchar("outer_word", { length: 50 }).notNull(),
+  innerWord: varchar("inner_word", { length: 50 }).notNull(),
+  shellDepth: int("shell_depth").notNull(),
+}, (table) => [
+  index("shell_words_inner_depth_idx").on(table.innerWord, table.shellDepth),
+  index("shell_words_outer_depth_idx").on(table.outerWord, table.shellDepth),
+]);
+
 export const groups = mysqlTable("groups", {
   id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 100 }).notNull(),
