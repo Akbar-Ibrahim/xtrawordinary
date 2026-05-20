@@ -99,7 +99,28 @@ export class MySQLStorage implements IStorage {
   async getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]> { return this.gameData.getLadderRushPuzzles(wordLength); }
   async getAnagramWordSets(): Promise<AnagramWordSet[]> { return this.gameData.getAnagramWordSets(); }
   async getScrambleWords(): Promise<ScrambleWord[]> { return this.gameData.getScrambleWords(); }
-  async getDefinitionWords(): Promise<DefinitionWord[]> { return this.gameData.getDefinitionWords(); }
+  async getDefinitionWords(): Promise<DefinitionWord[]> {
+    try {
+      const db = await this.getDb();
+      const pool = await db.select()
+        .from(schema.wordCategories)
+        .orderBy(sql`RAND()`)
+        .limit(50);
+
+      const words: DefinitionWord[] = pool
+        .filter(w => Array.isArray(w.definitions) && w.definitions.length > 0)
+        .map(w => ({
+          word: w.word,
+          partOfSpeech: w.partOfSpeech ?? "",
+          definitions: w.definitions as string[],
+        }));
+
+      if (words.length > 0) return words;
+    } catch {
+      // fall through to hardcoded data
+    }
+    return this.gameData.getDefinitionWords();
+  }
   async getLetterPoolWords(): Promise<LetterPoolWord[]> {
     try {
       const db = await this.getDb();

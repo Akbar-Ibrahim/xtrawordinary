@@ -278,6 +278,7 @@ export const wordCategories = mysqlTable("word_categories", {
   word: varchar("word", { length: 100 }).notNull().unique(),
   definitions: json("definitions").$type<string[]>().notNull(),
   wordLength: int("word_length").notNull(),
+  partOfSpeech: varchar("part_of_speech", { length: 50 }),
 });
 
 export const comments = mysqlTable("comments", {
