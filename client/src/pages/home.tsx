@@ -311,9 +311,12 @@ export default function Home() {
                 className="flex flex-col flex-1 min-w-[200px]"
               >
                 <Link href="/daily" className="flex-1 flex flex-col">
-                  <Card className="hover-elevate cursor-pointer border-transparent h-full" style={{ backgroundColor: dailyChallenge.game.color }} data-testid="card-daily-challenge">
+                  <Card className="hover-elevate cursor-pointer border-primary/20 h-full" data-testid="card-daily-challenge">
                     <CardContent className="p-4 flex items-center gap-3 h-full">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white/20">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: dailyChallenge.game.color }}
+                      >
                         {(() => {
                           const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
                           return <Icon className="h-5 w-5 text-white" />;
@@ -321,16 +324,16 @@ export default function Home() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-sm text-white">Daily Challenge</span>
+                          <span className="font-semibold text-sm">Daily Challenge</span>
                           {getDailyChallengeRecord(dailyChallenge.date) && (
-                            <CheckCircle className="h-3.5 w-3.5 text-white shrink-0" />
+                            <CheckCircle className="h-3.5 w-3.5 text-accent shrink-0" />
                           )}
                         </div>
-                        <p className="text-xs text-white/75 truncate">
+                        <p className="text-xs text-muted-foreground truncate">
                           Today: {dailyChallenge.game.name}
                         </p>
                       </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-white/75" />
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                     </CardContent>
                   </Card>
                 </Link>
@@ -345,21 +348,21 @@ export default function Home() {
                 className="flex flex-col flex-1 min-w-[200px]"
               >
                 <Card
-                  className="hover-elevate cursor-pointer border-transparent bg-emerald-500 h-full"
+                  className="hover-elevate cursor-pointer border-dashed h-full"
                   onClick={pickSurpriseGame}
                   data-testid="card-surprise-me"
                 >
                   <CardContent className="p-4 flex items-center gap-3 h-full">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white/20">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500">
                       <Shuffle className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-white">Surprise Me</p>
-                      <p className="text-xs text-white/75 truncate">
+                      <p className="font-semibold text-sm">Surprise Me</p>
+                      <p className="text-xs text-muted-foreground truncate">
                         {!hasPlayed ? "Let us pick a game for you." : "Find a game you haven't tried."}
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-white/75" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardContent>
                 </Card>
               </motion.div>
@@ -372,18 +375,18 @@ export default function Home() {
               className="flex flex-col flex-1 min-w-[200px]"
             >
               <Link href="/duels" className="flex-1 flex flex-col">
-                <Card className="hover-elevate cursor-pointer border-transparent bg-violet-500 h-full" data-testid="card-duels-shortcut">
+                <Card className="hover-elevate cursor-pointer h-full" data-testid="card-duels-shortcut">
                   <CardContent className="p-4 flex items-center gap-3 h-full">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white/20">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500">
                       <Swords className="h-5 w-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-white">Duels</p>
-                      <p className="text-xs text-white/75 truncate">
+                      <p className="font-semibold text-sm">Duels</p>
+                      <p className="text-xs text-muted-foreground truncate">
                         Turn-based &amp; race challenges
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-white/75" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </CardContent>
                 </Card>
               </Link>
@@ -413,18 +416,18 @@ export default function Home() {
                 return (
                   <Link href="/word-wars" className="flex-1 flex flex-col">
                     <Card
-                      className="hover-elevate cursor-pointer border-transparent bg-rose-500 h-full"
+                      className={`hover-elevate cursor-pointer h-full${openTournament ? " border-amber-400/40" : ""}`}
                       data-testid="card-word-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white/20">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-500">
                           <Sword className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-white">Word Wars</p>
-                          <p className="text-xs text-white/75 truncate">{subLabel}</p>
+                          <p className="font-semibold text-sm">Word Wars</p>
+                          <p className="text-xs text-muted-foreground truncate">{subLabel}</p>
                         </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-white/75" />
+                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </CardContent>
                     </Card>
                   </Link>
@@ -457,18 +460,18 @@ export default function Home() {
                 return (
                   <Link href="/guild-wars" className="flex-1 flex flex-col">
                     <Card
-                      className="hover-elevate cursor-pointer border-transparent bg-purple-500 h-full"
+                      className={`hover-elevate cursor-pointer h-full${openGuildWar ? " border-purple-400/40" : ""}`}
                       data-testid="card-guild-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white/20">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-purple-500">
                           <Swords className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-white">Guild Wars</p>
-                          <p className="text-xs text-white/75 truncate">{gwSubLabel}</p>
+                          <p className="font-semibold text-sm">Guild Wars</p>
+                          <p className="text-xs text-muted-foreground truncate">{gwSubLabel}</p>
                         </div>
-                        <ArrowRight className="h-4 w-4 shrink-0 text-white/75" />
+                        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                       </CardContent>
                     </Card>
                   </Link>
