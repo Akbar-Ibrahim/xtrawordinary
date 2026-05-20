@@ -118,7 +118,15 @@ export const friendChallenges = mysqlTable("friend_challenges", {
 export const words = mysqlTable("words", {
   id: int("id").primaryKey().autoincrement(),
   word: varchar("word", { length: 100 }).notNull().unique(),
-});
+  wordLength: int("word_length").notNull().default(0),
+  isAnagram: boolean("is_anagram").notNull().default(false),
+  isWordStack: boolean("is_word_stack").notNull().default(false),
+  derivatives: json("derivatives").$type<string[]>(),
+}, (table) => [
+  index("words_length_idx").on(table.wordLength),
+  index("words_anagram_idx").on(table.isAnagram),
+  index("words_stack_idx").on(table.isWordStack),
+]);
 
 export const groups = mysqlTable("groups", {
   id: int("id").primaryKey().autoincrement(),
