@@ -511,7 +511,7 @@ export function ShellWordsGame({
                   </Button>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-center">
                 {(["classic", "survival"] as SubMode[]).map(s => (
                   <Button
                     key={s}
