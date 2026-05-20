@@ -214,8 +214,52 @@ export class MySQLStorage implements IStorage {
   async generateLengthConstraint(level: number): Promise<LengthConstraint> { return this.gameData.generateLengthConstraint(level); }
   async generatePositionConstraint(): Promise<PositionConstraint> { return this.gameData.generatePositionConstraint(); }
   async generateContainsConstraint(): Promise<ContainsConstraint> { return this.gameData.generateContainsConstraint(); }
-  async getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null> { return this.gameData.getWordChainStartWord(variation, level, seed); }
-  async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return this.gameData.getWordChainComputerWord(playerWord, variation, level, usedWords); }
+  async getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null> {
+    try {
+      const db = await this.getDb();
+      if (seed !== undefined) {
+        const all = await db.select({ word: schema.words.word }).from(schema.words);
+        if (all.length > 0) return all[seed % all.length].word;
+      }
+      const rows = await db.select({ word: schema.words.word })
+        .from(schema.words)
+        .orderBy(sql`RAND()`)
+        .limit(1);
+      if (rows.length > 0) return rows[0].word;
+    } catch {
+      // fall through
+    }
+    return this.gameData.getWordChainStartWord(variation, level, seed);
+  }
+
+  async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> {
+    try {
+      const db = await this.getDb();
+      const upper = playerWord.toUpperCase();
+      const startsWith = variation === 1 ? upper[upper.length - 1] : upper.slice(-2);
+      const usedSet = usedWords.map(w => w.toUpperCase());
+
+      // Build WHERE dynamically using raw sql to avoid type gymnastics
+      let whereClause = sql`${schema.words.word} LIKE ${startsWith + '%'}`;
+      if (usedSet.length > 0) {
+        whereClause = sql`${whereClause} AND ${schema.words.word} NOT IN (${sql.join(usedSet.map(w => sql`${w}`), sql`, `)})`;
+      }
+      if (level === 2) {
+        whereClause = sql`${whereClause} AND ${schema.words.wordLength} BETWEEN 3 AND 8`;
+      }
+
+      const rows = await db.select({ word: schema.words.word })
+        .from(schema.words)
+        .where(whereClause)
+        .orderBy(sql`RAND()`)
+        .limit(1);
+
+      if (rows.length > 0) return rows[0].word;
+    } catch {
+      // fall through
+    }
+    return this.gameData.getWordChainComputerWord(playerWord, variation, level, usedWords);
+  }
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
