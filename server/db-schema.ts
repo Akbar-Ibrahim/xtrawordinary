@@ -124,6 +124,7 @@ export const words = mysqlTable("words", {
   derivatives: json("derivatives").$type<string[]>(),
   hint: varchar("hint", { length: 255 }),
   category: varchar("category", { length: 100 }),
+  isWordSplit: boolean("is_word_split").notNull().default(false),
 }, (table) => [
   index("words_length_idx").on(table.wordLength),
   index("words_anagram_idx").on(table.isAnagram),
