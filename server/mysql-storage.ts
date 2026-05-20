@@ -3,6 +3,7 @@ import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, Lett
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
+import { generateLetterPool } from "./game-data";
 import type { HuddleChallenge, InsertHuddleChallenge } from "@shared/schema";
 
 export class MySQLStorage implements IStorage {
@@ -99,7 +100,28 @@ export class MySQLStorage implements IStorage {
   async getAnagramWordSets(): Promise<AnagramWordSet[]> { return this.gameData.getAnagramWordSets(); }
   async getScrambleWords(): Promise<ScrambleWord[]> { return this.gameData.getScrambleWords(); }
   async getDefinitionWords(): Promise<DefinitionWord[]> { return this.gameData.getDefinitionWords(); }
-  async getLetterPoolWords(): Promise<LetterPoolWord[]> { return this.gameData.getLetterPoolWords(); }
+  async getLetterPoolWords(): Promise<LetterPoolWord[]> {
+    try {
+      const db = await this.getDb();
+      const pool = await db.select()
+        .from(schema.words)
+        .where(isNotNull(schema.words.category))
+        .orderBy(sql`RAND()`)
+        .limit(50);
+
+      const words: LetterPoolWord[] = pool.map(w => ({
+        word: w.word,
+        hint: w.hint ?? "",
+        category: w.category!,
+        letterPool: generateLetterPool(w.word),
+      }));
+
+      if (words.length > 0) return words;
+    } catch {
+      // fall through to hardcoded data
+    }
+    return this.gameData.getLetterPoolWords();
+  }
   async getMakerWords(): Promise<MakerWord[]> {
     try {
       const db = await this.getDb();
