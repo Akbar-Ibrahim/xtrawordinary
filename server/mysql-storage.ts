@@ -1,4 +1,4 @@
-import { eq, desc, asc, sql, and, or, like, inArray, isNull, ne } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, like, inArray, isNull, isNotNull, ne, between } from "drizzle-orm";
 import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
@@ -101,7 +101,32 @@ export class MySQLStorage implements IStorage {
   async getDefinitionWords(): Promise<DefinitionWord[]> { return this.gameData.getDefinitionWords(); }
   async getLetterPoolWords(): Promise<LetterPoolWord[]> { return this.gameData.getLetterPoolWords(); }
   async getMakerWords(): Promise<MakerWord[]> { return this.gameData.getMakerWords(); }
-  async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> { return this.gameData.getWordRootsPuzzles(); }
+  async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> {
+    try {
+      const db = await this.getDb();
+      const pool = await db.select()
+        .from(schema.words)
+        .where(and(
+          between(schema.words.wordLength, 6, 10),
+          isNotNull(schema.words.derivatives)
+        ))
+        .orderBy(sql`RAND()`)
+        .limit(50);
+
+      const puzzles: WordRootsPuzzle[] = pool
+        .filter(w => Array.isArray(w.derivatives) && w.derivatives.length > 0)
+        .map(w => ({
+          canonicalWord: w.word,
+          derivatives: (w.derivatives as string[]).filter(d => d.length >= 3),
+        }))
+        .filter(p => p.derivatives.length > 0);
+
+      if (puzzles.length > 0) return puzzles;
+    } catch {
+      // fall through to hardcoded data
+    }
+    return this.gameData.getWordRootsPuzzles();
+  }
   async getWordStackPuzzles(): Promise<WordStackPuzzle[]> { return this.gameData.getWordStackPuzzles(); }
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> { return this.gameData.getWordSplitPuzzles(); }
   async getWordDictionary(): Promise<string[]> { await this.getDb(); return Array.from(this.wordSet); }
