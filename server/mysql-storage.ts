@@ -156,7 +156,27 @@ export class MySQLStorage implements IStorage {
     }
     return this.gameData.getWordRootsPuzzles();
   }
-  async getWordStackPuzzles(): Promise<WordStackPuzzle[]> { return this.gameData.getWordStackPuzzles(); }
+  async getWordStackPuzzles(): Promise<WordStackPuzzle[]> {
+    try {
+      const db = await this.getDb();
+      const pool = await db.select()
+        .from(schema.words)
+        .where(sql`${schema.words.isWordStack} = 1`)
+        .orderBy(sql`RAND()`)
+        .limit(50);
+
+      const puzzles: WordStackPuzzle[] = pool.map(w => ({
+        targetWord: w.word,
+        startWord: "",
+        hint: "",
+      }));
+
+      if (puzzles.length > 0) return puzzles;
+    } catch {
+      // fall through to hardcoded data
+    }
+    return this.gameData.getWordStackPuzzles();
+  }
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> { return this.gameData.getWordSplitPuzzles(); }
   async getWordDictionary(): Promise<string[]> { await this.getDb(); return Array.from(this.wordSet); }
   async validateWord(word: string): Promise<boolean> { await this.getDb(); return this.wordSet.has(word.toUpperCase()); }
