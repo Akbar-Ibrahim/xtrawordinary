@@ -545,7 +545,7 @@ export function DeepShellWordsGame({
       <Card>
         <CardContent className="p-6 space-y-5">
           {/* Two-level mode selector */}
-          {!initialMode && (
+          {!initialMode && gameStatus === "idle" && (
             <div className="space-y-2">
               <div className="flex gap-2">
                 {(["blitz", "wrapper", "crack"] as Variation[]).map(v => (
@@ -554,7 +554,6 @@ export function DeepShellWordsGame({
                     variant={variation === v ? "default" : "outline"}
                     size="sm"
                     onClick={() => switchMode(v, subMode)}
-                    disabled={gameStatus === "playing"}
                     data-testid={`button-variation-${v}`}
                     className="flex-1"
                   >
@@ -569,9 +568,8 @@ export function DeepShellWordsGame({
                     variant={subMode === s ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => switchMode(variation, s)}
-                    disabled={gameStatus === "playing"}
                     data-testid={`button-submode-${s}`}
-                    className="flex-1 gap-1.5"
+                    className="gap-1.5"
                   >
                     {s === "survival" && <Zap className="h-3.5 w-3.5" />}
                     <span className="capitalize">{s}</span>
