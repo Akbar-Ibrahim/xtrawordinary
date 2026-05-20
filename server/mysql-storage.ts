@@ -168,7 +168,7 @@ export class MySQLStorage implements IStorage {
       const puzzles: WordStackPuzzle[] = pool.map(w => ({
         targetWord: w.word,
         startWord: "",
-        hint: "",
+        hint: w.hint ?? "",
       }));
 
       if (puzzles.length > 0) return puzzles;

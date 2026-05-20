@@ -122,6 +122,7 @@ export const words = mysqlTable("words", {
   isAnagram: boolean("is_anagram").notNull().default(false),
   isWordStack: boolean("is_word_stack").notNull().default(false),
   derivatives: json("derivatives").$type<string[]>(),
+  hint: varchar("hint", { length: 255 }),
 }, (table) => [
   index("words_length_idx").on(table.wordLength),
   index("words_anagram_idx").on(table.isAnagram),
