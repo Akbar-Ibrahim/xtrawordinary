@@ -100,7 +100,36 @@ export class MySQLStorage implements IStorage {
   async getScrambleWords(): Promise<ScrambleWord[]> { return this.gameData.getScrambleWords(); }
   async getDefinitionWords(): Promise<DefinitionWord[]> { return this.gameData.getDefinitionWords(); }
   async getLetterPoolWords(): Promise<LetterPoolWord[]> { return this.gameData.getLetterPoolWords(); }
-  async getMakerWords(): Promise<MakerWord[]> { return this.gameData.getMakerWords(); }
+  async getMakerWords(): Promise<MakerWord[]> {
+    try {
+      const db = await this.getDb();
+      const pool = await db.select()
+        .from(schema.words)
+        .where(and(
+          between(schema.words.wordLength, 6, 10),
+          isNotNull(schema.words.derivatives)
+        ))
+        .orderBy(sql`RAND()`)
+        .limit(50);
+
+      const makerWords: MakerWord[] = pool
+        .filter(w => Array.isArray(w.derivatives) && w.derivatives.length > 0)
+        .map(w => {
+          const filtered = (w.derivatives as string[]).filter(d => d.length >= 3);
+          return {
+            baseWord: w.word,
+            derivatives: filtered,
+            maxWords: Math.min(filtered.length, 10),
+          };
+        })
+        .filter(m => m.derivatives.length > 0);
+
+      if (makerWords.length > 0) return makerWords;
+    } catch {
+      // fall through to hardcoded data
+    }
+    return this.gameData.getMakerWords();
+  }
   async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> {
     try {
       const db = await this.getDb();
