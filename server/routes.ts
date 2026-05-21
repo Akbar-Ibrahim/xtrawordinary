@@ -13,8 +13,6 @@ import { executeGuildBracketDraw } from "./guild-wars-engine";
 import { executeBracketDraw, checkAndForfeitExpiredMatches } from "./word-wars-engine";
 import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "./word-wars-sse";
 import { seededShuffle } from "./seeded-rng";
-// import axios from "axios";
-// const REMOTE_BASE_URL = "https://your-remote-server.com";
 // import { db } from "./db";
 // import { words } from "./db-schema";
 // import { eq } from "drizzle-orm";
@@ -36,16 +34,6 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   app.get("/api/games", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch games";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const [games, liveCounts] = await Promise.all([
         dataSource.getGames(),
@@ -172,16 +160,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/games/letter-pool/words", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/letter-pool/words`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch letter pool words";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const words = await dataSource.getLetterPoolWords();
       const seed = parseInt(req.query.seed as string);
@@ -410,16 +388,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/games/word-stack/puzzles", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-stack/puzzles`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch word stack puzzles";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const puzzles = await dataSource.getWordStackPuzzles();
       res.json(puzzles);
@@ -429,16 +397,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/games/word-split/puzzles", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/word-split/puzzles`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch word split puzzles";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const puzzles = await dataSource.getWordSplitPuzzles();
       res.json(puzzles);
@@ -466,20 +424,6 @@ export async function registerRoutes(
   // Dictionary endpoint removed for security - words validated only via /api/games/validate-word
 
   app.post("/api/games/validate-word", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const { word } = req.body;
-    //   if (!word || typeof word !== "string") {
-    //     return res.status(400).json({ valid: false, message: "Word is required" });
-    //   }
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/games/validate-word`, { word });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const data = error.response?.data || { valid: false, message: "Validation failed" };
-    //   res.status(status).json(data);
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { word } = req.body;
       if (!word || typeof word !== "string") {
@@ -498,16 +442,6 @@ export async function registerRoutes(
 
   // Letter Balance config - still needed for that game
   app.get("/api/games/letter-balance/config", async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/letter-balance/config`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to fetch letter balance config";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const config = await dataSource.getVowelConsonantConfig();
       res.json(config);
@@ -518,21 +452,6 @@ export async function registerRoutes(
 
   // Word Chain endpoints - need dictionary access for computer responses
   app.post("/api/games/word-chain/start", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const { variation, level } = req.body;
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/games/word-chain/start`, {
-    //     variation: variation || 1,
-    //     level: level || 1,
-    //   });
-    //   const { word } = response.data;
-    //   res.json({ word });
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to get start word";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { variation, level, seed } = req.body;
       const seedNum = (seed !== undefined && Number.isFinite(Number(seed))) ? Number(seed) : undefined;
@@ -544,23 +463,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/games/word-chain/computer-word", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const { playerWord, variation, level, usedWords } = req.body;
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/games/word-chain/computer-word`, {
-    //     playerWord,
-    //     variation: variation || 1,
-    //     level: level || 1,
-    //     usedWords: usedWords || [],
-    //   });
-    //   const { word } = response.data;
-    //   res.json({ word });
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.message || "Failed to get computer word";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { playerWord, variation, level, usedWords } = req.body;
       const word = await dataSource.getWordChainComputerWord(
@@ -695,20 +597,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/games/:slug", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const { slug } = req.params;
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/games/${slug}`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   if (status === 404) {
-    //     return res.status(404).json({ message: "Game not found" });
-    //   }
-    //   const message = error.response?.data?.message || "Failed to fetch game";
-    //   res.status(status).json({ message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { slug } = req.params;
       const [game, liveCount] = await Promise.all([
@@ -732,16 +620,6 @@ export async function registerRoutes(
   }
 
   app.post("/api/auth/register", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/auth/register`, req.body);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Registration failed";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const parsed = registerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -775,16 +653,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/login", (req, res, next) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/auth/login`, req.body);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Login failed";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
@@ -832,16 +700,6 @@ export async function registerRoutes(
   }
 
   app.post("/api/auth/verify-email", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/auth/verify-email`, req.body);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Verification failed";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { token } = req.body;
       if (!token) return res.status(400).json({ error: "Token is required" });
@@ -860,16 +718,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/forgot-password", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/auth/forgot-password`, req.body);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Request failed";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
@@ -888,16 +736,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/reset-password", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/auth/reset-password`, req.body);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Reset failed";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { token, password } = req.body;
       if (!token || !password) return res.status(400).json({ error: "Token and password are required" });
@@ -920,16 +758,6 @@ export async function registerRoutes(
   // ==================== USER STATS ROUTES ====================
 
   app.get("/api/user/stats", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/user/stats`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch stats";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const stats = await storage.getAllUserGameStats(req.user!.id);
       res.json(stats);
@@ -939,16 +767,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/user/stats", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/user/stats`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to save stats";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const parsed = statsInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -972,16 +790,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/user/streak", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/user/streak`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch streak";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const streak = await storage.getUserStreak(req.user!.id);
       res.json(streak || { currentStreak: 0, longestStreak: 0, lastPlayedDate: null });
@@ -991,16 +799,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/user/streak", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/user/streak`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to save streak";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { currentStreak, longestStreak, lastPlayedDate } = req.body;
       const streak = await storage.saveUserStreak(req.user!.id, currentStreak || 0, longestStreak || 0, lastPlayedDate || new Date().toISOString().split("T")[0]);
@@ -1035,16 +833,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/user/achievements", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/user/achievements`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch achievements";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const achievements = await storage.getUserAchievements(req.user!.id);
       res.json(achievements);
@@ -1054,16 +842,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/user/achievements", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/user/achievements`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to save achievement";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { achievementId, unlockedAt } = req.body;
       if (!achievementId) return res.status(400).json({ error: "achievementId is required" });
@@ -1092,16 +870,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/leaderboard", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/leaderboard`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch leaderboard";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const timeFilter = parseTimeFilter(req.query.timeFilter);
       const entries = await storage.getOverallLeaderboard(50, timeFilter);
@@ -1134,16 +902,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/leaderboard/:gameSlug", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/leaderboard/${req.params.gameSlug}`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch leaderboard";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const timeFilter = parseTimeFilter(req.query.timeFilter);
       const entries = await storage.getLeaderboard(req.params.gameSlug, 50, timeFilter);
@@ -1154,16 +912,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/leaderboard", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/leaderboard`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to submit score";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const parsed = leaderboardInputSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -1187,16 +935,6 @@ export async function registerRoutes(
   // ==================== PROFILE ROUTES ====================
 
   app.get("/api/users/search", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/users/search`, { params: { q: req.query.q }, headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to search users";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const q = (req.query.q as string) || "";
       if (q.length < 2) return res.json([]);
@@ -1233,16 +971,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/users/:id/profile", async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/users/${req.params.id}/profile`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch profile";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
@@ -1257,16 +985,6 @@ export async function registerRoutes(
   // ==================== FRIEND ROUTES ====================
 
   app.get("/api/friends", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/friends`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch friends";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const friends = await storage.getFriends(req.user!.id);
       res.json(friends);
@@ -1276,16 +994,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/friends/requests", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/friends/requests`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch friend requests";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const requests = await storage.getPendingFriendRequests(req.user!.id);
       res.json(requests);
@@ -1295,16 +1003,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/friends/request", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/request`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to send friend request";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { userId } = req.body;
       if (!userId) return res.status(400).json({ error: "userId is required" });
@@ -1321,16 +1019,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/friends/:id/accept", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/${req.params.id}/accept`, {}, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to accept friend request";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
@@ -1346,16 +1034,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/friends/:id/decline", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/friends/${req.params.id}/decline`, {}, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to decline friend request";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
@@ -1371,16 +1049,6 @@ export async function registerRoutes(
   });
 
   app.delete("/api/friends/:id", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.delete(`${REMOTE_BASE_URL}/api/friends/${req.params.id}`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to remove friend";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
@@ -1397,16 +1065,6 @@ export async function registerRoutes(
   // ==================== CHALLENGE ROUTES ====================
 
   app.post("/api/challenges", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/challenges`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to create challenge";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const { friendId, gameSlug, score, message, seed, gameConfig } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
@@ -1439,16 +1097,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/challenges", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/challenges`, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch challenges";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const challenges = await storage.getFriendChallenges(req.user!.id);
       res.json(challenges);
@@ -1488,16 +1136,6 @@ export async function registerRoutes(
   });
 
   app.post("/api/challenges/:id/complete", requireAuth, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.post(`${REMOTE_BASE_URL}/api/challenges/${req.params.id}/complete`, req.body, { headers: { cookie: req.headers.cookie } });
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to complete challenge";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
@@ -1546,16 +1184,6 @@ export async function registerRoutes(
   // ==================== ADMIN ROUTES ====================
 
   app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/stats`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch admin stats";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const stats = await storage.getAdminStats();
       res.json(stats);
@@ -1565,16 +1193,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/users`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch users";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const users = await storage.getAllUsers();
       const sanitized = users.map(u => {
@@ -1588,16 +1206,6 @@ export async function registerRoutes(
   });
 
   app.patch("/api/admin/users/:id/ban", requireAdmin, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.patch(`${REMOTE_BASE_URL}/api/admin/users/${req.params.id}/ban`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to toggle ban";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
@@ -1614,16 +1222,6 @@ export async function registerRoutes(
   });
 
   app.patch("/api/admin/users/:id/admin", requireAdmin, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.patch(`${REMOTE_BASE_URL}/api/admin/users/${req.params.id}/admin`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to toggle admin";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid user ID" });
@@ -1677,16 +1275,6 @@ export async function registerRoutes(
   });
 
   app.get("/api/admin/leaderboard", requireAdmin, async (_req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.get(`${REMOTE_BASE_URL}/api/admin/leaderboard`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to fetch leaderboard";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const entries = await storage.getAllLeaderboardEntries();
       res.json(entries);
@@ -1728,16 +1316,6 @@ export async function registerRoutes(
   });
 
   app.delete("/api/admin/leaderboard/:id", requireAdmin, async (req, res) => {
-    // --- REMOTE SERVER BLOCK (uncomment to use remote API) ---
-    // try {
-    //   const response = await axios.delete(`${REMOTE_BASE_URL}/api/admin/leaderboard/${req.params.id}`);
-    //   res.json(response.data);
-    // } catch (error: any) {
-    //   const status = error.response?.status || 500;
-    //   const message = error.response?.data?.error || "Failed to delete entry";
-    //   res.status(status).json({ error: message });
-    // }
-    // --- END REMOTE SERVER BLOCK ---
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid entry ID" });
