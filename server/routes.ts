@@ -19,8 +19,7 @@ import { seededShuffle } from "./seeded-rng";
 // import { words } from "./db-schema";
 // import { eq } from "drizzle-orm";
 
-const isLocalMode = process.env.DEV_MODE === "LOCAL";
-const dataSource = isLocalMode ? storage : externalApi;
+const dataSource = process.env.MYSQL_DATABASE_URL ? storage : externalApi;
 
 async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
   try {
