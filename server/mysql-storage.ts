@@ -326,19 +326,15 @@ export class MySQLStorage implements IStorage {
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
   async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
-    try {
-      const db = await this.getDb();
-      const upper = word.toUpperCase().trim();
-      if (upper.length < 4) return { valid: false, innerWord: null };
-      const rows = await db.select({ id: schema.shellWords.id })
-        .from(schema.shellWords)
-        .where(and(eq(schema.shellWords.outerWord, upper), eq(schema.shellWords.shellDepth, 1)))
-        .limit(1);
-      if (rows.length > 0) return { valid: true, innerWord: upper.slice(1, -1) };
-      return { valid: false, innerWord: null };
-    } catch {
-      return this.gameData.validateShellWord(word);
+    const upper = word.toUpperCase().trim();
+    if (upper.length < 4) return { valid: false, innerWord: null };
+    const inner = upper.slice(1, -1);
+    if (this.wordSet.size > 0) {
+      return this.wordSet.has(upper) && this.wordSet.has(inner)
+        ? { valid: true, innerWord: inner }
+        : { valid: false, innerWord: null };
     }
+    return this.gameData.validateShellWord(word);
   }
 
   async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> {
@@ -382,19 +378,15 @@ export class MySQLStorage implements IStorage {
   }
 
   async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
-    try {
-      const db = await this.getDb();
-      const upper = word.toUpperCase().trim();
-      if (upper.length < 7) return { valid: false, innerWord: null };
-      const rows = await db.select({ id: schema.shellWords.id })
-        .from(schema.shellWords)
-        .where(and(eq(schema.shellWords.outerWord, upper), eq(schema.shellWords.shellDepth, 2)))
-        .limit(1);
-      if (rows.length > 0) return { valid: true, innerWord: upper.slice(2, -2) };
-      return { valid: false, innerWord: null };
-    } catch {
-      return this.gameData.validateDeepShellWord(word);
+    const upper = word.toUpperCase().trim();
+    if (upper.length < 7) return { valid: false, innerWord: null };
+    const inner = upper.slice(2, -2);
+    if (this.wordSet.size > 0) {
+      return this.wordSet.has(upper) && this.wordSet.has(inner)
+        ? { valid: true, innerWord: inner }
+        : { valid: false, innerWord: null };
     }
+    return this.gameData.validateDeepShellWord(word);
   }
 
   async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> {
