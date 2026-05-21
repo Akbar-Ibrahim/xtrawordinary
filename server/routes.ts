@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { externalApi } from "./externalApi";
 import passport from "passport";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -17,7 +16,6 @@ import { seededShuffle } from "./seeded-rng";
 // import { words } from "./db-schema";
 // import { eq } from "drizzle-orm";
 
-const dataSource = process.env.MYSQL_DATABASE_URL ? storage : externalApi;
 
 async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
   try {
@@ -36,7 +34,7 @@ export async function registerRoutes(
   app.get("/api/games", async (_req, res) => {
     try {
       const [games, liveCounts] = await Promise.all([
-        dataSource.getGames(),
+        storage.getGames(),
         storage.getAllGamePlayCounts(),
       ]);
       const merged = games.map(g => ({
@@ -51,7 +49,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-ladder/puzzles", async (req, res) => {
     try {
-      const puzzles = await dataSource.getWordLadderPuzzles();
+      const puzzles = await storage.getWordLadderPuzzles();
       const seed = parseInt(req.query.seed as string);
       res.json(isNaN(seed) ? puzzles : seededShuffle(puzzles, seed));
     } catch (error) {
@@ -65,7 +63,7 @@ export async function registerRoutes(
       if (![4, 5, 6].includes(wordLength)) {
         return res.status(400).json({ message: "wordLength must be 4, 5, or 6" });
       }
-      const puzzles = await dataSource.getLadderRushPuzzles(wordLength);
+      const puzzles = await storage.getLadderRushPuzzles(wordLength);
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch ladder rush puzzles" });
@@ -74,7 +72,7 @@ export async function registerRoutes(
 
   app.get("/api/games/anagram-solver/words", async (req, res) => {
     try {
-      const wordSets = await dataSource.getAnagramWordSets();
+      const wordSets = await storage.getAnagramWordSets();
       const seed = parseInt(req.query.seed as string);
       res.json(isNaN(seed) ? wordSets : seededShuffle(wordSets, seed));
     } catch (error) {
@@ -84,7 +82,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-scramble/words", async (req, res) => {
     try {
-      const words = await dataSource.getScrambleWords();
+      const words = await storage.getScrambleWords();
       const seed = parseInt(req.query.seed as string);
       res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
@@ -151,7 +149,7 @@ export async function registerRoutes(
     // }
     // --- END MYSQL QUERY ---
     try {
-      const words = await dataSource.getDefinitionWords();
+      const words = await storage.getDefinitionWords();
       const seed = parseInt(req.query.seed as string);
       res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
@@ -161,7 +159,7 @@ export async function registerRoutes(
 
   app.get("/api/games/letter-pool/words", async (req, res) => {
     try {
-      const words = await dataSource.getLetterPoolWords();
+      const words = await storage.getLetterPoolWords();
       const seed = parseInt(req.query.seed as string);
       const result = isNaN(seed) ? [...words].sort(() => Math.random() - 0.5) : seededShuffle(words, seed);
       res.json(result);
@@ -173,7 +171,7 @@ export async function registerRoutes(
   app.get("/api/games/shell-words/validate", async (req, res) => {
     try {
       const word = (req.query.word as string) || "";
-      const result = await dataSource.validateShellWord(word);
+      const result = await storage.validateShellWord(word);
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to validate word" });
@@ -184,7 +182,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getShellWordPuzzle(seed);
+      const puzzle = await storage.getShellWordPuzzle(seed);
       if (!puzzle) return res.status(404).json({ message: "No puzzle found" });
       res.json(puzzle);
     } catch (error) {
@@ -196,7 +194,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getCrackPuzzle(seed);
+      const puzzle = await storage.getCrackPuzzle(seed);
       if (!puzzle) return res.status(404).json({ message: "No crack puzzle found" });
       res.json(puzzle);
     } catch (error) {
@@ -207,7 +205,7 @@ export async function registerRoutes(
   app.get("/api/games/deep-shell-words/validate", async (req, res) => {
     try {
       const word = (req.query.word as string) || "";
-      const result = await dataSource.validateDeepShellWord(word);
+      const result = await storage.validateDeepShellWord(word);
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to validate word" });
@@ -218,7 +216,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getDeepShellWordPuzzle(seed);
+      const puzzle = await storage.getDeepShellWordPuzzle(seed);
       if (!puzzle) return res.status(404).json({ message: "No puzzle found" });
       res.json(puzzle);
     } catch (error) {
@@ -230,7 +228,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getDeepCrackPuzzle(seed);
+      const puzzle = await storage.getDeepCrackPuzzle(seed);
       if (!puzzle) return res.status(404).json({ message: "No crack puzzle found" });
       res.json(puzzle);
     } catch (error) {
@@ -242,7 +240,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getWordStretchPuzzle(seed);
+      const puzzle = await storage.getWordStretchPuzzle(seed);
       res.json(puzzle);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word stretch puzzle" });
@@ -253,7 +251,7 @@ export async function registerRoutes(
     try {
       const word = ((req.query.word as string) || "").trim().toUpperCase();
       if (!word || word.length < 2) return res.status(400).json({ message: "word must be at least 2 characters" });
-      const exists = await dataSource.validateWord(word);
+      const exists = await storage.validateWord(word);
       res.json({ exists });
     } catch (error) {
       res.status(500).json({ message: "Failed to validate word" });
@@ -265,7 +263,7 @@ export async function registerRoutes(
       const stretched = (req.query.stretched as string) || "";
       const seedWord = (req.query.seedWord as string) || "";
       if (!stretched || !seedWord) return res.status(400).json({ message: "stretched and seedWord are required" });
-      const result = await dataSource.validateWordStretch(stretched, seedWord);
+      const result = await storage.validateWordStretch(stretched, seedWord);
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to validate word stretch" });
@@ -282,7 +280,7 @@ export async function registerRoutes(
       if (isNaN(position) || position < 1 || position > 8) {
         return res.status(400).json({ message: "position must be between 1 and 8" });
       }
-      const count = await dataSource.countLetterPositionWords(letter, position);
+      const count = await storage.countLetterPositionWords(letter, position);
       res.json({ count });
     } catch (error) {
       res.status(500).json({ message: "Failed to count matching words" });
@@ -302,7 +300,7 @@ export async function registerRoutes(
       if (startsWith && !singleLetter.test(startsWith)) return res.status(400).json({ message: "startsWith must be a single A-Z letter" });
       if (endsWith && !singleLetter.test(endsWith)) return res.status(400).json({ message: "endsWith must be a single A-Z letter" });
       if (contains && !singleLetter.test(contains)) return res.status(400).json({ message: "contains must be a single A-Z letter" });
-      const count = await dataSource.countWordLengthWords(length, startsWith, endsWith, contains);
+      const count = await storage.countWordLengthWords(length, startsWith, endsWith, contains);
       res.json({ count, ok: count >= 10 });
     } catch (error) {
       res.status(500).json({ message: "Failed to count matching words" });
@@ -313,7 +311,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const solutions = await dataSource.getWordStretchSolutions(seed);
+      const solutions = await storage.getWordStretchSolutions(seed);
       res.json({ solutions });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch solutions" });
@@ -324,7 +322,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const puzzle = await dataSource.getWordBloomPuzzle(seed);
+      const puzzle = await storage.getWordBloomPuzzle(seed);
       res.json(puzzle);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word bloom puzzle" });
@@ -336,7 +334,7 @@ export async function registerRoutes(
       const currentWord = (req.query.current as string) || "";
       const nextWord = (req.query.next as string) || "";
       if (!currentWord || !nextWord) return res.status(400).json({ message: "current and next are required" });
-      const result = await dataSource.validateWordBloom(currentWord, nextWord);
+      const result = await storage.validateWordBloom(currentWord, nextWord);
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to validate word bloom step" });
@@ -347,7 +345,7 @@ export async function registerRoutes(
     try {
       const seed = parseInt(req.query.seed as string);
       if (isNaN(seed)) return res.status(400).json({ message: "seed is required" });
-      const answer = await dataSource.getDeepCrackAnswer(seed);
+      const answer = await storage.getDeepCrackAnswer(seed);
       if (!answer) return res.status(404).json({ message: "No answer found" });
       res.json({ example: answer });
     } catch (error) {
@@ -357,7 +355,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-roots/puzzles", async (req, res) => {
     try {
-      const allPuzzles = await dataSource.getWordRootsPuzzles();
+      const allPuzzles = await storage.getWordRootsPuzzles();
       const seed = parseInt(req.query.seed as string);
       const shuffled = isNaN(seed)
         ? [...allPuzzles].sort(() => Math.random() - 0.5)
@@ -379,7 +377,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-maker/words", async (req, res) => {
     try {
-      const words = await dataSource.getMakerWords();
+      const words = await storage.getMakerWords();
       const seed = parseInt(req.query.seed as string);
       res.json(isNaN(seed) ? words : seededShuffle(words, seed));
     } catch (error) {
@@ -389,7 +387,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-stack/puzzles", async (_req, res) => {
     try {
-      const puzzles = await dataSource.getWordStackPuzzles();
+      const puzzles = await storage.getWordStackPuzzles();
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word stack puzzles" });
@@ -398,7 +396,7 @@ export async function registerRoutes(
 
   app.get("/api/games/word-split/puzzles", async (_req, res) => {
     try {
-      const puzzles = await dataSource.getWordSplitPuzzles();
+      const puzzles = await storage.getWordSplitPuzzles();
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word split puzzles" });
@@ -407,7 +405,7 @@ export async function registerRoutes(
 
   app.get("/api/games/progressive-reveal/words", async (req, res) => {
     try {
-      const words = await dataSource.getProgressiveRevealWords();
+      const words = await storage.getProgressiveRevealWords();
       const rawSeed = req.query.seed;
       if (rawSeed !== undefined) {
         const seed = parseInt(rawSeed as string, 10);
@@ -429,7 +427,7 @@ export async function registerRoutes(
       if (!word || typeof word !== "string") {
         return res.status(400).json({ valid: false, message: "Word is required" });
       }
-      const valid = await dataSource.validateWord(word);
+      const valid = await storage.validateWord(word);
       // --- DB VALIDATION (uncomment to validate against words table instead) ---
       // const rows = await db.select({ id: words.id }).from(words).where(eq(words.word, word.toUpperCase())).limit(1);
       // const valid = rows.length > 0;
@@ -443,7 +441,7 @@ export async function registerRoutes(
   // Letter Balance config - still needed for that game
   app.get("/api/games/letter-balance/config", async (_req, res) => {
     try {
-      const config = await dataSource.getVowelConsonantConfig();
+      const config = await storage.getVowelConsonantConfig();
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch letter balance config" });
@@ -455,7 +453,7 @@ export async function registerRoutes(
     try {
       const { variation, level, seed } = req.body;
       const seedNum = (seed !== undefined && Number.isFinite(Number(seed))) ? Number(seed) : undefined;
-      const word = await dataSource.getWordChainStartWord(variation || 1, level || 1, seedNum);
+      const word = await storage.getWordChainStartWord(variation || 1, level || 1, seedNum);
       res.json({ word });
     } catch (error) {
       res.status(500).json({ message: "Failed to get start word" });
@@ -465,7 +463,7 @@ export async function registerRoutes(
   app.post("/api/games/word-chain/computer-word", async (req, res) => {
     try {
       const { playerWord, variation, level, usedWords } = req.body;
-      const word = await dataSource.getWordChainComputerWord(
+      const word = await storage.getWordChainComputerWord(
         playerWord, 
         variation || 1, 
         level || 1, 
@@ -480,7 +478,7 @@ export async function registerRoutes(
   app.get("/api/games/word-sweep/grid", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);
-      const grid = await dataSource.generateWordSweepGrid(isNaN(seed) ? undefined : seed);
+      const grid = await storage.generateWordSweepGrid(isNaN(seed) ? undefined : seed);
       res.json(grid);
     } catch (error) {
       res.status(500).json({ message: "Failed to generate grid" });
@@ -490,7 +488,7 @@ export async function registerRoutes(
   app.get("/api/games/word-unpack/puzzle", async (req, res) => {
     try {
       const seed = parseInt(req.query.seed as string);
-      const puzzle = await dataSource.generateWordUnpackPuzzle(isNaN(seed) ? undefined : seed);
+      const puzzle = await storage.generateWordUnpackPuzzle(isNaN(seed) ? undefined : seed);
       res.json(puzzle);
     } catch (error) {
       res.status(500).json({ message: "Failed to generate puzzle" });
@@ -537,7 +535,7 @@ export async function registerRoutes(
       }
       hash = Math.abs(hash);
       const slug = DAILY_CHALLENGE_SLUGS[hash % DAILY_CHALLENGE_SLUGS.length];
-      const game = await dataSource.getGameBySlug(slug);
+      const game = await storage.getGameBySlug(slug);
       res.json({ date: dateStr, slug, game, seed: hash });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch daily challenge" });
@@ -600,7 +598,7 @@ export async function registerRoutes(
     try {
       const { slug } = req.params;
       const [game, liveCount] = await Promise.all([
-        dataSource.getGameBySlug(slug),
+        storage.getGameBySlug(slug),
         storage.getGamePlayCount(slug),
       ]);
       if (!game) {
@@ -2431,7 +2429,7 @@ export async function registerRoutes(
         const position = Number(finalParams.position);
         if (!letter || !/^[A-Z]$/.test(letter)) return res.status(400).json({ error: "letter must be a single A-Z character" });
         if (!position || position < 1 || position > 8) return res.status(400).json({ error: "position must be between 1 and 8" });
-        const count = await dataSource.countLetterPositionWords(letter, position);
+        const count = await storage.countLetterPositionWords(letter, position);
         if (count < 10) return res.status(400).json({ error: `Only ${count} words match — need at least 10. Choose a different letter or position.` });
         finalParams = { ...finalParams, letter, position, mode: 1 };
       }
