@@ -18,6 +18,9 @@ const individualFeatures = [
   "Create unlimited groups",
   "Unlimited friend challenges",
   "Full profile customisation",
+  "Real-time 1v1 Duels (turn-based & race)",
+  "Custom Play — configure your own game variants",
+  "Quiz Master — create & host shareable quiz sessions",
 ];
 
 const familyExtras = [
@@ -39,6 +42,9 @@ const comparisonRows: { feature: string; individual: boolean; family: boolean }[
   { feature: "Create unlimited groups", individual: true, family: true },
   { feature: "Unlimited friend challenges", individual: true, family: true },
   { feature: "Full profile customisation", individual: true, family: true },
+  { feature: "Real-time 1v1 Duels", individual: true, family: true },
+  { feature: "Custom Play (5 configurable games)", individual: true, family: true },
+  { feature: "Quiz Master — create & host quizzes", individual: true, family: true },
   { feature: "Up to 5 profiles", individual: false, family: true },
   { feature: "Child-safe profiles", individual: false, family: true },
   { feature: "Age-appropriate word lists", individual: false, family: true },
