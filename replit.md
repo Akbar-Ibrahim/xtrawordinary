@@ -80,3 +80,15 @@ A `shared/` directory ensures type consistency and validation across the full st
 ### Development Tools
 - Vite (React plugin)
 - esbuild
+
+## Ideas Backlog
+
+### xtraWordinaire — Status / Achievement Tier
+"xtraWordinaire" (a play on "extraordinaire") could serve as the platform's top prestige status. Two directions to explore:
+
+1. **Top tier in a progression system** — e.g., Bronze > Silver > Gold > xtraWordinaire. Gives all users a long-term goal to chase and keeps them engaged.
+2. **Standalone prestige badge** — awarded when a user hits an exceptional combination of milestones (games mastered, streak length, leaderboard placements, etc.). Rarer and more prestigious.
+
+Either way, the status unlocks a natural CTA: instead of a generic "sign up / go premium" nudge, the platform can invite users to "Work your way to becoming an xtraWordinaire" — making the nudge aspirational rather than transactional.
+
+The progression route gives more users a reason to keep pushing; the standalone badge keeps the status rare. Decision pending.
