@@ -42,6 +42,7 @@ import WordWarsBracket from "@/pages/word-wars-bracket";
 import GuildWarsLobby from "@/pages/guild-wars";
 import GuildWarsBracket from "@/pages/guild-wars-bracket";
 import NotificationSettings from "@/pages/notification-settings";
+import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 
 function GlobalAuthModal() {
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/guild-wars/:id" component={GuildWarsBracket} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
       <Route path="/settings/notifications" component={NotificationSettings} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );

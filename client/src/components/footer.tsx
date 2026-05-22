@@ -23,6 +23,11 @@ export function Footer() {
               About
             </span>
           </Link>
+          <Link href="/pricing">
+            <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-pricing">
+              Pricing
+            </span>
+          </Link>
         </nav>
       </div>
     </footer>
