@@ -1,7 +1,11 @@
-import { Check, Minus, GraduationCap, School, Users, User, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Minus, GraduationCap, School, Users, User, ChevronDown, ChevronUp, Crown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth-context";
+import { AuthModal } from "@/components/auth-modal";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const individualFeatures = [
   "Unlimited plays across all games",
@@ -66,9 +70,53 @@ const faqs = [
 
 export default function Pricing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { toast } = useToast();
+
+  const isPremium = isAuthenticated && user?.isPremium;
+
+  async function handleActivate() {
+    if (!isAuthenticated) {
+      setAuthOpen(true);
+      return;
+    }
+    setUpgrading(true);
+    try {
+      await apiRequest("POST", "/api/users/me/upgrade-premium");
+      await refreshUser();
+      toast({ title: "You're now Premium!", description: "All premium features are now unlocked." });
+    } catch {
+      toast({ title: "Something went wrong", variant: "destructive" });
+    } finally {
+      setUpgrading(false);
+    }
+  }
+
+  const activateButton = (
+    <Button
+      className="w-full gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0"
+      size="lg"
+      onClick={handleActivate}
+      disabled={upgrading || isPremium}
+      data-testid="button-activate-premium"
+    >
+      <Crown className="h-4 w-4" />
+      {isPremium
+        ? "Already active"
+        : upgrading
+        ? "Activating…"
+        : isAuthenticated
+        ? "Activate — free while in beta"
+        : "Sign in to activate"}
+    </Button>
+  );
 
   return (
     <div className="min-h-screen bg-background">
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+
       {/* Hero */}
       <section className="pt-16 pb-10 px-4 text-center">
         <div className="max-w-2xl mx-auto">
@@ -81,6 +129,12 @@ export default function Pricing() {
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             All 24 games are free to try. Upgrade to play without limits, climb the leaderboard, and get every feature we build.
           </p>
+          {isPremium && (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-100 dark:bg-amber-900/40 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+              <Crown className="h-4 w-4" />
+              You already have Premium — enjoy every feature!
+            </div>
+          )}
         </div>
       </section>
 
@@ -103,9 +157,7 @@ export default function Pricing() {
               <span className="text-muted-foreground ml-1">/ month</span>
             </div>
 
-            <Button className="w-full mb-8" size="lg" data-testid="button-subscribe-individual">
-              Get started
-            </Button>
+            <div className="mb-8">{activateButton}</div>
 
             <ul className="space-y-3 flex-1">
               {individualFeatures.map((f) => (
@@ -138,9 +190,7 @@ export default function Pricing() {
               <span className="text-muted-foreground ml-1">/ month</span>
             </div>
 
-            <Button className="w-full mb-8" size="lg" data-testid="button-subscribe-family">
-              Get started
-            </Button>
+            <div className="mb-8">{activateButton}</div>
 
             <ul className="space-y-3 flex-1">
               <li className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Everything in Individual, plus:</li>
@@ -153,6 +203,11 @@ export default function Pricing() {
             </ul>
           </div>
         </div>
+
+        {/* Beta notice */}
+        <p className="text-center text-xs text-muted-foreground mt-6 max-w-md mx-auto">
+          Payments are not yet active. Both plans grant the same full Premium access while we're in beta. Pricing will be enforced once billing is live.
+        </p>
       </section>
 
       {/* Comparison table */}
