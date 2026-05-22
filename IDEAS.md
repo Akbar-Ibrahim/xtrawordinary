@@ -208,6 +208,22 @@ These were proposed as follow-up tasks but not yet started. Reference numbers ar
 ### Duel Discovery
 - **#335** Show a "players waiting" badge on game cards when open duel challenges exist for that game (poll /api/duels/open on ~60s interval; authenticated users only)
 
+### Duel Milestones — War/Medieval Achievement Titles
+A set of escalating war/medieval-themed achievement titles earned through duel performance. Each title would display on the player's profile and optionally beside their name in the duel lobby.
+
+| Title | Trigger idea |
+|---|---|
+| **First Blood** | Win your very first duel |
+| **Skirmisher** | Win 10 duels total |
+| **Man-at-Arms** | Reach a mid-tier ELO / 50 wins |
+| **Knight** | Sustain a win streak or hit a higher ELO bracket |
+| **Siege Master** | Win a duel without losing a single life (perfect round) |
+| **Last Stand** | Win a duel from 1 life remaining |
+| **Warlord** | Reach the elite ELO tier / 200+ wins |
+| **Conqueror** | Win 5 duels in a row |
+| **Iron Guard** | Go undefeated across a full week of duels |
+| **Champion of the Realm** | Finish top of the duel leaderboard for a season |
+
 ---
 
 ## 4. Bigger Concepts Not Yet Built
