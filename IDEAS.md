@@ -38,6 +38,7 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Shell Words / Deep Shell Words: hint that reveals the boundary letters
 - Word Bloom: show the full possible chain tree after the round ends
 - Cross-game combo bonuses (e.g. play 5 different games in one day)
+- **Untimed Mode (Premium)** — a third play mode alongside Classic and Survival. No timer at all; the player plays at their own pace. Scores from untimed sessions are not submitted to the global leaderboard (to keep competition fair), but stats and personal bests are still tracked. Available to premium members only.
 
 ### Authentication
 - Apple Sign-In (important for iOS if a mobile app is added)
