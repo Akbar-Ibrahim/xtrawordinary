@@ -2230,14 +2230,14 @@ export async function registerRoutes(
         const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         for (const m of challengeeMembers) {
           if (m.role !== "owner" && m.role !== "admin") continue;
-          storage.createNotification({
+          createNotificationIfEnabled({
             userId: m.userId,
             type: "team_race_challenge_received",
             title: "Team Race challenge!",
             body: `${challengerGroup?.name ?? "Another group"} challenged your group to a ${gameTitle} Team Race`,
             linkUrl: `/groups/${challengeeGroupId}`,
             readAt: null,
-          }).then(() => pushNotifToUser(m.userId)).catch(() => {});
+          });
         }
       } catch {}
       res.status(201).json(tr);
@@ -2309,14 +2309,14 @@ export async function registerRoutes(
           storage.getGroupMembers(tr.challengeeGroupId),
         ]);
         for (const m of [...cMembers, ...eeMembers]) {
-          storage.createNotification({
+          createNotificationIfEnabled({
             userId: m.userId,
             type: "team_race_accepted",
             title: "Team Race starting!",
             body: `${challengerGroup?.name ?? "Your group"} vs ${challengeeGroup?.name ?? "another group"} — ${gameTitle} Team Race`,
             linkUrl: tr.roomCode ? `/team-race/${tr.roomCode}` : null,
             readAt: null,
-          }).then(() => pushNotifToUser(m.userId)).catch(() => {});
+          });
         }
       } catch {}
       res.json(updated);
