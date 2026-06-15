@@ -22,7 +22,7 @@ const DODGE_LETTER_POOL = ["E", "T", "A", "O", "I", "N", "S", "R", "H", "L", "D"
 const VOWELS_SET = new Set(["A", "E", "I", "O", "U"]);
 const MAX_VOWELS = 3;
 
-const GAME_TIME = 90;
+const GAME_TIME = 600;
 const SURVIVAL_TIME = 8;
 const MIN_WORD_LENGTH = 4;
 
@@ -298,7 +298,8 @@ export function LetterDodgeGame({
       setTimeout(() => setFeedback(null), 800);
 
       // End game when word count target is reached (classic mode only)
-      if (!isSurvivalRef.current && initialWordCount && foundWordsRef.current.length >= initialWordCount) {
+      const wordsToComplete = initialWordCount ?? 100;
+      if (!isSurvivalRef.current && foundWordsRef.current.length >= wordsToComplete) {
         stopTimer();
         setCompletionMessage(getCompletionMessage(true));
         setGameStatus("finished");
@@ -422,7 +423,7 @@ export function LetterDodgeGame({
             <span
               className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalActive ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
             >
-              {timeLeft}s
+              {isSurvivalActive ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
             </span>
             {isSurvivalActive && (
               <Badge variant="outline" className="gap-1 text-orange-600 border-orange-400/50 text-xs" data-testid="badge-survival">
