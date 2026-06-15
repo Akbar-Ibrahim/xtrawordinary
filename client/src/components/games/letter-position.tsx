@@ -118,8 +118,8 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const lastGameSeedRef = useRef<number | null>(null);
   const constraintRngRef = useRef<(() => number) | null>(null);
 
-  const wordsPerChallenge = initialWordCount ?? 20;
-  const timePerChallenge = initialTimeLimit ?? 120;
+  const wordsPerChallenge = initialWordCount ?? 100;
+  const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

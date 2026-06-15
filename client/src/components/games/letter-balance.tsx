@@ -38,7 +38,7 @@ function getEffectiveSlug(
   return "letter-balance";
 }
 
-const CLASSIC_TIME_LIMIT = 90;
+const CLASSIC_TIME_LIMIT = 600;
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "5s", seconds: 5 },

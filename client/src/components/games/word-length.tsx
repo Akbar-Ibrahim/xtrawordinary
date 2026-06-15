@@ -180,8 +180,8 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
 
-  const wordsPerVariation = initialWordCount ?? 20;
-  const timePerVariation = initialTimeLimit ?? 120;
+  const wordsPerVariation = initialWordCount ?? 100;
+  const timePerVariation = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

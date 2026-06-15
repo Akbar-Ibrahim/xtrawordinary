@@ -224,8 +224,8 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const initialLettersRef = useRef<string[] | undefined>(initialLetters);
   const initialLetterCountsRef = useRef<number[] | undefined>(initialLetterCounts);
 
-  const wordsPerChallenge = initialWordCount ?? 20;
-  const timePerChallenge = initialTimeLimit ?? 120;
+  const wordsPerChallenge = initialWordCount ?? 100;
+  const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

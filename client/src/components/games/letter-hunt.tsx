@@ -169,8 +169,8 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const lastGameSeedRef = useRef<number | null>(null);
   const constraintRngRef = useRef<(() => number) | null>(null);
 
-  const wordsToComplete = initialWordCount ?? 20;
-  const timePerChallenge = initialTimeLimit ?? 120;
+  const wordsToComplete = initialWordCount ?? 100;
+  const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {

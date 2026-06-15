@@ -86,7 +86,7 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
   const isSurvivalRef = useRef(false);
 
   const wordsPerChallenge = 15;
-  const timePerChallenge = 120;
+  const timePerChallenge = 600;
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
