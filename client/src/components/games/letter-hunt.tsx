@@ -533,7 +533,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
           <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
           <span
@@ -558,7 +558,6 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             <StreakIndicator streak={streak} />
           </div>
         </div>
-        <div />
       </div>
       <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-1.5" />
 

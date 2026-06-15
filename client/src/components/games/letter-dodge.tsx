@@ -413,7 +413,7 @@ export function LetterDodgeGame({
     return (
       <div className="space-y-4">
         {/* Timer + Score header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center gap-8">
           <div className="flex items-center gap-2 text-muted-foreground">
             {isSurvivalActive ? (
               <Flame className="h-4 w-4 text-orange-500" />
@@ -422,6 +422,9 @@ export function LetterDodgeGame({
             )}
             <span
               className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalActive ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+              data-testid="badge-timer"
+              role="timer"
+              aria-label={`Time remaining: ${isSurvivalActive ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
             >
               {isSurvivalActive ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
             </span>
@@ -434,10 +437,7 @@ export function LetterDodgeGame({
           </div>
           <div className="text-center">
             <p className="text-xs text-muted-foreground">Score</p>
-            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" />
-          </div>
-          <div className="text-right text-sm text-muted-foreground">
-            {foundWords.length} word{foundWords.length !== 1 ? "s" : ""}
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
           </div>
         </div>
 

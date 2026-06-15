@@ -384,29 +384,30 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
-            <Trophy className="h-3.5 w-3.5" />
-            <AnimatedNumber value={score} /> pts
-          </Badge>
-          <StreakIndicator streak={streak} />
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
-            <Zap className="h-3.5 w-3.5" />
-            {CHALLENGE_CONFIG[challenge].name}
-          </Badge>
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
+            data-testid="badge-timer"
+            role="timer"
+            aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+          >
+            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+          </span>
           {isSurvival && (
-            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
-              <Flame className="h-3.5 w-3.5" />
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
+              <Flame className="h-3 w-3" />
               Survival
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= (isSurvival ? 3 : 30) ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}>
-            <Timer className="h-3.5 w-3.5" />
-            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </Badge>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            <StreakIndicator streak={streak} />
+          </div>
         </div>
       </div>
 
@@ -421,6 +422,10 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-4">
+                  <Badge className="bg-primary/10 text-primary border border-primary/20 gap-1.5 text-xs" data-testid="badge-challenge">
+                    <Zap className="h-3 w-3" />
+                    {CHALLENGE_CONFIG[challenge].name}
+                  </Badge>
                   <motion.div
                     key={`${constraint.position}-${constraint.letter}`}
                     initial={{ scale: 0.8, opacity: 0 }}

@@ -428,27 +428,29 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Badge variant="secondary" data-testid="badge-current-challenge">{config.name}</Badge>
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
+            data-testid="badge-timer"
+            role="timer"
+            aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+          >
+            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+          </span>
           {isSurvival && (
-            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
               <Flame className="h-3 w-3" />
               Survival
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            <span className="font-bold" data-testid="text-score"><AnimatedNumber value={score} /></span>
-          </div>
-          <StreakIndicator streak={streak} />
-          <div className="flex items-center gap-2">
-            <Timer className={`w-4 h-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive" : "text-muted-foreground"}`} />
-            <span className={`font-mono ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive font-bold" : ""}`} data-testid="text-timer" role="timer" aria-label={`${isSurvival ? timeLeft + " seconds" : Math.floor(timeLeft / 60) + " minutes " + timeLeft % 60 + " seconds"} remaining`}>
-              {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-            </span>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            <StreakIndicator streak={streak} />
           </div>
         </div>
       </div>
@@ -456,6 +458,7 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
       <Card>
         <CardContent className="p-6">
           <div className="text-center space-y-4">
+            <Badge variant="secondary" className="text-xs" data-testid="badge-current-challenge">{config.name}</Badge>
             <div className="space-y-2">
               <h2 className="text-xl font-semibold">Find {config.wordLength}-letter words</h2>
               <p className="text-muted-foreground">All letters must be unique - no repeats!</p>
