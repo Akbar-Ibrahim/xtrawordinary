@@ -4,7 +4,7 @@ import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
 import { generateLetterPool } from "./game-data";
-import type { HuddleChallenge, InsertHuddleChallenge } from "@shared/schema";
+import type { HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge } from "@shared/schema";
 
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
@@ -2350,6 +2350,80 @@ export class MySQLStorage implements IStorage {
     const db = await this.getDb();
     const rows = await db.select().from(schema.huddleChallenges).where(eq(schema.huddleChallenges.roomCode, roomCode)).limit(1);
     return rows[0] ? this.mapHuddleChallenge(rows[0]) : undefined;
+  }
+
+  private mapTeamRaceChallenge(row: typeof schema.teamRaceChallenges.$inferSelect): TeamRaceChallenge {
+    return {
+      id: row.id,
+      challengerGroupId: row.challengerGroupId,
+      challengeeGroupId: row.challengeeGroupId,
+      challengerAdminId: row.challengerAdminId,
+      challengeeAdminId: row.challengeeAdminId ?? null,
+      gameSlug: row.gameSlug,
+      raceTarget: row.raceTarget,
+      raceTimeLimit: row.raceTimeLimit,
+      status: row.status as TeamRaceChallenge["status"],
+      roomCode: row.roomCode ?? null,
+      seed: row.seed ?? null,
+      startWord: row.startWord ?? null,
+      winnerGroupId: row.winnerGroupId ?? null,
+      createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+      expiresAt: row.expiresAt instanceof Date ? row.expiresAt.toISOString() : (row.expiresAt ? String(row.expiresAt) : null),
+    };
+  }
+
+  async createTeamRaceChallenge(data: InsertTeamRaceChallenge): Promise<TeamRaceChallenge> {
+    const db = await this.getDb();
+    const result = await db.insert(schema.teamRaceChallenges).values({
+      challengerGroupId: data.challengerGroupId,
+      challengeeGroupId: data.challengeeGroupId,
+      challengerAdminId: data.challengerAdminId,
+      challengeeAdminId: data.challengeeAdminId ?? null,
+      gameSlug: data.gameSlug,
+      raceTarget: data.raceTarget,
+      raceTimeLimit: data.raceTimeLimit,
+      status: data.status ?? "pending",
+      roomCode: data.roomCode ?? null,
+      seed: data.seed ?? null,
+      startWord: data.startWord ?? null,
+      winnerGroupId: data.winnerGroupId ?? null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+    });
+    const rows = await db.select().from(schema.teamRaceChallenges).where(eq(schema.teamRaceChallenges.id, result[0].insertId)).limit(1);
+    return this.mapTeamRaceChallenge(rows[0]);
+  }
+
+  async getTeamRaceChallenge(id: number): Promise<TeamRaceChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.teamRaceChallenges).where(eq(schema.teamRaceChallenges.id, id)).limit(1);
+    return rows[0] ? this.mapTeamRaceChallenge(rows[0]) : undefined;
+  }
+
+  async getTeamRaceChallengesForGroup(groupId: number): Promise<TeamRaceChallenge[]> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.teamRaceChallenges)
+      .where(or(eq(schema.teamRaceChallenges.challengerGroupId, groupId), eq(schema.teamRaceChallenges.challengeeGroupId, groupId)))
+      .orderBy(desc(schema.teamRaceChallenges.createdAt));
+    return rows.map((r: typeof schema.teamRaceChallenges.$inferSelect) => this.mapTeamRaceChallenge(r));
+  }
+
+  async updateTeamRaceChallenge(id: number, updates: Partial<Pick<TeamRaceChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord" | "winnerGroupId">>): Promise<TeamRaceChallenge | undefined> {
+    const db = await this.getDb();
+    const dbUpdates: Record<string, any> = {};
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.challengeeAdminId !== undefined) dbUpdates.challengeeAdminId = updates.challengeeAdminId;
+    if (updates.roomCode !== undefined) dbUpdates.roomCode = updates.roomCode;
+    if (updates.seed !== undefined) dbUpdates.seed = updates.seed;
+    if (updates.startWord !== undefined) dbUpdates.startWord = updates.startWord;
+    if (updates.winnerGroupId !== undefined) dbUpdates.winnerGroupId = updates.winnerGroupId;
+    await db.update(schema.teamRaceChallenges).set(dbUpdates).where(eq(schema.teamRaceChallenges.id, id));
+    return this.getTeamRaceChallenge(id);
+  }
+
+  async getTeamRaceChallengeByRoom(roomCode: string): Promise<TeamRaceChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.teamRaceChallenges).where(eq(schema.teamRaceChallenges.roomCode, roomCode)).limit(1);
+    return rows[0] ? this.mapTeamRaceChallenge(rows[0]) : undefined;
   }
 
   private mapNotification(row: any): Notification {

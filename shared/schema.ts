@@ -705,6 +705,44 @@ export type HuddleChallenge = z.infer<typeof huddleChallengeSchema>;
 export const insertHuddleChallengeSchema = huddleChallengeSchema.omit({ id: true, createdAt: true });
 export type InsertHuddleChallenge = z.infer<typeof insertHuddleChallengeSchema>;
 
+// ==================== TEAM RACE ====================
+
+export const TEAM_RACE_GAME_SLUGS = new Set([
+  "no-repeats",
+  "anagram-solver",
+  "word-maker",
+  "definition-match",
+  "letter-hunt",
+  "letter-frequency",
+  "word-length",
+  "letter-dodge",
+  "word-roots",
+]);
+
+export const teamRaceChallengeStatusSchema = z.enum(["pending", "accepted", "declined", "cancelled", "completed"]);
+export type TeamRaceChallengeStatus = z.infer<typeof teamRaceChallengeStatusSchema>;
+
+export const teamRaceChallengeSchema = z.object({
+  id: z.number(),
+  challengerGroupId: z.number(),
+  challengeeGroupId: z.number(),
+  challengerAdminId: z.number(),
+  challengeeAdminId: z.number().nullable(),
+  gameSlug: z.string(),
+  raceTarget: z.number(),
+  raceTimeLimit: z.number(),
+  status: teamRaceChallengeStatusSchema,
+  roomCode: z.string().nullable(),
+  seed: z.number().nullable(),
+  startWord: z.string().nullable(),
+  winnerGroupId: z.number().nullable(),
+  createdAt: z.string(),
+  expiresAt: z.string().nullable(),
+});
+export type TeamRaceChallenge = z.infer<typeof teamRaceChallengeSchema>;
+export const insertTeamRaceChallengeSchema = teamRaceChallengeSchema.omit({ id: true, createdAt: true });
+export type InsertTeamRaceChallenge = z.infer<typeof insertTeamRaceChallengeSchema>;
+
 // ==================== NOTIFICATIONS ====================
 
 export const notificationTypeSchema = z.enum([
@@ -716,6 +754,8 @@ export const notificationTypeSchema = z.enum([
   "friend_challenge_result",
   "huddle_challenge_received",
   "huddle_accepted",
+  "team_race_challenge_received",
+  "team_race_accepted",
   "word_war_matched",
   "word_war_round_start",
   "word_war_champion",
@@ -761,6 +801,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   friend_challenge_result: "Friend challenge results",
   huddle_challenge_received: "Your group was challenged to a Huddle",
   huddle_accepted: "Group Huddle challenge accepted",
+  team_race_challenge_received: "Your group was challenged to a Team Race",
+  team_race_accepted: "Group Team Race challenge accepted",
   word_war_matched: "Word Wars — Your opponent awaits",
   word_war_round_start: "Word Wars — Battle begins now",
   word_war_champion: "Word Wars — You are champion",

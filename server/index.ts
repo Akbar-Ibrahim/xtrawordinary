@@ -5,6 +5,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { initStorage, getStorage } from "./storage";
 import { setupDuelWebSocket } from "./duel-ws";
+import { setupTeamRaceWebSocket } from "./team-race-ws";
 
 const app = express();
 const httpServer = createServer(app);
@@ -175,6 +176,7 @@ function scheduleGuildWarsJobs() {
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);
+  setupTeamRaceWebSocket(httpServer);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

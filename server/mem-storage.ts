@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
@@ -33,6 +33,9 @@ export class MemStorage implements IStorage {
 
   private huddleChallenges: HuddleChallenge[] = [];
   private huddleChallengeIdCounter = 1;
+
+  private teamRaceChallenges: TeamRaceChallenge[] = [];
+  private teamRaceChallengeIdCounter = 1;
 
   private wordWarsTournaments: WordWarsTournament[] = [];
   private wordWarsTournamentIdCounter = 1;
@@ -1759,6 +1762,33 @@ export class MemStorage implements IStorage {
 
   async getHuddleChallengeByRoom(roomCode: string): Promise<HuddleChallenge | undefined> {
     return this.huddleChallenges.find(h => h.roomCode === roomCode);
+  }
+
+  async createTeamRaceChallenge(data: InsertTeamRaceChallenge): Promise<TeamRaceChallenge> {
+    const tr: TeamRaceChallenge = { ...data, id: this.teamRaceChallengeIdCounter++, createdAt: new Date().toISOString() };
+    this.teamRaceChallenges.push(tr);
+    return tr;
+  }
+
+  async getTeamRaceChallenge(id: number): Promise<TeamRaceChallenge | undefined> {
+    return this.teamRaceChallenges.find(tr => tr.id === id);
+  }
+
+  async getTeamRaceChallengesForGroup(groupId: number): Promise<TeamRaceChallenge[]> {
+    return this.teamRaceChallenges
+      .filter(tr => tr.challengerGroupId === groupId || tr.challengeeGroupId === groupId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateTeamRaceChallenge(id: number, updates: Partial<Pick<TeamRaceChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord" | "winnerGroupId">>): Promise<TeamRaceChallenge | undefined> {
+    const tr = this.teamRaceChallenges.find(tr => tr.id === id);
+    if (!tr) return undefined;
+    Object.assign(tr, updates);
+    return tr;
+  }
+
+  async getTeamRaceChallengeByRoom(roomCode: string): Promise<TeamRaceChallenge | undefined> {
+    return this.teamRaceChallenges.find(tr => tr.roomCode === roomCode);
   }
 
   async createNotification(data: InsertNotification): Promise<Notification> {

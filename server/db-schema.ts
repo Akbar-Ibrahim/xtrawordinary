@@ -592,6 +592,29 @@ export const guildWarsChampions = mysqlTable("guild_wars_champions", {
   uniqueIndex("gc_tournament_group_idx").on(table.tournamentId, table.groupId),
 ]);
 
+export const teamRaceChallenges = mysqlTable("team_race_challenges", {
+  id: int("id").primaryKey().autoincrement(),
+  challengerGroupId: int("challenger_group_id").notNull(),
+  challengeeGroupId: int("challengee_group_id").notNull(),
+  challengerAdminId: int("challenger_admin_id").notNull(),
+  challengeeAdminId: int("challengee_admin_id"),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  raceTarget: int("race_target").notNull().default(20),
+  raceTimeLimit: int("race_time_limit").notNull().default(300),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  roomCode: varchar("room_code", { length: 12 }),
+  seed: int("seed"),
+  startWord: varchar("start_word", { length: 100 }),
+  winnerGroupId: int("winner_group_id"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+}, (table) => [
+  index("tr_challenger_group_idx").on(table.challengerGroupId),
+  index("tr_challengee_group_idx").on(table.challengeeGroupId),
+  index("tr_status_idx").on(table.status),
+  index("tr_room_code_idx").on(table.roomCode),
+]);
+
 export const notifications = mysqlTable("notifications", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull(),

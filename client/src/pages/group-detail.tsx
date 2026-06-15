@@ -42,11 +42,40 @@ const DUEL_GAME_NAMES: Record<string, string> = {
   "word-split": "Word Split", "definition-match": "Definition Match",
 };
 
+const TEAM_RACE_GAME_SLUGS_LIST = [
+  "no-repeats", "anagram-solver", "word-maker", "definition-match",
+  "letter-hunt", "letter-frequency", "word-length", "letter-dodge", "word-roots",
+];
+const TEAM_RACE_GAME_NAMES: Record<string, string> = {
+  "no-repeats": "No Repeats", "anagram-solver": "Anagram Solver", "word-maker": "Word Maker",
+  "definition-match": "Definition Match", "letter-hunt": "Letter Hunt",
+  "letter-frequency": "Letter Frequency", "word-length": "Length Challenge",
+  "letter-dodge": "Letter Dodge", "word-roots": "Word Roots",
+};
+
 interface EnrichedHuddleChallenge extends HuddleChallenge {
   challengerGroupName: string;
   challengeeGroupName: string;
   challengerAdminName: string;
   challengeeAdminName: string | null;
+}
+
+interface EnrichedTeamRaceChallenge {
+  id: number;
+  challengerGroupId: number;
+  challengeeGroupId: number;
+  challengerAdminId: number;
+  challengeeAdminId: number | null;
+  challengerGroupName: string;
+  challengeeGroupName: string;
+  gameSlug: string;
+  raceTarget: number;
+  raceTimeLimit: number;
+  status: string;
+  roomCode: string | null;
+  winnerGroupId: number | null;
+  createdAt: string;
+  expiresAt: string | null;
 }
 
 const GAME_SLUGS = [
@@ -358,6 +387,14 @@ export default function GroupDetail() {
   const [huddleRaceTarget, setHuddleRaceTarget] = useState(15);
   const [huddleRaceTimeLimit, setHuddleRaceTimeLimit] = useState(300);
 
+  // Team Race dialog state
+  const [trOpen, setTrOpen] = useState(false);
+  const [trGroupSearch, setTrGroupSearch] = useState("");
+  const [trTargetGroupId, setTrTargetGroupId] = useState<number | null>(null);
+  const [trGameSlug, setTrGameSlug] = useState(TEAM_RACE_GAME_SLUGS_LIST[0]);
+  const [trRaceTarget, setTrRaceTarget] = useState(20);
+  const [trRaceTimeLimit, setTrRaceTimeLimit] = useState(300);
+
   const { data, isLoading, error } = useQuery<GroupDetailResponse>({
     queryKey: ["/api/groups", groupId],
     queryFn: async () => {
@@ -409,6 +446,17 @@ export default function GroupDetail() {
     refetchInterval: 10000,
   });
 
+  const { data: teamRaces } = useQuery<EnrichedTeamRaceChallenge[]>({
+    queryKey: ["/api/groups", groupId, "team-races"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/team-races`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !isNaN(groupId),
+    refetchInterval: 10000,
+  });
+
   const { data: publicGroups } = useQuery<Group[]>({
     queryKey: ["/api/groups/browse"],
     queryFn: async () => {
@@ -416,7 +464,7 @@ export default function GroupDetail() {
       if (!res.ok) return [];
       return res.json();
     },
-    enabled: huddleOpen,
+    enabled: huddleOpen || trOpen,
     staleTime: 60000,
   });
 
@@ -547,6 +595,63 @@ export default function GroupDetail() {
     onError: () => toast({ title: "Failed to cancel challenge", variant: "destructive" }),
   });
 
+  // Team Race mutations
+  const createTeamRaceMutation = useMutation({
+    mutationFn: async () => {
+      if (!trTargetGroupId) throw new Error("Pick a group first");
+      return apiRequest("POST", "/api/team-races", {
+        challengerGroupId: groupId,
+        challengeeGroupId: trTargetGroupId,
+        gameSlug: trGameSlug,
+        raceTarget: trRaceTarget,
+        raceTimeLimit: trRaceTimeLimit,
+      });
+    },
+    onSuccess: async (res) => {
+      const body = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "team-races"] });
+      setTrOpen(false);
+      setTrTargetGroupId(null);
+      setTrGroupSearch("");
+      toast({ title: "Team Race challenge sent!" });
+      if (body.roomCode) navigate(`/team-race/${body.roomCode}`);
+    },
+    onError: async (err: any) => {
+      let msg = "Failed to send Team Race challenge";
+      try { const body = await err.response?.json(); if (body?.error) msg = body.error; } catch {}
+      toast({ title: msg, variant: "destructive" });
+    },
+  });
+
+  const acceptTRMutation = useMutation({
+    mutationFn: async (trId: number) => apiRequest("PATCH", `/api/team-races/${trId}/accept`),
+    onSuccess: async (res) => {
+      const body = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "team-races"] });
+      toast({ title: "Team Race accepted! Heading to the room..." });
+      if (body.roomCode) navigate(`/team-race/${body.roomCode}`);
+    },
+    onError: () => toast({ title: "Failed to accept Team Race", variant: "destructive" }),
+  });
+
+  const declineTRMutation = useMutation({
+    mutationFn: async (trId: number) => apiRequest("PATCH", `/api/team-races/${trId}/decline`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "team-races"] });
+      toast({ title: "Team Race declined" });
+    },
+    onError: () => toast({ title: "Failed to decline Team Race", variant: "destructive" }),
+  });
+
+  const cancelTRMutation = useMutation({
+    mutationFn: async (trId: number) => apiRequest("PATCH", `/api/team-races/${trId}/cancel`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "team-races"] });
+      toast({ title: "Team Race cancelled" });
+    },
+    onError: () => toast({ title: "Failed to cancel Team Race", variant: "destructive" }),
+  });
+
   const editMutation = useMutation({
     mutationFn: async () =>
       apiRequest("PATCH", `/api/groups/${groupId}`, {
@@ -657,6 +762,11 @@ export default function GroupDetail() {
                 {isAdmin && (
                   <Button variant="outline" size="sm" onClick={() => setHuddleOpen(true)} data-testid="button-huddle-challenge">
                     <Zap className="h-4 w-4 mr-1.5" />Battle
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button variant="outline" size="sm" onClick={() => setTrOpen(true)} data-testid="button-team-race-challenge">
+                    <Users className="h-4 w-4 mr-1.5" />Team Race
                   </Button>
                 )}
                 {membership && !isOwner && (
@@ -790,7 +900,6 @@ export default function GroupDetail() {
                         </Card>
                       ))}
                       {pastBattles.slice(0, 5).map(h => {
-                        const weWon = h.status === "completed";
                         const isChallengerGroup = h.challengerGroupId === groupId;
                         const opponent = isChallengerGroup ? h.challengeeGroupName : h.challengerGroupName;
                         return (
@@ -810,6 +919,128 @@ export default function GroupDetail() {
                               {h.status === "accepted" && h.roomCode && (
                                 <Link href={`/duel/${h.roomCode}`}>
                                   <Button size="sm" className="text-xs h-7">Join</Button>
+                                </Link>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Team Race Section */}
+              {(() => {
+                const trList = teamRaces || [];
+                const pendingTRIncoming = trList.filter(tr => tr.status === "pending" && tr.challengeeGroupId === groupId);
+                const pendingTROutgoing = trList.filter(tr => tr.status === "pending" && tr.challengerGroupId === groupId);
+                const pastTRs = trList.filter(tr => tr.status !== "pending");
+                if (!isAdmin && pendingTRIncoming.length === 0 && pendingTROutgoing.length === 0 && pastTRs.length === 0) return null;
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />Team Races
+                      </h3>
+                    </div>
+                    <div className="space-y-2">
+                      {pendingTRIncoming.map(tr => (
+                        <Card key={tr.id} className="border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/10" data-testid={`card-tr-incoming-${tr.id}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-3 flex-wrap">
+                              <div>
+                                <p className="font-semibold text-sm flex items-center gap-1.5">
+                                  <Users className="h-4 w-4 text-emerald-600" />
+                                  Team Race from <span className="text-foreground">{tr.challengerGroupName}</span>
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                  {TEAM_RACE_GAME_NAMES[tr.gameSlug] || tr.gameSlug} · First to {tr.raceTarget} words · {Math.floor(tr.raceTimeLimit / 60)} min
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">All members of your group can join and contribute!</p>
+                              </div>
+                              {isAdmin && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => acceptTRMutation.mutate(tr.id)}
+                                    disabled={acceptTRMutation.isPending}
+                                    data-testid={`button-tr-accept-${tr.id}`}
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => declineTRMutation.mutate(tr.id)}
+                                    disabled={declineTRMutation.isPending}
+                                    data-testid={`button-tr-decline-${tr.id}`}
+                                  >
+                                    Decline
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {pendingTROutgoing.map(tr => (
+                        <Card key={tr.id} className="border-violet-500/30 bg-violet-50/10 dark:bg-violet-950/10" data-testid={`card-tr-outgoing-${tr.id}`}>
+                          <CardContent className="p-4 flex items-start justify-between gap-3 flex-wrap">
+                            <div>
+                              <p className="font-semibold text-sm flex items-center gap-1.5">
+                                <Users className="h-4 w-4 text-violet-500" />
+                                Team Race sent to <span className="text-foreground">{tr.challengeeGroupName}</span>
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-0.5">
+                                {TEAM_RACE_GAME_NAMES[tr.gameSlug] || tr.gameSlug} · First to {tr.raceTarget} words
+                              </p>
+                              <Badge variant="outline" className="mt-1 text-xs">Awaiting response</Badge>
+                            </div>
+                            {isAdmin && (
+                              <div className="flex gap-2 items-start">
+                                {tr.roomCode && (
+                                  <Link href={`/team-race/${tr.roomCode}`}>
+                                    <Button size="sm" variant="outline" data-testid={`button-tr-enter-${tr.id}`}>
+                                      Enter Room
+                                    </Button>
+                                  </Link>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground"
+                                  onClick={() => cancelTRMutation.mutate(tr.id)}
+                                  disabled={cancelTRMutation.isPending}
+                                  data-testid={`button-tr-cancel-${tr.id}`}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {pastTRs.slice(0, 5).map(tr => {
+                        const isChallengerGroup = tr.challengerGroupId === groupId;
+                        const opponent = isChallengerGroup ? tr.challengeeGroupName : tr.challengerGroupName;
+                        const weWon = tr.winnerGroupId === groupId;
+                        return (
+                          <Card key={tr.id} className="opacity-80" data-testid={`card-tr-past-${tr.id}`}>
+                            <CardContent className="p-3 flex items-center gap-3">
+                              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">vs {opponent}</p>
+                                <p className="text-xs text-muted-foreground">{TEAM_RACE_GAME_NAMES[tr.gameSlug] || tr.gameSlug} · Team Race</p>
+                              </div>
+                              <Badge variant="outline" className={`text-xs shrink-0 ${tr.status === "completed" && weWon ? "border-emerald-500/50 text-emerald-600" : ""}`}>
+                                {tr.status === "completed" ? (tr.winnerGroupId ? (weWon ? "Won" : "Lost") : "Tie") : tr.status}
+                              </Badge>
+                              {tr.roomCode && (tr.status === "accepted" || tr.status === "completed") && (
+                                <Link href={`/team-race/${tr.roomCode}`}>
+                                  <Button size="sm" variant="ghost" className="text-xs h-7">
+                                    {tr.status === "accepted" ? "Join" : "View"}
+                                  </Button>
                                 </Link>
                               )}
                             </CardContent>
@@ -1453,6 +1684,114 @@ export default function GroupDetail() {
               data-testid="button-huddle-send"
             >
               {createHuddleMutation.isPending ? "Sending..." : "Send Challenge"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Team Race Challenge Dialog */}
+      <Dialog open={trOpen} onOpenChange={(v) => { setTrOpen(v); if (!v) { setTrTargetGroupId(null); setTrGroupSearch(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Team Race Challenge
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              All members of both groups play simultaneously. Words are pooled per team — the team that finds the most unique valid words wins!
+            </p>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Opponent Group</label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search public groups..."
+                  value={trGroupSearch}
+                  onChange={e => setTrGroupSearch(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-tr-search"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto rounded-md border border-border mt-1">
+                {(() => {
+                  const filtered = (publicGroups || [])
+                    .filter(g => g.id !== groupId && g.name.toLowerCase().includes(trGroupSearch.toLowerCase()));
+                  if (!filtered.length) return <p className="text-sm text-muted-foreground text-center py-4">No public groups found</p>;
+                  return filtered.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => { setTrTargetGroupId(g.id); setTrGroupSearch(g.name); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left ${trTargetGroupId === g.id ? "bg-primary/10 text-primary font-medium" : ""}`}
+                      data-testid={`tr-group-option-${g.id}`}
+                    >
+                      <Users className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{g.name}</span>
+                      {trTargetGroupId === g.id && <span className="ml-auto text-xs">✓</span>}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Game</label>
+              <Select value={trGameSlug} onValueChange={setTrGameSlug}>
+                <SelectTrigger data-testid="select-tr-game">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_RACE_GAME_SLUGS_LIST.map(slug => (
+                    <SelectItem key={slug} value={slug}>{TEAM_RACE_GAME_NAMES[slug] || slug}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3 rounded-md border border-border p-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Target words (team that reaches this first wins)</label>
+                <div className="flex gap-1 flex-wrap">
+                  {[10, 15, 20, 25, 30].map(n => (
+                    <Button key={n} type="button" size="sm"
+                      variant={trRaceTarget === n ? "default" : "outline"}
+                      onClick={() => setTrRaceTarget(n)}
+                      data-testid={`button-tr-target-${n}`}
+                    >{n}</Button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Time limit</label>
+                <div className="flex gap-1 flex-wrap">
+                  {[{ v: 180, l: "3 min" }, { v: 300, l: "5 min" }, { v: 480, l: "8 min" }, { v: 600, l: "10 min" }].map(({ v, l }) => (
+                    <Button key={v} type="button" size="sm"
+                      variant={trRaceTimeLimit === v ? "default" : "outline"}
+                      onClick={() => setTrRaceTimeLimit(v)}
+                      data-testid={`button-tr-timelimit-${v}`}
+                    >{l}</Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {!trTargetGroupId && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">Select an opponent group to continue.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setTrOpen(false); setTrTargetGroupId(null); setTrGroupSearch(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createTeamRaceMutation.mutate()}
+              disabled={!trTargetGroupId || createTeamRaceMutation.isPending}
+              data-testid="button-tr-send"
+            >
+              {createTeamRaceMutation.isPending ? "Sending..." : "Send Challenge"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -35,6 +35,7 @@ import QuizResults from "@/pages/quiz-results";
 import CreateQuiz from "@/pages/create-quiz";
 import MyQuizzes from "@/pages/my-quizzes";
 import DuelRoom from "@/pages/duel-room";
+import TeamRaceRoom from "@/pages/team-race-room";
 import DuelLobby from "@/pages/duel-lobby";
 import DuelLeaderboard from "@/pages/duel-leaderboard";
 import WordWarsLobby from "@/pages/word-wars";
@@ -82,6 +83,7 @@ function Router() {
       <Route path="/guild-wars/:id/match/:matchId" component={GuildWarsBracket} />
       <Route path="/guild-wars/:id" component={GuildWarsBracket} />
       <Route path="/duel/:roomCode" component={DuelRoom} />
+      <Route path="/team-race/:roomCode" component={TeamRaceRoom} />
       <Route path="/settings/notifications" component={NotificationSettings} />
       <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
