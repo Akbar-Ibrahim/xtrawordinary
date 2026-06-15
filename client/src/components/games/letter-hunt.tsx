@@ -532,44 +532,37 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
-            <Trophy className="h-3.5 w-3.5" />
-            <AnimatedNumber value={score} /> pts
-          </Badge>
-          <StreakIndicator streak={streak} />
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-challenge">
-            <Zap className="h-3.5 w-3.5" />
-            {CHALLENGE_CONFIG[challenge].name}
-          </Badge>
-          <Badge variant={ordered ? "default" : "secondary"} className="gap-1.5" data-testid="badge-mode">
-            {ordered ? <AlignLeft className="h-3.5 w-3.5" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
-            {ordered ? "Ordered" : "Unordered"}
-          </Badge>
-          <Badge variant="secondary" className="gap-1.5" data-testid="badge-progress">
-            {wordsCompleted}/{wordsToComplete}
-          </Badge>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
+            data-testid="badge-timer"
+            role="timer"
+            aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+          >
+            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+          </span>
           {isSurvivalRef.current && (
-            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
-              <Flame className="h-3.5 w-3.5" />
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
+              <Flame className="h-3 w-3" />
               Survival
             </Badge>
           )}
         </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            <StreakIndicator streak={streak} />
+          </div>
+        </div>
         <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer" aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}>
-            <Timer className="h-3.5 w-3.5" />
-            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToMenu}
-            className="gap-1.5"
-            data-testid="button-menu"
-          >
+          <span className="text-sm text-muted-foreground" data-testid="badge-progress">
+            {wordsCompleted}/{wordsToComplete}
+          </span>
+          <Button variant="outline" size="sm" onClick={goToMenu} className="gap-1.5" data-testid="button-menu">
             <RotateCcw className="h-4 w-4" />
             Menu
           </Button>
@@ -586,6 +579,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
           )}
         </div>
       </div>
+      <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-1.5" />
 
       <AnimatePresence mode="wait">
         {gameStatus === "playing" ? (
@@ -598,13 +592,22 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                    <Search className="h-4 w-4" />
+                  <div className="flex items-center justify-center gap-2 flex-wrap text-sm text-muted-foreground">
+                    <Search className="h-4 w-4 shrink-0" />
                     <span>
                       {ordered
                         ? "Form words where these letters appear in order:"
                         : "Form words containing these letters:"}
                     </span>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className="bg-primary text-primary-foreground gap-1 text-xs" data-testid="badge-challenge">
+                        <Zap className="h-3 w-3" />
+                        {CHALLENGE_CONFIG[challenge].name}
+                      </Badge>
+                      <Badge variant={ordered ? "default" : "secondary"} className="gap-1 text-xs" data-testid="badge-mode">
+                        {ordered ? "Ordered" : "Any order"}
+                      </Badge>
+                    </div>
                   </div>
                   <motion.div
                     key={currentLetters.join("")}
@@ -625,10 +628,6 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                       </motion.div>
                     ))}
                   </motion.div>
-                  <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {wordsCompleted} / {wordsToComplete} words
-                  </p>
                   {challenge === "advanced" && (
                     <Badge variant="secondary" className="text-xs">
                       Letters change after each word!
@@ -636,6 +635,30 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   )}
                   {isSurvivalRef.current && (
                     <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                  <motion.span
+                    key={wordsCompleted}
+                    initial={{ scale: 1.4 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl font-bold tabular-nums leading-none text-primary"
+                    data-testid="text-live-word-count"
+                  >
+                    {wordsCompleted}
+                  </motion.span>
+                  <span className="text-sm text-muted-foreground leading-none">
+                    word{wordsCompleted !== 1 ? "s" : ""} found
+                  </span>
+                  {personalBest > 0 && (
+                    <>
+                      <span className="text-muted-foreground/40 leading-none">·</span>
+                      <span className="text-sm text-muted-foreground leading-none">
+                        PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest}</span>
+                      </span>
+                    </>
                   )}
                 </div>
 

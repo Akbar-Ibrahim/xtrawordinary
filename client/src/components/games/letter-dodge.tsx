@@ -471,6 +471,31 @@ export function LetterDodgeGame({
           </CardContent>
         </Card>
 
+        {/* Live word count strip */}
+        <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+          <motion.span
+            key={foundWords.length}
+            initial={{ scale: 1.4 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="text-2xl font-bold tabular-nums leading-none text-primary"
+            data-testid="text-live-word-count"
+          >
+            {foundWords.length}
+          </motion.span>
+          <span className="text-sm text-muted-foreground leading-none">
+            word{foundWords.length !== 1 ? "s" : ""} found
+          </span>
+          {personalBest > 0 && (
+            <>
+              <span className="text-muted-foreground/40 leading-none">·</span>
+              <span className="text-sm text-muted-foreground leading-none">
+                PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest}</span>
+              </span>
+            </>
+          )}
+        </div>
+
         {/* Input with per-character forbidden-letter highlighting */}
         <div className="space-y-2">
           <div className="flex gap-2">

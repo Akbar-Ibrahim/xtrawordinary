@@ -512,10 +512,10 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
           <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
             <motion.span
               key={wordsChained}
-              initial={{ scale: 1.4, color: "hsl(38, 92%, 50%)" }}
-              animate={{ scale: 1, color: "var(--foreground)" }}
+              initial={{ scale: 1.4 }}
+              animate={{ scale: 1 }}
               transition={{ duration: 0.3 }}
-              className="text-2xl font-bold tabular-nums leading-none"
+              className="text-2xl font-bold tabular-nums leading-none text-primary"
               data-testid="text-live-word-count"
             >
               {wordsChained}
