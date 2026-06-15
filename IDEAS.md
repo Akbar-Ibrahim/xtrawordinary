@@ -1,7 +1,7 @@
 # xtraWordinary — Ideas & Notes
 
 Single reference for all ideas, suggestions, deferred tasks, and future plans.
-Last consolidated: May 2026
+Last consolidated: June 2026
 
 ---
 
@@ -146,11 +146,11 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Export: download user list or leaderboard as CSV
 
 ### Navigation & Notifications
-- Real-time notifications via WebSocket (currently polling every 60s)
 - More notification types wired up: friend request received, achievement unlocked, someone liked your comment
 - Mobile bottom navigation bar (tab bar) for an app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
 - Breadcrumb trail on game and group detail pages
+- Extract the SSE notification stream into a dedicated `useNotificationStream` hook for cleaner reuse and easier testing (currently the EventSource logic is inline in the navigation component)
 
 ### UI / UX & Platform
 - PWA service worker: offline caching so the daily challenge works without internet (manifest.json already exists)
@@ -182,32 +182,14 @@ These were proposed as follow-up tasks but not yet started. Reference numbers ar
 - **#282** Let anyone with a link watch a tournament bracket without signing in (currently SSE + bracket data requires auth; unauthenticated viewers get 15s poll only)
 - **#283** Let spectators see live match results update without refreshing (spectators not connected via SSE miss real-time match_completed events)
 
-### Duel Room — Sound & Audio
-- **#286** Add a volume slider so players can control how loud game sounds are
-- **#287** Give the countdown ticker a rising pitch so tension builds as the game approaches (each tick note slightly higher than the previous)
-- **#288** Remember mute preference separately for duels vs. regular games (currently one shared toggle)
-- **#289** Add a sound mute button to the spectator view
-
-### Duel Room — In-Game Alerts
-- **#278** Show a reconnect banner inside the game instead of just a toast (persistent "Opponent disconnected — reconnecting…" banner)
-
-### Duel Lobby
-- **#290** Animate new challenge cards sliding in when they appear (Framer Motion entrance animation for newly posted challenges)
-
-### Notification Settings
-- **#293** Add per-category "disable section" buttons to notification settings (one toggle to mute all Social / all Duels / all Word Wars at once)
+### Duel Room — Audio
+- Fully decouple duel audio from the global game mute: currently `duelMuted` is stored separately but duel sounds still route through `SoundProvider.playSound`, so turning off global game sound also silences duels. The fix is a duel-specific `soundEnabled` flag in the provider (or a bypass param) so the two contexts are truly independent.
 
 ### Friend Challenges
 - **#310** Let players challenge anyone, not just existing friends (currently the challenge button is hidden with zero friends; should allow searching any registered user by username)
 
-### Guild Wars — Notifications
-- **#332** Alert group admins when a match is ready to play (notification type: guild_war_match_ready, with match ID, opponent group name, round number, and bracket link; both MemStorage and MySQLStorage)
-
-### Guild Wars — Group Stats
-- **#333** Add Guild Wars group stats to the group leaderboard tab (tournaments entered, championships won, current active tournament, past results; both MemStorage and MySQLStorage)
-
-### Duel Discovery
-- **#335** Show a "players waiting" badge on game cards when open duel challenges exist for that game (poll /api/duels/open on ~60s interval; authenticated users only)
+### Guild Wars — Group Stats (polish)
+- Extend the Guild Wars stats card on the group leaderboard tab to show the last 3 **completed** tournament outcomes (win or loss), not just championship titles. Currently only championship wins appear under "Recent titles"; a group that entered 3 tournaments and lost them all shows nothing there.
 
 ### Duel Milestones — War/Medieval Achievement Titles
 A set of escalating war/medieval-themed achievement titles earned through duel performance. Each title would display on the player's profile and optionally beside their name in the duel lobby.
