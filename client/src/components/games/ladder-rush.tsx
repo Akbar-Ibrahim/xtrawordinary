@@ -92,9 +92,10 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
     queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
-    enabled: gameStatus === "ended",
-    staleTime: 10_000,
+    staleTime: 60_000,
   });
+
+  const topScore = modeLeaderboard && modeLeaderboard.length > 0 ? modeLeaderboard[0].score : null;
 
   const pickStartWord = useCallback((): string => {
     const filtered = puzzles.filter(p => p.wordLength === wordLength);
@@ -459,7 +460,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="h-[260px] overflow-y-auto space-y-2 flex flex-col items-center">
+          <div className="h-[300px] overflow-y-auto space-y-2 flex flex-col items-center">
             {chain.map((word, i) => {
               const isStart = i === 0;
               const isLatest = i === chain.length - 1;
@@ -506,6 +507,30 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
                 </motion.div>
               );
             })}
+          </div>
+
+          <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+            <motion.span
+              key={wordsChained}
+              initial={{ scale: 1.4, color: "hsl(38, 92%, 50%)" }}
+              animate={{ scale: 1, color: "var(--foreground)" }}
+              transition={{ duration: 0.3 }}
+              className="text-2xl font-bold tabular-nums leading-none"
+              data-testid="text-live-word-count"
+            >
+              {wordsChained}
+            </motion.span>
+            <span className="text-sm text-muted-foreground leading-none">
+              word{wordsChained !== 1 ? "s" : ""} chained
+            </span>
+            {topScore !== null && (
+              <>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  Top: <span className="font-semibold text-foreground" data-testid="text-top-score">{topScore}</span>
+                </span>
+              </>
+            )}
           </div>
 
           {isSurvivalRef.current && (
