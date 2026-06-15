@@ -558,26 +558,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             <StreakIndicator streak={streak} />
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground" data-testid="badge-progress">
-            {wordsCompleted}/{wordsToComplete}
-          </span>
-          <Button variant="outline" size="sm" onClick={goToMenu} className="gap-1.5" data-testid="button-menu">
-            <RotateCcw className="h-4 w-4" />
-            Menu
-          </Button>
-          {!locked && gameStatus === "playing" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
-              className="gap-1.5"
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
-        </div>
+        <div />
       </div>
       <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-1.5" />
 
@@ -640,14 +621,10 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   <span className="text-sm text-muted-foreground leading-none">
                     word{wordsCompleted !== 1 ? "s" : ""} found
                   </span>
-                  {personalBest > 0 && (
-                    <>
-                      <span className="text-muted-foreground/40 leading-none">·</span>
-                      <span className="text-sm text-muted-foreground leading-none">
-                        PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest}</span>
-                      </span>
-                    </>
-                  )}
+                  <span className="text-muted-foreground/40 leading-none">·</span>
+                  <span className="text-sm text-muted-foreground leading-none">
+                    PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
+                  </span>
                 </div>
 
                 <div className="max-w-sm mx-auto space-y-4">
@@ -715,6 +692,30 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                       {word}
                     </Badge>
                   ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={goToMenu}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                    data-testid="button-menu"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Menu
+                  </Button>
+                  {!locked && gameStatus === "playing" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                      className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      data-testid="button-end-game"
+                    >
+                      End Game
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
