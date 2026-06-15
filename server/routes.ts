@@ -3745,6 +3745,7 @@ export async function registerRoutes(
               body: `${starter?.name ?? "Your opponent"} has started Game ${gameNumber} of Round ${match.round}. Jump straight into the room!`,
               linkUrl: notifLink,
             });
+            pushNotifToUser(opponentId);
           }
         } catch (notifErr) {
           console.error("[word-wars] start-game notification error", notifErr);
@@ -3768,6 +3769,7 @@ export async function registerRoutes(
                   body: `Game ${gameNumber} of Round ${match.round} (Word Wars) is ready. Click to enter the duel room.`,
                   linkUrl: `/duel/${roomCode}`,
                 });
+                pushNotifToUser(pid);
               }
             }),
           );
@@ -4170,6 +4172,7 @@ export async function registerRoutes(
                 body: `Guild Wars Game ${gameNumber} (${matchGame.gameSlug}) is ready. Click to enter the duel room.`,
                 linkUrl: `/duel/${roomCode}`,
               });
+              pushNotifToUser(pid);
             }
           }),
         );
@@ -4230,11 +4233,27 @@ export async function registerRoutes(
     try {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
-      const [stats, championships] = await Promise.all([
+      const [stats, championships, registrations] = await Promise.all([
         storage.getGuildWarsStatsForGroup(groupId),
         storage.getGuildWarsChampionshipsForGroup(groupId),
+        storage.getGuildWarsRegistrationsForGroup(groupId),
       ]);
-      res.json({ ...stats, championshipsWon: championships.length });
+      const tournamentDetails = await Promise.all(
+        registrations.map((r) => storage.getGuildWarsTournament(r.tournamentId)),
+      );
+      const activeTournament = tournamentDetails.find(
+        (t): t is NonNullable<typeof t> => t != null && t.status === "active",
+      );
+      const recentChampionships = [...championships]
+        .reverse()
+        .slice(0, 3)
+        .map((c) => ({ tournamentId: c.tournamentId, tournamentName: c.tournamentName }));
+      res.json({
+        ...stats,
+        championshipsWon: championships.length,
+        activeTournament: activeTournament ? { id: activeTournament.id, name: activeTournament.name } : null,
+        recentChampionships,
+      });
     } catch (err) {
       console.error("[guild-wars] group stats error", err);
       res.status(500).json({ error: "Failed to get guild wars stats" });

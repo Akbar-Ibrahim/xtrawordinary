@@ -95,13 +95,13 @@ export function Navigation() {
   const { data: dbNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: isAuthenticated,
-    refetchInterval: 30000,
+    refetchInterval: 300000,
   });
 
   const { data: dbUnreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/unread-count"],
     enabled: isAuthenticated,
-    refetchInterval: 30000,
+    refetchInterval: 300000,
   });
   const dbUnreadCount = dbUnreadData?.count ?? 0;
 

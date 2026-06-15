@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/lib/auth-context";
 import { GameCard } from "@/components/game-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,9 +45,24 @@ const difficultyLabel: Record<DifficultyFilter, string> = {
 };
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
+
   const { data: games, isLoading, error } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
+
+  const { data: openCountsData } = useQuery<Record<string, number>>({
+    queryKey: ["/api/duels/open-counts"],
+    queryFn: async () => {
+      const res = await fetch("/api/duels/open-counts", { credentials: "include" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+  const openCounts: Record<string, number> = openCountsData ?? {};
 
   const { data: dailyChallenge } = useQuery<DailyChallengeResponse>({
     queryKey: ["/api/daily-challenge"],
@@ -608,7 +624,14 @@ export default function Home() {
                               <Icon className="h-4 w-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate mb-0.5">{game.name}</p>
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <p className="font-semibold text-sm truncate">{game.name}</p>
+                                {(openCounts[game.slug] ?? 0) > 0 && (
+                                  <span className="text-[10px] font-medium px-1.5 py-0 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 shrink-0 leading-4" data-testid={`badge-waiting-compact-${game.slug}`}>
+                                    {openCounts[game.slug]} waiting
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
                             </div>
                             {playedToday ? (
@@ -628,7 +651,7 @@ export default function Home() {
                     const lp = stats.perGame[game.slug]?.lastPlayed;
                     const playedToday = !!lp && new Date(lp).toDateString() === new Date().toDateString();
                     return (
-                      <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} playedToday={playedToday} />
+                      <GameCard key={game.id} game={game} index={index} onFavoriteChange={handleFavoriteChange} playedToday={playedToday} waitingCount={openCounts[game.slug] ?? 0} />
                     );
                   })}
                 </div>

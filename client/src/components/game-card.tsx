@@ -25,6 +25,7 @@ interface GameCardProps {
   index: number;
   onFavoriteChange?: () => void;
   playedToday?: boolean;
+  waitingCount?: number;
 }
 
 const difficultyColors = {
@@ -33,7 +34,7 @@ const difficultyColors = {
   hard: "bg-destructive text-destructive-foreground",
 };
 
-export function GameCard({ game, index, onFavoriteChange, playedToday }: GameCardProps) {
+export function GameCard({ game, index, onFavoriteChange, playedToday, waitingCount = 0 }: GameCardProps) {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const [favorited, setFavorited] = useState(() => isFavorite(game.slug));
 
@@ -86,6 +87,11 @@ export function GameCard({ game, index, onFavoriteChange, playedToday }: GameCar
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-semibold text-lg leading-tight">{game.name}</h3>
                 <div className="flex items-center gap-1 shrink-0">
+                  {waitingCount > 0 && (
+                    <Badge className="text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border-0" data-testid={`badge-waiting-${game.slug}`}>
+                      {waitingCount} waiting
+                    </Badge>
+                  )}
                   {isNewGame(game.slug) && (
                     <Badge className="text-xs bg-primary text-primary-foreground" data-testid={`badge-new-${game.id}`}>
                       New

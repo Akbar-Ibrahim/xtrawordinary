@@ -41,6 +41,32 @@ async function notifyGroupMembers(
   }
 }
 
+async function notifyGroupAdmins(
+  groupId: number,
+  type: "guild_war_match_ready",
+  title: string,
+  body: string,
+  linkUrl: string,
+): Promise<void> {
+  try {
+    const members = await storage.getGroupMembers(groupId);
+    const admins = members.filter((m) => m.role === "admin" || m.role === "owner");
+    await Promise.all(admins.map(async (m) => {
+      try {
+        const prefs = await storage.getNotificationPreferences(m.user.id);
+        if (prefs[type]) {
+          await storage.createNotification({ userId: m.user.id, type, title, body, linkUrl });
+          pushNotifToUser(m.user.id);
+        }
+      } catch (e) {
+        console.error("[guild-wars-engine] admin notification error", e);
+      }
+    }));
+  } catch (e) {
+    console.error("[guild-wars-engine] notifyGroupAdmins error", e);
+  }
+}
+
 export async function executeGuildBracketDraw(
   tournamentId: number,
 ): Promise<{ matches: GuildWarsMatch[] } | { error: string }> {
@@ -126,14 +152,14 @@ async function _doDraw(
           `"${group1?.name ?? "Your opponents"}" stands between you and glory. The guild war begins.`,
           `/guild-wars/${tournamentId}`,
         ),
-        notifyGroupMembers(
+        notifyGroupAdmins(
           match.group1Id,
           "guild_war_match_ready",
           "Match ready — start your games",
           `Your round 1 match vs "${group2?.name ?? "your opponent"}" is live. Admins can start games now.`,
           `/guild-wars/${tournamentId}`,
         ),
-        notifyGroupMembers(
+        notifyGroupAdmins(
           match.group2Id,
           "guild_war_match_ready",
           "Match ready — start your games",
@@ -470,14 +496,14 @@ async function _advanceGuildBracket(tournamentId: number, round: number): Promis
           `Your next opponent is "${group1?.name ?? "your challenger"}". The battle continues.`,
           `/guild-wars/${tournamentId}`,
         ),
-        notifyGroupMembers(
+        notifyGroupAdmins(
           g1,
           "guild_war_match_ready",
           `Round ${nextRound} match ready`,
           `Your match vs "${group2?.name ?? "your opponent"}" is live. Admins can start games now.`,
           `/guild-wars/${tournamentId}`,
         ),
-        notifyGroupMembers(
+        notifyGroupAdmins(
           g2,
           "guild_war_match_ready",
           `Round ${nextRound} match ready`,

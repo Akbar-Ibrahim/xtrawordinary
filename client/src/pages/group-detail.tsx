@@ -425,7 +425,14 @@ export default function GroupDetail() {
     enabled: !isNaN(groupId),
   });
 
-  const { data: guildWarsStats } = useQuery<{ tournamentsEntered: number; matchWins: number; matchLosses: number; championshipsWon: number }>({
+  const { data: guildWarsStats } = useQuery<{
+    tournamentsEntered: number;
+    matchWins: number;
+    matchLosses: number;
+    championshipsWon: number;
+    activeTournament: { id: number; name: string } | null;
+    recentChampionships: { tournamentId: number; tournamentName: string }[];
+  }>({
     queryKey: ["/api/groups", groupId, "guild-wars-stats"],
     queryFn: async () => {
       const res = await fetch(`/api/groups/${groupId}/guild-wars-stats`, { credentials: "include" });
@@ -1210,7 +1217,7 @@ export default function GroupDetail() {
                     Guild Wars Record
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pb-4">
+                <CardContent className="pb-4 space-y-3">
                   <div className="grid grid-cols-4 gap-3 text-center">
                     <div className="space-y-0.5">
                       <p className="text-xl font-bold">{guildWarsStats.tournamentsEntered}</p>
@@ -1229,6 +1236,30 @@ export default function GroupDetail() {
                       <p className="text-xs text-muted-foreground">🏆 Titles</p>
                     </div>
                   </div>
+                  {guildWarsStats.activeTournament && (
+                    <div className="flex items-center gap-2 pt-1 border-t border-purple-200/40 dark:border-purple-700/30">
+                      <span className="text-xs text-muted-foreground">Active:</span>
+                      <Link href={`/guild-wars/${guildWarsStats.activeTournament.id}`}>
+                        <Badge variant="outline" className="text-xs border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-950/30" data-testid="badge-active-guild-war">
+                          {guildWarsStats.activeTournament.name}
+                        </Badge>
+                      </Link>
+                    </div>
+                  )}
+                  {guildWarsStats.recentChampionships.length > 0 && (
+                    <div className="pt-1 border-t border-purple-200/40 dark:border-purple-700/30">
+                      <p className="text-xs text-muted-foreground mb-1.5">Recent titles:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {guildWarsStats.recentChampionships.map((c) => (
+                          <Link key={c.tournamentId} href={`/guild-wars/${c.tournamentId}`}>
+                            <Badge className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 cursor-pointer hover:opacity-80" data-testid={`badge-guild-war-title-${c.tournamentId}`}>
+                              🏆 {c.tournamentName}
+                            </Badge>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

@@ -154,9 +154,10 @@ function OpenChallengeCard({
       {!expired && (
         <motion.div
           key={c.id}
-          initial={{ opacity: 1, height: "auto" }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
           style={{ overflow: "hidden" }}
         >
           <Card data-testid={`card-open-challenge-${c.id}`} className="border border-violet-200 dark:border-violet-900">
