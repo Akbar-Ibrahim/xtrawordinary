@@ -592,22 +592,10 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-2 flex-wrap text-sm text-muted-foreground">
-                    <Search className="h-4 w-4 shrink-0" />
-                    <span>
-                      {ordered
-                        ? "Form words where these letters appear in order:"
-                        : "Form words containing these letters:"}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <Badge className="bg-primary text-primary-foreground gap-1 text-xs" data-testid="badge-challenge">
-                        <Zap className="h-3 w-3" />
-                        {CHALLENGE_CONFIG[challenge].name}
-                      </Badge>
-                      <Badge variant={ordered ? "default" : "secondary"} className="gap-1 text-xs" data-testid="badge-mode">
-                        {ordered ? "Ordered" : "Any order"}
-                      </Badge>
-                    </div>
+                  <div className="flex items-center justify-center gap-2">
+                    <Badge variant={ordered ? "default" : "secondary"} className="gap-1 text-xs" data-testid="badge-mode">
+                      {ordered ? "Ordered" : "Any order"}
+                    </Badge>
                   </div>
                   <motion.div
                     key={currentLetters.join("")}
