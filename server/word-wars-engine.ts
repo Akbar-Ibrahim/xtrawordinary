@@ -2,6 +2,7 @@ import { storage } from "./storage";
 import { WORD_WARS_ELIGIBLE_SLUGS } from "@shared/schema";
 import type { WordWarsRegistration, WordWarsTournament, WordWarsMatch, WordWarsMatchGame } from "@shared/schema";
 import { ssePublishAll } from "./word-wars-sse";
+import { pushNotifToUser } from "./notification-sse";
 
 /** In-process guard: prevents concurrent bracket draws for the same tournament. */
 const drawsInProgress = new Set<number>();
@@ -86,6 +87,7 @@ async function _doDraw(
             body: "The bracket has been drawn. You advance automatically in round 1 — prepare for round 2.",
             linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
           });
+          pushNotifToUser(match.player1Id);
         }
       } catch (e) {
         console.error("[word-wars-engine] bye notification error", e);
@@ -106,6 +108,7 @@ async function _doDraw(
               body: `${opponentUser?.name ?? "Your opponent"} stands between you and glory. The war begins.`,
               linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
             });
+            pushNotifToUser(playerId);
           }
         } catch (e) {
           console.error("[word-wars-engine] notification error", e);
@@ -254,6 +257,7 @@ export async function checkAndForfeitExpiredMatches(tournamentId: number): Promi
                 : "The round deadline passed before you completed your games. You have been eliminated.",
               linkUrl: `/word-wars/${tournamentId}/match/${match.id}`,
             });
+            pushNotifToUser(playerId);
           }
         } catch (e) {
           console.error("[word-wars-engine] forfeit notification error", e);
@@ -401,6 +405,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
             body: "You have conquered the Word Wars. Glory is yours.",
             linkUrl: `/word-wars/${tournamentId}`,
           });
+          pushNotifToUser(championId);
         }
       } catch (e) {
         console.error("[word-wars-engine] champion notification error", e);
@@ -487,6 +492,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
                 body: `${opponent?.name ?? "Your opponent"} stands between you and glory. The war continues.`,
                 linkUrl: `/word-wars/${tournamentId}/match/${created.id}`,
               });
+              pushNotifToUser(playerId);
             }
             if (prefs["word_war_round_start"]) {
               await storage.createNotification({
@@ -496,6 +502,7 @@ async function _advanceBracket(tournamentId: number, round: number): Promise<voi
                 body: "Your next battle has been assigned.",
                 linkUrl: matchLink,
               });
+              pushNotifToUser(playerId);
             }
           } catch (e) {
             console.error("[word-wars-engine] round notification error", e);

@@ -9,6 +9,7 @@ import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol
 import { DUEL_HUNT_LETTERS, DUEL_WORD_LENGTHS, DUEL_POSITIONS, DUEL_BALANCE_CONSTRAINTS, DUEL_DEFINITION_CATEGORIES } from "@shared/schema";
 import { resolveWordWarsGame } from "./word-wars-engine";
 import { resolveGuildWarsGame } from "./guild-wars-engine";
+import { pushNotifToUser } from "./notification-sse";
 
 interface DuelWebSocket extends WebSocket {
   userId: number;
@@ -1586,6 +1587,7 @@ export function setupDuelWebSocket(httpServer: Server): WebSocketServer {
                       body: `${user?.name ?? "Your opponent"} has entered the duel room — the race is live. Good luck!`,
                       linkUrl: `/word-wars/${wwMatch.tournamentId}`,
                     });
+                    pushNotifToUser(waitingPlayerId);
                   }
                 }
               }
