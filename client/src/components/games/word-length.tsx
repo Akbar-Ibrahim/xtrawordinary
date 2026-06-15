@@ -431,29 +431,6 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
             <Timer className="h-3.5 w-3.5" />
             {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </Badge>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { stopTimer(); setGameStatus("menu"); }}
-              className="gap-1.5"
-              data-testid="button-restart"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Back to Menu
-            </Button>
-          )}
-          {!locked && gameStatus === "playing" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
-              className="gap-1.5"
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
         </div>
       </div>
 
@@ -471,10 +448,25 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                   <Badge variant="secondary" className="text-sm" data-testid="badge-constraint">
                     {constraint && (customConstraint ? formatCustomConstraint(constraint) : formatConstraint(variation, constraint))}
                   </Badge>
-                  <Progress value={(wordsCompleted / wordsPerVariation) * 100} className="h-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {wordsCompleted} / {wordsPerVariation} words
-                  </p>
+                  <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                    <motion.span
+                      key={wordsCompleted}
+                      initial={{ scale: 1.4 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-2xl font-bold tabular-nums leading-none text-primary"
+                      data-testid="text-live-word-count"
+                    >
+                      {wordsCompleted}
+                    </motion.span>
+                    <span className="text-sm text-muted-foreground leading-none">
+                      word{wordsCompleted !== 1 ? "s" : ""} found
+                    </span>
+                    <span className="text-muted-foreground/40 leading-none">·</span>
+                    <span className="text-sm text-muted-foreground leading-none">
+                      PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
+                    </span>
+                  </div>
                   {isSurvival && (
                     <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                   )}
@@ -555,6 +547,32 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                       {word}
                     </Badge>
                   ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  {!locked && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { stopTimer(); setGameStatus("menu"); }}
+                      className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      data-testid="button-menu"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Menu
+                    </Button>
+                  )}
+                  {!locked && gameStatus === "playing" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                      className="gap-1.5 text-muted-foreground hover:text-foreground"
+                      data-testid="button-end-game"
+                    >
+                      End Game
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

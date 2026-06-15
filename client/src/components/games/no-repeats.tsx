@@ -430,10 +430,6 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button onClick={returnToMenu} variant="ghost" size="sm" className="gap-1" data-testid="button-back-menu">
-            <Menu className="w-4 h-4" />
-            Menu
-          </Button>
           <Badge variant="secondary" data-testid="badge-current-challenge">{config.name}</Badge>
           {isSurvival && (
             <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
@@ -454,17 +450,6 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
               {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
             </span>
           </div>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
-              className="gap-1.5"
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
         </div>
       </div>
 
@@ -488,6 +473,26 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
                   {userInput[i]?.toUpperCase() || ""}
                 </div>
               ))}
+            </div>
+
+            <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+              <motion.span
+                key={wordsCompleted}
+                initial={{ scale: 1.4 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="text-2xl font-bold tabular-nums leading-none text-primary"
+                data-testid="text-live-word-count"
+              >
+                {wordsCompleted}
+              </motion.span>
+              <span className="text-sm text-muted-foreground leading-none">
+                word{wordsCompleted !== 1 ? "s" : ""} found
+              </span>
+              <span className="text-muted-foreground/40 leading-none">·</span>
+              <span className="text-sm text-muted-foreground leading-none">
+                PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
+              </span>
             </div>
 
             <form
@@ -539,16 +544,34 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
               </AnimatePresence>
             </div>
           </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={returnToMenu}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+              data-testid="button-menu"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Menu
+            </Button>
+            {!locked && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                data-testid="button-end-game"
+              >
+                End Game
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
-          <span>Progress</span>
-          <span data-testid="text-progress">{wordsCompleted} / {wordsPerChallenge} words</span>
-        </div>
-        <Progress value={progress} className="h-2" data-testid="progress-bar" />
-      </div>
+      <Progress value={progress} className="h-2" data-testid="progress-bar" />
 
       {usedWords.size > 0 && (
         <Card>
