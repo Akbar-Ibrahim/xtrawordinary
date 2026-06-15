@@ -11,6 +11,7 @@ import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, type DuelChallengeStatus, ty
 import { executeGuildBracketDraw } from "./guild-wars-engine";
 import { executeBracketDraw, checkAndForfeitExpiredMatches } from "./word-wars-engine";
 import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "./word-wars-sse";
+import { registerNotifSSE, unregisterNotifSSE, pushNotifToUser } from "./notification-sse";
 import { seededShuffle } from "./seeded-rng";
 // import { db } from "./db";
 // import { words } from "./db-schema";
@@ -22,6 +23,7 @@ async function createNotificationIfEnabled(data: InsertNotification): Promise<vo
     const prefs = await storage.getNotificationPreferences(data.userId);
     if (!prefs[data.type]) return;
     await storage.createNotification(data);
+    pushNotifToUser(data.userId);
   } catch (err) {
     console.error("[notification]", err);
   }
@@ -2235,7 +2237,7 @@ export async function registerRoutes(
             body: `${challengerGroup?.name ?? "Another group"} challenged your group to a ${gameTitle} Team Race`,
             linkUrl: `/groups/${challengeeGroupId}`,
             readAt: null,
-          });
+          }).then(() => pushNotifToUser(m.userId)).catch(() => {});
         }
       } catch {}
       res.status(201).json(tr);
@@ -2314,7 +2316,7 @@ export async function registerRoutes(
             body: `${challengerGroup?.name ?? "Your group"} vs ${challengeeGroup?.name ?? "another group"} — ${gameTitle} Team Race`,
             linkUrl: tr.roomCode ? `/team-race/${tr.roomCode}` : null,
             readAt: null,
-          });
+          }).then(() => pushNotifToUser(m.userId)).catch(() => {});
         }
       } catch {}
       res.json(updated);
@@ -4179,6 +4181,63 @@ export async function registerRoutes(
     } catch (err) {
       console.error("[guild-wars] start game error", err);
       res.status(500).json({ error: "Failed to start game" });
+    }
+  });
+
+  // ── SSE: real-time notification stream ──────────────────────────────────────
+  app.get("/api/notifications/stream", requireAuth, (req: any, res) => {
+    const userId = req.user.id as number;
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders();
+
+    registerNotifSSE(userId, res);
+
+    const pingInterval = setInterval(() => {
+      try {
+        res.write(": ping\n\n");
+      } catch {
+        clearInterval(pingInterval);
+      }
+    }, 25000);
+
+    res.on("close", () => {
+      clearInterval(pingInterval);
+      unregisterNotifSSE(userId, res);
+    });
+  });
+
+  // ── Duel open-counts per game (for "players waiting" badges) ─────────────
+  app.get("/api/duels/open-counts", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id as number;
+      const challenges = await storage.getOpenDuelChallenges(userId);
+      const counts: Record<string, number> = {};
+      for (const c of challenges) {
+        counts[c.gameSlug] = (counts[c.gameSlug] ?? 0) + 1;
+      }
+      res.json(counts);
+    } catch (err) {
+      console.error("[duels] open-counts error", err);
+      res.status(500).json({ error: "Failed to get open counts" });
+    }
+  });
+
+  // ── Guild Wars stats for a group ──────────────────────────────────────────
+  app.get("/api/groups/:id/guild-wars-stats", async (req: any, res) => {
+    try {
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const [stats, championships] = await Promise.all([
+        storage.getGuildWarsStatsForGroup(groupId),
+        storage.getGuildWarsChampionshipsForGroup(groupId),
+      ]);
+      res.json({ ...stats, championshipsWon: championships.length });
+    } catch (err) {
+      console.error("[guild-wars] group stats error", err);
+      res.status(500).json({ error: "Failed to get guild wars stats" });
     }
   });
 

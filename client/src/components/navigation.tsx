@@ -30,6 +30,8 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   duel_accepted: <Swords className="h-4 w-4 text-orange-500" />,
   duel_challenge_received: <Swords className="h-4 w-4 text-violet-500" />,
   friend_challenge_result: <Trophy className="h-4 w-4 text-primary" />,
+  team_race_challenge_received: <Users className="h-4 w-4 text-teal-500" />,
+  team_race_accepted: <Users className="h-4 w-4 text-teal-600" />,
   word_war_matched: <Sword className="h-4 w-4 text-amber-500" />,
   word_war_round_start: <Sword className="h-4 w-4 text-orange-500" />,
   word_war_champion: <Crown className="h-4 w-4 text-amber-500" />,
@@ -38,6 +40,7 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   guild_war_round_start: <Sword className="h-4 w-4 text-violet-500" />,
   guild_war_champion: <Crown className="h-4 w-4 text-purple-500" />,
   guild_war_cancelled: <Sword className="h-4 w-4 text-red-500" />,
+  guild_war_match_ready: <Sword className="h-4 w-4 text-fuchsia-500" />,
 };
 
 const NOTIF_BG: Record<string, string> = {
@@ -47,6 +50,8 @@ const NOTIF_BG: Record<string, string> = {
   duel_accepted: "bg-orange-500/10",
   duel_challenge_received: "bg-violet-500/10",
   friend_challenge_result: "bg-primary/10",
+  team_race_challenge_received: "bg-teal-500/10",
+  team_race_accepted: "bg-teal-600/10",
   word_war_matched: "bg-amber-500/10",
   word_war_round_start: "bg-orange-500/10",
   word_war_champion: "bg-amber-500/10",
@@ -55,6 +60,7 @@ const NOTIF_BG: Record<string, string> = {
   guild_war_round_start: "bg-violet-500/10",
   guild_war_champion: "bg-purple-500/10",
   guild_war_cancelled: "bg-red-500/10",
+  guild_war_match_ready: "bg-fuchsia-500/10",
 };
 
 function timeAgo(isoString: string): string {
@@ -121,6 +127,31 @@ export function Navigation() {
     if (!isAuthenticated) {
       prevToastedRef.current.clear();
     }
+  }, [isAuthenticated]);
+
+  // ── SSE: real-time notification push ─────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let source: EventSource | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      source = new EventSource("/api/notifications/stream");
+      source.onmessage = () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      };
+      source.onerror = () => {
+        source?.close();
+        retryTimeout = setTimeout(connect, 10000);
+      };
+    };
+    connect();
+
+    return () => {
+      source?.close();
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
   }, [isAuthenticated]);
 
   useEffect(() => {

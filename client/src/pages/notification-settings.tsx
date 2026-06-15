@@ -23,6 +23,11 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
     types: ["duel_accepted", "duel_challenge_received", "huddle_challenge_received", "huddle_accepted"],
   },
   {
+    label: "Group Battles",
+    icon: Users,
+    types: ["team_race_challenge_received", "team_race_accepted"],
+  },
+  {
     label: "Word Wars",
     icon: Trophy,
     types: ["word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled"],
@@ -30,7 +35,7 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   {
     label: "Guild Wars",
     icon: Trophy,
-    types: ["guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled"],
+    types: ["guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"],
   },
 ];
 
@@ -156,47 +161,66 @@ export default function NotificationSettings() {
         </CardContent>
       </Card>
 
-      {NOTIFICATION_CATEGORIES.map(({ label, icon: Icon, types }) => (
-        <Card key={label} data-testid={`card-category-${label.toLowerCase().replace(/\s+/g, "-")}`}>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              {label}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {isLoading ? (
-              <>
-                {types.map((t) => (
-                  <div key={t} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <Skeleton className="h-4 w-48" />
-                    <Skeleton className="h-6 w-11 rounded-full" />
-                  </div>
-                ))}
-              </>
-            ) : (
-              types.map((type) => {
-                const enabled = notifPrefs ? notifPrefs[type] : true;
-                return (
-                  <div
-                    key={type}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    data-testid={`row-notif-pref-${type}`}
+      {NOTIFICATION_CATEGORIES.map(({ label, icon: Icon, types }) => {
+        const allCatEnabled = notifPrefs ? types.every((t) => notifPrefs[t]) : true;
+        const someCatEnabled = notifPrefs ? types.some((t) => notifPrefs[t]) : true;
+        return (
+          <Card key={label} data-testid={`card-category-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  {label}
+                </CardTitle>
+                {!isLoading && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => {
+                      for (const type of types) {
+                        updateNotifPref.mutate({ type, enabled: !allCatEnabled });
+                      }
+                    }}
+                    data-testid={`button-category-toggle-${label.toLowerCase().replace(/\s+/g, "-")}`}
                   >
-                    <span className="text-sm font-medium">{NOTIFICATION_TYPE_LABELS[type]}</span>
-                    <Switch
-                      checked={enabled}
-                      onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
-                      data-testid={`switch-notif-pref-${type}`}
-                      aria-label={`Toggle ${NOTIFICATION_TYPE_LABELS[type]}`}
-                    />
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-      ))}
+                    {allCatEnabled ? "Mute all" : someCatEnabled ? "Enable all" : "Enable all"}
+                  </button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {isLoading ? (
+                <>
+                  {types.map((t) => (
+                    <div key={t} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-6 w-11 rounded-full" />
+                    </div>
+                  ))}
+                </>
+              ) : (
+                types.map((type) => {
+                  const enabled = notifPrefs ? notifPrefs[type] : true;
+                  return (
+                    <div
+                      key={type}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                      data-testid={`row-notif-pref-${type}`}
+                    >
+                      <span className="text-sm font-medium">{NOTIFICATION_TYPE_LABELS[type]}</span>
+                      <Switch
+                        checked={enabled}
+                        onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
+                        data-testid={`switch-notif-pref-${type}`}
+                        aria-label={`Toggle ${NOTIFICATION_TYPE_LABELS[type]}`}
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

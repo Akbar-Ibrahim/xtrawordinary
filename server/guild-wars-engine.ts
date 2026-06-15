@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { WORD_WARS_ELIGIBLE_SLUGS } from "@shared/schema";
 import type { GuildWarsRegistration, GuildWarsTournament, GuildWarsMatch, GuildWarsMatchGame } from "@shared/schema";
+import { pushNotifToUser } from "./notification-sse";
 
 const drawsInProgress = new Set<number>();
 const roundAdvancementsInProgress = new Set<number>();
@@ -17,7 +18,7 @@ function pickThreeGames(): [string, string, string] {
 
 async function notifyGroupMembers(
   groupId: number,
-  type: "guild_war_matched" | "guild_war_round_start" | "guild_war_champion" | "guild_war_cancelled",
+  type: "guild_war_matched" | "guild_war_round_start" | "guild_war_champion" | "guild_war_cancelled" | "guild_war_match_ready",
   title: string,
   body: string,
   linkUrl: string,
@@ -29,6 +30,7 @@ async function notifyGroupMembers(
         const prefs = await storage.getNotificationPreferences(m.user.id);
         if (prefs[type]) {
           await storage.createNotification({ userId: m.user.id, type, title, body, linkUrl });
+          pushNotifToUser(m.user.id);
         }
       } catch (e) {
         console.error("[guild-wars-engine] member notification error", e);
@@ -122,6 +124,20 @@ async function _doDraw(
           "guild_war_matched",
           "Your opponent group awaits",
           `"${group1?.name ?? "Your opponents"}" stands between you and glory. The guild war begins.`,
+          `/guild-wars/${tournamentId}`,
+        ),
+        notifyGroupMembers(
+          match.group1Id,
+          "guild_war_match_ready",
+          "Match ready — start your games",
+          `Your round 1 match vs "${group2?.name ?? "your opponent"}" is live. Admins can start games now.`,
+          `/guild-wars/${tournamentId}`,
+        ),
+        notifyGroupMembers(
+          match.group2Id,
+          "guild_war_match_ready",
+          "Match ready — start your games",
+          `Your round 1 match vs "${group1?.name ?? "your opponent"}" is live. Admins can start games now.`,
           `/guild-wars/${tournamentId}`,
         ),
       ]);
@@ -452,6 +468,20 @@ async function _advanceGuildBracket(tournamentId: number, round: number): Promis
           "guild_war_round_start",
           `Round ${nextRound} begins`,
           `Your next opponent is "${group1?.name ?? "your challenger"}". The battle continues.`,
+          `/guild-wars/${tournamentId}`,
+        ),
+        notifyGroupMembers(
+          g1,
+          "guild_war_match_ready",
+          `Round ${nextRound} match ready`,
+          `Your match vs "${group2?.name ?? "your opponent"}" is live. Admins can start games now.`,
+          `/guild-wars/${tournamentId}`,
+        ),
+        notifyGroupMembers(
+          g2,
+          "guild_war_match_ready",
+          `Round ${nextRound} match ready`,
+          `Your match vs "${group1?.name ?? "your opponent"}" is live. Admins can start games now.`,
           `/guild-wars/${tournamentId}`,
         ),
       ]);

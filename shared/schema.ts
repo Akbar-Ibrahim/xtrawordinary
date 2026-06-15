@@ -764,6 +764,7 @@ export const notificationTypeSchema = z.enum([
   "guild_war_round_start",
   "guild_war_champion",
   "guild_war_cancelled",
+  "guild_war_match_ready",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -811,6 +812,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   guild_war_round_start: "Guild Wars — Battle begins now",
   guild_war_champion: "Guild Wars — Your group is champion",
   guild_war_cancelled: "Guild Wars — Tournament cancelled",
+  guild_war_match_ready: "Guild Wars — Your next match is ready",
 };
 
 // ==================== WORD WARS ====================

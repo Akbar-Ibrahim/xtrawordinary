@@ -110,7 +110,23 @@ export default function DuelRoom() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { playSound, soundEnabled, toggleSound } = useSound();
+  const { playSound, volume, setVolume } = useSound();
+  const [duelMuted, setDuelMuted] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("duelSoundMuted");
+      return stored === "true";
+    }
+    return false;
+  });
+  const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+
+  const duelPlay = useCallback((type: Parameters<typeof playSound>[0], pitchMultiplier?: number) => {
+    if (!duelMuted) playSound(type, pitchMultiplier);
+  }, [duelMuted, playSound]);
+
+  useEffect(() => {
+    localStorage.setItem("duelSoundMuted", String(duelMuted));
+  }, [duelMuted]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -204,7 +220,7 @@ export default function DuelRoom() {
                   description: `${msg.opponentName ?? "Your opponent"} just joined — get ready!`,
                   duration: 4000,
                 });
-                playSound("notify");
+                duelPlay("notify");
               }
               return msg.opponentId;
             });
@@ -274,7 +290,9 @@ export default function DuelRoom() {
             ? Math.max(1, Math.ceil((countdownStartAtRef.current - Date.now()) / 1000))
             : msg.secondsLeft;
           setCountdownNum(displayNum);
-          playSound("tick");
+          // Rising pitch: secondsLeft 3→pitch 1.0, 2→1.25, 1→1.5
+          const tickPitch = msg.secondsLeft <= 1 ? 1.5 : msg.secondsLeft === 2 ? 1.25 : 1.0;
+          duelPlay("tick", tickPitch);
           if (msg.secondsLeft === 1) {
             const msToPlay = countdownStartAtRef.current
               ? Math.max(0, countdownStartAtRef.current - Date.now())
@@ -282,7 +300,7 @@ export default function DuelRoom() {
             const t = setTimeout(() => {
               setCountdownNum(null);
               setPhase("playing");
-              playSound("countdown");
+              duelPlay("countdown");
             }, msToPlay);
             countdownTimeoutRef.current = t;
           }
@@ -330,6 +348,7 @@ export default function DuelRoom() {
           break;
 
         case "player:reconnect":
+          setOpponentDisconnected(false);
           toast({
             title: "Opponent reconnected",
             description: `${opponentName || "Your opponent"} is back — game resuming!`,
@@ -340,6 +359,7 @@ export default function DuelRoom() {
 
         case "player:forfeited":
         case "game:over":
+          setOpponentDisconnected(false);
           setLatestGameMessage(msg);
           break;
 
@@ -408,6 +428,7 @@ export default function DuelRoom() {
             setCountdownNum(null);
             setPhase("waiting");
           } else {
+            setOpponentDisconnected(true);
             const seconds = Math.round(msg.reconnectDeadlineMs / 1000);
             toast({
               title: "Opponent disconnected",
@@ -419,7 +440,7 @@ export default function DuelRoom() {
           break;
       }
     },
-    [toast, playSound, opponentName],
+    [toast, duelPlay, opponentName],
   );
 
   useEffect(() => {
@@ -620,16 +641,31 @@ export default function DuelRoom() {
             <Eye className="h-3 w-3" /> {spectatorCount} watching
           </Badge>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSound}
-          title={soundEnabled ? "Mute sounds" : "Unmute sounds"}
-          data-testid="button-toggle-sound"
-          className="ml-1 h-8 w-8 shrink-0"
-        >
-          {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1.5 ml-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDuelMuted((m) => !m)}
+            title={duelMuted ? "Unmute duel sounds" : "Mute duel sounds"}
+            data-testid="button-toggle-sound"
+            className="h-8 w-8"
+          >
+            {duelMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+          {!duelMuted && (
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-16 h-1.5 accent-primary cursor-pointer"
+              title={`Volume: ${Math.round(volume * 100)}%`}
+              data-testid="input-volume"
+            />
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -760,6 +796,21 @@ export default function DuelRoom() {
           </motion.div>
         )}
 
+        {/* ── Reconnect Banner ──────────────────────────────────────────── */}
+        {phase === "playing" && opponentDisconnected && (
+          <motion.div
+            key="reconnect-banner"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            className="rounded-xl border border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 flex items-center gap-2.5 text-amber-700 dark:text-amber-300"
+            data-testid="banner-opponent-disconnected"
+          >
+            <WifiOff className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-medium">Opponent disconnected — waiting for them to reconnect…</span>
+          </motion.div>
+        )}
+
         {/* ── Playing (Turn) ─────────────────────────────────────────────── */}
         {phase === "playing" && !isRace && engineInitState && (
           <motion.div key="playing-turn" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -828,10 +879,21 @@ export default function DuelRoom() {
                 )}
               </AnimatePresence>
 
-              {/* Emoji reaction bar */}
+              {/* Emoji reaction bar + spectator mute */}
               <Card>
                 <CardContent className="py-4">
-                  <p className="text-xs text-center text-muted-foreground mb-3">React to the match</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-muted-foreground">React to the match</p>
+                    <button
+                      onClick={() => setDuelMuted((m) => !m)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-spectator-mute"
+                      title={duelMuted ? "Unmute sounds" : "Mute sounds"}
+                    >
+                      {duelMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                      {duelMuted ? "Unmute" : "Mute"}
+                    </button>
+                  </div>
                   <div className="flex justify-center gap-3">
                     {REACT_EMOJIS.map((emoji) => (
                       <button

@@ -1,11 +1,13 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 
 type SoundType = "correct" | "wrong" | "win" | "lose" | "tick" | "click" | "notify" | "countdown";
 
 interface SoundContextType {
   soundEnabled: boolean;
   toggleSound: () => void;
-  playSound: (type: SoundType) => void;
+  playSound: (type: SoundType, pitchMultiplier?: number) => void;
+  volume: number;
+  setVolume: (v: number) => void;
 }
 
 const SoundContext = createContext<SoundContextType | undefined>(undefined);
@@ -48,7 +50,7 @@ const SOUND_FREQUENCIES: Record<SoundType, { frequency: number; duration: number
   ],
 };
 
-export function SoundProvider({ children }: { children: React.ReactNode }) {
+export function SoundProvider({ children }: { children: ReactNode }) {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("soundEnabled");
@@ -57,13 +59,31 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     return true;
   });
 
+  const [volume, setVolumeState] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("soundVolume");
+      return stored !== null ? parseFloat(stored) : 0.3;
+    }
+    return 0.3;
+  });
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const soundEnabledRef = useRef(soundEnabled);
+  const volumeRef = useRef(volume);
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
     localStorage.setItem("soundEnabled", String(soundEnabled));
   }, [soundEnabled]);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+    localStorage.setItem("soundVolume", String(volume));
+  }, [volume]);
+
+  const setVolume = useCallback((v: number) => {
+    setVolumeState(Math.max(0, Math.min(1, v)));
+  }, []);
 
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -72,31 +92,32 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     return audioContextRef.current;
   }, []);
 
-  const playSound = useCallback((type: SoundType) => {
+  const playSound = useCallback((type: SoundType, pitchMultiplier = 1) => {
     if (!soundEnabledRef.current) return;
 
     try {
       const audioContext = getAudioContext();
       const notes = SOUND_FREQUENCIES[type];
-      
+      const gain = volumeRef.current;
+
       let startTime = audioContext.currentTime;
-      
+
       notes.forEach((note) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.type = note.type;
-        oscillator.frequency.setValueAtTime(note.frequency, startTime);
-        
-        gainNode.gain.setValueAtTime(0.3, startTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + note.duration);
-        
+        oscillator.frequency.setValueAtTime(note.frequency * pitchMultiplier, startTime);
+
+        gainNode.gain.setValueAtTime(gain, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + note.duration);
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
+
         oscillator.start(startTime);
         oscillator.stop(startTime + note.duration);
-        
+
         startTime += note.duration;
       });
     } catch (error) {
@@ -109,7 +130,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SoundContext.Provider value={{ soundEnabled, toggleSound, playSound }}>
+    <SoundContext.Provider value={{ soundEnabled, toggleSound, playSound, volume, setVolume }}>
       {children}
     </SoundContext.Provider>
   );

@@ -425,6 +425,16 @@ export default function GroupDetail() {
     enabled: !isNaN(groupId),
   });
 
+  const { data: guildWarsStats } = useQuery<{ tournamentsEntered: number; matchWins: number; matchLosses: number; championshipsWon: number }>({
+    queryKey: ["/api/groups", groupId, "guild-wars-stats"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/guild-wars-stats`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load guild wars stats");
+      return res.json();
+    },
+    enabled: !isNaN(groupId),
+  });
+
   const { data: members, isLoading: membersLoading } = useQuery<MemberWithUser[]>({
     queryKey: ["/api/groups", groupId, "members"],
     queryFn: async () => {
@@ -1189,6 +1199,38 @@ export default function GroupDetail() {
                   </Card>
                 ))}
               </div>
+            )}
+
+            {/* ── Guild Wars Stats ──────────────────────────────────────── */}
+            {guildWarsStats && (guildWarsStats.tournamentsEntered > 0 || guildWarsStats.championshipsWon > 0) && (
+              <Card className="mt-4 border-purple-300/40 dark:border-purple-700/40" data-testid="card-guild-wars-stats">
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-sm flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                    <Swords className="h-4 w-4" />
+                    Guild Wars Record
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4">
+                  <div className="grid grid-cols-4 gap-3 text-center">
+                    <div className="space-y-0.5">
+                      <p className="text-xl font-bold">{guildWarsStats.tournamentsEntered}</p>
+                      <p className="text-xs text-muted-foreground">Entered</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{guildWarsStats.matchWins}</p>
+                      <p className="text-xs text-muted-foreground">Wins</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xl font-bold text-red-500">{guildWarsStats.matchLosses}</p>
+                      <p className="text-xs text-muted-foreground">Losses</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xl font-bold text-amber-500">{guildWarsStats.championshipsWon}</p>
+                      <p className="text-xs text-muted-foreground">🏆 Titles</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
