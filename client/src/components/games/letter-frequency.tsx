@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Hash, Menu, Flame, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, Zap, CheckCircle, XCircle, Timer, ArrowRight, Loader2, Hash, Flame, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -520,51 +520,70 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
           >
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={goToMenu} data-testid="button-menu">
-                      <Menu className="h-4 w-4 mr-2" />
-                      Menu
-                    </Button>
-                    {!locked && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
-                        data-testid="button-end-game"
-                      >
-                        End Game
-                      </Button>
-                    )}
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-8">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
+                  <span
+                    className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+                    role="timer"
+                    aria-label={`Time remaining: ${formatTime(timeLeft)}`}
+                    data-testid="badge-timer"
+                  >
+                    {formatTime(timeLeft)}
+                  </span>
+                  {isSurvival && (
+                    <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs py-0" data-testid="badge-survival">
+                      <Flame className="h-3 w-3" />
+                      Survival
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Score</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
+                    <StreakIndicator streak={streak} className="justify-center" />
                   </div>
-                  <div className="flex items-center gap-2">
+                </div>
+              </div>
+              <Card>
+                <CardContent className="p-6 space-y-6">
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     <Badge variant="secondary" data-testid="badge-challenge">
                       {CHALLENGE_CONFIG[challenge].name}
                     </Badge>
                     {isSurvival && (
-                      <Badge variant="outline" className="gap-1 text-destructive border-destructive/50" data-testid="badge-survival">
+                      <Badge variant="outline" className="gap-1 text-destructive border-destructive/50" data-testid="badge-survival-card">
                         <Flame className="h-3 w-3" />
                         Survival
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm" role="timer" aria-label={`Time remaining: ${formatTime(timeLeft)}`}>
-                    <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive" : ""}`} />
-                    <span className={timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive font-bold" : ""}>
-                      {formatTime(timeLeft)}
+
+                  <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                    <motion.span
+                      key={wordsCompleted}
+                      initial={{ scale: 1.4 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-2xl font-bold tabular-nums leading-none text-primary"
+                      data-testid="text-live-word-count"
+                    >
+                      {wordsCompleted}
+                    </motion.span>
+                    <span className="text-sm text-muted-foreground leading-none">
+                      {isSurvival ? `word${wordsCompleted !== 1 ? "s" : ""}` : `/ ${wordsPerChallenge} words`}
+                    </span>
+                    <span className="text-muted-foreground/40 leading-none">·</span>
+                    <span className="text-sm text-muted-foreground leading-none">
+                      PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
                     </span>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Progress</span>
-                    <span data-testid="text-progress">{wordsCompleted} / {wordsPerChallenge} words</span>
-                  </div>
-                  <Progress value={(wordsCompleted / wordsPerChallenge) * 100} data-testid="progress-bar" />
-                </div>
+                  {!isSurvival && (
+                    <Progress value={(wordsCompleted / wordsPerChallenge) * 100} data-testid="progress-bar" />
+                  )}
 
                 <div className="text-center space-y-4">
                   <div className="space-y-2">
@@ -661,13 +680,29 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   </Button>
                 </div>
 
-                <div className="text-center">
-                  <div className="text-2xl font-bold" data-testid="text-score"><AnimatedNumber value={score} /></div>
-                  <div className="text-sm text-muted-foreground">Score</div>
-                  <StreakIndicator streak={streak} className="justify-center mt-1" />
-                </div>
-              </CardContent>
-            </Card>
+                  {!locked && (
+                    <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={goToMenu}
+                        data-testid="button-menu"
+                      >
+                        Menu
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                        data-testid="button-end-game"
+                      >
+                        End Game
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </motion.div>
         ) : gameStatus === "won" ? (
           <motion.div
