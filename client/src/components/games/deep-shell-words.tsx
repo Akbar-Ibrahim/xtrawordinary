@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { ShareResults } from "@/components/share-results";
@@ -146,6 +146,7 @@ export function DeepShellWordsGame({
 
   const activeSlug = getSlug(variation, subMode);
   const { reportResult, resetRecorded } = useGameResult({ slug: activeSlug });
+  const personalBest = usePersonalBest(activeSlug);
 
   const clearAllTimers = useCallback(() => {
     if (classicTimerRef.current) clearInterval(classicTimerRef.current);
@@ -580,55 +581,52 @@ export function DeepShellWordsGame({
           )}
 
           {/* Header: timer / survival countdown / round progress */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-8">
+            <div className="flex items-center gap-2 text-muted-foreground">
               {isSurvival && gameStatus !== "idle" ? (
-                <div
-                  className={`flex items-center gap-1.5 text-2xl font-mono font-bold transition-colors ${
-                    survivalWarning ? "text-destructive animate-pulse" : ""
-                  }`}
-                  data-testid="text-survival-timer"
-                >
-                  <Zap className={`h-5 w-5 ${survivalWarning ? "text-destructive" : "text-yellow-500"}`} />
-                  {survivalTime}s
-                </div>
+                <>
+                  <Timer className={`h-4 w-4 ${survivalWarning ? "text-destructive animate-pulse" : ""}`} />
+                  <span
+                    className={`font-mono font-bold text-lg ${survivalWarning ? "text-destructive animate-pulse" : ""}`}
+                    data-testid="text-survival-timer"
+                  >
+                    {survivalTime}s
+                  </span>
+                </>
               ) : variation === "crack" && subMode === "classic" ? (
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground" data-testid="text-round-progress">
+                <>
                   <Shell className="h-4 w-4" />
-                  Round {Math.min(crackRound + 1, CRACK_ROUNDS)} / {CRACK_ROUNDS}
-                </div>
+                  <span className="font-mono font-bold text-lg" data-testid="text-round-progress">
+                    {Math.min(crackRound + 1, CRACK_ROUNDS)} / {CRACK_ROUNDS}
+                  </span>
+                </>
               ) : (
-                <div
-                  className={`flex items-center gap-2 text-lg font-mono font-bold ${classicTimerWarning ? "text-destructive animate-pulse" : ""}`}
-                  data-testid="text-timer"
-                >
-                  <Timer className="h-5 w-5" />
-                  {gameStatus === "idle"
-                    ? formatTime(variation === "wrapper" ? WRAPPER_TIME : BLITZ_TIME)
-                    : formatTime(timeLeft)}
-                </div>
+                <>
+                  <Timer className={`h-4 w-4 ${classicTimerWarning ? "text-destructive animate-pulse" : ""}`} />
+                  <span
+                    className={`font-mono font-bold text-lg ${classicTimerWarning ? "text-destructive animate-pulse" : ""}`}
+                    data-testid="text-timer"
+                  >
+                    {gameStatus === "idle"
+                      ? formatTime(variation === "wrapper" ? WRAPPER_TIME : BLITZ_TIME)
+                      : formatTime(timeLeft)}
+                  </span>
+                </>
               )}
             </div>
-
-            <div className="text-right">
-              {variation === "wrapper" && subMode === "classic" && gameStatus !== "idle" ? (
-                <>
-                  <div className="text-xs text-muted-foreground">Found</div>
-                  <div className="font-bold text-lg" data-testid="text-found">
-                    {foundWords.length}
-                    {puzzleCount > 0 && (
-                      <span className="text-muted-foreground text-sm font-normal"> / {puzzleCount}</span>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-xs text-muted-foreground">Score</div>
-                  <div className="font-bold text-lg" data-testid="text-score">
-                    <AnimatedNumber value={score} />
-                  </div>
-                </>
-              )}
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">
+                {variation === "wrapper" && subMode === "classic" && gameStatus !== "idle" ? "Found" : "Score"}
+              </p>
+              <div className="flex items-center justify-center gap-1.5">
+                {variation === "wrapper" && subMode === "classic" && gameStatus !== "idle" ? (
+                  <span className="text-2xl font-bold text-primary" data-testid="text-found">
+                    {foundWords.length}{puzzleCount > 0 && <span className="text-sm font-normal text-muted-foreground"> / {puzzleCount}</span>}
+                  </span>
+                ) : (
+                  <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
+                )}
+              </div>
             </div>
           </div>
 
@@ -662,6 +660,25 @@ export function DeepShellWordsGame({
           {/* Playing state */}
           {gameStatus === "playing" && (
             <div className="space-y-4">
+              <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                <motion.span
+                  key={foundWords.length}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl font-bold tabular-nums leading-none text-primary"
+                  data-testid="text-live-word-count"
+                >
+                  {foundWords.length}
+                </motion.span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  {variation === "crack" && subMode === "classic" ? `/ ${CRACK_ROUNDS} cracked` : "found"}
+                </span>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
+                </span>
+              </div>
               {/* Wrapper: show middle word */}
               {variation === "wrapper" && puzzleMiddle && (
                 <div className="text-center p-4 rounded-lg bg-muted/50">
@@ -793,17 +810,26 @@ export function DeepShellWordsGame({
                 </AnimatePresence>
               </div>
 
-              {/* End Game button */}
-              {!locked && !isSurvival && (
-                <div className="flex justify-end">
+              {!locked && (
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => endGame(timeLeftRef.current)}
-                    data-testid="button-end-game"
+                    onClick={() => setGameStatus("idle")}
+                    data-testid="button-menu"
                   >
-                    End Game
+                    Menu
                   </Button>
+                  {!isSurvival && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => endGame(timeLeftRef.current)}
+                      data-testid="button-end-game"
+                    >
+                      End Game
+                    </Button>
+                  )}
                 </div>
               )}
 

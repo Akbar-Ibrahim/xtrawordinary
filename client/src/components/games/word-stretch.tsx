@@ -21,7 +21,8 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { AnimatedNumber } from "@/components/animated-number";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
 
@@ -68,6 +69,7 @@ interface WordStretchPlayProps {
 function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayProps) {
   const slug = mode === "classic" ? "word-stretch" : "word-stretch-survival";
   const { reportResult } = useGameResult({ slug });
+  const personalBest = usePersonalBest(slug);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
   const [seed, setSeed] = useState(initialSeed);
@@ -458,46 +460,19 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1" data-testid="badge-mode">
-            {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
-            {mode === "survival" ? "Survival" : "Classic"}
-          </Badge>
-          {mode === "classic" && puzzle && (
-            <Badge variant="secondary" data-testid="badge-found-count">
-              {found.length} / {total} found
-            </Badge>
-          )}
-          {mode === "survival" && (
-            <Badge variant="secondary" data-testid="badge-solved">
-              Solved: {survivalSolvedCount}
-            </Badge>
-          )}
-          <Badge className="bg-[hsl(262,70%,55%)] text-white" data-testid="badge-score">
-            {liveScore} pts
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
           <span
-            className={`font-mono font-bold tabular-nums text-sm ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive" : ""}`}
+            className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
             data-testid="text-timer"
           >
             {timeLeft}s
           </span>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (timerRef.current) clearInterval(timerRef.current);
-                onExit();
-              }}
-              data-testid="button-quit"
-            >
-              Quit
-            </Button>
-          )}
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <AnimatedNumber value={liveScore} className="text-2xl font-bold text-primary" data-testid="text-score" />
         </div>
       </div>
 
@@ -516,6 +491,36 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             <div className="text-center py-8 text-muted-foreground">Loading puzzle…</div>
           ) : (
             <>
+              <div className="flex justify-center gap-2">
+                <Badge variant="outline" className="gap-1" data-testid="badge-mode">
+                  {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
+                  {mode === "survival" ? "Survival" : "Classic"}
+                </Badge>
+                {mode === "classic" && (
+                  <Badge variant="secondary" data-testid="badge-found-count">
+                    {found.length} / {total} found
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                <motion.span
+                  key={mode === "survival" ? survivalSolvedCount : found.length}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl font-bold tabular-nums leading-none text-primary"
+                  data-testid="text-live-word-count"
+                >
+                  {mode === "survival" ? survivalSolvedCount : found.length}
+                </motion.span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  {mode === "survival" ? "solved" : "found"}
+                </span>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
+                </span>
+              </div>
               <div className="text-center space-y-1">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Insert one letter anywhere to make a new word</p>
                 <div className="flex justify-center gap-1.5 flex-wrap" data-testid="seed-word-display">
@@ -595,6 +600,32 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                 <p className="text-xs text-center text-muted-foreground">
                   Find any valid stretched word to reset the {SURVIVAL_TIME}s timer!
                 </p>
+              )}
+              {!locked && (
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (timerRef.current) clearInterval(timerRef.current);
+                      onExit();
+                    }}
+                    data-testid="button-menu"
+                  >
+                    Menu
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (timerRef.current) clearInterval(timerRef.current);
+                      onExit();
+                    }}
+                    data-testid="button-quit"
+                  >
+                    Quit
+                  </Button>
+                </div>
               )}
             </>
           )}

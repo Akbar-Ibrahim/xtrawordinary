@@ -20,7 +20,8 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { AnimatedNumber } from "@/components/animated-number";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import type { LeaderboardEntry } from "@shared/schema";
 
@@ -65,6 +66,7 @@ interface WordBloomPlayProps {
 function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps) {
   const slug = mode === "classic" ? "word-bloom" : "word-bloom-survival";
   const { reportResult } = useGameResult({ slug });
+  const personalBest = usePersonalBest(slug);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
   const [puzzle, setPuzzle] = useState<PuzzleData | null>(null);
@@ -396,31 +398,19 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1" data-testid="badge-mode">
-            {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
-            {mode === "survival" ? "Survival" : "Classic"}
-          </Badge>
-          <Badge variant="secondary" data-testid="badge-chain-length">
-            {steps} step{steps !== 1 ? "s" : ""}
-          </Badge>
-          <Badge style={{ backgroundColor: BLOOM_COLOR }} className="text-white" data-testid="badge-score">
-            {score} pts
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
           <span
-            className={`font-mono font-bold tabular-nums text-sm ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive" : ""}`}
+            className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
             data-testid="text-timer"
           >
             {timeLeft}s
           </span>
-          {!locked && (
-            <Button variant="outline" size="sm" onClick={() => endGame()} data-testid="button-quit">
-              Give Up
-            </Button>
-          )}
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
         </div>
       </div>
 
@@ -439,6 +429,29 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
             <div className="text-center py-8 text-muted-foreground">Loading puzzle…</div>
           ) : (
             <>
+              <div className="flex justify-center gap-2">
+                <Badge variant="outline" className="gap-1" data-testid="badge-mode">
+                  {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
+                  {mode === "survival" ? "Survival" : "Classic"}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                <motion.span
+                  key={steps}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl font-bold tabular-nums leading-none text-primary"
+                  data-testid="text-live-word-count"
+                >
+                  {steps}
+                </motion.span>
+                <span className="text-sm text-muted-foreground leading-none">steps</span>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
+                </span>
+              </div>
               {/* Chain history */}
               {chain.length > 0 && (
                 <div className="space-y-1 max-h-40 overflow-y-auto" data-testid="chain-display">
@@ -524,6 +537,26 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                 <p className="text-xs text-center text-muted-foreground">
                   Find a valid next word to reset the {SURVIVAL_TIME}s timer and keep the chain growing!
                 </p>
+              )}
+              {!locked && (
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onExit}
+                    data-testid="button-menu"
+                  >
+                    Menu
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => endGame()}
+                    data-testid="button-give-up"
+                  >
+                    Give Up
+                  </Button>
+                </div>
               )}
             </>
           )}
