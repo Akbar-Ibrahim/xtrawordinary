@@ -17,7 +17,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
-import { useGameResult } from "@/hooks/use-game-result";
+import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { ShareResults } from "@/components/share-results";
@@ -50,6 +50,7 @@ type RoundResult = { word: string; canonical: boolean; points: number };
 export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
   const { user } = useAuth();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots", quizMode });
+  const personalBest = usePersonalBest("word-roots");
   const [, navigate] = useLocation();
   const seeded = groupSeed !== undefined;
   const [authOpen, setAuthOpen] = useState(false);
@@ -269,31 +270,22 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-score">
-            <Trophy className="h-3.5 w-3.5" />
-            <AnimatedNumber value={score} /> pts
-          </Badge>
-          <Badge variant="secondary" className="gap-1.5" data-testid="badge-round">
-            Round {round + 1}/{TOTAL_ROUNDS}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={timeLeft <= 30 ? "destructive" : "secondary"} className="gap-1.5" data-testid="badge-timer" role="timer">
-            <Timer className="h-3.5 w-3.5" />
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`}
+            data-testid="badge-timer"
+            role="timer"
+          >
             {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
-          </Badge>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { clearInterval(timerRef.current!); setGameStatus("lost"); }}
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
+          </span>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+          </div>
         </div>
       </div>
 
@@ -307,6 +299,28 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
         >
           <Card>
             <CardContent className="p-6 space-y-6">
+              <div className="flex items-center justify-center gap-3">
+                <Badge variant="secondary" data-testid="badge-round">
+                  Round {round + 1}/{TOTAL_ROUNDS}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                <motion.span
+                  key={round}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl font-bold tabular-nums leading-none text-primary"
+                  data-testid="text-live-word-count"
+                >
+                  {round + 1}
+                </motion.span>
+                <span className="text-sm text-muted-foreground leading-none">/ {TOTAL_ROUNDS} rounds</span>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  PB: <span className="font-semibold text-foreground">{personalBest > 0 ? `${personalBest} pts` : "—"}</span>
+                </span>
+              </div>
               <div className="text-center space-y-2">
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <TreePine className="h-4 w-4" />
@@ -395,6 +409,26 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
                   </p>
                 )}
               </div>
+              {!locked && (
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearInterval(timerRef.current!); navigate("/games/word-roots"); }}
+                    data-testid="button-menu"
+                  >
+                    Menu
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearInterval(timerRef.current!); setGameStatus("lost"); }}
+                    data-testid="button-end-game"
+                  >
+                    End Game
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

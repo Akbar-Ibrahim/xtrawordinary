@@ -1225,72 +1225,30 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   // Playing state
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
-            <Trophy className="h-3.5 w-3.5" />
-            <AnimatedNumber value={score} /> pts
-          </Badge>
-          {isSurvivalRef.current && (
-            <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/50" data-testid="badge-survival">
-              <Flame className="h-3.5 w-3.5" />
-              Survival
-            </Badge>
-          )}
-          <StreakIndicator streak={streak} />
-          {selectedLevel !== null && selectedLevel !== "advanced" && (
-            <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
-              <Zap className="h-3.5 w-3.5" />
-              Level {selectedLevel}
-            </Badge>
-          )}
-          {selectedLevel === "advanced" && (
-            <Badge className="bg-gradient-to-r from-primary to-accent text-white gap-1.5" data-testid="badge-level">
-              <Sparkles className="h-3.5 w-3.5" />
-              Advanced
-            </Badge>
-          )}
-          {selectedLevel === null && (
-            <Badge variant="outline" className="gap-1.5" data-testid="badge-custom">
-              <Sparkles className="h-3.5 w-3.5" />
-              Custom
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant={timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "destructive" : "secondary"}
-            className="gap-1.5 min-w-[60px] justify-center"
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
             data-testid="badge-timer"
             role="timer"
             aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
           >
-            <Timer className="h-3.5 w-3.5" />
             {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </Badge>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={backToMenu}
-              className="gap-1.5"
-              data-testid="button-restart"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Menu
-            </Button>
+          </span>
+          {isSurvivalRef.current && (
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs py-0" data-testid="badge-survival">
+              <Flame className="h-3 w-3" />
+              Survival
+            </Badge>
           )}
-          {!locked && gameState === "playing" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { clearTimer(); setCompletionMessage(getCompletionMessage(false)); setGameState("game_over"); }}
-              className="gap-1.5"
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            <StreakIndicator streak={streak} />
+          </div>
         </div>
       </div>
 
@@ -1316,21 +1274,56 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                     <Type className="h-6 w-6 text-primary" />
                   )}
                 </motion.div>
-                <Badge 
-                  variant={selectedCategory?.includes("oblivion") ? "destructive" : "secondary"} 
-                  className="text-sm px-4 py-2" 
-                  data-testid="badge-constraint"
-                >
-                  {currentConstraint?.description}
-                </Badge>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <Badge 
+                    variant={selectedCategory?.includes("oblivion") ? "destructive" : "secondary"} 
+                    className="text-sm px-4 py-2" 
+                    data-testid="badge-constraint"
+                  >
+                    {currentConstraint?.description}
+                  </Badge>
+                  {selectedLevel !== null && selectedLevel !== "advanced" && (
+                    <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-level">
+                      <Zap className="h-3.5 w-3.5" />
+                      Level {selectedLevel}
+                    </Badge>
+                  )}
+                  {selectedLevel === "advanced" && (
+                    <Badge className="bg-gradient-to-r from-primary to-accent text-white gap-1.5" data-testid="badge-level">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Advanced
+                    </Badge>
+                  )}
+                  {selectedLevel === null && (
+                    <Badge variant="outline" className="gap-1.5" data-testid="badge-custom">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Custom
+                    </Badge>
+                  )}
+                </div>
                 {!isSurvivalRef.current && (
                   <Progress value={(wordsCompleted / wordsPerLevel) * 100} className="h-2" />
                 )}
-                <p className="text-sm text-muted-foreground">
-                  {isSurvivalRef.current
-                    ? `${wordsCompleted} word${wordsCompleted !== 1 ? "s" : ""}`
-                    : `${wordsCompleted} / ${wordsPerLevel} words`}
-                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                <motion.span
+                  key={wordsCompleted}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl font-bold tabular-nums leading-none text-primary"
+                  data-testid="text-live-word-count"
+                >
+                  {wordsCompleted}
+                </motion.span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  {isSurvivalRef.current ? `word${wordsCompleted !== 1 ? "s" : ""}` : `/ ${wordsPerLevel} words`}
+                </span>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
+                </span>
               </div>
 
               <Progress value={(timeLeft / totalTimeLimitRef.current) * 100} className="h-2" />
@@ -1406,6 +1399,26 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                       </Badge>
                     ))}
                   </div>
+                </div>
+              )}
+              {!locked && (
+                <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={backToMenu}
+                    data-testid="button-menu"
+                  >
+                    Menu
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearTimer(); setCompletionMessage(getCompletionMessage(false)); setGameState("game_over"); }}
+                    data-testid="button-end-game"
+                  >
+                    End Game
+                  </Button>
                 </div>
               )}
             </CardContent>
