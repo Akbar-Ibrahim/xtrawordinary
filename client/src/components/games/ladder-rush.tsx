@@ -16,6 +16,7 @@ import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { ShareResults } from "@/components/share-results";
+import { AnimatedNumber } from "@/components/animated-number";
 
 const GAME_DURATION = 90;
 const SURVIVAL_TIME_PER_WORD = 8;
@@ -402,50 +403,27 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" data-testid="badge-length">
-            {wordLength}-letter
-          </Badge>
-          <Badge variant="secondary" data-testid="badge-chain-length">
-            Chain: {wordsChained}
-          </Badge>
-          <Badge className="bg-[hsl(38,92%,50%)] text-white" data-testid="badge-live-score">
-            <Star className="h-3 w-3 mr-1" />
-            {liveScore} pts
-          </Badge>
-          {isSurvivalRef.current ? (
-            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50" data-testid="badge-survival">
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+            data-testid="badge-timer"
+            role="timer"
+            aria-label={`Time remaining: ${timeLeft} seconds`}
+          >
+            {timeLeft}s
+          </span>
+          {isSurvivalRef.current && (
+            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
               <Flame className="h-3 w-3" />
               Survival
             </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1" data-testid="badge-classic">
-              <Timer className="h-3 w-3" />
-              Classic
-            </Badge>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5" data-testid="timer-display">
-            <Clock className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : "text-muted-foreground"}`} />
-            <span className={`font-mono font-bold tabular-nums ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive" : timeLeft <= (maxTime * 0.33) ? "text-chart-3" : ""}`}>
-              {timeLeft}s
-            </span>
-          </div>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (timerRef.current) clearInterval(timerRef.current);
-                onExit();
-              }}
-              data-testid="button-quit"
-            >
-              Quit
-            </Button>
-          )}
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <AnimatedNumber value={liveScore} className="text-2xl font-bold text-primary" data-testid="badge-score" />
         </div>
       </div>
 
@@ -460,6 +438,22 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            <Badge variant="outline" className="text-xs" data-testid="badge-length">
+              {wordLength}-letter
+            </Badge>
+            {isSurvivalRef.current ? (
+              <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs">
+                <Flame className="h-3 w-3" />
+                Survival
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-xs" data-testid="badge-classic">
+                <Timer className="h-3 w-3" />
+                Classic
+              </Badge>
+            )}
+          </div>
           <div className="h-[300px] overflow-y-auto space-y-2 flex flex-col items-center">
             {chain.map((word, i) => {
               const isStart = i === 0;
@@ -560,6 +554,29 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
               {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
             </Button>
           </div>
+          {!locked && (
+            <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (timerRef.current) clearInterval(timerRef.current);
+                  onExit();
+                }}
+                data-testid="button-menu"
+              >
+                Menu
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => endGame(chainRef.current)}
+                data-testid="button-end-game"
+              >
+                End Game
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
