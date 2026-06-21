@@ -38,7 +38,7 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Shell Words / Deep Shell Words: hint that reveals the boundary letters
 - Word Bloom: show the full possible chain tree after the round ends
 - Cross-game combo bonuses (e.g. play 5 different games in one day)
-- **Untimed Mode (Premium)** — a third play mode alongside Classic and Survival. No timer at all; the player plays at their own pace. Scores from untimed sessions are not submitted to the global leaderboard (to keep competition fair), but stats and personal bests are still tracked. Available to premium members only.
+- **Untimed Mode (Premium)** — a third play mode alongside Classic and Survival. No timer at all; the player plays at their own pace. Scores from untimed sessions are not submitted to the global leaderboard (to keep competition fair), but stats and personal bests are still tracked. Available to premium members only. *(Listed in the pricing page as a feature but not yet implemented in any game component.)*
 
 ### Authentication
 - Apple Sign-In (important for iOS if a mobile app is added)
@@ -62,7 +62,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Stats comparison: compare your stats with a friend side-by-side
 - Export stats as CSV or PDF
 - Weekly / monthly recap email
-- Heatmap calendar (like GitHub contributions) showing play frequency
 - Improvement tracking: "Your Word Ladder average improved 15% this month"
 
 ### Streak System
@@ -149,17 +148,15 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - More notification types wired up: friend request received, achievement unlocked, someone liked your comment
 - Mobile bottom navigation bar (tab bar) for an app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
-- Breadcrumb trail on game and group detail pages
+- Breadcrumb trail on game and group detail pages *(Shadcn breadcrumb component exists but is not wired up to any pages)*
 - Extract the SSE notification stream into a dedicated `useNotificationStream` hook for cleaner reuse and easier testing (currently the EventSource logic is inline in the navigation component)
 
 ### UI / UX & Platform
 - PWA service worker: offline caching so the daily challenge works without internet (manifest.json already exists)
 - Keyboard accessibility audit
 - Screen reader / ARIA audit (especially game grids and timers)
-- Respect prefers-reduced-motion for animation-sensitive users
 - Font size / zoom preference in user profile
 - Lazy-load game components (code splitting) for faster initial load
-- Error boundary components to prevent a single game crash taking down the whole page
 - Comprehensive end-to-end test coverage (Playwright)
 - Onboarding flow for new users: guided tour of homepage, daily challenge, and first game
 - Cookie consent banner (required for GDPR if analytics/ads are added)
@@ -245,15 +242,6 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 Every group member joins on their own device. Members play simultaneously; answers are pooled and de-duplicated for the team. Real-time team score feed shows both groups' aggregate tallies live. Works for simultaneous race games: Anagram Solver, No Repeats, Word Stack, Letter Pool, Word Maker, Word Split, Word Scramble.
 
 **Design questions to resolve:** player cap, score normalisation for unequal group sizes, quorum (minimum members needed to start).
-
----
-
-### Dramatic Challenge Notifications
-**Status:** Optional — to decide at build time
-
-When a Word Wars bracket is drawn and opponents are matched, each player receives a flavourful, war-themed notification (e.g. "Your opponent has been chosen. The war begins. Prepare yourself."). Similarly for Guild Wars: all members of the challenged group get a dramatic call-to-arms notification.
-
-Could also apply to standard Duels — replacing the plain "X challenged you" with something like "X has drawn their sword. Will you accept the challenge?" at no extra engineering cost.
 
 ---
 
