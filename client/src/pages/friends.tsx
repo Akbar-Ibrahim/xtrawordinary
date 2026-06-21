@@ -546,11 +546,16 @@ export default function Friends() {
 
           <TabsContent value="challenges">
             <Card>
-              <CardContent className="pt-6">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Gamepad2 className="h-5 w-5" /> Player Challenges
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
                 {challenges.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground" data-testid="text-no-challenges">
                     <Swords className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>No challenges yet. Challenge a friend from the Friends tab!</p>
+                    <p>No challenges yet. Open any game and challenge a player!</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -659,12 +664,14 @@ export default function Friends() {
                                   variant="outline"
                                   onClick={() => {
                                     const opponentId = isSender ? c.receiverId : c.senderId;
-                                    const seed = Math.floor(Math.random() * 1_000_000);
-                                    navigate(`/game/${c.gameSlug}?challenge-new=${opponentId}&seed=${seed}`);
+                                    setChallengeFriendId(opponentId);
+                                    setChallengeGameSlug(c.gameSlug);
+                                    setChallengeMessage("");
+                                    setChallengeDialogOpen(true);
                                   }}
-                                  data-testid={`button-rematch-${c.id}`}
+                                  data-testid={`button-challenge-back-${c.id}`}
                                 >
-                                  <Swords className="h-3.5 w-3.5 mr-1" /> Rematch
+                                  <Swords className="h-3.5 w-3.5 mr-1" /> Challenge Back
                                 </Button>
                               )}
                             </div>
