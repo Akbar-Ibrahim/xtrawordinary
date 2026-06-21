@@ -1073,8 +1073,8 @@ export async function registerRoutes(
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
       if (message && typeof message === "string" && message.length > 200) return res.status(400).json({ error: "Message too long (max 200 chars)" });
       if (seed !== undefined && (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > 2147483647)) return res.status(400).json({ error: "Seed must be a non-negative integer" });
-      const friendship = await storage.getFriendship(req.user!.id, friendId);
-      if (!friendship || friendship.status !== "accepted") return res.status(400).json({ error: "You can only challenge friends" });
+      const targetUser = await storage.getUserById(friendId);
+      if (!targetUser) return res.status(404).json({ error: "User not found" });
       const configJson = (gameSlug === "letter-balance" && gameConfig && typeof gameConfig === "object")
         ? JSON.stringify(gameConfig)
         : null;

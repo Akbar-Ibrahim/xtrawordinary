@@ -329,10 +329,13 @@ export default function GameDetail() {
 
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
   const [selectedFriendId, setSelectedFriendId] = useState<string>("");
+  const [selectedFriendName, setSelectedFriendName] = useState<string>("");
   const [challengeMsg, setChallengeMsg] = useState("");
   const [challengeLbMode, setChallengeLbMode] = useState<"random" | "locked">("random");
   const [challengeLbLevel, setChallengeLbLevel] = useState<number | undefined>(undefined);
   const [challengeLbConsonantCount, setChallengeLbConsonantCount] = useState<number | undefined>(undefined);
+  const [challengeSearchInput, setChallengeSearchInput] = useState("");
+  const [challengeSearch, setChallengeSearch] = useState("");
   const [showCustomPlayDialog, setShowCustomPlayDialog] = useState(false);
   const [customPlayParams, setCustomPlayParams] = useState<Record<string, any>>({});
   const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
@@ -482,6 +485,29 @@ export default function GameDetail() {
     staleTime: Infinity,
   });
 
+  useEffect(() => {
+    if (!challengeSearchInput.trim()) {
+      setChallengeSearch("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setChallengeSearch(challengeSearchInput.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [challengeSearchInput]);
+
+  const { data: challengeUserResults = [], isFetching: challengeSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
+    queryKey: ["/api/users/search", challengeSearch],
+    queryFn: async () => {
+      if (!challengeSearch.trim()) return [];
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(challengeSearch.trim())}`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!challengeSearch.trim() && showChallengeDialog,
+    staleTime: 10000,
+  });
+
   const createQuizMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/quiz-sessions", {
       gameSlug: slug,
@@ -565,6 +591,9 @@ export default function GameDetail() {
     }
     setShowChallengeDialog(false);
     setSelectedFriendId("");
+    setSelectedFriendName("");
+    setChallengeSearchInput("");
+    setChallengeSearch("");
     setChallengeMsg("");
     setChallengeLbMode("random");
     setChallengeLbLevel(undefined);
@@ -727,7 +756,7 @@ export default function GameDetail() {
                     <Play className="h-5 w-5" />
                     Play Now
                   </Button>
-                  {isAuthenticated && friends.length > 0 && slug && SEEDED_GAME_SLUGS.has(slug) && (
+                  {isAuthenticated && slug && SEEDED_GAME_SLUGS.has(slug) && (
                     <Button
                       variant="outline"
                       className="w-full gap-2"
@@ -735,7 +764,7 @@ export default function GameDetail() {
                       data-testid="button-challenge-friend"
                     >
                       <Swords className="h-4 w-4" />
-                      Challenge a Friend
+                      Challenge a Player
                     </Button>
                   )}
                   {isAuthenticated && user?.isPremium && slug && (DUEL_GAME_SLUGS.has(slug) || slug === "ladder-rush" || slug === "ladder-rush-double") && (
@@ -3319,32 +3348,94 @@ export default function GameDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showChallengeDialog} onOpenChange={setShowChallengeDialog}>
+      <Dialog open={showChallengeDialog} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedFriendId("");
+          setSelectedFriendName("");
+          setChallengeSearchInput("");
+          setChallengeSearch("");
+        }
+        setShowChallengeDialog(open);
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Challenge a Friend</DialogTitle>
+            <DialogTitle>Challenge a Player</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Pick a friend to challenge in <strong>{game.name}</strong>. You'll play first — your score is automatically sent to them when you finish.
+              Pick a player to challenge in <strong>{game.name}</strong>. You'll play first — your score is automatically sent to them when you finish.
             </p>
-            <div>
-              <label className="text-sm font-medium">Friend</label>
-              <Select value={selectedFriendId} onValueChange={setSelectedFriendId}>
-                <SelectTrigger data-testid="select-challenge-friend">
-                  <SelectValue placeholder="Select a friend" />
-                </SelectTrigger>
-                <SelectContent>
-                  {friends.map((f) => (
-                    <SelectItem key={f.friendUser.id} value={String(f.friendUser.id)}>
-                      <span className="flex items-center gap-2">
-                        <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-5 w-5" />
-                        {f.friendUser.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Player</label>
+              {selectedFriendId ? (
+                <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={selectedFriendName} avatarUrl={null} className="h-6 w-6" />
+                    <span className="text-sm font-medium">{selectedFriendName}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground"
+                    onClick={() => { setSelectedFriendId(""); setSelectedFriendName(""); }}
+                    data-testid="button-clear-challenge-player"
+                  >
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Search by username…"
+                    value={challengeSearchInput}
+                    onChange={(e) => setChallengeSearchInput(e.target.value)}
+                    data-testid="input-challenge-search"
+                  />
+                  <div className="max-h-48 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                    {challengeSearchInput.trim() ? (
+                      challengeSearchFetching ? (
+                        <div className="flex items-center justify-center py-4 text-sm text-muted-foreground gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Searching…
+                        </div>
+                      ) : challengeUserResults.length === 0 ? (
+                        <div className="py-4 text-center text-sm text-muted-foreground">No players found</div>
+                      ) : (
+                        challengeUserResults.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
+                            onClick={() => { setSelectedFriendId(String(u.id)); setSelectedFriendName(u.name); setChallengeSearchInput(""); setChallengeSearch(""); }}
+                            data-testid={`button-select-challenge-user-${u.id}`}
+                          >
+                            <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6" />
+                            {u.name}
+                          </button>
+                        ))
+                      )
+                    ) : friends.length > 0 ? (
+                      <>
+                        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/30">Friends</div>
+                        {friends.map((f) => (
+                          <button
+                            key={f.friendUser.id}
+                            type="button"
+                            className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
+                            onClick={() => { setSelectedFriendId(String(f.friendUser.id)); setSelectedFriendName(f.friendUser.name); }}
+                            data-testid={`button-select-challenge-friend-${f.friendUser.id}`}
+                          >
+                            <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-6 w-6" />
+                            {f.friendUser.name}
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="py-4 text-center text-sm text-muted-foreground">Search for a player above</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             {slug === "letter-balance" && (
               <div className="space-y-3 rounded-md border border-border p-3">
