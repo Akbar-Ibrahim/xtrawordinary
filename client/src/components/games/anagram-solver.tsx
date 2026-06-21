@@ -191,48 +191,24 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5" data-testid="badge-score">
-            <Trophy className="h-3.5 w-3.5" />
-            <AnimatedNumber value={score} /> pts
-          </Badge>
-          <StreakIndicator streak={streak} />
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className={`gap-1.5 ${timeLeft <= 10 ? "text-destructive border-destructive" : ""}`}
+      <div className="flex items-center justify-center gap-8">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Timer className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`} />
+          <span
+            className={`font-mono font-bold text-lg ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`}
             data-testid="badge-timer"
             role="timer"
             aria-label={`Time remaining: ${formatTime(timeLeft)}`}
           >
-            <Timer className="h-3.5 w-3.5" />
             {formatTime(timeLeft)}
-          </Badge>
-          {!locked && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => initGame()}
-              className="gap-1.5"
-              data-testid="button-restart"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restart
-            </Button>
-          )}
-          {!locked && gameStatus === "playing" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => { setGameStatus("timeup"); setCompletionMessage(getCompletionMessage(false)); }}
-              className="gap-1.5"
-              data-testid="button-end-game"
-            >
-              End Game
-            </Button>
-          )}
+          </span>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">Score</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            <StreakIndicator streak={streak} />
+          </div>
         </div>
       </div>
 
@@ -250,9 +226,25 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
                   <p className="text-sm text-muted-foreground">
                     Enter any anagram of this word to advance
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Words solved: {wordsSolved} / {activeWordSets.length}
-                  </p>
+                </div>
+                <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
+                  <motion.span
+                    key={wordsSolved}
+                    initial={{ scale: 1.4 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl font-bold tabular-nums leading-none text-primary"
+                    data-testid="text-live-word-count"
+                  >
+                    {wordsSolved}
+                  </motion.span>
+                  <span className="text-sm text-muted-foreground leading-none">
+                    / {activeWordSets.length} solved
+                  </span>
+                  <span className="text-muted-foreground/40 leading-none">·</span>
+                  <span className="text-sm text-muted-foreground leading-none">
+                    PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
+                  </span>
                 </div>
 
                 <motion.div
@@ -329,7 +321,26 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
                     Submit
                   </Button>
                 </div>
-
+                {!locked && (
+                  <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => initGame()}
+                      data-testid="button-menu"
+                    >
+                      Menu
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setGameStatus("timeup"); setCompletionMessage(getCompletionMessage(false)); }}
+                      data-testid="button-end-game"
+                    >
+                      End Game
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
