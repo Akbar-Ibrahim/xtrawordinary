@@ -116,6 +116,7 @@ export interface IStorage {
   createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge>;
   getFriendChallenges(userId: number): Promise<FriendChallenge[]>;
   getFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
+  getPendingFriendChallenge(senderId: number, receiverId: number, gameSlug: string): Promise<FriendChallenge | undefined>;
   completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined>;
   markChallengeViewed(id: number): Promise<void>;
 

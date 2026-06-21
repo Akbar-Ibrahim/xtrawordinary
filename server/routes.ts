@@ -1075,6 +1075,8 @@ export async function registerRoutes(
       if (seed !== undefined && (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > 2147483647)) return res.status(400).json({ error: "Seed must be a non-negative integer" });
       const targetUser = await storage.getUserById(friendId);
       if (!targetUser) return res.status(404).json({ error: "User not found" });
+      const existing = await storage.getPendingFriendChallenge(req.user!.id, friendId, gameSlug);
+      if (existing) return res.status(409).json({ error: "You already have a pending challenge for this game with that player" });
       const configJson = (gameSlug === "letter-balance" && gameConfig && typeof gameConfig === "object")
         ? JSON.stringify(gameConfig)
         : null;

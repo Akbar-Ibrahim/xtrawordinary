@@ -1237,6 +1237,19 @@ export class MySQLStorage implements IStorage {
     return rows[0] ? this.toChallenge(rows[0]) : undefined;
   }
 
+  async getPendingFriendChallenge(senderId: number, receiverId: number, gameSlug: string): Promise<FriendChallenge | undefined> {
+    const db = await this.getDb();
+    const rows = await db.select().from(schema.friendChallenges)
+      .where(and(
+        eq(schema.friendChallenges.senderId, senderId),
+        eq(schema.friendChallenges.receiverId, receiverId),
+        eq(schema.friendChallenges.gameSlug, gameSlug),
+        eq(schema.friendChallenges.status, "pending"),
+      ))
+      .limit(1);
+    return rows[0] ? this.toChallenge(rows[0]) : undefined;
+  }
+
   async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
     const db = await this.getDb();
     await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed", senderViewed: false }).where(eq(schema.friendChallenges.id, id));

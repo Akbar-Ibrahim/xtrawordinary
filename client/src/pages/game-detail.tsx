@@ -230,7 +230,14 @@ export default function GameDetail() {
       navigate(`/game/${slug}`, { replace: true });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
     },
-    onError: () => toast({ title: "Error", description: "Could not send challenge.", variant: "destructive" }),
+    onError: (err: Error) => {
+      let description = "Could not send challenge.";
+      try {
+        const body = JSON.parse(err.message.replace(/^\d+: /, ""));
+        if (body?.error) description = body.error;
+      } catch {}
+      toast({ title: "Error", description, variant: "destructive" });
+    },
   });
 
   const completeMutation = useMutation({

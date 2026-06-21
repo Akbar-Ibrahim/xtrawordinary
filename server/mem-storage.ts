@@ -1081,6 +1081,12 @@ export class MemStorage implements IStorage {
     return this.friendChallengesStore.find(c => c.id === id);
   }
 
+  async getPendingFriendChallenge(senderId: number, receiverId: number, gameSlug: string): Promise<FriendChallenge | undefined> {
+    return this.friendChallengesStore.find(
+      c => c.senderId === senderId && c.receiverId === receiverId && c.gameSlug === gameSlug && c.status === "pending"
+    );
+  }
+
   async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
     const c = this.friendChallengesStore.find(ch => ch.id === id);
     if (c) { c.receiverScore = score; c.status = "completed"; c.senderViewed = false; }
