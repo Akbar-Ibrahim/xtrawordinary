@@ -110,7 +110,7 @@ export default function DuelRoom() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { playSound, volume, setVolume } = useSound();
+  const { playSoundBypass, volume, setVolume } = useSound();
   const [duelMuted, setDuelMuted] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("duelSoundMuted");
@@ -120,9 +120,9 @@ export default function DuelRoom() {
   });
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
 
-  const duelPlay = useCallback((type: Parameters<typeof playSound>[0], pitchMultiplier?: number) => {
-    if (!duelMuted) playSound(type, pitchMultiplier);
-  }, [duelMuted, playSound]);
+  const duelPlay = useCallback((type: Parameters<typeof playSoundBypass>[0], pitchMultiplier?: number) => {
+    if (!duelMuted) playSoundBypass(type, pitchMultiplier);
+  }, [duelMuted, playSoundBypass]);
 
   useEffect(() => {
     localStorage.setItem("duelSoundMuted", String(duelMuted));

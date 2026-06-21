@@ -149,7 +149,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Mobile bottom navigation bar (tab bar) for an app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
 - Breadcrumb trail on game and group detail pages *(Shadcn breadcrumb component exists but is not wired up to any pages)*
-- Extract the SSE notification stream into a dedicated `useNotificationStream` hook for cleaner reuse and easier testing (currently the EventSource logic is inline in the navigation component)
 
 ### UI / UX & Platform
 - PWA service worker: offline caching so the daily challenge works without internet (manifest.json already exists)
@@ -167,10 +166,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 
 These were proposed as follow-up tasks but not yet started. Reference numbers are from the original task system.
 
-### Word Wars — Bracket & Match UX
-- **#251** Highlight the next game to play so it's immediately obvious where to start (visual cue on My Matches section for the next unplayed game in an active series)
-- **#252** Show game results and scores inside each completed game row (per-game W/L score breakdown inside collapsible match rows)
-
 ### Word Wars — Notifications & Alerts
 - **#270** Send an email nudge to registered players when a tournament is at risk of not starting (email reminder when <24h to deadline and sign-up count is still below minPlayers)
 - **#281** Let players opt out of "room is live" alerts separately from match-start alerts (separate notification preference for word_war_round_start)
@@ -178,9 +173,6 @@ These were proposed as follow-up tasks but not yet started. Reference numbers ar
 ### Word Wars — Spectators & Public Access
 - **#282** Let anyone with a link watch a tournament bracket without signing in (currently SSE + bracket data requires auth; unauthenticated viewers get 15s poll only)
 - **#283** Let spectators see live match results update without refreshing (spectators not connected via SSE miss real-time match_completed events)
-
-### Duel Room — Audio
-- Fully decouple duel audio from the global game mute: currently `duelMuted` is stored separately but duel sounds still route through `SoundProvider.playSound`, so turning off global game sound also silences duels. The fix is a duel-specific `soundEnabled` flag in the provider (or a bypass param) so the two contexts are truly independent.
 
 ### Friend Challenges
 - **#310** Let players challenge anyone, not just existing friends (currently the challenge button is hidden with zero friends; should allow searching any registered user by username)

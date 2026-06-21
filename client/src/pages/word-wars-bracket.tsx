@@ -202,9 +202,16 @@ function MyMatchesSection({
     m => m.player1Id === user.id || m.player2Id === user.id
   );
 
-  const [expandedMatches, setExpandedMatches] = useState<Set<number>>(() =>
-    highlightMatchId ? new Set([highlightMatchId]) : new Set()
-  );
+  const firstActiveMatchId = myMatches.find(
+    m => (m.status === "pending" || m.status === "active") &&
+    m.games.some(g => g.status !== "completed")
+  )?.id;
+
+  const [expandedMatches, setExpandedMatches] = useState<Set<number>>(() => {
+    const initial = new Set<number>();
+    if (highlightMatchId) initial.add(highlightMatchId);
+    return initial;
+  });
   const [pendingGame, setPendingGame] = useState<{ matchId: number; gameNumber: number } | null>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
@@ -217,6 +224,16 @@ function MyMatchesSection({
       return next;
     });
   }, [highlightMatchId]);
+
+  useEffect(() => {
+    if (!firstActiveMatchId) return;
+    setExpandedMatches(prev => {
+      if (prev.has(firstActiveMatchId)) return prev;
+      const next = new Set(prev);
+      next.add(firstActiveMatchId);
+      return next;
+    });
+  }, [firstActiveMatchId]);
 
   useEffect(() => {
     if (highlightMatchId && highlightRef.current) {
@@ -327,7 +344,27 @@ function MyMatchesSection({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+                  {!isBye && sortedGames.length > 0 && (
+                    <div className="flex items-center gap-1" data-testid={`game-chips-${match.id}`}>
+                      {sortedGames.map(g => {
+                        const gWon = g.status === "completed" && g.winnerId === user.id;
+                        const gLost = g.status === "completed" && g.winnerId !== null && g.winnerId !== user.id;
+                        return (
+                          <span
+                            key={g.gameNumber}
+                            className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold leading-none
+                              ${gWon ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : gLost ? "bg-rose-500/20 text-rose-600 dark:text-rose-400" : "bg-muted text-muted-foreground/50"}`}
+                            title={`G${g.gameNumber}: ${gWon ? "Win" : gLost ? "Loss" : "Pending"}`}
+                            data-testid={`chip-game-${match.id}-${g.gameNumber}`}
+                          >
+                            {gWon ? "W" : gLost ? "L" : "·"}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {!isBye && (
                     <div
                       className="flex items-center gap-1.5 text-sm font-bold tabular-nums"
@@ -342,6 +379,15 @@ function MyMatchesSection({
                   {matchStatusBadge}
 
                   {nextPlayableGame && !iCompleted && (
+                    <Badge
+                      className="text-xs bg-primary/15 text-primary border border-primary/30 animate-pulse"
+                      data-testid={`badge-your-turn-${match.id}`}
+                    >
+                      Your turn
+                    </Badge>
+                  )}
+
+                  {nextPlayableGame && !iCompleted && (
                     <Button
                       size="sm"
                       className="h-7 gap-1"
@@ -353,7 +399,7 @@ function MyMatchesSection({
                         ? <Loader2 className="h-3 w-3 animate-spin" />
                         : <Play className="h-3 w-3" />
                       }
-                      Play
+                      Play G{nextPlayableGame.gameNumber}
                     </Button>
                   )}
 

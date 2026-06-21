@@ -6,6 +6,7 @@ interface SoundContextType {
   soundEnabled: boolean;
   toggleSound: () => void;
   playSound: (type: SoundType, pitchMultiplier?: number) => void;
+  playSoundBypass: (type: SoundType, pitchMultiplier?: number) => void;
   volume: number;
   setVolume: (v: number) => void;
 }
@@ -92,9 +93,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     return audioContextRef.current;
   }, []);
 
-  const playSound = useCallback((type: SoundType, pitchMultiplier = 1) => {
-    if (!soundEnabledRef.current) return;
-
+  const playSoundRaw = useCallback((type: SoundType, pitchMultiplier = 1) => {
     try {
       const audioContext = getAudioContext();
       const notes = SOUND_FREQUENCIES[type];
@@ -125,12 +124,21 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     }
   }, [getAudioContext]);
 
+  const playSound = useCallback((type: SoundType, pitchMultiplier = 1) => {
+    if (!soundEnabledRef.current) return;
+    playSoundRaw(type, pitchMultiplier);
+  }, [playSoundRaw]);
+
+  const playSoundBypass = useCallback((type: SoundType, pitchMultiplier = 1) => {
+    playSoundRaw(type, pitchMultiplier);
+  }, [playSoundRaw]);
+
   const toggleSound = useCallback(() => {
     setSoundEnabled((prev) => !prev);
   }, []);
 
   return (
-    <SoundContext.Provider value={{ soundEnabled, toggleSound, playSound, volume, setVolume }}>
+    <SoundContext.Provider value={{ soundEnabled, toggleSound, playSound, playSoundBypass, volume, setVolume }}>
       {children}
     </SoundContext.Provider>
   );
