@@ -255,7 +255,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   }, []);
 
   const checkAnswer = async () => {
-    if (!userInput.trim() || !constraint) return;
+    if (!userInput.trim() || !constraint || validateMutation.isPending) return;
 
     const upperWord = userInput.toUpperCase();
 
@@ -505,7 +505,6 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                       aria-label="Enter your word"
                       className="text-center text-lg uppercase"
                       maxLength={constraint?.length || 8}
-                      disabled={validateMutation.isPending}
                       data-testid="input-word"
                     />
                     <Button

@@ -545,7 +545,6 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                   placeholder={`${seedWord.length + 1}-letter word…`}
                   maxLength={seedWord.length + 1}
                   className="font-mono text-lg tracking-wider uppercase max-w-xs"
-                  disabled={validating}
                   autoFocus
                   data-testid="input-word"
                 />

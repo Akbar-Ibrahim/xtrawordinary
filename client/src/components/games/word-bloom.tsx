@@ -502,7 +502,6 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                   placeholder={`${(currentWord || seedWord).length + 1}-letter word…`}
                   maxLength={(currentWord || seedWord).length + 1}
                   className="font-mono text-lg tracking-wider uppercase max-w-xs"
-                  disabled={validating}
                   autoFocus
                   data-testid="input-word"
                 />

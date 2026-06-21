@@ -542,7 +542,6 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
               placeholder={`${wordLength}-letter word…`}
               maxLength={wordLength}
               className="font-mono text-lg tracking-wider uppercase max-w-xs"
-              disabled={validating}
               autoFocus
               data-testid="input-word"
             />

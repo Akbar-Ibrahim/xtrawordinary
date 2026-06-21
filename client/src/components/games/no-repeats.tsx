@@ -166,6 +166,7 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
   }, [stopTimer]);
 
   const handleSubmit = async () => {
+    if (validateMutation.isPending) return;
     const word = userInput.trim().toUpperCase();
     if (!word) return;
 

@@ -477,7 +477,6 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadd
                   placeholder={`Type a ${puzzle.start.length}-letter word...`}
                   maxLength={puzzle.start.length}
                   className="font-mono text-lg tracking-wider uppercase max-w-xs"
-                  disabled={validating}
                   autoFocus
                   data-testid="input-word"
                 />

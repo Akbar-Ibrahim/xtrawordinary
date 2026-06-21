@@ -591,7 +591,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
                   aria-label="Enter your word"
                   maxLength={requiredLength}
                   className="text-center text-lg font-bold uppercase"
-                  disabled={validateMutation.isPending}
                   data-testid="input-word"
                 />
                 <Button 
