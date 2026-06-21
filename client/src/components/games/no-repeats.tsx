@@ -514,7 +514,6 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed }: { initial
                 aria-label="Enter your word"
                 className="text-center text-lg uppercase"
                 maxLength={config.wordLength}
-                disabled={validateMutation.isPending}
                 data-testid="input-word"
               />
               <Button type="submit" disabled={validateMutation.isPending} data-testid="button-submit">
