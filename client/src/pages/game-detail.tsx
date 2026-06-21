@@ -114,6 +114,14 @@ const CUSTOM_PLAY_SLUGS = new Set([
   "letter-dodge",
 ]);
 
+const UNTIMED_GAME_SLUGS = new Set([
+  "word-chain",
+  "word-ladder",
+  "letter-hunt",
+  "word-scramble",
+  "no-repeats",
+]);
+
 const LETTER_BALANCE_CATEGORIES_DETAIL = [
   { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
   { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
@@ -331,6 +339,7 @@ export default function GameDetail() {
   const [customPlayKey, setCustomPlayKey] = useState(0);
   const [customPlayEnded, setCustomPlayEnded] = useState(false);
   const [isCustomPlay, setIsCustomPlay] = useState(false);
+  const [isUntimed, setIsUntimed] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
@@ -805,6 +814,17 @@ export default function GameDetail() {
                       Custom Play
                     </Button>
                   )}
+                  {isAuthenticated && user?.isPremium && slug && UNTIMED_GAME_SLUGS.has(slug) && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-blue-400 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                      onClick={() => { setIsUntimed(true); setIsPlaying(true); }}
+                      data-testid="button-untimed-mode"
+                    >
+                      <span className="text-base leading-none">∞</span>
+                      Untimed Mode
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <PremiumBanner variant="card" />
@@ -837,6 +857,7 @@ export default function GameDetail() {
                   onClick={() => {
                     setIsPlaying(false);
                     setIsCustomPlay(false);
+                    setIsUntimed(false);
                     setChallengeResult(null);
                     alreadySubmittedRef.current = false;
                     if (challengeId || challengeNewFriendId) {
@@ -906,6 +927,18 @@ export default function GameDetail() {
                   <div>
                     <p className="font-medium text-sm text-amber-700 dark:text-amber-400">Custom Play Mode</p>
                     <p className="text-xs text-muted-foreground">Scores are not saved to the leaderboard in custom play.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isUntimed && (
+              <Card className="mb-4 border-blue-400/50 bg-blue-50/50 dark:bg-blue-950/10">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <span className="text-xl text-blue-500 shrink-0 font-bold leading-none">∞</span>
+                  <div>
+                    <p className="font-medium text-sm text-blue-700 dark:text-blue-400">Untimed Mode</p>
+                    <p className="text-xs text-muted-foreground">No timer — play at your own pace. Scores are tracked but not submitted to the global leaderboard.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1133,7 +1166,17 @@ export default function GameDetail() {
                   locked
                 />
               );
-            })() : GameComponent ? (
+            })() : isUntimed && slug === "word-chain" ? (
+              <WordChainGame isUntimed locked={isSenderMode || isReceiverMode} />
+            ) : isUntimed && slug === "word-ladder" ? (
+              <WordLadderGame isUntimed locked={isSenderMode || isReceiverMode} />
+            ) : isUntimed && slug === "letter-hunt" ? (
+              <LetterHuntGame isUntimed locked={isSenderMode || isReceiverMode} />
+            ) : isUntimed && slug === "word-scramble" ? (
+              <WordScrambleGame isUntimed locked={isSenderMode || isReceiverMode} />
+            ) : isUntimed && slug === "no-repeats" ? (
+              <NoRepeatsGame isUntimed locked={isSenderMode || isReceiverMode} />
+            ) : GameComponent ? (
               <GameComponent groupSeed={effectiveGroupSeed} locked={isSenderMode || isReceiverMode} />
             ) : (
               <Card>

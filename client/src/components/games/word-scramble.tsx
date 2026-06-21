@@ -19,10 +19,10 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
-export function WordScrambleGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[] } = {}) {
+export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isUntimed }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[]; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-scramble", quizMode });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-scramble", quizMode, isUntimed });
   const personalBest = usePersonalBest("word-scramble");
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;

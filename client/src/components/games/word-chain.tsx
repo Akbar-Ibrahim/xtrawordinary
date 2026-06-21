@@ -29,12 +29,13 @@ const SURVIVAL_TIME_OPTIONS = [
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number } = {}) {
+export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed, isUntimed }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number; isUntimed?: boolean } = {}) {
   const [, navigate] = useLocation();
   const { playSound } = useSound();
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: "word-chain-survival",
+    isUntimed,
   });
   const personalBest = usePersonalBest("word-chain-survival");
 
@@ -179,7 +180,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       setChainHistory([{ word: result.word, isPlayer: false }]);
       setGameStatus("playing");
       
-      startTimer();
+      if (!isUntimed) startTimer();
       setTimeout(() => inputRef.current?.focus(), 100);
     } catch {
       playSound("wrong");
@@ -284,7 +285,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           setCurrentWord(computerResult.word);
           setUsedWords(prev => new Set(Array.from(prev).concat(computerResult.word!)));
           setChainHistory(prev => [...prev, { word: computerResult.word!, isPlayer: false }]);
-          resetTimer();
+          if (!isUntimed) resetTimer();
         } catch {
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -326,20 +327,28 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             <p className="text-muted-foreground text-sm">
               Select a level to start the word chain!
             </p>
-            <div className="flex items-center justify-center gap-2 pt-2">
-              {SURVIVAL_TIME_OPTIONS.map(opt => (
-                <Button
-                  key={opt.seconds}
-                  variant={survivalTime === opt.seconds ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSurvivalTime(opt.seconds)}
-                  data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
-                >
-                  {opt.label} ({opt.seconds}s)
-                </Button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">{survivalTime}s per word — timer resets on each correct answer!</p>
+            {isUntimed ? (
+              <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs self-center mt-2" data-testid="badge-untimed-menu">
+                ∞ Untimed Mode — no timer pressure!
+              </Badge>
+            ) : (
+              <>
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  {SURVIVAL_TIME_OPTIONS.map(opt => (
+                    <Button
+                      key={opt.seconds}
+                      variant={survivalTime === opt.seconds ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSurvivalTime(opt.seconds)}
+                      data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
+                    >
+                      {opt.label} ({opt.seconds}s)
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{survivalTime}s per word — timer resets on each correct answer!</p>
+              </>
+            )}
           </div>
           
           <div className="space-y-3">
@@ -370,19 +379,27 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     <div className="space-y-6">
       <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= 3 ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= 3 ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-            aria-label={`Time remaining: ${timeLeft} seconds`}
-          >
-            {timeLeft}s
-          </span>
-          <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
-            <Flame className="h-3 w-3" />
-            Survival
-          </Badge>
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
+            </Badge>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timeLeft <= 3 ? "text-destructive animate-pulse" : ""}`} />
+              <span
+                className={`font-mono font-bold text-lg ${timeLeft <= 3 ? "text-destructive animate-pulse" : ""}`}
+                data-testid="badge-timer"
+                role="timer"
+                aria-label={`Time remaining: ${timeLeft} seconds`}
+              >
+                {timeLeft}s
+              </span>
+              <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
+                <Flame className="h-3 w-3" />
+                Survival
+              </Badge>
+            </>
+          )}
         </div>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
@@ -411,7 +428,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     Start with '{currentWord[currentWord.length - 1]}'
                     {level === 2 && ` · ${currentWord.length} letters`}
                   </p>
-                  <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
+                  {!isUntimed && <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>}
                 </div>
 
                 <motion.div
@@ -436,7 +453,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                   </div>
                 </motion.div>
 
-                <Progress value={timerPercent} className="h-2" />
+                {!isUntimed && <Progress value={timerPercent} className="h-2" />}
 
                 <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
                   <motion.span

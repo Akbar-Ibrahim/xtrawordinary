@@ -11,9 +11,10 @@ interface GameResultOptions {
   slug: string;
   challengeId?: number;
   quizMode?: boolean;
+  isUntimed?: boolean;
 }
 
-async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number) {
+async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number, skipLeaderboard?: boolean) {
   try {
     const stats = loadStats();
     const gameStats = stats.perGame[slug];
@@ -41,7 +42,7 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
       body: JSON.stringify(streak),
     });
 
-    if (score > 0) {
+    if (score > 0 && !skipLeaderboard) {
       await fetch("/api/leaderboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,11 +53,12 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
   } catch {}
 }
 
-export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode }: GameResultOptions) {
+export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode, isUntimed }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
   const { isAuthenticated, openAuthModal } = useAuth();
   const quizModeRef = useRef(quizMode);
+  const isUntimedRef = useRef(isUntimed);
 
   const challengeIdRef = useRef<number | undefined | null>(null);
   if (challengeIdRef.current === null) {
@@ -136,7 +138,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
       }
 
       if (isAuthenticatedRef.current && !quizModeRef.current) {
-        syncToBackend(currentSlug, score, won, wordsFound);
+        syncToBackend(currentSlug, score, won, wordsFound, isUntimedRef.current);
         const challengeId = challengeIdRef.current;
         if (challengeId) {
           fetch(`/api/challenges/${challengeId}/complete`, {

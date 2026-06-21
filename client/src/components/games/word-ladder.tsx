@@ -23,6 +23,7 @@ interface WordLadderGameProps {
   initialChallenge?: boolean;
   groupSeed?: number;
   locked?: boolean;
+  isUntimed?: boolean;
 }
 
 function isOneLetterDiff(a: string, b: string): boolean {
@@ -41,10 +42,10 @@ function isOneLetterDiff(a: string, b: string): boolean {
   return added === 1 && removed === 1;
 }
 
-export function WordLadderGame({ initialChallenge, groupSeed, locked }: WordLadderGameProps) {
+export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed }: WordLadderGameProps) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-ladder" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-ladder", isUntimed });
   const personalBest = usePersonalBest("word-ladder");
   const seeded = groupSeed !== undefined;
   const seedRngRef = useRef<(() => number) | undefined>(

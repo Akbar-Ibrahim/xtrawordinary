@@ -129,13 +129,14 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain, isUntimed }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-hunt-survival" : "letter-hunt",
     quizMode,
+    isUntimed,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-hunt-survival" : "letter-hunt");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -245,7 +246,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
 
     setCurrentLetters(generateLettersForChallenge(c, constraintRng));
     setGameStatus("playing");
-    startTimer(isSurvival);
+    if (!isUntimed) startTimer(isSurvival);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [generateLettersForChallenge, startTimer, stopTimer, resetRecorded, isSurvival]);
 
@@ -359,7 +360,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             setCurrentLetters(generateLettersForChallenge("advanced", rng));
             setUsedWords(new Set());
           }
-          if (isSurvivalRef.current) {
+          if (isSurvivalRef.current && !isUntimed) {
             startTimer(true);
           }
         }
@@ -389,48 +390,54 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
             <p className="text-muted-foreground text-sm">
               Find words containing the required letters!
             </p>
-            {!groupSeed && (
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <Button
-                  variant={!isSurvival ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsSurvival(false)}
-                  className="gap-1.5"
-                  data-testid="button-mode-classic"
-                >
-                  <Timer className="h-3.5 w-3.5" />
-                  Classic
-                </Button>
-                <Button
-                  variant={isSurvival ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsSurvival(true)}
-                  className="gap-1.5"
-                  data-testid="button-mode-survival"
-                >
-                  <Flame className="h-3.5 w-3.5" />
-                  {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
-                </Button>
-              </div>
-            )}
-            {isSurvival && (
+            {isUntimed ? (
+              <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs self-center mt-2" data-testid="badge-untimed-menu">
+                ∞ Untimed Mode — no timer pressure!
+              </Badge>
+            ) : !groupSeed && (
               <>
-                <div className="flex items-center justify-center gap-2 pt-1">
-                  {SURVIVAL_TIME_OPTIONS.map(opt => (
-                    <Button
-                      key={opt.seconds}
-                      variant={survivalTime === opt.seconds ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSurvivalTime(opt.seconds)}
-                      data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
-                    >
-                      {opt.label} ({opt.seconds}s)
-                    </Button>
-                  ))}
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Button
+                    variant={!isSurvival ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsSurvival(false)}
+                    className="gap-1.5"
+                    data-testid="button-mode-classic"
+                  >
+                    <Timer className="h-3.5 w-3.5" />
+                    Classic
+                  </Button>
+                  <Button
+                    variant={isSurvival ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsSurvival(true)}
+                    className="gap-1.5"
+                    data-testid="button-mode-survival"
+                  >
+                    <Flame className="h-3.5 w-3.5" />
+                    {isSurvival ? `Survival (${survivalTime}s/word)` : "Survival"}
+                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {survivalTime}s per word — timer resets on each correct answer!
-                </p>
+                {isSurvival && (
+                  <>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      {SURVIVAL_TIME_OPTIONS.map(opt => (
+                        <Button
+                          key={opt.seconds}
+                          variant={survivalTime === opt.seconds ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSurvivalTime(opt.seconds)}
+                          data-testid={`button-survival-time-${opt.label.toLowerCase()}`}
+                        >
+                          {opt.label} ({opt.seconds}s)
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {survivalTime}s per word — timer resets on each correct answer!
+                    </p>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -535,20 +542,28 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
     <div className="space-y-4">
       <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-            aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
-          >
-            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </span>
-          {isSurvivalRef.current && (
-            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
-              <Flame className="h-3 w-3" />
-              Survival
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
             </Badge>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+              <span
+                className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
+                data-testid="badge-timer"
+                role="timer"
+                aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+              >
+                {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+              </span>
+              {isSurvivalRef.current && (
+                <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
+                  <Flame className="h-3 w-3" />
+                  Survival
+                </Badge>
+              )}
+            </>
           )}
         </div>
         <div className="text-center">
