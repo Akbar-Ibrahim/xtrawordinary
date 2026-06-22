@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Swords, Trophy, TrendingUp, Minus } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
+import { PlayerChallengeDialog } from "@/components/player-challenge-dialog";
 
 type FormatFilter = "overall" | "turn" | "race";
 
@@ -43,6 +44,7 @@ const FORMAT_OPTIONS: { value: FormatFilter; label: string }[] = [
 export default function DuelLeaderboard() {
   const { user, isAuthenticated } = useAuth();
   const [format, setFormat] = useState<FormatFilter>("overall");
+  const [challengeTarget, setChallengeTarget] = useState<{ id: number; name: string; avatarUrl: string | null } | null>(null);
 
   const queryParam = format !== "overall" ? `?format=${format}` : "";
 
@@ -199,27 +201,49 @@ export default function DuelLeaderboard() {
                     </div>
                   </div>
 
-                  <div
-                    className={`text-xl font-black tabular-nums shrink-0 ${
-                      entry.rank === 1
-                        ? "text-yellow-500"
-                        : entry.rank === 2
-                        ? "text-slate-400"
-                        : entry.rank === 3
-                        ? "text-amber-600"
-                        : isMe
-                        ? "text-violet-600 dark:text-violet-400"
-                        : "text-foreground"
-                    }`}
-                    data-testid={`text-elo-${entry.userId}`}
-                  >
-                    {entry.elo}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div
+                      className={`text-xl font-black tabular-nums ${
+                        entry.rank === 1
+                          ? "text-yellow-500"
+                          : entry.rank === 2
+                          ? "text-slate-400"
+                          : entry.rank === 3
+                          ? "text-amber-600"
+                          : isMe
+                          ? "text-violet-600 dark:text-violet-400"
+                          : "text-foreground"
+                      }`}
+                      data-testid={`text-elo-${entry.userId}`}
+                    >
+                      {entry.elo}
+                    </div>
+                    {isAuthenticated && !isMe && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-violet-500 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/30"
+                        onClick={() => setChallengeTarget({ id: entry.userId, name: entry.displayName, avatarUrl: entry.avatarUrl })}
+                        data-testid={`button-challenge-${entry.userId}`}
+                        title={`Challenge ${entry.displayName}`}
+                      >
+                        <Swords className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </CardContent>
         </Card>
+      )}
+
+      {challengeTarget && (
+        <PlayerChallengeDialog
+          targetUser={challengeTarget}
+          open={!!challengeTarget}
+          onOpenChange={(open) => { if (!open) setChallengeTarget(null); }}
+        />
       )}
     </div>
   );
