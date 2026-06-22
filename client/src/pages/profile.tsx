@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -9,14 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserAvatar } from "@/components/user-avatar";
-import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart, Sword, Flame } from "lucide-react";
+import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck, User, GraduationCap, Copy, CheckCheck, Users, Trash2, Crown, Play, Swords, TrendingUp, TrendingDown, Minus, Bell, Globe, Lock, ChevronRight, Heart, Sword, Flame, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
+import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 
 type QuizSessionWithCount = QuizSession & { playerCount: number };
 
@@ -32,11 +34,22 @@ export default function Profile() {
   const userId = parseInt(params?.id || "0");
   const { user: currentUser, isAuthenticated, refreshUser } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
   const [editBio, setEditBio] = useState("");
+
+  const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
+  const [challengeGameSlug, setChallengeGameSlug] = useState("");
+  const [challengeMessage, setChallengeMessage] = useState("");
+
+  const [duelDialogOpen, setDuelDialogOpen] = useState(false);
+  const [duelGameSlug, setDuelGameSlug] = useState("");
+  const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
+  const [duelRaceTarget, setDuelRaceTarget] = useState(15);
+  const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -91,6 +104,46 @@ export default function Profile() {
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const createDuelChallengeMutation = useMutation({
+    mutationFn: async () => {
+      if (!duelGameSlug) throw new Error("Missing fields");
+      const body: Record<string, unknown> = {
+        challengeeId: userId,
+        gameSlug: duelGameSlug,
+        format: duelFormat,
+      };
+      if (duelFormat === "race") {
+        body.raceTarget = duelRaceTarget;
+        body.raceTimeLimit = duelRaceTimeLimit;
+      }
+      const res = await apiRequest("POST", "/api/duels/challenges", body);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Failed to send duel" }));
+        throw new Error(err.error ?? "Failed to send duel");
+      }
+      return res.json() as Promise<{ roomCode: string }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: "Duel challenge sent!", description: "Waiting for your opponent to accept." });
+      setDuelDialogOpen(false);
+      setDuelGameSlug("");
+      setDuelFormat("turn");
+      queryClient.invalidateQueries({ queryKey: ["/api/duels/challenges"] });
+      navigate(`/duel/${data.roomCode}`);
+    },
+    onError: (err: Error) => toast({ title: "Could not send duel", description: err.message, variant: "destructive" }),
+  });
+
+  function handleStartChallenge() {
+    if (!challengeGameSlug) return;
+    const seed = Math.floor(Math.random() * 1000000);
+    const msgParam = challengeMessage ? `&msg=${encodeURIComponent(challengeMessage)}` : "";
+    setChallengeDialogOpen(false);
+    setChallengeGameSlug("");
+    setChallengeMessage("");
+    navigate(`/game/${challengeGameSlug}?challenge-new=${userId}&seed=${seed}${msgParam}`);
+  }
 
   const isOwnProfile = currentUser?.id === userId;
   const gameMap = new Map(games.map(g => [g.slug, g]));
@@ -377,15 +430,33 @@ export default function Profile() {
                 </p>
               </div>
               {isAuthenticated && !isOwnProfile && (
-                friendship ? (
-                  <Badge variant="secondary" className="gap-1" data-testid="badge-friend">
-                    <UserCheck className="h-3 w-3" /> Friends
-                  </Badge>
-                ) : (
-                  <Button size="sm" onClick={() => sendRequest.mutate()} disabled={sendRequest.isPending} data-testid="button-add-friend">
-                    <UserPlus className="h-4 w-4 mr-1" /> Add Friend
+                <div className="flex items-center gap-2 flex-wrap">
+                  {friendship ? (
+                    <Badge variant="secondary" className="gap-1" data-testid="badge-friend">
+                      <UserCheck className="h-3 w-3" /> Friends
+                    </Badge>
+                  ) : (
+                    <Button size="sm" onClick={() => sendRequest.mutate()} disabled={sendRequest.isPending} data-testid="button-add-friend">
+                      <UserPlus className="h-4 w-4 mr-1" /> Add Friend
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setChallengeDialogOpen(true)}
+                    data-testid="button-send-challenge"
+                  >
+                    <Swords className="h-4 w-4 mr-1" /> Challenge
                   </Button>
-                )
+                  <Button
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 text-white"
+                    onClick={() => setDuelDialogOpen(true)}
+                    data-testid="button-send-duel"
+                  >
+                    <Swords className="h-4 w-4 mr-1" /> Duel
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
@@ -1101,6 +1172,153 @@ export default function Profile() {
               {updateProfile.isPending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={challengeDialogOpen} onOpenChange={setChallengeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send a Challenge to {profile?.user.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Pick a game and optional message. You'll play first — your score is automatically sent when you finish.
+            </p>
+            <div>
+              <label className="text-sm font-medium">Game</label>
+              <Select value={challengeGameSlug} onValueChange={setChallengeGameSlug}>
+                <SelectTrigger data-testid="select-challenge-game">
+                  <SelectValue placeholder="Select a game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {games.filter((g) => SEEDED_GAME_SLUGS.has(g.slug)).map((g) => (
+                    <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Message (optional)</label>
+              <Input
+                value={challengeMessage}
+                onChange={(e) => setChallengeMessage(e.target.value)}
+                placeholder="Beat this!"
+                maxLength={200}
+                data-testid="input-challenge-message"
+              />
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={handleStartChallenge}
+              disabled={!challengeGameSlug}
+              data-testid="button-confirm-challenge"
+            >
+              <Swords className="h-4 w-4" /> Play &amp; Send Challenge
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={duelDialogOpen} onOpenChange={(open) => {
+        setDuelDialogOpen(open);
+        if (!open) { setDuelGameSlug(""); setDuelFormat("turn"); }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Swords className="h-5 w-5 text-violet-500" /> Duel {profile?.user.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Game</label>
+              <Select value={duelGameSlug} onValueChange={(v) => {
+                setDuelGameSlug(v);
+                if (DUEL_TURN_SLUGS.has(v) && !DUEL_RACE_SLUGS.has(v)) setDuelFormat("turn");
+                else if (DUEL_RACE_SLUGS.has(v) && !DUEL_TURN_SLUGS.has(v)) setDuelFormat("race");
+              }}>
+                <SelectTrigger data-testid="select-duel-game">
+                  <SelectValue placeholder="Select a game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {games.filter((g) => DUEL_GAME_SLUGS.has(g.slug)).map((g) => (
+                    <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {duelGameSlug && DUEL_TURN_SLUGS.has(duelGameSlug) && DUEL_RACE_SLUGS.has(duelGameSlug) && (
+              <div>
+                <label className="text-sm font-medium">Format</label>
+                <div className="flex gap-2 mt-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={duelFormat === "turn" ? "default" : "outline"}
+                    onClick={() => setDuelFormat("turn")}
+                    data-testid="button-format-turn"
+                  >
+                    Turn-Based
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={duelFormat === "race" ? "default" : "outline"}
+                    onClick={() => setDuelFormat("race")}
+                    data-testid="button-format-race"
+                  >
+                    Race
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {duelFormat === "race" && (
+              <>
+                <div>
+                  <label className="text-sm font-medium">Target (words to win)</label>
+                  <Select value={String(duelRaceTarget)} onValueChange={(v) => setDuelRaceTarget(Number(v))}>
+                    <SelectTrigger data-testid="select-race-target">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 15, 20, 25].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n} words</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Time limit</label>
+                  <Select value={String(duelRaceTimeLimit)} onValueChange={(v) => setDuelRaceTimeLimit(Number(v))}>
+                    <SelectTrigger data-testid="select-race-time-limit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[{ v: 180, label: "3 min" }, { v: 300, label: "5 min" }, { v: 600, label: "10 min" }].map(({ v, label }) => (
+                        <SelectItem key={v} value={String(v)}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            <Button
+              className="w-full gap-2 bg-violet-600 hover:bg-violet-700 text-white"
+              onClick={() => createDuelChallengeMutation.mutate()}
+              disabled={!duelGameSlug || createDuelChallengeMutation.isPending}
+              data-testid="button-confirm-duel"
+            >
+              {createDuelChallengeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Swords className="h-4 w-4" />
+              )}
+              Send Duel Challenge
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
