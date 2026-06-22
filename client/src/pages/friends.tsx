@@ -87,6 +87,18 @@ export default function Friends() {
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
   const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
 
+  const [dismissedDuelChallengeIds, setDismissedDuelChallengeIds] = useState<Set<number>>(() => {
+    try {
+      const stored = localStorage.getItem("dismissedDuelChallengeIds");
+      if (stored) {
+        return new Set<number>(JSON.parse(stored) as number[]);
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return new Set<number>();
+  });
+
   const { data: friends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
@@ -113,7 +125,7 @@ export default function Friends() {
     });
   }, [challenges, challengesLoaded]);
 
-  const { data: incomingDuels = [] } = useQuery<EnrichedDuelChallenge[]>({
+  const { data: incomingDuels = [], isSuccess: incomingDuelsLoaded } = useQuery<EnrichedDuelChallenge[]>({
     queryKey: ["/api/duels/challenges/incoming"],
     queryFn: async () => {
       const res = await fetch("/api/duels/challenges?type=incoming", { credentials: "include" });
@@ -124,6 +136,17 @@ export default function Friends() {
     enabled: isAuthenticated,
     refetchInterval: 10000,
   });
+
+  useEffect(() => {
+    if (!incomingDuelsLoaded) return;
+    const knownIds = new Set(incomingDuels.map((d) => d.id));
+    setDismissedDuelChallengeIds((prev) => {
+      const next = new Set<number>([...prev].filter((id) => knownIds.has(id)));
+      if (next.size === prev.size) return prev;
+      try { localStorage.setItem("dismissedDuelChallengeIds", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, [incomingDuels, incomingDuelsLoaded]);
 
   const acceptDuelMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -396,8 +419,8 @@ export default function Friends() {
               )}
             </TabsTrigger>
             <TabsTrigger value="duels" data-testid="tab-duels">
-              Duels {incomingDuels.length > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs">{incomingDuels.length}</Badge>
+              Duels {incomingDuels.filter((d) => !dismissedDuelChallengeIds.has(d.id)).length > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs">{incomingDuels.filter((d) => !dismissedDuelChallengeIds.has(d.id)).length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -519,7 +542,9 @@ export default function Friends() {
           <TabsContent value="duels">
             <Card>
               <CardContent className="pt-6">
-                {incomingDuels.length === 0 ? (
+                {(() => {
+                  const visibleDuels = incomingDuels.filter((d) => !dismissedDuelChallengeIds.has(d.id));
+                  return visibleDuels.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground" data-testid="text-no-duels">
                     <Swords className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p>No incoming duel challenges.</p>
@@ -527,7 +552,7 @@ export default function Friends() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {incomingDuels.map((d) => (
+                    {visibleDuels.map((d) => (
                       <div
                         key={d.id}
                         className="rounded-lg border border-violet-300 dark:border-violet-700 bg-violet-50/50 dark:bg-violet-950/20 p-4"
@@ -562,6 +587,19 @@ export default function Friends() {
                           <div className="flex gap-2">
                             <Button
                               size="sm"
+                              variant="ghost"
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() => setDismissedDuelChallengeIds((prev) => {
+                                const next = new Set([...prev, d.id]);
+                                try { localStorage.setItem("dismissedDuelChallengeIds", JSON.stringify([...next])); } catch {}
+                                return next;
+                              })}
+                              data-testid={`button-dismiss-duel-${d.id}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
                               className="gap-1 bg-violet-600 hover:bg-violet-700 text-white"
                               onClick={() => acceptDuelMutation.mutate(d.id)}
                               disabled={acceptDuelMutation.isPending || declineDuelMutation.isPending}
@@ -584,7 +622,8 @@ export default function Friends() {
                       </div>
                     ))}
                   </div>
-                )}
+                );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
