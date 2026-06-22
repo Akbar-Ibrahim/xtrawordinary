@@ -846,6 +846,13 @@ export async function registerRoutes(
       const { achievementId, unlockedAt } = req.body;
       if (!achievementId) return res.status(400).json({ error: "achievementId is required" });
       const achievement = await storage.saveUserAchievement(req.user!.id, achievementId, unlockedAt || new Date().toISOString());
+      createNotificationIfEnabled({
+        userId: req.user!.id,
+        type: "achievement_unlocked",
+        title: "Achievement unlocked!",
+        body: `You earned the "${achievementId.replace(/_/g, " ")}" achievement`,
+        linkUrl: "/badges",
+      });
       res.json(achievement);
     } catch (error) {
       res.status(500).json({ error: "Failed to save achievement" });
@@ -1012,6 +1019,13 @@ export async function registerRoutes(
       const targetUser = await storage.getUserById(userId);
       if (!targetUser) return res.status(404).json({ error: "User not found" });
       const friendship = await storage.sendFriendRequest(req.user!.id, userId);
+      createNotificationIfEnabled({
+        userId: userId,
+        type: "friend_request_received",
+        title: "New friend request",
+        body: `${req.user!.name} wants to be your friend`,
+        linkUrl: "/friends",
+      });
       res.json(friendship);
     } catch (error) {
       res.status(500).json({ error: "Failed to send friend request" });
@@ -2674,6 +2688,7 @@ export async function registerRoutes(
       if (targetType !== "game" && targetType !== "comment") {
         return res.status(400).json({ error: "Invalid targetType" });
       }
+      let commentAuthorId: number | null = null;
       if (targetType === "comment") {
         const commentId = parseInt(String(targetId));
         if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
@@ -2684,8 +2699,18 @@ export async function registerRoutes(
           const hasAccess = !isNaN(roundId) && await checkGroupRoundAccess(roundId, userId);
           if (!hasAccess) return res.status(403).json({ error: "Access denied" });
         }
+        commentAuthorId = comment.userId;
       }
       const result = await storage.toggleLike(userId, targetType, String(targetId));
+      if (result.liked && commentAuthorId !== null && commentAuthorId !== userId) {
+        createNotificationIfEnabled({
+          userId: commentAuthorId,
+          type: "comment_liked",
+          title: "Someone liked your comment",
+          body: `${req.user!.name} liked your comment`,
+          linkUrl: null,
+        });
+      }
       res.json(result);
     } catch {
       res.status(500).json({ error: "Failed to toggle like" });

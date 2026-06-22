@@ -120,6 +120,17 @@ function getDateString(timestamp?: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const STREAK_GRACE_HOURS = 2;
+
+function getStreakDateString(): string {
+  const now = new Date();
+  if (now.getHours() < STREAK_GRACE_HOURS) {
+    const adjusted = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    return getDateString(adjusted.getTime());
+  }
+  return getDateString();
+}
+
 function isYesterday(dateStr: string): boolean {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -216,9 +227,13 @@ export function recordGameResult(record: GameRecord): {
 
   saveStats(stats);
 
-  const today = getDateString();
-  if (!isToday(streak.lastPlayedDate)) {
-    if (isYesterday(streak.lastPlayedDate)) {
+  const today = getStreakDateString();
+  if (streak.lastPlayedDate !== today) {
+    const todayDate = new Date(today + "T12:00:00");
+    const prevDate = new Date(todayDate);
+    prevDate.setDate(prevDate.getDate() - 1);
+    const yesterday = getDateString(prevDate.getTime());
+    if (streak.lastPlayedDate === yesterday) {
       streak.currentStreak++;
     } else {
       streak.currentStreak = 1;

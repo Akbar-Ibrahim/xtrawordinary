@@ -769,6 +769,9 @@ export const notificationTypeSchema = z.enum([
   "guild_war_champion",
   "guild_war_cancelled",
   "guild_war_match_ready",
+  "friend_request_received",
+  "achievement_unlocked",
+  "comment_liked",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -820,6 +823,9 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   guild_war_champion: "Guild Wars — Your group is champion",
   guild_war_cancelled: "Guild Wars — Tournament cancelled",
   guild_war_match_ready: "Guild Wars — Your next match is ready",
+  friend_request_received: "Someone sent you a friend request",
+  achievement_unlocked: "You unlocked a new achievement",
+  comment_liked: "Someone liked your comment",
 };
 
 // ==================== WORD WARS ====================

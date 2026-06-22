@@ -9,7 +9,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword, Settings } from "lucide-react";
+import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword, Settings, Heart } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -45,6 +45,9 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   guild_war_champion: <Crown className="h-4 w-4 text-purple-500" />,
   guild_war_cancelled: <Sword className="h-4 w-4 text-red-500" />,
   guild_war_match_ready: <Sword className="h-4 w-4 text-fuchsia-500" />,
+  friend_request_received: <UserPlus className="h-4 w-4 text-emerald-500" />,
+  achievement_unlocked: <Award className="h-4 w-4 text-amber-500" />,
+  comment_liked: <Heart className="h-4 w-4 text-rose-500" />,
 };
 
 const NOTIF_BG: Record<string, string> = {
@@ -68,6 +71,9 @@ const NOTIF_BG: Record<string, string> = {
   guild_war_champion: "bg-purple-500/10",
   guild_war_cancelled: "bg-red-500/10",
   guild_war_match_ready: "bg-fuchsia-500/10",
+  friend_request_received: "bg-emerald-500/10",
+  achievement_unlocked: "bg-amber-500/10",
+  comment_liked: "bg-rose-500/10",
 };
 
 function timeAgo(isoString: string): string {

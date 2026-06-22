@@ -65,7 +65,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 
 ### Streak System
 - Streak shield (paid feature): protect against one missed day per month
-- Streak recovery: grace period after midnight before streak resets
 - "Streak at risk" push notification
 
 ### Achievements
@@ -144,7 +143,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Export: download user list or leaderboard as CSV
 
 ### Navigation & Notifications
-- More notification types wired up: friend request received, achievement unlocked, someone liked your comment
 - Mobile bottom navigation bar (tab bar) for an app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
 - Breadcrumb trail on game and group detail pages *(Shadcn breadcrumb component exists but is not wired up to any pages)*
@@ -221,11 +219,6 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 - Does participating require playing every round, or is it cumulative opt-in?
 - How is a season winner celebrated? (badge, notification, hall of fame?)
 - Does this overlap too much with Guild Wars, or are they clearly complementary?
-
----
-
-### Word Wars — Post-Launch Improvements
-- Show a Word Wars promo card on the home page. If a tournament is in registration, show sign-up count and deadline.
 
 ---
 
