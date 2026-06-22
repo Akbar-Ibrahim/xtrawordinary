@@ -68,6 +68,7 @@ export default function Friends() {
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
   const [challengeMessage, setChallengeMessage] = useState("");
+  const [dismissedChallengeIds, setDismissedChallengeIds] = useState<Set<number>>(new Set());
 
   const [duelDialogOpen, setDuelDialogOpen] = useState(false);
   const [duelFriendId, setDuelFriendId] = useState<number | null>(null);
@@ -575,14 +576,16 @@ export default function Friends() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                {challenges.length === 0 ? (
+                {(() => {
+                  const visibleChallenges = challenges.filter((c) => !dismissedChallengeIds.has(c.id));
+                  return visibleChallenges.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground" data-testid="text-no-challenges">
                     <Swords className="h-12 w-12 mx-auto mb-3 opacity-30" />
                     <p>No challenges yet. Open any game and challenge a player!</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {challenges.map((c) => {
+                    {visibleChallenges.map((c) => {
                       const game = gameMap.get(c.gameSlug);
                       const isSender = c.senderId === user?.id;
                       const isPending = c.status === "pending";
@@ -713,6 +716,17 @@ export default function Friends() {
                                   <X className="h-3.5 w-3.5 mr-1" /> Cancel
                                 </Button>
                               )}
+                              {(isDeclined || isCancelled) && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={() => setDismissedChallengeIds((prev) => new Set([...prev, c.id]))}
+                                  data-testid={`button-dismiss-challenge-${c.id}`}
+                                >
+                                  <X className="h-3.5 w-3.5 mr-1" /> Dismiss
+                                </Button>
+                              )}
                               {isCompleted && (
                                 <Button
                                   size="sm"
@@ -735,7 +749,8 @@ export default function Friends() {
                       );
                     })}
                   </div>
-                )}
+                );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>

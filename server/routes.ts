@@ -1114,7 +1114,13 @@ export async function registerRoutes(
   app.get("/api/challenges", requireAuth, async (req, res) => {
     try {
       const challenges = await storage.getFriendChallenges(req.user!.id);
-      res.json(challenges);
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const filtered = challenges.filter((c) => {
+        if (c.status !== "declined" && c.status !== "cancelled") return true;
+        const createdAt = c.createdAt ? new Date(c.createdAt).getTime() : 0;
+        return createdAt >= cutoff;
+      });
+      res.json(filtered);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch challenges" });
     }
