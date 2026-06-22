@@ -482,12 +482,22 @@ function LeaderboardEntries({
                 />
               </Link>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <Link href={`/profile/${entry.userId}`}>
                     <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-player-${index}`}>
                       {entry.playerName}
                     </span>
                   </Link>
+                  {user && !isCurrentUser && (
+                    <button
+                      className="text-sm leading-none opacity-50 hover:opacity-100 transition-opacity"
+                      title={`Challenge ${entry.playerName}`}
+                      onClick={() => setChallengeTarget({ id: entry.userId, name: entry.playerName, avatarUrl: entry.playerAvatarUrl ?? null })}
+                      data-testid={`button-challenge-${index}`}
+                    >
+                      ⚔️
+                    </button>
+                  )}
                   {isCurrentUser && (
                     <Badge variant="secondary" className="text-xs" data-testid="badge-you">You</Badge>
                   )}
@@ -508,23 +518,9 @@ function LeaderboardEntries({
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <span className="font-bold text-lg" data-testid={`text-score-${index}`}>{entry.score.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground ml-1">pts</span>
-                </div>
-                {user && !isCurrentUser && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/30 shrink-0"
-                    title={`Challenge ${entry.playerName}`}
-                    onClick={() => setChallengeTarget({ id: entry.userId, name: entry.playerName, avatarUrl: entry.playerAvatarUrl ?? null })}
-                    data-testid={`button-challenge-${index}`}
-                  >
-                    <Swords className="h-3.5 w-3.5" />
-                  </Button>
-                )}
+              <div className="text-right">
+                <span className="font-bold text-lg" data-testid={`text-score-${index}`}>{entry.score.toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground ml-1">pts</span>
               </div>
             </motion.div>
           );
