@@ -1068,6 +1068,7 @@ export async function registerRoutes(
     try {
       const { friendId, gameSlug, score, message, seed, gameConfig } = req.body;
       if (!friendId || typeof friendId !== "number") return res.status(400).json({ error: "Valid friendId is required" });
+      if (friendId === req.user!.id) return res.status(400).json({ error: "You cannot challenge yourself" });
       if (!gameSlug || typeof gameSlug !== "string") return res.status(400).json({ error: "Valid gameSlug is required" });
       if (!SEEDED_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support challenges" });
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
