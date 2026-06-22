@@ -38,7 +38,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Shell Words / Deep Shell Words: hint that reveals the boundary letters
 - Word Bloom: show the full possible chain tree after the round ends
 - Cross-game combo bonuses (e.g. play 5 different games in one day)
-- **Untimed Mode (Premium)** — a third play mode alongside Classic and Survival. No timer at all; the player plays at their own pace. Scores from untimed sessions are not submitted to the global leaderboard (to keep competition fair), but stats and personal bests are still tracked. Available to premium members only. *(Listed in the pricing page as a feature but not yet implemented in any game component.)*
 
 ### Authentication
 - Apple Sign-In (important for iOS if a mobile app is added)
@@ -174,9 +173,6 @@ These were proposed as follow-up tasks but not yet started. Reference numbers ar
 - **#282** Let anyone with a link watch a tournament bracket without signing in (currently SSE + bracket data requires auth; unauthenticated viewers get 15s poll only)
 - **#283** Let spectators see live match results update without refreshing (spectators not connected via SSE miss real-time match_completed events)
 
-### Friend Challenges
-- **#310** Let players challenge anyone, not just existing friends (currently the challenge button is hidden with zero friends; should allow searching any registered user by username)
-
 ### Guild Wars — Group Stats (polish)
 - Extend the Guild Wars stats card on the group leaderboard tab to show the last 3 **completed** tournament outcomes (win or loss), not just championship titles. Currently only championship wins appear under "Recent titles"; a group that entered 3 tournaments and lost them all shows nothing there.
 
@@ -225,15 +221,6 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 - Does participating require playing every round, or is it cumulative opt-in?
 - How is a season winner celebrated? (badge, notification, hall of fame?)
 - Does this overlap too much with Guild Wars, or are they clearly complementary?
-
----
-
-### Team Race Mode (Group vs. Group — Phase 2)
-**Status:** Planned but not built (Phase 1 = Huddle, which is complete)
-
-Every group member joins on their own device. Members play simultaneously; answers are pooled and de-duplicated for the team. Real-time team score feed shows both groups' aggregate tallies live. Works for simultaneous race games: Anagram Solver, No Repeats, Word Stack, Letter Pool, Word Maker, Word Split, Word Scramble.
-
-**Design questions to resolve:** player cap, score normalisation for unequal group sizes, quorum (minimum members needed to start).
 
 ---
 
