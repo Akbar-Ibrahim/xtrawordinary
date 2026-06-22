@@ -2520,7 +2520,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
@@ -2537,7 +2537,7 @@ export class MySQLStorage implements IStorage {
 
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
     const db = await this.getDb();
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
     await Promise.all(
       types.map((type) =>
         db.insert(schema.notificationPreferences).values({ userId, type, enabled })

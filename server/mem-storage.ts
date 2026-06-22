@@ -1850,7 +1850,7 @@ export class MemStorage implements IStorage {
   }
 
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
     const result = {} as Record<NotificationType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;
@@ -1864,7 +1864,7 @@ export class MemStorage implements IStorage {
   }
 
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
     for (const type of types) {
       this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
     }

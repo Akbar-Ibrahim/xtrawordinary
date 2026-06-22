@@ -1092,6 +1092,18 @@ export async function registerRoutes(
         gameConfig: configJson,
         senderViewed: false,
       });
+      // Notify the receiver that they've been challenged, including the sender's name
+      try {
+        const senderName = (req.user as any).name as string;
+        const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        createNotificationIfEnabled({
+          userId: friendId,
+          type: "friend_challenge_received",
+          title: `${senderName} challenged you!`,
+          body: `${senderName} wants you to beat their ${gameTitle} score`,
+          linkUrl: "/friends?tab=challenges",
+        });
+      } catch {}
       res.json(challenge);
     } catch (error) {
       res.status(500).json({ error: "Failed to create challenge" });
