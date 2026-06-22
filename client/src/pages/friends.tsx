@@ -97,10 +97,21 @@ export default function Friends() {
     enabled: isAuthenticated,
   });
 
-  const { data: challenges = [] } = useQuery<FriendChallenge[]>({
+  const { data: challenges = [], isSuccess: challengesLoaded } = useQuery<FriendChallenge[]>({
     queryKey: ["/api/challenges"],
     enabled: isAuthenticated,
   });
+
+  useEffect(() => {
+    if (!challengesLoaded) return;
+    const knownIds = new Set(challenges.map((c) => c.id));
+    setDismissedChallengeIds((prev) => {
+      const next = new Set<number>([...prev].filter((id) => knownIds.has(id)));
+      if (next.size === prev.size) return prev;
+      try { localStorage.setItem("dismissedChallengeIds", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, [challenges, challengesLoaded]);
 
   const { data: incomingDuels = [] } = useQuery<EnrichedDuelChallenge[]>({
     queryKey: ["/api/duels/challenges/incoming"],
