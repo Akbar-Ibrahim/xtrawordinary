@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp, Users, Globe, CalendarDays, Calendar, Infinity } from "lucide-react";
+import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp, Users, Globe, CalendarDays, Calendar, Infinity, Swords } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { useAuth } from "@/lib/auth-context";
 import { UserAvatar } from "@/components/user-avatar";
 import { AuthModal } from "@/components/auth-modal";
+import { PlayerChallengeDialog } from "@/components/player-challenge-dialog";
 import { motion } from "framer-motion";
 import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
 
@@ -20,6 +21,7 @@ type LeaderboardView = "global" | "friends";
 type StreakEntry = { userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number };
 
 function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth>["user"]; onSignIn: () => void }) {
+  const [challengeTarget, setChallengeTarget] = useState<{ id: number; name: string; avatarUrl: string | null } | null>(null);
   const { data: entries = [], isLoading } = useQuery<StreakEntry[]>({
     queryKey: ["/api/leaderboard/streaks"],
     queryFn: async () => {
@@ -93,16 +95,38 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
               </div>
               <span className="text-xs text-muted-foreground">Best: {entry.longestStreak}d</span>
             </div>
-            <div className="flex items-center gap-1.5 text-right">
-              <Flame className="h-4 w-4 text-orange-500 shrink-0" />
-              <span className="font-bold text-lg text-orange-600 dark:text-orange-400" data-testid={`text-streak-days-${index}`}>
-                {entry.currentStreak}
-              </span>
-              <span className="text-xs text-muted-foreground">days</span>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-right">
+                <Flame className="h-4 w-4 text-orange-500 shrink-0" />
+                <span className="font-bold text-lg text-orange-600 dark:text-orange-400" data-testid={`text-streak-days-${index}`}>
+                  {entry.currentStreak}
+                </span>
+                <span className="text-xs text-muted-foreground">days</span>
+              </div>
+              {user && !isCurrentUser && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/30 shrink-0"
+                  title={`Challenge ${entry.name}`}
+                  onClick={() => setChallengeTarget({ id: entry.userId, name: entry.name, avatarUrl: entry.avatarUrl })}
+                  data-testid={`button-challenge-streak-${index}`}
+                >
+                  <Swords className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           </motion.div>
         );
       })}
+
+      {challengeTarget && (
+        <PlayerChallengeDialog
+          targetUser={challengeTarget}
+          open={!!challengeTarget}
+          onOpenChange={(open) => { if (!open) setChallengeTarget(null); }}
+        />
+      )}
 
       {user && !userInList && (
         <motion.div
@@ -281,6 +305,7 @@ function LeaderboardEntries({
   timeFilter: TimeFilter;
   view: LeaderboardView;
 }) {
+  const [challengeTarget, setChallengeTarget] = useState<{ id: number; name: string; avatarUrl: string | null } | null>(null);
   const params = new URLSearchParams();
   if (timeFilter !== "all") params.set("timeFilter", timeFilter);
   const queryString = params.toString();
@@ -430,14 +455,36 @@ function LeaderboardEntries({
                   )}
                 </div>
               </div>
-              <div className="text-right">
-                <span className="font-bold text-lg" data-testid={`text-score-${index}`}>{entry.score.toLocaleString()}</span>
-                <span className="text-xs text-muted-foreground ml-1">pts</span>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <span className="font-bold text-lg" data-testid={`text-score-${index}`}>{entry.score.toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground ml-1">pts</span>
+                </div>
+                {user && !isCurrentUser && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/30 shrink-0"
+                    title={`Challenge ${entry.playerName}`}
+                    onClick={() => setChallengeTarget({ id: entry.userId, name: entry.playerName, avatarUrl: entry.playerAvatarUrl ?? null })}
+                    data-testid={`button-challenge-${index}`}
+                  >
+                    <Swords className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </motion.div>
           );
         })}
       </div>
+
+      {challengeTarget && (
+        <PlayerChallengeDialog
+          targetUser={challengeTarget}
+          open={!!challengeTarget}
+          onOpenChange={(open) => { if (!open) setChallengeTarget(null); }}
+        />
+      )}
 
       {view === "global" && user && (
         <MyRankBanner slug={slug} timeFilter={timeFilter} visibleUserIds={visibleUserIds} />
