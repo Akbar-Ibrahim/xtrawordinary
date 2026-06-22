@@ -15,7 +15,7 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   {
     label: "Social",
     icon: Users,
-    types: ["group_join", "comment_reply", "group_round_start", "friend_challenge_result"],
+    types: ["group_join", "comment_reply", "group_round_start", "friend_challenge_received", "friend_challenge_result"],
   },
   {
     label: "Duels & Huddles",
