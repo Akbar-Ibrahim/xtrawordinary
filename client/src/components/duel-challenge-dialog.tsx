@@ -87,8 +87,16 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
         toast({ title: "Error", description: "Could not create duel room.", variant: "destructive" });
       }
     },
-    onError: () => {
-      toast({ title: "Error", description: "Could not send duel challenge.", variant: "destructive" });
+    onError: (err: Error) => {
+      let description = "Could not send duel challenge.";
+      try {
+        const match = err.message.match(/^\d+: (.+)$/s);
+        if (match) {
+          const parsed = JSON.parse(match[1]);
+          if (parsed?.error) description = parsed.error;
+        }
+      } catch {}
+      toast({ title: "Error", description, variant: "destructive" });
     },
   });
 

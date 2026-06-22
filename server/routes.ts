@@ -2934,6 +2934,9 @@ export async function registerRoutes(
   app.post("/api/duels/challenges", requireAuth, async (req: any, res) => {
     try {
       const { challengeeId, gameSlug, message, format, raceTarget, raceTimeLimit, startWord: requestedStartWord } = req.body;
+      if (challengeeId != null && Number(challengeeId) === req.user.id) {
+        return res.status(400).json({ error: "You cannot challenge yourself" });
+      }
       if (!gameSlug) {
         return res.status(400).json({ error: "gameSlug is required" });
       }
