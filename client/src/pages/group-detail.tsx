@@ -20,6 +20,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { ArrowLeft, Users, Trophy, Play, Plus, Copy, Crown, Shield, UserX, Globe, Lock, Swords, X, ChevronDown, ChevronUp, Clock, Megaphone, Star, Edit2, Activity as ActivityIcon, Search, Zap } from "lucide-react";
 import type { Group, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, HuddleChallenge } from "@shared/schema";
+import { PlayerChallengeDialog } from "@/components/player-challenge-dialog";
 
 const ALLOWED_EMOJIS = ["🔥", "❤️", "😂", "👏"];
 
@@ -388,6 +389,8 @@ export default function GroupDetail() {
   const [huddleRaceTimeLimit, setHuddleRaceTimeLimit] = useState(300);
 
   // Team Race dialog state
+  const [challengeTarget, setChallengeTarget] = useState<{ id: number; name: string; avatarUrl: string | null } | null>(null);
+
   const [trOpen, setTrOpen] = useState(false);
   const [trGroupSearch, setTrGroupSearch] = useState("");
   const [trTargetGroupId, setTrTargetGroupId] = useState<number | null>(null);
@@ -1286,32 +1289,45 @@ export default function GroupDetail() {
                           <span className="text-xs text-muted-foreground capitalize">{member.role}</span>
                         </div>
                       </div>
-                      {isAdmin && member.userId !== user?.id && member.role !== "owner" && (
-                        <div className="flex items-center gap-2">
-                          {isOwner && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs"
-                              onClick={() => changeRoleMutation.mutate({ userId: member.userId, role: member.role === "admin" ? "member" : "admin" })}
-                              data-testid={`button-role-${member.userId}`}
-                            >
-                              {member.role === "admin" ? "Demote" : "Make Admin"}
-                            </Button>
-                          )}
-                          {(isOwner || member.role === "member") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => removeMemberMutation.mutate(member.userId)}
-                              data-testid={`button-remove-${member.userId}`}
-                            >
-                              <UserX className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {user && member.userId !== user.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-violet-600 hover:text-violet-700 gap-1"
+                            onClick={() => setChallengeTarget({ id: member.user.id, name: member.user.name, avatarUrl: member.user.avatarUrl })}
+                            data-testid={`button-challenge-${member.userId}`}
+                          >
+                            <Swords className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {isAdmin && member.userId !== user?.id && member.role !== "owner" && (
+                          <>
+                            {isOwner && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => changeRoleMutation.mutate({ userId: member.userId, role: member.role === "admin" ? "member" : "admin" })}
+                                data-testid={`button-role-${member.userId}`}
+                              >
+                                {member.role === "admin" ? "Demote" : "Make Admin"}
+                              </Button>
+                            )}
+                            {(isOwner || member.role === "member") && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => removeMemberMutation.mutate(member.userId)}
+                                data-testid={`button-remove-${member.userId}`}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -1869,6 +1885,14 @@ export default function GroupDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {challengeTarget && (
+        <PlayerChallengeDialog
+          targetUser={challengeTarget}
+          open={!!challengeTarget}
+          onOpenChange={(open) => { if (!open) setChallengeTarget(null); }}
+        />
+      )}
     </div>
   );
 }
