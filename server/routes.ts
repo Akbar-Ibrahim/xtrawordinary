@@ -2052,6 +2052,11 @@ export async function registerRoutes(
       if (!challengerMembership || (challengerMembership.role !== "owner" && challengerMembership.role !== "admin")) {
         return res.status(403).json({ error: "Only group admins can send huddle challenges" });
       }
+      // Block admins from battling a group they also admin (conflict of interest)
+      const challengeeMembership = await storage.getGroupMember(Number(challengeeGroupId), userId);
+      if (challengeeMembership && (challengeeMembership.role === "owner" || challengeeMembership.role === "admin")) {
+        return res.status(400).json({ error: "You cannot challenge a group that you are also an admin of" });
+      }
       // Verify challengee group exists
       const challengeeGroup = await storage.getGroup(Number(challengeeGroupId));
       if (!challengeeGroup) return res.status(404).json({ error: "Challengee group not found" });
