@@ -11,11 +11,24 @@ import { Bell, Users, Swords, Trophy, ChevronLeft } from "lucide-react";
 import type { NotificationType } from "@shared/schema";
 import { NOTIFICATION_TYPE_LABELS } from "@shared/schema";
 
-const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: NotificationType[] }[] = [
+const FRIEND_CHALLENGE_TYPES: NotificationType[] = [
+  "friend_challenge_received",
+  "friend_challenge_result",
+  "friend_challenge_declined",
+  "friend_challenge_cancelled",
+];
+
+const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: NotificationType[]; subcategories?: { label: string; types: NotificationType[] }[] }[] = [
   {
     label: "Social",
     icon: Users,
-    types: ["group_join", "comment_reply", "group_round_start", "friend_challenge_received", "friend_challenge_result", "friend_challenge_declined", "friend_challenge_cancelled"],
+    types: ["group_join", "comment_reply", "group_round_start"],
+    subcategories: [
+      {
+        label: "Friend Challenges",
+        types: FRIEND_CHALLENGE_TYPES,
+      },
+    ],
   },
   {
     label: "Duels & Huddles",
@@ -39,7 +52,10 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   },
 ];
 
-const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => c.types);
+const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => [
+  ...c.types,
+  ...(c.subcategories?.flatMap((s) => s.types) ?? []),
+]);
 
 export default function NotificationSettings() {
   const { user, isAuthenticated } = useAuth();
@@ -161,9 +177,11 @@ export default function NotificationSettings() {
         </CardContent>
       </Card>
 
-      {NOTIFICATION_CATEGORIES.map(({ label, icon: Icon, types }) => {
-        const allCatEnabled = notifPrefs ? types.every((t) => notifPrefs[t]) : true;
-        const someCatEnabled = notifPrefs ? types.some((t) => notifPrefs[t]) : true;
+      {NOTIFICATION_CATEGORIES.map(({ label, icon: Icon, types, subcategories }) => {
+        const allDirectTypes = types;
+        const allCatTypes = [...types, ...(subcategories?.flatMap((s) => s.types) ?? [])];
+        const allCatEnabled = notifPrefs ? allCatTypes.every((t) => notifPrefs[t]) : true;
+        const someCatEnabled = notifPrefs ? allCatTypes.some((t) => notifPrefs[t]) : true;
         return (
           <Card key={label} data-testid={`card-category-${label.toLowerCase().replace(/\s+/g, "-")}`}>
             <CardHeader className="pb-3">
@@ -176,7 +194,7 @@ export default function NotificationSettings() {
                   <button
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => {
-                      for (const type of types) {
+                      for (const type of allCatTypes) {
                         updateNotifPref.mutate({ type, enabled: !allCatEnabled });
                       }
                     }}
@@ -190,7 +208,7 @@ export default function NotificationSettings() {
             <CardContent className="space-y-2">
               {isLoading ? (
                 <>
-                  {types.map((t) => (
+                  {allCatTypes.map((t) => (
                     <div key={t} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <Skeleton className="h-4 w-48" />
                       <Skeleton className="h-6 w-11 rounded-full" />
@@ -198,24 +216,70 @@ export default function NotificationSettings() {
                   ))}
                 </>
               ) : (
-                types.map((type) => {
-                  const enabled = notifPrefs ? notifPrefs[type] : true;
-                  return (
-                    <div
-                      key={type}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                      data-testid={`row-notif-pref-${type}`}
-                    >
-                      <span className="text-sm font-medium">{NOTIFICATION_TYPE_LABELS[type]}</span>
-                      <Switch
-                        checked={enabled}
-                        onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
-                        data-testid={`switch-notif-pref-${type}`}
-                        aria-label={`Toggle ${NOTIFICATION_TYPE_LABELS[type]}`}
-                      />
-                    </div>
-                  );
-                })
+                <>
+                  {allDirectTypes.map((type) => {
+                    const enabled = notifPrefs ? notifPrefs[type] : true;
+                    return (
+                      <div
+                        key={type}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                        data-testid={`row-notif-pref-${type}`}
+                      >
+                        <span className="text-sm font-medium">{NOTIFICATION_TYPE_LABELS[type]}</span>
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
+                          data-testid={`switch-notif-pref-${type}`}
+                          aria-label={`Toggle ${NOTIFICATION_TYPE_LABELS[type]}`}
+                        />
+                      </div>
+                    );
+                  })}
+                  {subcategories?.map((sub) => {
+                    const allSubEnabled = notifPrefs ? sub.types.every((t) => notifPrefs[t]) : true;
+                    const someSubEnabled = notifPrefs ? sub.types.some((t) => notifPrefs[t]) : true;
+                    return (
+                      <div key={sub.label} className="mt-3" data-testid={`subcategory-${sub.label.toLowerCase().replace(/\s+/g, "-")}`}>
+                        <div className="flex items-center justify-between px-1 pb-1 mb-1 border-b border-border/50">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            {sub.label}
+                          </span>
+                          <button
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              for (const type of sub.types) {
+                                updateNotifPref.mutate({ type, enabled: !allSubEnabled });
+                              }
+                            }}
+                            data-testid={`button-subcategory-toggle-${sub.label.toLowerCase().replace(/\s+/g, "-")}`}
+                          >
+                            {allSubEnabled ? "Mute all" : someSubEnabled ? "Enable all" : "Enable all"}
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {sub.types.map((type) => {
+                            const enabled = notifPrefs ? notifPrefs[type] : true;
+                            return (
+                              <div
+                                key={type}
+                                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                                data-testid={`row-notif-pref-${type}`}
+                              >
+                                <span className="text-sm font-medium">{NOTIFICATION_TYPE_LABELS[type]}</span>
+                                <Switch
+                                  checked={enabled}
+                                  onCheckedChange={(checked) => updateNotifPref.mutate({ type, enabled: checked })}
+                                  data-testid={`switch-notif-pref-${type}`}
+                                  aria-label={`Toggle ${NOTIFICATION_TYPE_LABELS[type]}`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
               )}
             </CardContent>
           </Card>
