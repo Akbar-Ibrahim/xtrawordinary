@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Trophy, Medal, Award, Crown, LogIn, Timer, Flame, Search, TrendingUp, Users, Globe, CalendarDays, Calendar, Infinity, Swords } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
@@ -81,16 +82,68 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                 <span className="text-muted-foreground">{index + 1}</span>
               )}
             </div>
-            <Link href={`/profile/${entry.userId}`}>
-              <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
-            </Link>
+            {user && !isCurrentUser ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="focus:outline-none" data-testid={`button-streak-avatar-${index}`}>
+                    <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-44 p-2" side="right">
+                  <div className="flex flex-col gap-1">
+                    <Link href={`/profile/${entry.userId}`}>
+                      <button className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors" data-testid={`link-streak-profile-${index}`}>
+                        View Profile
+                      </button>
+                    </Link>
+                    <button
+                      className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-violet-100 dark:hover:bg-violet-900/30 text-violet-700 dark:text-violet-300 transition-colors flex items-center gap-1.5"
+                      onClick={() => setChallengeTarget({ id: entry.userId, name: entry.name, avatarUrl: entry.avatarUrl })}
+                      data-testid={`button-streak-popover-challenge-${index}`}
+                    >
+                      <Swords className="h-3.5 w-3.5" /> Challenge
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <Link href={`/profile/${entry.userId}`}>
+                <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
+              </Link>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <Link href={`/profile/${entry.userId}`}>
-                  <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-streak-player-${index}`}>
-                    {entry.name}
-                  </span>
-                </Link>
+                {user && !isCurrentUser ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="font-medium truncate hover:underline cursor-pointer focus:outline-none" data-testid={`text-streak-player-${index}`}>
+                        {entry.name}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-44 p-2" side="right">
+                      <div className="flex flex-col gap-1">
+                        <Link href={`/profile/${entry.userId}`}>
+                          <button className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors" data-testid={`link-streak-name-profile-${index}`}>
+                            View Profile
+                          </button>
+                        </Link>
+                        <button
+                          className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-violet-100 dark:hover:bg-violet-900/30 text-violet-700 dark:text-violet-300 transition-colors flex items-center gap-1.5"
+                          onClick={() => setChallengeTarget({ id: entry.userId, name: entry.name, avatarUrl: entry.avatarUrl })}
+                          data-testid={`button-streak-name-challenge-${index}`}
+                        >
+                          <Swords className="h-3.5 w-3.5" /> Challenge
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Link href={`/profile/${entry.userId}`}>
+                    <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-streak-player-${index}`}>
+                      {entry.name}
+                    </span>
+                  </Link>
+                )}
                 {isCurrentUser && <Badge variant="secondary" className="text-xs">You</Badge>}
               </div>
               <span className="text-xs text-muted-foreground">Best: {entry.longestStreak}d</span>
