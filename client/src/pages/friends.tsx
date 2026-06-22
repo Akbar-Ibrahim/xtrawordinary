@@ -68,7 +68,17 @@ export default function Friends() {
   const [challengeFriendId, setChallengeFriendId] = useState<number | null>(null);
   const [challengeGameSlug, setChallengeGameSlug] = useState("");
   const [challengeMessage, setChallengeMessage] = useState("");
-  const [dismissedChallengeIds, setDismissedChallengeIds] = useState<Set<number>>(new Set());
+  const [dismissedChallengeIds, setDismissedChallengeIds] = useState<Set<number>>(() => {
+    try {
+      const stored = localStorage.getItem("dismissedChallengeIds");
+      if (stored) {
+        return new Set<number>(JSON.parse(stored) as number[]);
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return new Set<number>();
+  });
 
   const [duelDialogOpen, setDuelDialogOpen] = useState(false);
   const [duelFriendId, setDuelFriendId] = useState<number | null>(null);
@@ -729,7 +739,11 @@ export default function Friends() {
                                   size="sm"
                                   variant="ghost"
                                   className="text-muted-foreground hover:text-foreground"
-                                  onClick={() => setDismissedChallengeIds((prev) => new Set([...prev, c.id]))}
+                                  onClick={() => setDismissedChallengeIds((prev) => {
+                                    const next = new Set([...prev, c.id]);
+                                    try { localStorage.setItem("dismissedChallengeIds", JSON.stringify([...next])); } catch {}
+                                    return next;
+                                  })}
                                   data-testid={`button-dismiss-challenge-${c.id}`}
                                 >
                                   <X className="h-3.5 w-3.5 mr-1" /> Dismiss
