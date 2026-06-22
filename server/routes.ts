@@ -1129,7 +1129,10 @@ export async function registerRoutes(
       const pendingCount = challenges.filter(
         (c) => c.status === "pending" && c.receiverId === req.user!.id
       ).length;
-      res.json({ count: resultCount + pendingCount, resultCount, pendingCount });
+      const sentPendingCount = challenges.filter(
+        (c) => c.status === "pending" && c.senderId === req.user!.id
+      ).length;
+      res.json({ count: resultCount + pendingCount + sentPendingCount, resultCount, pendingCount, sentPendingCount });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch unread count" });
     }

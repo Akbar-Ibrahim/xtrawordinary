@@ -229,6 +229,7 @@ export default function GameDetail() {
       toast({ title: "Challenge sent!", description: "Your friend will be notified." });
       navigate(`/game/${slug}`, { replace: true });
       queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges/unread-count"] });
     },
     onError: (err: Error) => {
       let description = "Could not send challenge.";

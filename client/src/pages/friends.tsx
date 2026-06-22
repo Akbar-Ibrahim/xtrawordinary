@@ -270,6 +270,7 @@ export default function Friends() {
   const seededGames = games.filter((g) => SEEDED_GAME_SLUGS.has(g.slug));
 
   const pendingForMe = challenges.filter((c) => c.status === "pending" && c.receiverId === user?.id);
+  const pendingBySender = challenges.filter((c) => c.status === "pending" && c.senderId === user?.id);
 
   const handleStartChallenge = () => {
     if (!challengeGameSlug || challengeFriendId == null) return;
@@ -366,6 +367,8 @@ export default function Friends() {
             <TabsTrigger value="challenges" data-testid="tab-challenges">
               Challenges {pendingForMe.length > 0 && (
                 <Badge variant="destructive" className="ml-1 text-xs">{pendingForMe.length}</Badge>
+              )}{pendingBySender.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">{pendingBySender.length} sent</Badge>
               )}{unseenCompleted.length > 0 && (
                 <Badge className="ml-1 text-xs bg-primary text-primary-foreground">NEW</Badge>
               )}

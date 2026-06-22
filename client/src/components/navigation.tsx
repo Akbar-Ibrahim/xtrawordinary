@@ -112,6 +112,13 @@ export function Navigation() {
   });
   const dbUnreadCount = dbUnreadData?.count ?? 0;
 
+  const { data: challengeUnreadData } = useQuery<{ count: number; resultCount: number; pendingCount: number; sentPendingCount: number }>({
+    queryKey: ["/api/challenges/unread-count"],
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+  const challengeUnreadCount = challengeUnreadData?.count ?? 0;
+
   const markReadMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/notifications/${id}/read`),
     onSuccess: () => {
@@ -430,7 +437,7 @@ export function Navigation() {
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-friends">
                       <Users className="h-4 w-4 mr-2" />
                       Friends
-                      {unseenCount > 0 && (
+                      {(unseenCount > 0 || challengeUnreadCount > 0) && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-red-500" data-testid="dot-friends-menu-notification" />
                       )}
                     </DropdownMenuItem>
