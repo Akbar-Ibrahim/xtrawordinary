@@ -121,6 +121,7 @@ export interface IStorage {
   cancelFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
   declineFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
   markChallengeViewed(id: number): Promise<void>;
+  markChallengeReceiverViewed(id: number): Promise<void>;
 
   // Groups
   createGroup(group: InsertGroup): Promise<Group>;

@@ -305,6 +305,7 @@ export const friendChallengeSchema = z.object({
   seed: z.number().nullable(),
   gameConfig: z.string().nullable().optional(),
   senderViewed: z.boolean(),
+  receiverViewed: z.boolean(),
   createdAt: z.string(),
   senderName: z.string().optional(),
   receiverName: z.string().optional(),

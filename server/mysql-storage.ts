@@ -1180,6 +1180,7 @@ export class MySQLStorage implements IStorage {
       seed: r.seed ?? null,
       gameConfig: r.gameConfig ?? null,
       senderViewed: Boolean(r.senderViewed),
+      receiverViewed: Boolean(r.receiverViewed),
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
   }
@@ -1272,6 +1273,11 @@ export class MySQLStorage implements IStorage {
   async markChallengeViewed(id: number): Promise<void> {
     const db = await this.getDb();
     await db.update(schema.friendChallenges).set({ senderViewed: true }).where(eq(schema.friendChallenges.id, id));
+  }
+
+  async markChallengeReceiverViewed(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.update(schema.friendChallenges).set({ receiverViewed: true }).where(eq(schema.friendChallenges.id, id));
   }
 
   private toGroup(r: any): Group {

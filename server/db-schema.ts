@@ -108,6 +108,7 @@ export const friendChallenges = mysqlTable("friend_challenges", {
   seed: int("seed"),
   gameConfig: text("game_config"),
   senderViewed: boolean("sender_viewed").notNull().default(false),
+  receiverViewed: boolean("receiver_viewed").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("fc_sender_idx").on(table.senderId),

@@ -619,8 +619,16 @@ export default function Friends() {
                                 {isNew && (
                                   <Badge className="text-xs bg-primary text-primary-foreground">NEW</Badge>
                                 )}
-                                {isPending && (
+                                {isPending && !isSender && (
                                   <Badge variant="secondary" className="text-xs">Pending</Badge>
+                                )}
+                                {isPending && isSender && !c.receiverViewed && (
+                                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700" data-testid={`badge-waiting-${c.id}`}>
+                                    Not opened yet
+                                  </Badge>
+                                )}
+                                {isPending && isSender && c.receiverViewed && (
+                                  <Badge variant="secondary" className="text-xs" data-testid={`badge-seen-${c.id}`}>Seen</Badge>
                                 )}
                                 {isDeclined && (
                                   <Badge variant="outline" className="text-xs text-red-500 border-red-200">Declined</Badge>

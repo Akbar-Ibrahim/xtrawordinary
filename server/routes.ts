@@ -1153,6 +1153,10 @@ export async function registerRoutes(
       if (challenge.senderId !== req.user!.id && challenge.receiverId !== req.user!.id) {
         return res.status(403).json({ error: "Not your challenge" });
       }
+      if (challenge.receiverId === req.user!.id && !challenge.receiverViewed) {
+        await storage.markChallengeReceiverViewed(id);
+        challenge.receiverViewed = true;
+      }
       res.json(challenge);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch challenge" });
