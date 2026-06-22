@@ -290,7 +290,7 @@ export type Friendship = z.infer<typeof friendshipSchema>;
 export const insertFriendshipSchema = friendshipSchema.omit({ id: true, createdAt: true });
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 
-export const challengeStatusSchema = z.enum(["pending", "completed"]);
+export const challengeStatusSchema = z.enum(["pending", "completed", "declined", "cancelled"]);
 export type ChallengeStatus = z.infer<typeof challengeStatusSchema>;
 
 export const friendChallengeSchema = z.object({
@@ -753,6 +753,8 @@ export const notificationTypeSchema = z.enum([
   "duel_challenge_received",
   "friend_challenge_received",
   "friend_challenge_result",
+  "friend_challenge_declined",
+  "friend_challenge_cancelled",
   "huddle_challenge_received",
   "huddle_accepted",
   "team_race_challenge_received",
@@ -802,6 +804,8 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   duel_challenge_received: "You've been challenged to a duel",
   friend_challenge_received: "Someone challenged you",
   friend_challenge_result: "Friend challenge results",
+  friend_challenge_declined: "Friend challenge declined",
+  friend_challenge_cancelled: "Friend challenge cancelled",
   huddle_challenge_received: "Your group was challenged to a Huddle",
   huddle_accepted: "Group Huddle challenge accepted",
   team_race_challenge_received: "Your group was challenged to a Team Race",

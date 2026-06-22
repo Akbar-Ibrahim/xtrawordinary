@@ -1158,7 +1158,7 @@ export async function registerRoutes(
       const challenge = await storage.getFriendChallenge(id);
       if (!challenge) return res.status(404).json({ error: "Challenge not found" });
       if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Not your challenge" });
-      if (challenge.status === "completed") return res.status(400).json({ error: "Challenge already completed" });
+      if (challenge.status !== "pending") return res.status(400).json({ error: "Challenge is no longer pending" });
       const updated = await storage.completeFriendChallenge(id, score);
       // Notify the challenge sender that results are ready
       if (challenge.senderId && challenge.senderId !== req.user!.id) {
@@ -1177,6 +1177,72 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to complete challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/cancel", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const challenge = await storage.getFriendChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.senderId !== req.user!.id) return res.status(403).json({ error: "Only the sender can cancel" });
+      if (challenge.status !== "pending") return res.status(400).json({ error: "Only pending challenges can be cancelled" });
+      const updated = await storage.cancelFriendChallenge(id);
+      const senderName = (req.user as any).name as string;
+      const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+      // Notify the sender that their challenge was cancelled (status feedback)
+      try {
+        createNotificationIfEnabled({
+          userId: challenge.senderId,
+          type: "friend_challenge_cancelled",
+          title: "Challenge cancelled",
+          body: `Your ${gameTitle} challenge has been cancelled`,
+          linkUrl: "/friends?tab=challenges",
+        });
+      } catch {}
+      // Notify the receiver that the challenge was withdrawn
+      try {
+        createNotificationIfEnabled({
+          userId: challenge.receiverId,
+          type: "friend_challenge_cancelled",
+          title: "Challenge withdrawn",
+          body: `${senderName} cancelled their ${gameTitle} challenge`,
+          linkUrl: "/friends?tab=challenges",
+        });
+      } catch {}
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to cancel challenge" });
+    }
+  });
+
+  app.post("/api/challenges/:id/decline", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+      const challenge = await storage.getFriendChallenge(id);
+      if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Only the receiver can decline" });
+      if (challenge.status !== "pending") return res.status(400).json({ error: "Only pending challenges can be declined" });
+      const updated = await storage.declineFriendChallenge(id);
+      // Notify the sender
+      if (challenge.senderId) {
+        try {
+          const receiverName = (req.user as any).name as string;
+          const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          createNotificationIfEnabled({
+            userId: challenge.senderId,
+            type: "friend_challenge_declined",
+            title: "Challenge declined",
+            body: `${receiverName} declined your ${gameTitle} challenge`,
+            linkUrl: "/friends?tab=challenges",
+          });
+        } catch {}
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to decline challenge" });
     }
   });
 

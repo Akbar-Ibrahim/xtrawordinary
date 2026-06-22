@@ -1,5 +1,6 @@
 import { eq, desc, asc, sql, and, or, like, inArray, isNull, isNotNull, ne, between } from "drizzle-orm";
 import type { Game, GameMode, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
+import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import * as schema from "./db-schema";
@@ -1253,6 +1254,18 @@ export class MySQLStorage implements IStorage {
   async completeFriendChallenge(id: number, score: number): Promise<FriendChallenge | undefined> {
     const db = await this.getDb();
     await db.update(schema.friendChallenges).set({ receiverScore: score, status: "completed", senderViewed: false }).where(eq(schema.friendChallenges.id, id));
+    return this.getFriendChallenge(id);
+  }
+
+  async cancelFriendChallenge(id: number): Promise<FriendChallenge | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.friendChallenges).set({ status: "cancelled" }).where(eq(schema.friendChallenges.id, id));
+    return this.getFriendChallenge(id);
+  }
+
+  async declineFriendChallenge(id: number): Promise<FriendChallenge | undefined> {
+    const db = await this.getDb();
+    await db.update(schema.friendChallenges).set({ status: "declined" }).where(eq(schema.friendChallenges.id, id));
     return this.getFriendChallenge(id);
   }
 
@@ -2520,7 +2533,7 @@ export class MySQLStorage implements IStorage {
   async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
     const db = await this.getDb();
     const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types = notificationTypeSchema.options as NotificationType[];
     const result = {} as Record<NotificationType, boolean>;
     const prefMap = new Map(rows.map((r) => [r.type, r.enabled === 1 || r.enabled === true]));
     for (const type of types) {
@@ -2537,7 +2550,7 @@ export class MySQLStorage implements IStorage {
 
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> {
     const db = await this.getDb();
-    const types: NotificationType[] = ["group_join", "comment_reply", "group_round_start", "duel_accepted", "duel_challenge_received", "friend_challenge_received", "friend_challenge_result", "huddle_challenge_received", "huddle_accepted", "team_race_challenge_received", "team_race_accepted", "word_war_matched", "word_war_round_start", "word_war_champion", "word_war_cancelled", "guild_war_matched", "guild_war_round_start", "guild_war_champion", "guild_war_cancelled", "guild_war_match_ready"];
+    const types = notificationTypeSchema.options as NotificationType[];
     await Promise.all(
       types.map((type) =>
         db.insert(schema.notificationPreferences).values({ userId, type, enabled })

@@ -201,6 +201,26 @@ export default function Friends() {
     },
   });
 
+  const cancelChallengeMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/challenges/${id}/cancel`),
+    onSuccess: () => {
+      toast({ title: "Challenge cancelled" });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges/unread-count"] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not cancel challenge.", variant: "destructive" }),
+  });
+
+  const declineChallengeMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/challenges/${id}/decline`),
+    onSuccess: () => {
+      toast({ title: "Challenge declined" });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenges/unread-count"] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not decline challenge.", variant: "destructive" }),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/friends/${id}`),
     onSuccess: () => {
@@ -564,6 +584,8 @@ export default function Friends() {
                       const isSender = c.senderId === user?.id;
                       const isPending = c.status === "pending";
                       const isCompleted = c.status === "completed";
+                      const isDeclined = c.status === "declined";
+                      const isCancelled = c.status === "cancelled";
                       const isNew = isCompleted && isSender && !c.senderViewed;
 
                       let myScore = isSender ? c.senderScore : (c.receiverScore ?? null);
@@ -593,6 +615,12 @@ export default function Friends() {
                                 )}
                                 {isPending && (
                                   <Badge variant="secondary" className="text-xs">Pending</Badge>
+                                )}
+                                {isDeclined && (
+                                  <Badge variant="outline" className="text-xs text-red-500 border-red-200">Declined</Badge>
+                                )}
+                                {isCancelled && (
+                                  <Badge variant="outline" className="text-xs text-muted-foreground">Cancelled</Badge>
                                 )}
                                 {isCompleted && (won !== null || isTied) && (
                                   <Badge
@@ -652,11 +680,35 @@ export default function Friends() {
 
                             <div className="flex flex-col gap-1.5 shrink-0">
                               {!isSender && isPending && (
-                                <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
-                                  <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
-                                    <Gamepad2 className="h-4 w-4 mr-1" /> Play
+                                <>
+                                  <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
+                                    <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
+                                      <Gamepad2 className="h-4 w-4 mr-1" /> Play
+                                    </Button>
+                                  </Link>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-red-500"
+                                    onClick={() => declineChallengeMutation.mutate(c.id)}
+                                    disabled={declineChallengeMutation.isPending}
+                                    data-testid={`button-decline-challenge-${c.id}`}
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-1" /> Decline
                                   </Button>
-                                </Link>
+                                </>
+                              )}
+                              {isSender && isPending && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground hover:text-red-500"
+                                  onClick={() => cancelChallengeMutation.mutate(c.id)}
+                                  disabled={cancelChallengeMutation.isPending}
+                                  data-testid={`button-cancel-challenge-${c.id}`}
+                                >
+                                  <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                                </Button>
                               )}
                               {isCompleted && (
                                 <Button
