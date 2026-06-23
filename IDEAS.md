@@ -145,7 +145,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 ### Navigation & Notifications
 - Mobile bottom navigation bar (tab bar) for an app-like feel
 - Keyboard shortcuts: press D for Daily, L for Leaderboard, etc.
-- Breadcrumb trail on game and group detail pages *(Shadcn breadcrumb component exists but is not wired up to any pages)*
 
 ### UI / UX & Platform
 - PWA service worker: offline caching so the daily challenge works without internet (manifest.json already exists)
