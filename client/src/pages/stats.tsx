@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { loadStats, loadStreak, getTotalWordsFound, getUniqueGamesPlayed, type GameRecord } from "@/lib/game-stats";
 import { PremiumBanner } from "@/components/premium-banner";
+import { ScoreTrendChart, MiniSparkline } from "@/components/score-trend-chart";
 import type { Game } from "@shared/schema";
 
 function formatDateStr(d: Date): string {
@@ -182,7 +183,11 @@ export default function Stats() {
     return Object.entries(stats.perGame)
       .map(([slug, gs]) => {
         const game = games.find((g) => g.slug === slug);
-        return { slug, ...gs, name: game?.name || slug };
+        const sparkScores = stats.history
+          .filter((r) => r.slug === slug)
+          .slice(-12)
+          .map((r) => r.score);
+        return { slug, ...gs, name: game?.name || slug, sparkScores };
       })
       .sort((a, b) => b.gamesPlayed - a.gamesPlayed);
   }, [stats, games]);
@@ -301,7 +306,7 @@ export default function Stats() {
                     <div>
                       <p className="text-sm text-muted-foreground">Games Explored</p>
                       <p className="text-2xl font-bold" data-testid="text-unique-games">
-                        {uniqueGames} / 17
+                        {uniqueGames} / 25
                       </p>
                     </div>
                   </div>
@@ -348,10 +353,16 @@ export default function Stats() {
 
             <PlayHeatmap history={stats.history} />
 
+            <ScoreTrendChart
+              history={stats.history}
+              games={games}
+              defaultSlug={gameStatsWithNames[0]?.slug}
+            />
+
             {gameStatsWithNames.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <BarChart3 className="h-5 w-5 text-primary" />
                   <h2 className="text-xl font-semibold">Per-Game Breakdown</h2>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -367,9 +378,12 @@ export default function Stats() {
                               <h3 className="font-semibold truncate" data-testid={`text-game-name-${gs.slug}`}>
                                 {gs.name}
                               </h3>
-                              <Badge variant="secondary" data-testid={`badge-plays-${gs.slug}`}>
-                                {gs.gamesPlayed} plays
-                              </Badge>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <MiniSparkline scores={gs.sparkScores} />
+                                <Badge variant="secondary" data-testid={`badge-plays-${gs.slug}`}>
+                                  {gs.gamesPlayed}
+                                </Badge>
+                              </div>
                             </div>
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               <div className="flex items-center gap-1">
