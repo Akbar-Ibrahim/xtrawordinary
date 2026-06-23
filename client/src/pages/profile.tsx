@@ -41,6 +41,7 @@ export default function Profile() {
   const [editName, setEditName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const [playerChallengeOpen, setPlayerChallengeOpen] = useState(false);
 
@@ -94,6 +95,16 @@ export default function Profile() {
       await refreshUser();
       queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
       setEditOpen(false);
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteAccount = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/users/me"),
+    onSuccess: () => {
+      toast({ title: "Account deleted", description: "Your account has been permanently removed." });
+      navigate("/");
+      window.location.reload();
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -869,6 +880,19 @@ export default function Profile() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </Link>
+                    <div className="border-t pt-4 mt-4">
+                      <h3 className="font-semibold text-sm mb-1 text-destructive">Danger Zone</h3>
+                      <p className="text-xs text-muted-foreground mb-3">Permanently delete your account and all associated data. This cannot be undone.</p>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeleteDialogOpen(true)}
+                        data-testid="button-delete-account"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete My Account
+                      </Button>
+                    </div>
                   </div>
                 </TabsContent>
               )}
@@ -1127,6 +1151,28 @@ export default function Profile() {
           onOpenChange={setPlayerChallengeOpen}
         />
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="dialog-delete-account">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove your account, stats, achievements, and all associated data. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-account">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteAccount.mutate()}
+              disabled={deleteAccount.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete-account"
+            >
+              {deleteAccount.isPending ? "Deleting…" : "Delete Forever"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteQuizCode} onOpenChange={(open) => { if (!open) setDeleteQuizCode(null); }}>
         <AlertDialogContent data-testid="dialog-delete-quiz">

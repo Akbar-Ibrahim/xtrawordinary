@@ -46,6 +46,7 @@ export default function Admin() {
             <TabsTrigger value="comments" data-testid="tab-comments"><MessageSquare className="h-4 w-4 mr-1" />Comments</TabsTrigger>
             <TabsTrigger value="word-wars" data-testid="tab-word-wars"><Swords className="h-4 w-4 mr-1" />Word Wars</TabsTrigger>
             <TabsTrigger value="guild-wars" data-testid="tab-guild-wars"><Swords className="h-4 w-4 mr-1" />Guild Wars</TabsTrigger>
+            <TabsTrigger value="site" data-testid="tab-site"><Shield className="h-4 w-4 mr-1" />Site</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="users"><UsersTab /></TabsContent>
@@ -55,6 +56,7 @@ export default function Admin() {
           <TabsContent value="comments"><CommentsTab /></TabsContent>
           <TabsContent value="word-wars"><WordWarsTab /></TabsContent>
           <TabsContent value="guild-wars"><GuildWarsTab /></TabsContent>
+          <TabsContent value="site"><SiteTab /></TabsContent>
         </Tabs>
       </motion.div>
     </div>
@@ -771,6 +773,91 @@ function GuildWarsTab() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SiteTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [announcementText, setAnnouncementText] = useState("");
+
+  const { data: current, isLoading } = useQuery<{ text: string | null }>({
+    queryKey: ["/api/site/announcement"],
+    queryFn: async () => {
+      const res = await fetch("/api/site/announcement");
+      if (!res.ok) return { text: null };
+      return res.json();
+    },
+  });
+
+  const saveAnnouncement = useMutation({
+    mutationFn: (text: string) => apiRequest("POST", "/api/site/announcement", { text }),
+    onSuccess: () => {
+      toast({ title: "Announcement saved" });
+      queryClient.invalidateQueries({ queryKey: ["/api/site/announcement"] });
+      setAnnouncementText("");
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const removeAnnouncement = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/site/announcement"),
+    onSuccess: () => {
+      toast({ title: "Announcement removed" });
+      queryClient.invalidateQueries({ queryKey: ["/api/site/announcement"] });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" /> Sitewide Announcement Banner</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : current?.text ? (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted border" data-testid="card-current-announcement">
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground mb-1 font-medium">Current announcement:</p>
+                <p className="text-sm">{current.text}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeAnnouncement.mutate()}
+                disabled={removeAnnouncement.isPending}
+                data-testid="button-remove-announcement"
+              >
+                {removeAnnouncement.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active announcement.</p>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="announcement-input" className="text-sm">New announcement (max 300 characters)</Label>
+            <Input
+              id="announcement-input"
+              value={announcementText}
+              onChange={e => setAnnouncementText(e.target.value)}
+              placeholder="Type your announcement here…"
+              maxLength={300}
+              data-testid="input-announcement"
+            />
+            <p className="text-xs text-muted-foreground text-right">{announcementText.length}/300</p>
+            <Button
+              onClick={() => saveAnnouncement.mutate(announcementText)}
+              disabled={!announcementText.trim() || saveAnnouncement.isPending}
+              data-testid="button-save-announcement"
+            >
+              {saveAnnouncement.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {current?.text ? "Update Announcement" : "Set Announcement"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

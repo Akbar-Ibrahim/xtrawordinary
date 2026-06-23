@@ -139,6 +139,40 @@ interface ChallengeResult {
   isSender: boolean;
 }
 
+function FriendsWhoPlay({ slug }: { slug: string }) {
+  const { user } = useAuth();
+  const { data: friends = [], isLoading } = useQuery<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>>({
+    queryKey: ["/api/games", slug, "friends-who-play"],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/${slug}/friends-who-play`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  if (!user || isLoading || friends.length === 0) return null;
+
+  return (
+    <div className="mb-6" data-testid="section-friends-who-play">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <LucideIcons.Users className="h-3.5 w-3.5" /> Friends playing this game
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {friends.map(f => (
+          <Link key={f.id} href={`/profile/${f.id}`}>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors cursor-pointer" data-testid={`chip-friend-${f.id}`}>
+              <UserAvatar name={f.name} avatarUrl={f.avatarUrl} className="h-5 w-5 text-[8px]" />
+              <span className="text-xs font-medium">{f.name}</span>
+              <span className="text-xs text-muted-foreground">{f.gamesPlayed} play{f.gamesPlayed !== 1 ? "s" : ""}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function GameDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -742,6 +776,8 @@ export default function GameDetail() {
                   </div>
                 );
               })()}
+
+              <FriendsWhoPlay slug={game.slug} />
 
               <CommentSection targetType="game" targetId={game.slug} />
             </div>

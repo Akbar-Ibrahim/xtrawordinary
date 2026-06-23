@@ -772,6 +772,7 @@ export const notificationTypeSchema = z.enum([
   "friend_request_received",
   "achievement_unlocked",
   "comment_liked",
+  "streak_at_risk",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -826,6 +827,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   friend_request_received: "Someone sent you a friend request",
   achievement_unlocked: "You unlocked a new achievement",
   comment_liked: "Someone liked your comment",
+  streak_at_risk: "Your streak is at risk",
 };
 
 // ==================== WORD WARS ====================

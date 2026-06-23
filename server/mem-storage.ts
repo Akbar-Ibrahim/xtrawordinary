@@ -63,6 +63,7 @@ export class MemStorage implements IStorage {
   private notifications: Notification[] = [];
   private notificationIdCounter = 1;
   private notificationPrefsMap: Map<string, boolean> = new Map();
+  private siteSettingsMap: Map<string, string> = new Map();
 
   constructor() {
     this.games = gamesData;
@@ -823,7 +824,7 @@ export class MemStorage implements IStorage {
       });
   }
 
-  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null> {
+  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number; totalPlayers: number } | null> {
     const cutoff = this._timeFilterCutoff(timeFilter);
     if (gameSlug === "overall") {
       const allEntries = this.leaderboardEntries.filter(e => !cutoff || e.playedAt >= cutoff);
@@ -833,8 +834,9 @@ export class MemStorage implements IStorage {
       }
       const userScore = playerTotals.get(userId);
       if (userScore == null) return null;
-      const rank = Array.from(playerTotals.values()).filter(s => s > userScore).length + 1;
-      return { rank, score: userScore };
+      const allScores = Array.from(playerTotals.values());
+      const rank = allScores.filter(s => s > userScore).length + 1;
+      return { rank, score: userScore, totalPlayers: allScores.length };
     }
     const seen = new Map<number, number>();
     for (const e of this.leaderboardEntries) {
@@ -845,8 +847,9 @@ export class MemStorage implements IStorage {
     }
     const userScore = seen.get(userId);
     if (userScore == null) return null;
-    const rank = Array.from(seen.values()).filter(s => s > userScore).length + 1;
-    return { rank, score: userScore };
+    const allScores = Array.from(seen.values());
+    const rank = allScores.filter(s => s > userScore).length + 1;
+    return { rank, score: userScore, totalPlayers: allScores.length };
   }
 
   async getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]> {
@@ -2197,5 +2200,84 @@ export class MemStorage implements IStorage {
     const matchWins = groupMatches.filter(m => m.winnerGroupId === groupId).length;
     const matchLosses = groupMatches.filter(m => m.winnerGroupId !== null && m.winnerGroupId !== groupId).length;
     return { tournamentsEntered, matchWins, matchLosses };
+  }
+
+  async expireFriendChallenges(): Promise<number> {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    let count = 0;
+    for (const c of this.friendChallengesStore) {
+      if (c.status === "pending" && c.createdAt < cutoff) {
+        c.status = "cancelled";
+        count++;
+      }
+    }
+    return count;
+  }
+
+  async getRecentCommentCount(userId: number, since: Date): Promise<number> {
+    const sinceStr = since.toISOString();
+    return this.commentsStore.filter(
+      c => c.userId === userId && !c.isDeleted && (c.createdAt ?? "") >= sinceStr
+    ).length;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    this.users.delete(id);
+    this.leaderboardEntries = this.leaderboardEntries.filter(e => e.userId !== id);
+    this.userAchievements = this.userAchievements.filter(a => a.userId !== id);
+    this.userStreaks.delete(id);
+    for (const key of Array.from(this.userGameStatsMap.keys())) {
+      if (key.startsWith(`${id}-`)) this.userGameStatsMap.delete(key);
+    }
+    this.friendshipsStore = this.friendshipsStore.filter(f => f.requesterId !== id && f.addresseeId !== id);
+    this.friendChallengesStore = this.friendChallengesStore.filter(c => c.senderId !== id && c.receiverId !== id);
+    this.notifications = this.notifications.filter(n => n.userId !== id);
+    this.commentsStore = this.commentsStore.filter(c => c.userId !== id);
+    this.likesStore = this.likesStore.filter(l => l.userId !== id);
+    for (const key of Array.from(this.notificationPrefsMap.keys())) {
+      if (key.startsWith(`${id}-`)) this.notificationPrefsMap.delete(key);
+    }
+  }
+
+  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
+    const friendIds = this.friendshipsStore
+      .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
+      .map(f => f.requesterId === userId ? f.addresseeId : f.requesterId);
+    const result: Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }> = [];
+    for (const fid of friendIds) {
+      const stats = this.userGameStatsMap.get(`${fid}-${gameSlug}`);
+      if (stats && stats.gamesPlayed > 0) {
+        const u = this.users.get(fid);
+        if (u) result.push({ id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, gamesPlayed: stats.gamesPlayed });
+      }
+    }
+    return result.sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+  }
+
+  async getUsersWithStreakAtRisk(): Promise<Array<{ userId: number; currentStreak: number }>> {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const result: Array<{ userId: number; currentStreak: number }> = [];
+    for (const streak of this.userStreaks.values()) {
+      if (streak.currentStreak > 0 && streak.lastPlayedDate === yesterdayStr) {
+        result.push({ userId: streak.userId, currentStreak: streak.currentStreak });
+      }
+    }
+    return result;
+  }
+
+  async getSiteSetting(key: string): Promise<string | null> {
+    return this.siteSettingsMap.get(key) ?? null;
+  }
+
+  async setSiteSetting(key: string, value: string | null): Promise<void> {
+    if (value === null) {
+      this.siteSettingsMap.delete(key);
+    } else {
+      this.siteSettingsMap.set(key, value);
+    }
   }
 }

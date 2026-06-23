@@ -612,6 +612,15 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/games/:slug/friends-who-play", requireAuth, async (req, res) => {
+    try {
+      const friends = await storage.getFriendsWhoPlayGame(req.params.slug, req.user!.id);
+      res.json(friends);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch friends" });
+    }
+  });
+
   // ==================== AUTH ROUTES ====================
 
   function sanitizeUser(user: any) {
@@ -974,6 +983,19 @@ export async function registerRoutes(
       res.json({ id: updated.id, name: updated.name, avatarUrl: updated.avatarUrl ?? null, bio: updated.bio ?? null });
     } catch (error) {
       res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.delete("/api/users/me", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.destroy((err) => err ? reject(err) : resolve());
+      });
+      await storage.deleteUser(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete account" });
     }
   });
 
@@ -1431,6 +1453,42 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete entry" });
+    }
+  });
+
+  // ==================== SITE ANNOUNCEMENT ROUTES ====================
+
+  app.get("/api/site/announcement", async (_req, res) => {
+    try {
+      const text = await storage.getSiteSetting("announcement");
+      res.json({ text: text ?? null });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch announcement" });
+    }
+  });
+
+  app.post("/api/site/announcement", requireAdmin, async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (typeof text !== "string" || !text.trim()) {
+        return res.status(400).json({ error: "text is required" });
+      }
+      if (text.trim().length > 300) {
+        return res.status(400).json({ error: "Announcement cannot exceed 300 characters" });
+      }
+      await storage.setSiteSetting("announcement", text.trim());
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save announcement" });
+    }
+  });
+
+  app.delete("/api/site/announcement", requireAdmin, async (_req, res) => {
+    try {
+      await storage.setSiteSetting("announcement", null);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove announcement" });
     }
   });
 
@@ -2565,6 +2623,12 @@ export async function registerRoutes(
       const trimmed = content.trim();
       if (!trimmed) return res.status(400).json({ error: "Content cannot be empty" });
       if (trimmed.length > 500) return res.status(400).json({ error: "Comment cannot exceed 500 characters" });
+
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentCount = await storage.getRecentCommentCount(userId, oneHourAgo);
+      if (recentCount >= 10) {
+        return res.status(429).json({ error: "You've posted too many comments recently. Please wait a bit before posting again." });
+      }
 
       let resolvedParentId: number | null = null;
       if (parentId) {

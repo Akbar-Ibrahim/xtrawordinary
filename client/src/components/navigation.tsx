@@ -215,8 +215,26 @@ export function Navigation() {
 
   const hasPanelItems = dbNotifications.length > 0 || unseenChallenges.length > 0;
 
+  const { data: announcementData } = useQuery<{ text: string | null }>({
+    queryKey: ["/api/site/announcement"],
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  const announcementText = announcementData?.text ?? null;
+
   return (
     <>
+      {announcementText && !announcementDismissed && (
+        <div className="w-full bg-primary text-primary-foreground text-sm py-2 px-4 flex items-center justify-between gap-3 z-50 relative" data-testid="banner-announcement">
+          <span className="flex-1 text-center font-medium">{announcementText}</span>
+          <button
+            onClick={() => setAnnouncementDismissed(true)}
+            className="shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+            aria-label="Dismiss announcement"
+            data-testid="button-dismiss-announcement"
+          >✕</button>
+        </div>
+      )}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

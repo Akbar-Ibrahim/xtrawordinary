@@ -630,3 +630,9 @@ export const notifications = mysqlTable("notifications", {
   index("notif_user_read_idx").on(table.userId, table.readAt),
   index("notif_created_at_idx").on(table.createdAt),
 ]);
+
+export const siteSettings = mysqlTable("site_settings", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+});

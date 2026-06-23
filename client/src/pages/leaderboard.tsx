@@ -307,7 +307,7 @@ function MyRankBanner({
   const apiSlug = slug === "overall" ? "overall" : slug;
   const url = `/api/leaderboard/${apiSlug}/my-rank${queryString ? `?${queryString}` : ""}`;
 
-  const { data: rankData } = useQuery<{ rank: number; score: number } | null>({
+  const { data: rankData } = useQuery<{ rank: number; score: number; totalPlayers: number } | null>({
     queryKey: ["/api/leaderboard", apiSlug, "my-rank", timeFilter],
     queryFn: async () => {
       const res = await fetch(url);
@@ -318,6 +318,10 @@ function MyRankBanner({
   });
 
   if (!user || visibleUserIds.has(user.id) || !rankData) return null;
+
+  const percentile = rankData.totalPlayers > 1
+    ? Math.round(((rankData.totalPlayers - rankData.rank) / (rankData.totalPlayers - 1)) * 100)
+    : 100;
 
   return (
     <motion.div
@@ -335,7 +339,9 @@ function MyRankBanner({
           <span className="font-medium truncate">{user.name}</span>
           <Badge variant="secondary" className="text-xs" data-testid="badge-you-rank">You</Badge>
         </div>
-        <span className="text-xs text-muted-foreground">Your current rank</span>
+        <span className="text-xs text-muted-foreground" data-testid="text-my-rank-subtitle">
+          Top {percentile}% of {rankData.totalPlayers.toLocaleString()} players
+        </span>
       </div>
       <div className="text-right">
         <span className="font-bold text-lg" data-testid="text-my-score">{rankData.score.toLocaleString()}</span>

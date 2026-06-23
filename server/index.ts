@@ -167,12 +167,42 @@ function scheduleGuildWarsJobs() {
   setInterval(runGuildWarsJobs, 60_000);
 }
 
+let lastStreakAtRiskDate: string | null = null;
+
+async function runDailyJobs() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastStreakAtRiskDate === today) return;
+  lastStreakAtRiskDate = today;
+  try {
+    const st = getStorage();
+    const usersAtRisk = await st.getUsersWithStreakAtRisk();
+    for (const { userId, currentStreak } of usersAtRisk) {
+      const prefs = await st.getNotificationPreferences(userId);
+      if (prefs["streak_at_risk"] === false) continue;
+      await st.createNotification({
+        userId,
+        type: "streak_at_risk",
+        title: "Your streak is at risk!",
+        body: `Play a game today to keep your ${currentStreak}-day streak alive.`,
+        linkUrl: "/",
+        readAt: null,
+      });
+    }
+    const expired = await st.expireFriendChallenges();
+    if (expired > 0) log(`[daily] Expired ${expired} friend challenges`, "daily");
+  } catch (err) {
+    log(`[daily] Job error: ${err}`, "daily");
+  }
+}
+
 (async () => {
   await initStorage();
   runPruneJob();
   setInterval(runPruneJob, PRUNE_INTERVAL_MS);
   scheduleWordWarsJobs();
   scheduleGuildWarsJobs();
+  runDailyJobs();
+  setInterval(runDailyJobs, 60 * 60 * 1000);
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);

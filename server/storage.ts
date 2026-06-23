@@ -82,7 +82,7 @@ export interface IStorage {
   saveLeaderboardEntry(entry: InsertLeaderboardEntry): Promise<LeaderboardEntry>;
   getLeaderboard(gameSlug: string, limit?: number, timeFilter?: string): Promise<LeaderboardEntry[]>;
   getOverallLeaderboard(limit?: number, timeFilter?: string): Promise<LeaderboardEntry[]>;
-  getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null>;
+  getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number; totalPlayers: number } | null>;
   getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]>;
   incrementGamePlayCount(gameSlug: string): Promise<void>;
   getGamePlayCount(gameSlug: string): Promise<number>;
@@ -96,11 +96,13 @@ export interface IStorage {
   getUserAchievements(userId: number): Promise<UserAchievement[]>;
   saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement>;
 
+  deleteUser(id: number): Promise<void>;
   getAllUsers(): Promise<User[]>;
   deleteLeaderboardEntry(id: number): Promise<void>;
   getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>;
   getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
 
+  getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>>;
   searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>>;
   getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
 
@@ -113,6 +115,7 @@ export interface IStorage {
   getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>>;
   getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined>;
 
+  expireFriendChallenges(): Promise<number>;
   createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge>;
   getFriendChallenges(userId: number): Promise<FriendChallenge[]>;
   getFriendChallenge(id: number): Promise<FriendChallenge | undefined>;
@@ -165,6 +168,7 @@ export interface IStorage {
   saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void>;
   getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: import("@shared/schema").DailyLeaderboardEntry[]; myRank?: number; myScore?: number }>;
 
+  getRecentCommentCount(userId: number, since: Date): Promise<number>;
   // Comments
   createComment(comment: InsertComment): Promise<Comment>;
   getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]>;
@@ -229,6 +233,10 @@ export interface IStorage {
   getTeamRaceChallengesForGroup(groupId: number): Promise<TeamRaceChallenge[]>;
   updateTeamRaceChallenge(id: number, updates: Partial<Pick<TeamRaceChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord" | "winnerGroupId">>): Promise<TeamRaceChallenge | undefined>;
   getTeamRaceChallengeByRoom(roomCode: string): Promise<TeamRaceChallenge | undefined>;
+
+  getUsersWithStreakAtRisk(): Promise<Array<{ userId: number; currentStreak: number }>>;
+  getSiteSetting(key: string): Promise<string | null>;
+  setSiteSetting(key: string, value: string | null): Promise<void>;
 
   // Notifications
   createNotification(data: InsertNotification): Promise<Notification>;

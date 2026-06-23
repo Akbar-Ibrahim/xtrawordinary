@@ -767,7 +767,7 @@ export class MySQLStorage implements IStorage {
     }));
   }
 
-  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number } | null> {
+  async getPlayerRank(gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number; totalPlayers: number } | null> {
     const db = await this.getDb();
     const cutoff = this._timeFilterCutoff(timeFilter);
 
@@ -784,7 +784,7 @@ export class MySQLStorage implements IStorage {
       if (!userRow) return null;
       const userScore = Number(userRow.total);
       const rank = totals.filter(t => Number(t.total) > userScore).length + 1;
-      return { rank, score: userScore };
+      return { rank, score: userScore, totalPlayers: totals.length };
     }
 
     const baseWhere = cutoff
@@ -802,7 +802,7 @@ export class MySQLStorage implements IStorage {
     if (!userRow) return null;
     const userScore = Number(userRow.best);
     const rank = scores.filter(s => Number(s.best) > userScore).length + 1;
-    return { rank, score: userScore };
+    return { rank, score: userScore, totalPlayers: scores.length };
   }
 
   async getFriendsLeaderboard(gameSlug: string, userId: number): Promise<LeaderboardEntry[]> {
@@ -3171,5 +3171,114 @@ export class MySQLStorage implements IStorage {
       else if (m.winnerGroupId !== null) matchLosses++;
     }
     return { tournamentsEntered, matchWins, matchLosses };
+  }
+
+  async expireFriendChallenges(): Promise<number> {
+    const db = await this.getDb();
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await db.update(schema.friendChallenges)
+      .set({ status: "cancelled" })
+      .where(and(
+        eq(schema.friendChallenges.status, "pending"),
+        sql`${schema.friendChallenges.createdAt} < ${cutoff}`
+      ));
+    return (result as any)[0]?.affectedRows ?? 0;
+  }
+
+  async getRecentCommentCount(userId: number, since: Date): Promise<number> {
+    const db = await this.getDb();
+    const rows = await db.select({ cnt: sql<number>`COUNT(*)` })
+      .from(schema.comments)
+      .where(and(
+        eq(schema.comments.userId, userId),
+        eq(schema.comments.isDeleted, false),
+        sql`${schema.comments.createdAt} >= ${since}`
+      ));
+    return Number(rows[0]?.cnt ?? 0);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    const db = await this.getDb();
+    await db.delete(schema.leaderboardEntries).where(eq(schema.leaderboardEntries.userId, id));
+    await db.delete(schema.userAchievements).where(eq(schema.userAchievements.userId, id));
+    await db.delete(schema.userStreaks).where(eq(schema.userStreaks.userId, id));
+    await db.delete(schema.userGameStats).where(eq(schema.userGameStats.userId, id));
+    await db.delete(schema.friendships).where(or(eq(schema.friendships.requesterId, id), eq(schema.friendships.addresseeId, id)));
+    await db.delete(schema.friendChallenges).where(or(eq(schema.friendChallenges.senderId, id), eq(schema.friendChallenges.receiverId, id)));
+    await db.delete(schema.notifications).where(eq(schema.notifications.userId, id));
+    await db.delete(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, id));
+    await db.delete(schema.emailVerificationTokens).where(eq(schema.emailVerificationTokens.userId, id));
+    await db.delete(schema.passwordResetTokens).where(eq(schema.passwordResetTokens.userId, id));
+    await db.delete(schema.users).where(eq(schema.users.id, id));
+  }
+
+  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
+    const db = await this.getDb();
+    const friendships = await db.select({
+      requesterId: schema.friendships.requesterId,
+      addresseeId: schema.friendships.addresseeId,
+    }).from(schema.friendships)
+      .where(and(
+        eq(schema.friendships.status, "accepted"),
+        or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))
+      ));
+    const friendIds = friendships.map(f => f.requesterId === userId ? f.addresseeId : f.requesterId);
+    if (friendIds.length === 0) return [];
+
+    const statsRows = await db.select({
+      userId: schema.userGameStats.userId,
+      gamesPlayed: schema.userGameStats.gamesPlayed,
+    }).from(schema.userGameStats)
+      .where(and(
+        inArray(schema.userGameStats.userId, friendIds),
+        eq(schema.userGameStats.gameSlug, gameSlug),
+        sql`${schema.userGameStats.gamesPlayed} > 0`
+      ));
+    if (statsRows.length === 0) return [];
+
+    const playedIds = statsRows.map(s => s.userId);
+    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+      .from(schema.users).where(inArray(schema.users.id, playedIds));
+
+    return userRows.map(u => ({
+      id: u.id,
+      name: u.name,
+      avatarUrl: u.avatarUrl ?? null,
+      gamesPlayed: statsRows.find(s => s.userId === u.id)?.gamesPlayed ?? 0,
+    })).sort((a, b) => b.gamesPlayed - a.gamesPlayed);
+  }
+
+  async getUsersWithStreakAtRisk(): Promise<Array<{ userId: number; currentStreak: number }>> {
+    const db = await this.getDb();
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    const rows = await db.select({ userId: schema.userStreaks.userId, currentStreak: schema.userStreaks.currentStreak })
+      .from(schema.userStreaks)
+      .where(and(
+        sql`${schema.userStreaks.currentStreak} > 0`,
+        eq(schema.userStreaks.lastPlayedDate, yesterdayStr)
+      ));
+    return rows.map(r => ({ userId: r.userId, currentStreak: r.currentStreak }));
+  }
+
+  async getSiteSetting(key: string): Promise<string | null> {
+    const db = await this.getDb();
+    const rows = await db.select({ value: schema.siteSettings.value })
+      .from(schema.siteSettings)
+      .where(eq(schema.siteSettings.key, key));
+    return rows[0]?.value ?? null;
+  }
+
+  async setSiteSetting(key: string, value: string | null): Promise<void> {
+    const db = await this.getDb();
+    if (value === null) {
+      await db.delete(schema.siteSettings).where(eq(schema.siteSettings.key, key));
+    } else {
+      await db.insert(schema.siteSettings)
+        .values({ key, value })
+        .onDuplicateKeyUpdate({ set: { value } });
+    }
   }
 }
