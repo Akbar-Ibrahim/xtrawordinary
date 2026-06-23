@@ -163,3 +163,103 @@ input field.
   a screen-reader-friendly alternative).
 - On mobile, drag-to-swap is more natural than tap-tap-swap; consider supporting both.
 - Scoring may need adjustment if swap count becomes a meaningful metric.
+
+---
+
+## 3. Letter Extraction Duel (Working Title: unnamed)
+
+### Concept Summary
+
+A turn-based word game where each player must form a new word using a fixed number
+of letters taken from their opponent's previous word. Players alternate, creating a
+chain of words that are connected by shared letter subsets.
+
+---
+
+### Origin of the Idea
+
+Designed to fill a gap on the platform: no existing game has an adversarial
+letter-passing mechanic. The closest games (Word Chain, Anagram Solver) either
+change one letter at a time or rearrange all given letters — neither involves
+strategic subset selection.
+
+---
+
+### Core Mechanic
+
+1. Player A plays a word (e.g., "CRANE").
+2. Player B must pick exactly **N** letters from Player A's word and form a new
+   valid word using only those letters (e.g., from CRANE pick C, A, R → "CAR" or "ARC").
+3. Player B's new word becomes the source for Player A's next turn.
+4. Players alternate until one cannot form a valid word — that player loses the round.
+
+**Constraints (agreed before the game starts):**
+- **Word length**: fixed (e.g., all 5-letter words) or free (any valid word length).
+- **Extract count N**: how many letters must be taken from the opponent's word
+  (e.g., must use exactly 3 of the 5 letters).
+
+**Key rule:** the N letters chosen must be a valid subset of the opponent's word
+(letter frequency respected — if the opponent's word has one R, you can only use
+one R).
+
+---
+
+### What Makes It Distinct
+
+- **Strategic trap-setting**: a smart player forms a word whose available subsets
+  are hard to build real words from, giving them an edge beyond pure vocabulary.
+- **Subset pressure**: unlike anagrams (rearrange everything), only N letters carry
+  forward — the constraint changes each turn.
+- **Two-sided skill**: you need vocabulary breadth (to find words from constrained
+  letter sets) *and* strategic foresight (to choose words that strand your opponent).
+
+---
+
+### Play Modes
+
+- **vs. Computer**: computer picks a valid subset word; difficulty scales with how
+  "trapping" its word choices are.
+- **vs. Player (Duel)**: maps onto the existing turn-based duel system naturally.
+- **Solo practice**: player chains words against themselves, scored by chain length.
+
+---
+
+### Open Design Questions
+
+1. **Name**: no name agreed yet. Candidates to consider: *Letter Forge*, *Word Splice*,
+   *Subset*, *Chain Extract*, *Letter Harvest*.
+
+2. **What happens on a dead end?**
+   - Option A: the player who causes an impossible position (no valid word exists
+     for any N-letter subset of their word) automatically loses that round.
+   - Option B: the system validates before accepting a word — only accepts words
+     where at least one valid N-letter-subset response exists. This prevents
+     accidental dead ends but requires server-side lookahead.
+   - Option C: players can "challenge" a word if they believe no valid response
+     exists; if correct, challenger wins the round.
+
+3. **Fixed vs. variable word length**: fixed length is cleaner and easier to
+   validate; variable length (any valid word) allows more creative play but makes
+   it harder to calibrate N meaningfully.
+
+4. **Extract count N**: should N be fixed for the whole game, or can it vary
+   per turn? Fixed is simpler; variable adds complexity but may feel arbitrary.
+
+5. **Scoring**: chain length (number of successful turns) is the natural metric.
+   Time pressure (turn timer) could be added for the duel version.
+
+---
+
+### Implementation Notes (for when this is built)
+
+- **Validation**: given a word W and extract count N, the server must verify that
+  the submitted response word R uses exactly N letters that are a subset of W
+  (frequency-checked). E.g., if W = "CRANE" and N = 3, check that R's letter
+  multiset ∩ W's letter multiset has size ≥ N and R uses no more of any letter
+  than W contains.
+- **Dead-end detection** (for Option B above): for a given W and N, enumerate all
+  N-size subsets of W's letters, check if any subset is an anagram of a valid
+  dictionary word. Only needed if the system pre-validates.
+- **Dictionary**: reuses the existing server-side word list.
+- **Duel integration**: maps onto the turn-based duel engine — each "move" is
+  submitting a word; the 8-second turn timer applies naturally.
