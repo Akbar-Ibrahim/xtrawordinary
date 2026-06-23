@@ -92,6 +92,9 @@ export interface IStorage {
   saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak>;
   getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>>;
   getStreakBatch(userIds: number[]): Promise<Record<number, number>>;
+  updateDailyChallengeStreak(userId: number, date: string): Promise<{ streak: number; longest: number; alreadyDone: boolean }>;
+
+  getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }>;
 
   getUserAchievements(userId: number): Promise<UserAchievement[]>;
   saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement>;

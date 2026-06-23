@@ -178,6 +178,7 @@ export default function GameDetail() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
   const [urlCleaned, setUrlCleaned] = useState(false);
+  const [lastPercentile, setLastPercentile] = useState<{ percentile: number; totalPlayers: number } | null>(null);
   const isTied = challengeResult ? challengeResult.myScore === challengeResult.opponentScore : false;
   const searchString = useSearch();
   const [, navigate] = useLocation();
@@ -292,6 +293,20 @@ export default function GameDetail() {
   });
 
   const alreadySubmittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isPlaying || isCustomPlay) return;
+    const handlePercentile = (e: Event) => {
+      const { score } = (e as CustomEvent).detail;
+      if (!score || score <= 0 || !slug) return;
+      fetch(`/api/leaderboard/${encodeURIComponent(slug)}/percentile?score=${score}`)
+        .then(r => r.json())
+        .then(p => { if (p && typeof p.percentile === "number") setLastPercentile(p); })
+        .catch(() => {});
+    };
+    window.addEventListener("wordplay-game-result", handlePercentile);
+    return () => window.removeEventListener("wordplay-game-result", handlePercentile);
+  }, [isPlaying, isCustomPlay, slug]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -708,6 +723,12 @@ export default function GameDetail() {
                   {isAuthenticated && myGameStat && myGameStat.lastScore != null && myGameStat.lastScore > 0 && (
                     <span className="flex items-center gap-2 text-muted-foreground" data-testid="text-my-last-score">
                       Last score: <span className="font-semibold text-foreground">{myGameStat.lastScore.toLocaleString()}</span>
+                    </span>
+                  )}
+                  {lastPercentile && lastPercentile.totalPlayers >= 3 && (
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-primary" data-testid="text-percentile">
+                      <LucideIcons.BarChart2 className="h-4 w-4" />
+                      Better than {lastPercentile.percentile}% of players
                     </span>
                   )}
                   {slug && (

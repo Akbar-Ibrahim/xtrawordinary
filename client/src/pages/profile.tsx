@@ -175,6 +175,11 @@ export default function Profile() {
     enabled: isAuthenticated,
   });
 
+  const { data: ownDailyStreak } = useQuery<{ streak: number; longest: number }>({
+    queryKey: ["/api/user/daily-streak"],
+    enabled: isAuthenticated && isOwnProfile,
+  });
+
   const { data: viewedStreak } = useQuery<{ currentStreak: number; longestStreak: number; lastPlayedDate: string | null }>({
     queryKey: ["/api/users", userId, "streak"],
     queryFn: async () => {
@@ -678,7 +683,7 @@ export default function Profile() {
                     <div className="flex items-center gap-2 flex-1">
                       <Flame className="h-5 w-5 text-orange-500 shrink-0" />
                       <div>
-                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Daily Streak</p>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Play Streak</p>
                         <p className="font-bold text-orange-600 dark:text-orange-400" data-testid="text-current-streak">
                           {ownStreak.currentStreak} {ownStreak.currentStreak === 1 ? "day" : "days"}
                         </p>
@@ -687,6 +692,23 @@ export default function Profile() {
                     <div className="text-right shrink-0">
                       <p className="text-xs text-muted-foreground">Best streak</p>
                       <p className="font-semibold text-sm" data-testid="text-longest-streak">{ownStreak.longestStreak}d</p>
+                    </div>
+                  </div>
+                )}
+                {isOwnProfile && ownDailyStreak && (ownDailyStreak.streak > 0 || ownDailyStreak.longest > 0) && (
+                  <div className="flex items-center gap-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 mb-4" data-testid="card-daily-streak">
+                    <div className="flex items-center gap-2 flex-1">
+                      <Calendar className="h-5 w-5 text-blue-500 shrink-0" />
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Daily Challenge Streak</p>
+                        <p className="font-bold text-blue-600 dark:text-blue-400" data-testid="text-daily-challenge-streak">
+                          {ownDailyStreak.streak} {ownDailyStreak.streak === 1 ? "day" : "days"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-muted-foreground">Best streak</p>
+                      <p className="font-semibold text-sm" data-testid="text-longest-daily-streak">{ownDailyStreak.longest}d</p>
                     </div>
                   </div>
                 )}

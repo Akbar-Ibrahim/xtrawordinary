@@ -915,9 +915,32 @@ export class MemStorage implements IStorage {
       existing.lastPlayedDate = lastPlayedDate;
       return existing;
     }
-    const streak: UserStreak = { id: this.usIdCounter++, userId, currentStreak, longestStreak, lastPlayedDate };
+    const streak: UserStreak = { id: this.usIdCounter++, userId, currentStreak, longestStreak, lastPlayedDate, dailyChallengeStreak: 0, longestDailyChallengeStreak: 0, lastDailyChallengeDate: null };
     this.userStreaks.set(userId, streak);
     return streak;
+  }
+
+  async updateDailyChallengeStreak(userId: number, date: string): Promise<{ streak: number; longest: number; alreadyDone: boolean }> {
+    let existing = this.userStreaks.get(userId);
+    if (!existing) {
+      existing = { id: this.usIdCounter++, userId, currentStreak: 0, longestStreak: 0, lastPlayedDate: date, dailyChallengeStreak: 0, longestDailyChallengeStreak: 0, lastDailyChallengeDate: null };
+      this.userStreaks.set(userId, existing);
+    }
+    if (existing.lastDailyChallengeDate === date) {
+      return { streak: existing.dailyChallengeStreak, longest: existing.longestDailyChallengeStreak, alreadyDone: true };
+    }
+    let newStreak = 1;
+    if (existing.lastDailyChallengeDate) {
+      const prev = new Date(existing.lastDailyChallengeDate + "T00:00:00");
+      const cur = new Date(date + "T00:00:00");
+      const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+      if (diffDays === 1) newStreak = (existing.dailyChallengeStreak ?? 0) + 1;
+    }
+    const newLongest = Math.max(existing.longestDailyChallengeStreak ?? 0, newStreak);
+    existing.dailyChallengeStreak = newStreak;
+    existing.longestDailyChallengeStreak = newLongest;
+    existing.lastDailyChallengeDate = date;
+    return { streak: newStreak, longest: newLongest, alreadyDone: false };
   }
 
   async getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
@@ -938,6 +961,20 @@ export class MemStorage implements IStorage {
       result[id] = streak?.currentStreak ?? 0;
     }
     return result;
+  }
+
+  async getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }> {
+    const seen = new Map<number, number>();
+    for (const e of this.leaderboardEntries) {
+      if (e.gameSlug !== gameSlug) continue;
+      const cur = seen.get(e.userId);
+      if (cur === undefined || e.score > cur) seen.set(e.userId, e.score);
+    }
+    const scores = Array.from(seen.values());
+    const total = scores.length;
+    if (total === 0) return { percentile: 100, totalPlayers: 0 };
+    const below = scores.filter(s => s < score).length;
+    return { percentile: Math.round((below / total) * 100), totalPlayers: total };
   }
 
   async getUserAchievements(userId: number): Promise<UserAchievement[]> {

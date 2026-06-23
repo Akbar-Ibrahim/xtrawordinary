@@ -639,3 +639,40 @@ export function saveDailyChallengeRecord(record: DailyChallengeRecord): void {
     localStorage.setItem(DAILY_CHALLENGE_KEY, JSON.stringify(records));
   } catch {}
 }
+
+const DAILY_STREAK_KEY = "xw_daily_challenge_streak";
+
+export interface LocalDailyStreak {
+  streak: number;
+  longest: number;
+  lastDate: string | null;
+}
+
+export function getLocalDailyChallengeStreak(): LocalDailyStreak {
+  try {
+    const raw = localStorage.getItem(DAILY_STREAK_KEY);
+    if (!raw) return { streak: 0, longest: 0, lastDate: null };
+    return JSON.parse(raw) as LocalDailyStreak;
+  } catch {
+    return { streak: 0, longest: 0, lastDate: null };
+  }
+}
+
+export function updateLocalDailyChallengeStreak(date: string): LocalDailyStreak {
+  try {
+    const current = getLocalDailyChallengeStreak();
+    if (current.lastDate === date) return current;
+    let newStreak = 1;
+    if (current.lastDate) {
+      const prev = new Date(current.lastDate + "T00:00:00");
+      const cur = new Date(date + "T00:00:00");
+      const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+      if (diffDays === 1) newStreak = current.streak + 1;
+    }
+    const updated: LocalDailyStreak = { streak: newStreak, longest: Math.max(current.longest, newStreak), lastDate: date };
+    localStorage.setItem(DAILY_STREAK_KEY, JSON.stringify(updated));
+    return updated;
+  } catch {
+    return { streak: 1, longest: 1, lastDate: date };
+  }
+}

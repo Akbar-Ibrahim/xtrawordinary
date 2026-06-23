@@ -552,9 +552,19 @@ export async function registerRoutes(
       if (!parsed.success) return res.status(400).json({ error: "Invalid request" });
       const gameSlug = getDailySlugForDate(parsed.data.date);
       await storage.saveDailyChallengeScore(userId, parsed.data.date, gameSlug, parsed.data.score);
-      res.json({ ok: true });
+      const streakResult = await storage.updateDailyChallengeStreak(userId, parsed.data.date);
+      res.json({ ok: true, streak: streakResult.streak, longest: streakResult.longest, alreadyDone: streakResult.alreadyDone });
     } catch {
       res.status(500).json({ error: "Failed to save score" });
+    }
+  });
+
+  app.get("/api/user/daily-streak", requireAuth, async (req, res) => {
+    try {
+      const streak = await storage.getUserStreak(req.user!.id);
+      res.json({ streak: streak?.dailyChallengeStreak ?? 0, longest: streak?.longestDailyChallengeStreak ?? 0 });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch daily streak" });
     }
   });
 
@@ -892,6 +902,17 @@ export async function registerRoutes(
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  app.get("/api/leaderboard/:gameSlug/percentile", async (req, res) => {
+    try {
+      const score = parseInt(req.query.score as string);
+      if (isNaN(score)) return res.status(400).json({ error: "Invalid score" });
+      const result = await storage.getLeaderboardPercentile(req.params.gameSlug, score);
+      res.json(result);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch percentile" });
     }
   });
 

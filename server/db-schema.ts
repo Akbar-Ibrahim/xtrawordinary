@@ -72,6 +72,9 @@ export const userStreaks = mysqlTable("user_streaks", {
   currentStreak: int("current_streak").notNull().default(0),
   longestStreak: int("longest_streak").notNull().default(0),
   lastPlayedDate: varchar("last_played_date", { length: 20 }).notNull(),
+  dailyChallengeStreak: int("daily_challenge_streak").notNull().default(0),
+  longestDailyChallengeStreak: int("longest_daily_challenge_streak").notNull().default(0),
+  lastDailyChallengeDate: varchar("last_daily_challenge_date", { length: 20 }),
 });
 
 export const userAchievements = mysqlTable("user_achievements", {

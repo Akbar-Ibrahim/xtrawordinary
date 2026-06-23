@@ -264,6 +264,9 @@ export const userStreakSchema = z.object({
   currentStreak: z.number(),
   longestStreak: z.number(),
   lastPlayedDate: z.string(),
+  dailyChallengeStreak: z.number().default(0),
+  longestDailyChallengeStreak: z.number().default(0),
+  lastDailyChallengeDate: z.string().nullable().optional(),
 });
 export type UserStreak = z.infer<typeof userStreakSchema>;
 

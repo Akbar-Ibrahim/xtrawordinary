@@ -923,7 +923,7 @@ export class MySQLStorage implements IStorage {
     const rows = await db.select().from(schema.userStreaks).where(eq(schema.userStreaks.userId, userId)).limit(1);
     if (!rows[0]) return undefined;
     const r = rows[0];
-    return { id: r.id, userId: r.userId, currentStreak: r.currentStreak, longestStreak: r.longestStreak, lastPlayedDate: r.lastPlayedDate };
+    return { id: r.id, userId: r.userId, currentStreak: r.currentStreak, longestStreak: r.longestStreak, lastPlayedDate: r.lastPlayedDate, dailyChallengeStreak: r.dailyChallengeStreak ?? 0, longestDailyChallengeStreak: r.longestDailyChallengeStreak ?? 0, lastDailyChallengeDate: r.lastDailyChallengeDate ?? null };
   }
 
   async saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak> {
@@ -965,6 +965,44 @@ export class MySQLStorage implements IStorage {
     const result: Record<number, number> = {};
     for (const row of rows) result[row.userId] = row.currentStreak;
     return result;
+  }
+
+  async updateDailyChallengeStreak(userId: number, date: string): Promise<{ streak: number; longest: number; alreadyDone: boolean }> {
+    const db = await this.getDb();
+    const existing = await this.getUserStreak(userId);
+    if (existing && existing.lastDailyChallengeDate === date) {
+      return { streak: existing.dailyChallengeStreak ?? 0, longest: existing.longestDailyChallengeStreak ?? 0, alreadyDone: true };
+    }
+    let newStreak = 1;
+    if (existing?.lastDailyChallengeDate) {
+      const prev = new Date(existing.lastDailyChallengeDate + "T00:00:00");
+      const cur = new Date(date + "T00:00:00");
+      const diffDays = Math.round((cur.getTime() - prev.getTime()) / 86400000);
+      if (diffDays === 1) newStreak = (existing.dailyChallengeStreak ?? 0) + 1;
+    }
+    const newLongest = Math.max(existing?.longestDailyChallengeStreak ?? 0, newStreak);
+    if (existing) {
+      await db.update(schema.userStreaks)
+        .set({ dailyChallengeStreak: newStreak, longestDailyChallengeStreak: newLongest, lastDailyChallengeDate: date })
+        .where(eq(schema.userStreaks.userId, userId));
+    } else {
+      await db.insert(schema.userStreaks).values({ userId, currentStreak: 0, longestStreak: 0, lastPlayedDate: date, dailyChallengeStreak: newStreak, longestDailyChallengeStreak: newLongest, lastDailyChallengeDate: date });
+    }
+    return { streak: newStreak, longest: newLongest, alreadyDone: false };
+  }
+
+  async getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }> {
+    const db = await this.getDb();
+    const [totalRow] = await db.execute<[{ total: number }]>(
+      sql`SELECT COUNT(DISTINCT user_id) as total FROM leaderboard_entries WHERE game_slug = ${gameSlug}`
+    );
+    const total = Number((totalRow as any)[0]?.total ?? 0);
+    if (total === 0) return { percentile: 100, totalPlayers: 0 };
+    const [belowRow] = await db.execute<[{ below: number }]>(
+      sql`SELECT COUNT(DISTINCT user_id) as below FROM (SELECT user_id, MAX(score) as best FROM leaderboard_entries WHERE game_slug = ${gameSlug} GROUP BY user_id) t WHERE t.best < ${score}`
+    );
+    const below = Number((belowRow as any)[0]?.below ?? 0);
+    return { percentile: Math.round((below / total) * 100), totalPlayers: total };
   }
 
   async getUserAchievements(userId: number): Promise<UserAchievement[]> {

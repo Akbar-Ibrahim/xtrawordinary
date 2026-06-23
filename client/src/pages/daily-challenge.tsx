@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal, ChevronDown, ChevronUp, Flame, BarChart2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, DailyLeaderboardEntry } from "@shared/schema";
-import { getDailyChallengeRecord, saveDailyChallengeRecord } from "@/lib/game-stats";
+import { getDailyChallengeRecord, saveDailyChallengeRecord, getLocalDailyChallengeStreak, updateLocalDailyChallengeStreak } from "@/lib/game-stats";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -182,6 +182,8 @@ export default function DailyChallenge() {
   const [attemptStarted, setAttemptStarted] = useState(false);
   const [countdown, setCountdown] = useState("");
   const [leaderboardOpen, setLeaderboardOpen] = useState(true);
+  const [dailyStreak, setDailyStreak] = useState<{ streak: number; longest: number } | null>(null);
+  const [percentileData, setPercentileData] = useState<{ percentile: number; totalPlayers: number } | null>(null);
 
   const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !completed);
 
@@ -250,9 +252,22 @@ export default function DailyChallenge() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ date: data.date, score }),
-        }).then(() => {
+        }).then(async (res) => {
           queryClient.invalidateQueries({ queryKey: ["/api/daily-challenge/leaderboard", data.date] });
+          const json = await res.json().catch(() => null);
+          if (json && typeof json.streak === "number") {
+            setDailyStreak({ streak: json.streak, longest: json.longest });
+          }
         }).catch(() => {});
+      } else {
+        const updated = updateLocalDailyChallengeStreak(data.date);
+        setDailyStreak({ streak: updated.streak, longest: updated.longest });
+      }
+      if (score > 0) {
+        fetch(`/api/leaderboard/${encodeURIComponent(data.slug)}/percentile?score=${score}`)
+          .then(r => r.json())
+          .then(p => setPercentileData(p))
+          .catch(() => {});
       }
     };
     window.addEventListener("wordplay-game-result", handleGameResult);
@@ -365,11 +380,31 @@ export default function DailyChallenge() {
                         </span>
                       </div>
                       {(localRecord || completed) ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <Trophy className="h-5 w-5 text-chart-2" />
-                          <span className="text-lg font-medium" data-testid="text-daily-score">
-                            Score: {completed ? finalScore : localRecord?.score ?? 0}
-                          </span>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-center gap-2">
+                            <Trophy className="h-5 w-5 text-chart-2" />
+                            <span className="text-lg font-medium" data-testid="text-daily-score">
+                              Score: {completed ? finalScore : localRecord?.score ?? 0}
+                            </span>
+                          </div>
+                          {percentileData && percentileData.totalPlayers >= 3 && (
+                            <div className="flex items-center justify-center gap-1.5 text-sm" data-testid="text-daily-percentile">
+                              <BarChart2 className="h-4 w-4 text-primary" />
+                              <span className="text-muted-foreground">Better than</span>
+                              <span className="font-bold text-primary">{percentileData.percentile}%</span>
+                              <span className="text-muted-foreground">of players</span>
+                            </div>
+                          )}
+                          {dailyStreak && dailyStreak.streak > 0 && (
+                            <div className="flex items-center justify-center gap-1.5 text-sm" data-testid="text-daily-streak">
+                              <Flame className="h-4 w-4 text-orange-500" />
+                              <span className="font-bold text-orange-500">{dailyStreak.streak}</span>
+                              <span className="text-muted-foreground">{dailyStreak.streak === 1 ? "day" : "day"} daily streak</span>
+                              {dailyStreak.longest > 1 && (
+                                <span className="text-xs text-muted-foreground">(best: {dailyStreak.longest})</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">
