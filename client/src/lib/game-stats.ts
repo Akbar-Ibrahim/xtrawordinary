@@ -48,34 +48,6 @@ export function recordDuelResult(
   return checkDuelAchievements(ds);
 }
 
-function checkDuelAchievements(ds: DuelStats): Achievement[] {
-  const achievements = loadAchievements();
-  const newlyUnlocked: Achievement[] = [];
-
-  const conditions: Record<string, boolean> = {
-    duel_first_win: ds.wins >= 1,
-    duel_ten_wins: ds.wins >= 10,
-    duel_fifty_wins: ds.wins >= 50,
-    duel_five_streak: ds.consecutiveWins >= 5,
-    duel_race_win: ds.raceWins >= 1,
-    duel_ten_race_wins: ds.raceWins >= 10,
-  };
-
-  for (const achievement of achievements) {
-    if (achievement.unlockedAt) continue;
-    if (conditions[achievement.id]) {
-      achievement.unlockedAt = Date.now();
-      newlyUnlocked.push({ ...achievement });
-    }
-  }
-
-  if (newlyUnlocked.length > 0) {
-    saveAchievements(achievements);
-  }
-
-  return newlyUnlocked;
-}
-
 export interface GameRecord {
   slug: string;
   score: number;
@@ -113,6 +85,23 @@ export interface Achievement {
   description: string;
   icon: string;
   unlockedAt: number | null;
+  tier?: "bronze" | "silver" | "gold";
+  groupId?: string;
+  points: number;
+}
+
+export interface AchievementTierDef {
+  tier: "bronze" | "silver" | "gold";
+  threshold: number;
+  thresholdLabel: string;
+}
+
+export interface AchievementGroupDef {
+  id: string;
+  label: string;
+  tiers: AchievementTierDef[];
+  getProgress: (stats: AllStats, streak: StreakData, duelStats: DuelStats) => number;
+  formatProgress: (value: number) => string;
 }
 
 function getDateString(timestamp?: number): string {
@@ -176,18 +165,272 @@ function saveStreak(streak: StreakData): void {
   } catch {}
 }
 
+export const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlockedAt">[] = [
+  // --- Standalone ---
+  { id: "first_game", title: "First Steps", description: "Play your first game", icon: "Footprints", points: 5 },
+  { id: "first_win", title: "First Win", description: "Win your first game", icon: "Trophy", points: 5 },
+  { id: "perfect_sweep", title: "Clean Sweep", description: "Clear the entire grid in Word Sweep", icon: "Grid3X3", points: 10 },
+
+  // --- Games Played ---
+  { id: "games_bronze", groupId: "games_played", tier: "bronze", title: "Dedicated Player", description: "Play 25 games", icon: "Star", points: 10 },
+  { id: "games_silver", groupId: "games_played", tier: "silver", title: "Word Veteran", description: "Play 100 games", icon: "Medal", points: 25 },
+  { id: "games_gold", groupId: "games_played", tier: "gold", title: "Word Legend", description: "Play 500 games", icon: "Crown", points: 50 },
+
+  // --- Wins ---
+  { id: "wins_bronze", groupId: "wins", tier: "bronze", title: "On a Roll", description: "Win 10 games", icon: "Flame", points: 10 },
+  { id: "wins_silver", groupId: "wins", tier: "silver", title: "Champion", description: "Win 50 games", icon: "Trophy", points: 25 },
+  { id: "wins_gold", groupId: "wins", tier: "gold", title: "Unstoppable", description: "Win 200 games", icon: "Crown", points: 50 },
+
+  // --- Explorer ---
+  { id: "explorer_bronze", groupId: "explorer", tier: "bronze", title: "Explorer", description: "Try 5 different games", icon: "Compass", points: 10 },
+  { id: "explorer_silver", groupId: "explorer", tier: "silver", title: "Adventurer", description: "Try 15 different games", icon: "Map", points: 25 },
+  { id: "explorer_gold", groupId: "explorer", tier: "gold", title: "Completionist", description: "Try all 25 games", icon: "CheckCircle", points: 50 },
+
+  // --- High Scorer ---
+  { id: "scorer_bronze", groupId: "scorer", tier: "bronze", title: "Century", description: "Score 100+ in one game", icon: "Zap", points: 10 },
+  { id: "scorer_silver", groupId: "scorer", tier: "silver", title: "High Scorer", description: "Score 500+ in one game", icon: "TrendingUp", points: 25 },
+  { id: "scorer_gold", groupId: "scorer", tier: "gold", title: "Word Master", description: "Score 1000+ in one game", icon: "Sparkles", points: 50 },
+
+  // --- Wordsmith ---
+  { id: "wordsmith_bronze", groupId: "wordsmith", tier: "bronze", title: "Wordsmith", description: "Find 50 total words", icon: "BookOpen", points: 10 },
+  { id: "wordsmith_silver", groupId: "wordsmith", tier: "silver", title: "Lexicon", description: "Find 250 total words", icon: "Library", points: 25 },
+  { id: "wordsmith_gold", groupId: "wordsmith", tier: "gold", title: "Walking Dictionary", description: "Find 1000 total words", icon: "GraduationCap", points: 50 },
+
+  // --- Streak ---
+  { id: "streak_bronze", groupId: "streak", tier: "bronze", title: "Consistent", description: "Play 3 days in a row", icon: "Calendar", points: 10 },
+  { id: "streak_silver", groupId: "streak", tier: "silver", title: "Weekly Warrior", description: "Play 7 days in a row", icon: "CalendarCheck", points: 25 },
+  { id: "streak_gold", groupId: "streak", tier: "gold", title: "Monthly Master", description: "Play 30 days in a row", icon: "CalendarHeart", points: 50 },
+
+  // --- Duelist ---
+  { id: "duelist_bronze", groupId: "duelist", tier: "bronze", title: "First Blood", description: "Win your first duel", icon: "Swords", points: 10 },
+  { id: "duelist_silver", groupId: "duelist", tier: "silver", title: "Duel Veteran", description: "Win 10 duels", icon: "Shield", points: 25 },
+  { id: "duelist_gold", groupId: "duelist", tier: "gold", title: "Duel Master", description: "Win 50 duels", icon: "Crown", points: 50 },
+
+  // --- Race Driver ---
+  { id: "racer_bronze", groupId: "racer", tier: "bronze", title: "Speed Demon", description: "Win your first race duel", icon: "Zap", points: 10 },
+  { id: "racer_silver", groupId: "racer", tier: "silver", title: "Racer", description: "Win 10 race duels", icon: "Timer", points: 25 },
+  { id: "racer_gold", groupId: "racer", tier: "gold", title: "Speed Master", description: "Win 30 race duels", icon: "Rocket", points: 50 },
+
+  // --- Duel Streak ---
+  { id: "duel_streak_bronze", groupId: "duel_streak", tier: "bronze", title: "Hot Streak", description: "Win 3 duels in a row", icon: "Flame", points: 10 },
+  { id: "duel_streak_silver", groupId: "duel_streak", tier: "silver", title: "On Fire", description: "Win 5 duels in a row", icon: "Flame", points: 25 },
+  { id: "duel_streak_gold", groupId: "duel_streak", tier: "gold", title: "Inferno", description: "Win 10 duels in a row", icon: "Flame", points: 50 },
+];
+
+export const ACHIEVEMENT_GROUPS: AchievementGroupDef[] = [
+  {
+    id: "games_played",
+    label: "Games Played",
+    tiers: [
+      { tier: "bronze", threshold: 25, thresholdLabel: "25 games" },
+      { tier: "silver", threshold: 100, thresholdLabel: "100 games" },
+      { tier: "gold", threshold: 500, thresholdLabel: "500 games" },
+    ],
+    getProgress: (stats) => stats.totalGamesPlayed,
+    formatProgress: (v) => `${v} games`,
+  },
+  {
+    id: "wins",
+    label: "Wins",
+    tiers: [
+      { tier: "bronze", threshold: 10, thresholdLabel: "10 wins" },
+      { tier: "silver", threshold: 50, thresholdLabel: "50 wins" },
+      { tier: "gold", threshold: 200, thresholdLabel: "200 wins" },
+    ],
+    getProgress: (stats) => stats.totalGamesWon,
+    formatProgress: (v) => `${v} wins`,
+  },
+  {
+    id: "explorer",
+    label: "Explorer",
+    tiers: [
+      { tier: "bronze", threshold: 5, thresholdLabel: "5 games" },
+      { tier: "silver", threshold: 15, thresholdLabel: "15 games" },
+      { tier: "gold", threshold: 25, thresholdLabel: "25 games" },
+    ],
+    getProgress: (stats) => Object.keys(stats.perGame).length,
+    formatProgress: (v) => `${v} unique`,
+  },
+  {
+    id: "scorer",
+    label: "High Scorer",
+    tiers: [
+      { tier: "bronze", threshold: 100, thresholdLabel: "100 pts" },
+      { tier: "silver", threshold: 500, thresholdLabel: "500 pts" },
+      { tier: "gold", threshold: 1000, thresholdLabel: "1000 pts" },
+    ],
+    getProgress: (stats) => Math.max(0, ...Object.values(stats.perGame).map((g) => g.bestScore)),
+    formatProgress: (v) => `${v} pts best`,
+  },
+  {
+    id: "wordsmith",
+    label: "Wordsmith",
+    tiers: [
+      { tier: "bronze", threshold: 50, thresholdLabel: "50 words" },
+      { tier: "silver", threshold: 250, thresholdLabel: "250 words" },
+      { tier: "gold", threshold: 1000, thresholdLabel: "1000 words" },
+    ],
+    getProgress: (stats) => Object.values(stats.perGame).reduce((s, g) => s + g.totalWordsFound, 0),
+    formatProgress: (v) => `${v} words`,
+  },
+  {
+    id: "streak",
+    label: "Daily Streak",
+    tiers: [
+      { tier: "bronze", threshold: 3, thresholdLabel: "3 days" },
+      { tier: "silver", threshold: 7, thresholdLabel: "7 days" },
+      { tier: "gold", threshold: 30, thresholdLabel: "30 days" },
+    ],
+    getProgress: (_stats, streak) => Math.max(streak.currentStreak, streak.longestStreak),
+    formatProgress: (v) => `${v} day best`,
+  },
+  {
+    id: "duelist",
+    label: "Duelist",
+    tiers: [
+      { tier: "bronze", threshold: 1, thresholdLabel: "1 win" },
+      { tier: "silver", threshold: 10, thresholdLabel: "10 wins" },
+      { tier: "gold", threshold: 50, thresholdLabel: "50 wins" },
+    ],
+    getProgress: (_stats, _streak, duelStats) => duelStats.wins,
+    formatProgress: (v) => `${v} wins`,
+  },
+  {
+    id: "racer",
+    label: "Race Driver",
+    tiers: [
+      { tier: "bronze", threshold: 1, thresholdLabel: "1 win" },
+      { tier: "silver", threshold: 10, thresholdLabel: "10 wins" },
+      { tier: "gold", threshold: 30, thresholdLabel: "30 wins" },
+    ],
+    getProgress: (_stats, _streak, duelStats) => duelStats.raceWins,
+    formatProgress: (v) => `${v} wins`,
+  },
+  {
+    id: "duel_streak",
+    label: "Duel Streak",
+    tiers: [
+      { tier: "bronze", threshold: 3, thresholdLabel: "3 in a row" },
+      { tier: "silver", threshold: 5, thresholdLabel: "5 in a row" },
+      { tier: "gold", threshold: 10, thresholdLabel: "10 in a row" },
+    ],
+    getProgress: (_stats, _streak, duelStats) => duelStats.consecutiveWins,
+    formatProgress: (v) => `${v} current`,
+  },
+];
+
+const OLD_TO_NEW: Record<string, string | null> = {
+  first_game: "first_game",
+  five_games: null,
+  twenty_five_games: "games_bronze",
+  hundred_games: "games_silver",
+  first_win: "first_win",
+  ten_wins: "wins_bronze",
+  fifty_wins: "wins_silver",
+  try_five_games: "explorer_bronze",
+  try_all_games: "explorer_silver",
+  score_100: "scorer_bronze",
+  score_500: "scorer_silver",
+  score_1000: "scorer_gold",
+  words_50: "wordsmith_bronze",
+  words_250: "wordsmith_silver",
+  words_1000: "wordsmith_gold",
+  streak_3: "streak_bronze",
+  streak_7: "streak_silver",
+  streak_30: "streak_gold",
+  perfect_sweep: "perfect_sweep",
+  duel_first_win: "duelist_bronze",
+  duel_ten_wins: "duelist_silver",
+  duel_fifty_wins: "duelist_gold",
+  duel_five_streak: "duel_streak_silver",
+  duel_race_win: "racer_bronze",
+  duel_ten_race_wins: "racer_silver",
+};
+
+const NEW_IDS = new Set(ACHIEVEMENT_DEFINITIONS.map((a) => a.id));
+
+function migrateOldAchievements(old: Achievement[]): Achievement[] {
+  const fresh = ACHIEVEMENT_DEFINITIONS.map((a) => ({ ...a, unlockedAt: null as number | null }));
+  const freshMap = new Map(fresh.map((a) => [a.id, a]));
+
+  for (const oldAch of old) {
+    if (!oldAch.unlockedAt) continue;
+    const newId = OLD_TO_NEW[oldAch.id] ?? oldAch.id;
+    if (!newId) continue;
+    const target = freshMap.get(newId);
+    if (target && !target.unlockedAt) target.unlockedAt = oldAch.unlockedAt;
+  }
+
+  return fresh;
+}
+
 export function loadAchievements(): Achievement[] {
   try {
     const raw = localStorage.getItem(ACHIEVEMENTS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return ACHIEVEMENT_DEFINITIONS.map((a) => ({ ...a, unlockedAt: null }));
+    if (!raw) return ACHIEVEMENT_DEFINITIONS.map((a) => ({ ...a, unlockedAt: null }));
+
+    const stored: Achievement[] = JSON.parse(raw);
+
+    const isOldFormat = stored.some((a) => !NEW_IDS.has(a.id));
+    if (isOldFormat) {
+      const migrated = migrateOldAchievements(stored);
+      saveAchievements(migrated);
+      return migrated;
+    }
+
+    const storedMap = new Map(stored.map((a) => [a.id, a.unlockedAt]));
+    return ACHIEVEMENT_DEFINITIONS.map((a) => ({
+      ...a,
+      unlockedAt: storedMap.get(a.id) ?? null,
+    }));
+  } catch {
+    return ACHIEVEMENT_DEFINITIONS.map((a) => ({ ...a, unlockedAt: null }));
+  }
 }
 
 function saveAchievements(achievements: Achievement[]): void {
   try {
     localStorage.setItem(ACHIEVEMENTS_KEY, JSON.stringify(achievements));
   } catch {}
+}
+
+export function getTotalAchievementPoints(achievements: Achievement[]): number {
+  return achievements.filter((a) => a.unlockedAt !== null).reduce((sum, a) => sum + a.points, 0);
+}
+
+export function getMaxAchievementPoints(): number {
+  return ACHIEVEMENT_DEFINITIONS.reduce((sum, a) => sum + a.points, 0);
+}
+
+function checkDuelAchievements(ds: DuelStats): Achievement[] {
+  const achievements = loadAchievements();
+  const newlyUnlocked: Achievement[] = [];
+
+  const conditions: Record<string, boolean> = {
+    duelist_bronze: ds.wins >= 1,
+    duelist_silver: ds.wins >= 10,
+    duelist_gold: ds.wins >= 50,
+    duel_streak_bronze: ds.consecutiveWins >= 3,
+    duel_streak_silver: ds.consecutiveWins >= 5,
+    duel_streak_gold: ds.consecutiveWins >= 10,
+    racer_bronze: ds.raceWins >= 1,
+    racer_silver: ds.raceWins >= 10,
+    racer_gold: ds.raceWins >= 30,
+  };
+
+  for (const achievement of achievements) {
+    if (achievement.unlockedAt) continue;
+    if (conditions[achievement.id]) {
+      achievement.unlockedAt = Date.now();
+      newlyUnlocked.push({ ...achievement });
+    }
+  }
+
+  if (newlyUnlocked.length > 0) {
+    saveAchievements(achievements);
+  }
+
+  return newlyUnlocked;
 }
 
 export function recordGameResult(record: GameRecord): {
@@ -295,159 +538,6 @@ export function getTotalWordsFound(): number {
   return total;
 }
 
-export const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, "unlockedAt">[] = [
-  {
-    id: "first_game",
-    title: "First Steps",
-    description: "Play your first game",
-    icon: "Footprints",
-  },
-  {
-    id: "five_games",
-    title: "Getting Started",
-    description: "Play 5 games",
-    icon: "Rocket",
-  },
-  {
-    id: "twenty_five_games",
-    title: "Dedicated Player",
-    description: "Play 25 games",
-    icon: "Star",
-  },
-  {
-    id: "hundred_games",
-    title: "Word Veteran",
-    description: "Play 100 games",
-    icon: "Medal",
-  },
-  {
-    id: "first_win",
-    title: "Winner",
-    description: "Win your first game",
-    icon: "Trophy",
-  },
-  {
-    id: "ten_wins",
-    title: "On a Roll",
-    description: "Win 10 games",
-    icon: "Flame",
-  },
-  {
-    id: "fifty_wins",
-    title: "Champion",
-    description: "Win 50 games",
-    icon: "Crown",
-  },
-  {
-    id: "try_five_games",
-    title: "Explorer",
-    description: "Try 5 different games",
-    icon: "Compass",
-  },
-  {
-    id: "try_all_games",
-    title: "Completionist",
-    description: "Try all 17 games",
-    icon: "CheckCircle",
-  },
-  {
-    id: "score_100",
-    title: "Century",
-    description: "Score 100+ points in a single game",
-    icon: "Zap",
-  },
-  {
-    id: "score_500",
-    title: "High Scorer",
-    description: "Score 500+ points in a single game",
-    icon: "TrendingUp",
-  },
-  {
-    id: "score_1000",
-    title: "Word Master",
-    description: "Score 1000+ points in a single game",
-    icon: "Sparkles",
-  },
-  {
-    id: "words_50",
-    title: "Wordsmith",
-    description: "Find 50 total words across all games",
-    icon: "BookOpen",
-  },
-  {
-    id: "words_250",
-    title: "Lexicon",
-    description: "Find 250 total words across all games",
-    icon: "Library",
-  },
-  {
-    id: "words_1000",
-    title: "Walking Dictionary",
-    description: "Find 1000 total words across all games",
-    icon: "GraduationCap",
-  },
-  {
-    id: "streak_3",
-    title: "Consistent",
-    description: "Play 3 days in a row",
-    icon: "Calendar",
-  },
-  {
-    id: "streak_7",
-    title: "Weekly Warrior",
-    description: "Play 7 days in a row",
-    icon: "CalendarCheck",
-  },
-  {
-    id: "streak_30",
-    title: "Monthly Master",
-    description: "Play 30 days in a row",
-    icon: "CalendarHeart",
-  },
-  {
-    id: "perfect_sweep",
-    title: "Clean Sweep",
-    description: "Clear the entire grid in Word Sweep",
-    icon: "Grid3X3",
-  },
-  {
-    id: "duel_first_win",
-    title: "First Blood",
-    description: "Win your first duel",
-    icon: "Swords",
-  },
-  {
-    id: "duel_ten_wins",
-    title: "Duel Veteran",
-    description: "Win 10 duels",
-    icon: "Shield",
-  },
-  {
-    id: "duel_fifty_wins",
-    title: "Duel Master",
-    description: "Win 50 duels",
-    icon: "Crown",
-  },
-  {
-    id: "duel_five_streak",
-    title: "On Fire",
-    description: "Win 5 duels in a row",
-    icon: "Flame",
-  },
-  {
-    id: "duel_race_win",
-    title: "Speed Demon",
-    description: "Win your first race duel",
-    icon: "Zap",
-  },
-  {
-    id: "duel_ten_race_wins",
-    title: "Racer",
-    description: "Win 10 race duels",
-    icon: "Timer",
-  },
-];
-
 function checkAchievements(stats: AllStats, streak: StreakData): Achievement[] {
   const achievements = loadAchievements();
   const newlyUnlocked: Achievement[] = [];
@@ -458,23 +548,25 @@ function checkAchievements(stats: AllStats, streak: StreakData): Achievement[] {
 
   const conditions: Record<string, boolean> = {
     first_game: stats.totalGamesPlayed >= 1,
-    five_games: stats.totalGamesPlayed >= 5,
-    twenty_five_games: stats.totalGamesPlayed >= 25,
-    hundred_games: stats.totalGamesPlayed >= 100,
+    games_bronze: stats.totalGamesPlayed >= 25,
+    games_silver: stats.totalGamesPlayed >= 100,
+    games_gold: stats.totalGamesPlayed >= 500,
     first_win: stats.totalGamesWon >= 1,
-    ten_wins: stats.totalGamesWon >= 10,
-    fifty_wins: stats.totalGamesWon >= 50,
-    try_five_games: uniqueGames >= 5,
-    try_all_games: uniqueGames >= 17,
-    score_100: maxScore >= 100,
-    score_500: maxScore >= 500,
-    score_1000: maxScore >= 1000,
-    words_50: totalWords >= 50,
-    words_250: totalWords >= 250,
-    words_1000: totalWords >= 1000,
-    streak_3: streak.currentStreak >= 3 || streak.longestStreak >= 3,
-    streak_7: streak.currentStreak >= 7 || streak.longestStreak >= 7,
-    streak_30: streak.currentStreak >= 30 || streak.longestStreak >= 30,
+    wins_bronze: stats.totalGamesWon >= 10,
+    wins_silver: stats.totalGamesWon >= 50,
+    wins_gold: stats.totalGamesWon >= 200,
+    explorer_bronze: uniqueGames >= 5,
+    explorer_silver: uniqueGames >= 15,
+    explorer_gold: uniqueGames >= 25,
+    scorer_bronze: maxScore >= 100,
+    scorer_silver: maxScore >= 500,
+    scorer_gold: maxScore >= 1000,
+    wordsmith_bronze: totalWords >= 50,
+    wordsmith_silver: totalWords >= 250,
+    wordsmith_gold: totalWords >= 1000,
+    streak_bronze: streak.currentStreak >= 3 || streak.longestStreak >= 3,
+    streak_silver: streak.currentStreak >= 7 || streak.longestStreak >= 7,
+    streak_gold: streak.currentStreak >= 30 || streak.longestStreak >= 30,
     perfect_sweep: lastRecord?.slug === "word-sweep" && lastRecord?.won === true,
   };
 

@@ -1,0 +1,1 @@
+- [Tiered Achievements](tiered-achievements.md) — 30 achievements (9 groups × 3 tiers + 3 standalone); old localStorage IDs auto-migrate; max 785pts.

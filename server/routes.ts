@@ -859,7 +859,7 @@ export async function registerRoutes(
         userId: req.user!.id,
         type: "achievement_unlocked",
         title: "Achievement unlocked!",
-        body: `You earned the "${achievementId.replace(/_/g, " ")}" achievement`,
+        body: `You earned the "${achievementId.split("_").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}" achievement`,
         linkUrl: "/badges",
       });
       res.json(achievement);

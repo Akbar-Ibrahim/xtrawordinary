@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRoute, Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,15 @@ import { Pencil, Trophy, Award, Gamepad2, Calendar, Target, UserPlus, UserCheck,
 import { motion } from "framer-motion";
 import type { UserGameStats, UserAchievement, Game, QuizSession } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
+import {
+  ACHIEVEMENT_DEFINITIONS,
+  ACHIEVEMENT_GROUPS,
+  getTotalAchievementPoints,
+  getMaxAchievementPoints,
+  loadStats as loadLocalStats,
+  loadStreak as loadLocalStreak,
+  loadDuelStats as loadLocalDuelStats,
+} from "@/lib/game-stats";
 
 type QuizSessionWithCount = QuizSession & { playerCount: number };
 
@@ -256,6 +265,25 @@ export default function Profile() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
 
+  const unlockedIds = useMemo(
+    () => new Set((profile?.achievements ?? []).map((a) => a.achievementId)),
+    [profile?.achievements]
+  );
+
+  const achievementPoints = useMemo(() => {
+    const unlocked = ACHIEVEMENT_DEFINITIONS.filter((a) => unlockedIds.has(a.id)).map((a) => ({
+      ...a,
+      unlockedAt: 1,
+    }));
+    return getTotalAchievementPoints(unlocked);
+  }, [unlockedIds]);
+
+  const maxPoints = getMaxAchievementPoints();
+
+  const localStats = useMemo(() => (isOwnProfile ? loadLocalStats() : null), [isOwnProfile]);
+  const localStreak = useMemo(() => (isOwnProfile ? loadLocalStreak() : null), [isOwnProfile]);
+  const localDuelStats = useMemo(() => (isOwnProfile ? loadLocalDuelStats() : null), [isOwnProfile]);
+
   function copyQuizLink(shareCode: string) {
     navigator.clipboard.writeText(`${window.location.origin}/quiz/${shareCode}`);
     setCopiedCode(shareCode);
@@ -422,7 +450,7 @@ export default function Profile() {
           {[
             { label: "Games Played", value: totalGames, icon: Gamepad2 },
             { label: "Win Rate", value: `${winRate}%`, icon: Target },
-            { label: "Achievements", value: profile.achievements.length, icon: Award },
+            { label: "Achiev. Points", value: achievementPoints, icon: Award },
             { label: "Rankings", value: profile.leaderboardRankings.length, icon: Trophy },
           ].map((stat) => (
             <Card key={stat.label}>
@@ -596,8 +624,8 @@ export default function Profile() {
                   </TabsTrigger>
                   <TabsTrigger value="achievements" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-achievements">
                     <Award className="h-4 w-4" /> <span className="hidden sm:inline">Achievements</span>
-                    {profile.achievements.length > 0 && (
-                      <Badge variant="secondary" className="ml-1 text-xs">{profile.achievements.length}</Badge>
+                    {achievementPoints > 0 && (
+                      <Badge variant="secondary" className="ml-1 text-xs">{achievementPoints}pts</Badge>
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="duels" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-duels">
@@ -842,22 +870,157 @@ export default function Profile() {
                 )}
               </TabsContent>
 
-              <TabsContent value="achievements" className="mt-4">
-                {profile.achievements.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <Award className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium mb-1">No achievements yet</p>
-                    <p className="text-sm">Play games and complete milestones to earn achievements.</p>
+              <TabsContent value="achievements" className="mt-4 space-y-5">
+                {/* Points summary bar */}
+                <div className="rounded-lg border p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="min-w-[80px]">
+                      <p className="text-xs text-muted-foreground mb-0.5">Points</p>
+                      <p className="text-2xl font-bold leading-none" data-testid="text-achievement-points">{achievementPoints}</p>
+                      <p className="text-xs text-muted-foreground">of {maxPoints}</p>
+                    </div>
+                    <div className="flex-1">
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${Math.min(100, Math.round((achievementPoints / maxPoints) * 100))}%` }}
+                          data-testid="bar-achievement-progress"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {Math.round((achievementPoints / maxPoints) * 100)}% complete
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {profile.achievements.map((a) => (
-                      <Badge key={a.achievementId} variant="secondary" data-testid={`badge-achievement-${a.achievementId}`}>
-                        {a.achievementId.replace(/_/g, " ")}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                </div>
+
+                {/* Milestone achievements (standalone) */}
+                {(() => {
+                  const standalones = ACHIEVEMENT_DEFINITIONS.filter((a) => !a.groupId);
+                  return (
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Milestones</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {standalones.map((a) => {
+                          const unlocked = unlockedIds.has(a.id);
+                          return (
+                            <div
+                              key={a.id}
+                              data-testid={`achievement-milestone-${a.id}`}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-all ${
+                                unlocked
+                                  ? "bg-primary/10 border-primary/30 text-foreground font-medium"
+                                  : "border-muted text-muted-foreground opacity-40"
+                              }`}
+                            >
+                              <span>{unlocked ? "✓" : "○"}</span>
+                              <span>{a.title}</span>
+                              {unlocked && <span className="text-xs text-muted-foreground">+{a.points}pts</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Tiered achievement groups */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categories</h3>
+                  {ACHIEVEMENT_GROUPS.map((group) => {
+                    const defs = ACHIEVEMENT_DEFINITIONS.filter((a) => a.groupId === group.id);
+                    const progress =
+                      isOwnProfile && localStats && localStreak && localDuelStats
+                        ? group.getProgress(localStats, localStreak, localDuelStats)
+                        : null;
+
+                    const nextDef = defs.find((a) => !unlockedIds.has(a.id));
+                    const nextTierDef = nextDef ? group.tiers.find((t) => t.tier === nextDef.tier) : null;
+                    const nextTierIdx = nextTierDef ? group.tiers.indexOf(nextTierDef) : -1;
+                    const prevTierThreshold = nextTierIdx > 0 ? group.tiers[nextTierIdx - 1].threshold : 0;
+                    const pct =
+                      progress !== null && nextTierDef
+                        ? Math.min(
+                            99,
+                            Math.floor(
+                              ((progress - prevTierThreshold) /
+                                (nextTierDef.threshold - prevTierThreshold)) *
+                                100
+                            )
+                          )
+                        : null;
+
+                    const allUnlocked = defs.every((a) => unlockedIds.has(a.id));
+
+                    return (
+                      <div key={group.id} className="rounded-lg border p-3">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <h4 className="text-sm font-medium">{group.label}</h4>
+                          {progress !== null && (
+                            <span className="text-xs text-muted-foreground">{group.formatProgress(progress)}</span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mb-2.5">
+                          {defs.map((def) => {
+                            const unlocked = unlockedIds.has(def.id);
+                            const tierInfo = group.tiers.find((t) => t.tier === def.tier)!;
+                            const tierEmoji = def.tier === "bronze" ? "🥉" : def.tier === "silver" ? "🥈" : "🥇";
+                            const unlockedClass =
+                              def.tier === "bronze"
+                                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700"
+                                : def.tier === "silver"
+                                ? "bg-slate-50 dark:bg-slate-800/40 border-slate-300 dark:border-slate-600"
+                                : "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-700";
+                            return (
+                              <div
+                                key={def.id}
+                                data-testid={`achievement-tier-${def.id}`}
+                                className={`rounded-lg border p-2 text-center transition-all ${
+                                  unlocked ? unlockedClass : "bg-muted/20 border-muted opacity-40"
+                                }`}
+                              >
+                                <div className="text-lg leading-none mb-1">{unlocked ? tierEmoji : "○"}</div>
+                                <div className="text-xs font-medium leading-tight">{def.title}</div>
+                                <div className="text-xs text-muted-foreground">{tierInfo.thresholdLabel}</div>
+                                {unlocked && (
+                                  <div className="text-xs text-muted-foreground/70 mt-0.5">+{def.points}pts</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {pct !== null && nextTierDef && !allUnlocked && (
+                          <div>
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>Next: {nextTierDef.thresholdLabel}</span>
+                              <span>{pct}%</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${pct}%`,
+                                  backgroundColor:
+                                    nextTierDef.tier === "bronze"
+                                      ? "#cd7f32"
+                                      : nextTierDef.tier === "silver"
+                                      ? "#94a3b8"
+                                      : "#f59e0b",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {allUnlocked && (
+                          <p className="text-xs text-center text-primary/70 font-medium">✓ All tiers complete</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </TabsContent>
 
               {isOwnProfile && (
