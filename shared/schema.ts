@@ -426,6 +426,32 @@ export const groupActivityEntrySchema = z.object({
 });
 export type GroupActivityEntry = z.infer<typeof groupActivityEntrySchema>;
 
+// ==================== GROUP SEASONS ====================
+
+export const groupSeasonSchema = z.object({
+  id: z.number(),
+  groupId: z.number(),
+  name: z.string(),
+  startsAt: z.string(),
+  endsAt: z.string(),
+  status: z.enum(["active", "ended"]),
+  winnerId: z.number().nullable(),
+  winnerName: z.string().nullable(),
+  createdAt: z.string(),
+});
+export type GroupSeason = z.infer<typeof groupSeasonSchema>;
+export const insertGroupSeasonSchema = groupSeasonSchema.omit({ id: true, createdAt: true, winnerId: true, winnerName: true });
+export type InsertGroupSeason = z.infer<typeof insertGroupSeasonSchema>;
+
+export const groupSeasonLeaderboardEntrySchema = z.object({
+  userId: z.number(),
+  name: z.string(),
+  avatarUrl: z.string().nullable(),
+  totalScore: z.number(),
+  roundsPlayed: z.number(),
+});
+export type GroupSeasonLeaderboardEntry = z.infer<typeof groupSeasonLeaderboardEntrySchema>;
+
 // ==================== COMMENTS ====================
 
 export const commentTargetTypeSchema = z.enum(["game", "group_round"]);

@@ -2003,6 +2003,79 @@ export async function registerRoutes(
     }
   });
 
+  // ── Group Seasons ────────────────────────────────────────────────────────
+
+  app.get("/api/groups/:id/seasons", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const seasons = await storage.getGroupSeasons(groupId);
+      res.json(seasons);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch seasons" });
+    }
+  });
+
+  app.post("/api/groups/:id/seasons", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || membership.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      const { name, startsAt, endsAt } = req.body;
+      if (!name || !startsAt || !endsAt) return res.status(400).json({ error: "name, startsAt, endsAt required" });
+      // Only one active season per group at a time
+      const existing = await storage.getGroupSeasons(groupId);
+      if (existing.some(s => s.status === "active")) return res.status(409).json({ error: "A season is already active" });
+      const season = await storage.createGroupSeason({ groupId, name, startsAt, endsAt, status: "active" });
+      res.status(201).json(season);
+    } catch {
+      res.status(500).json({ error: "Failed to create season" });
+    }
+  });
+
+  app.get("/api/groups/:id/seasons/:seasonId/leaderboard", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const seasonId = parseInt(req.params.seasonId);
+      if (isNaN(groupId) || isNaN(seasonId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership) return res.status(403).json({ error: "Not a member" });
+      const season = await storage.getGroupSeason(seasonId);
+      if (!season || season.groupId !== groupId) return res.status(404).json({ error: "Season not found" });
+      const leaderboard = await storage.getGroupSeasonLeaderboard(groupId, season.startsAt, season.endsAt);
+      res.json(leaderboard);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch season leaderboard" });
+    }
+  });
+
+  app.patch("/api/groups/:id/seasons/:seasonId/end", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const seasonId = parseInt(req.params.seasonId);
+      if (isNaN(groupId) || isNaN(seasonId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || membership.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      const season = await storage.getGroupSeason(seasonId);
+      if (!season || season.groupId !== groupId) return res.status(404).json({ error: "Season not found" });
+      if (season.status === "ended") return res.status(400).json({ error: "Season already ended" });
+      // Determine winner from leaderboard
+      const lb = await storage.getGroupSeasonLeaderboard(groupId, season.startsAt, season.endsAt);
+      const winner = lb[0] || null;
+      const updated = await storage.endGroupSeason(seasonId, winner?.userId ?? null, winner?.name ?? null);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to end season" });
+    }
+  });
+
   app.get("/api/groups/:id/rounds/:roundId/reactions", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;

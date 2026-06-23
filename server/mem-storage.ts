@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
@@ -660,6 +660,8 @@ export class MemStorage implements IStorage {
   private gsrIdCounter = 1;
   private groupActivityStore: GroupActivityEntry[] = [];
   private gaIdCounter = 1;
+  private groupSeasonsStore: GroupSeason[] = [];
+  private groupSeasonIdCounter = 1;
 
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
@@ -2200,6 +2202,48 @@ export class MemStorage implements IStorage {
     const matchWins = groupMatches.filter(m => m.winnerGroupId === groupId).length;
     const matchLosses = groupMatches.filter(m => m.winnerGroupId !== null && m.winnerGroupId !== groupId).length;
     return { tournamentsEntered, matchWins, matchLosses };
+  }
+
+  async createGroupSeason(data: InsertGroupSeason): Promise<GroupSeason> {
+    const s: GroupSeason = { ...data, id: this.groupSeasonIdCounter++, winnerId: null, winnerName: null, createdAt: new Date().toISOString() };
+    this.groupSeasonsStore.push(s);
+    return s;
+  }
+
+  async getGroupSeasons(groupId: number): Promise<GroupSeason[]> {
+    return this.groupSeasonsStore.filter(s => s.groupId === groupId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async getGroupSeason(id: number): Promise<GroupSeason | undefined> {
+    return this.groupSeasonsStore.find(s => s.id === id);
+  }
+
+  async endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<GroupSeason | undefined> {
+    const s = this.groupSeasonsStore.find(s => s.id === id);
+    if (!s) return undefined;
+    s.status = "ended";
+    s.winnerId = winnerId;
+    s.winnerName = winnerName;
+    return s;
+  }
+
+  async getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+    const roundIds = this.groupRoundsStore.filter(r => r.groupId === groupId).map(r => r.id);
+    const scores = this.groupRoundScoresStore.filter(s =>
+      roundIds.includes(s.roundId) && s.completedAt >= startsAt && s.completedAt <= endsAt
+    );
+    const tally = new Map<number, { totalScore: number; roundsPlayed: number }>();
+    for (const s of scores) {
+      const e = tally.get(s.userId);
+      if (e) { e.totalScore += s.score; e.roundsPlayed++; }
+      else tally.set(s.userId, { totalScore: s.score, roundsPlayed: 1 });
+    }
+    return Array.from(tally.entries())
+      .sort((a, b) => b[1].totalScore - a[1].totalScore)
+      .map(([userId, data]) => {
+        const u = this.users.get(userId);
+        return { userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
+      });
   }
 
   async expireFriendChallenges(): Promise<number> {

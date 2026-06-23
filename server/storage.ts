@@ -308,6 +308,13 @@ export interface IStorage {
   listAllGuildWarsChampions(): Promise<GuildWarsChampion[]>;
   getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
   getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
+
+  // Group Seasons
+  createGroupSeason(data: import("@shared/schema").InsertGroupSeason): Promise<import("@shared/schema").GroupSeason>;
+  getGroupSeasons(groupId: number): Promise<import("@shared/schema").GroupSeason[]>;
+  getGroupSeason(id: number): Promise<import("@shared/schema").GroupSeason | undefined>;
+  endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<import("@shared/schema").GroupSeason | undefined>;
+  getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>>;
 }
 
 export { MemStorage } from "./mem-storage";
