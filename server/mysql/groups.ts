@@ -82,7 +82,7 @@ export async function createGroup(db: any, group: InsertGroup): Promise<Group> {
     inviteCode: group.inviteCode,
     creatorId: group.creatorId,
     isPublic: group.isPublic ?? true,
-    isFeatured: false,
+    isFeatured: group.isFeatured ?? false,
     tags: group.tags ?? null,
     pinnedAnnouncement: group.pinnedAnnouncement ?? null,
   });
@@ -156,8 +156,7 @@ export async function getPublicGroups(db: any): Promise<Group[]> {
     .leftJoin(schema.groupMembers, eq(schema.groups.id, schema.groupMembers.groupId))
     .where(eq(schema.groups.isPublic, true))
     .groupBy(schema.groups.id)
-    .orderBy(desc(sql`COUNT(${schema.groupMembers.id})`))
-    .limit(50);
+    .orderBy(desc(schema.groups.createdAt));
   return rows.map((r: any) => toGroup({ ...r.group, memberCount: r.memberCount }));
 }
 
@@ -232,12 +231,12 @@ export async function getGroupRound(db: any, id: number): Promise<GroupRound | u
 }
 
 export async function getGroupRounds(db: any, groupId: number): Promise<GroupRound[]> {
-  const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.groupId, groupId)).orderBy(desc(schema.groupRounds.createdAt)).limit(50);
+  const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.groupId, groupId)).orderBy(desc(schema.groupRounds.createdAt));
   return rows.map((r: any) => toGroupRound(r));
 }
 
 export async function closeGroupRound(db: any, id: number): Promise<GroupRound | undefined> {
-  await db.update(schema.groupRounds).set({ status: "closed", closesAt: new Date() }).where(eq(schema.groupRounds.id, id));
+  await db.update(schema.groupRounds).set({ status: "closed" }).where(eq(schema.groupRounds.id, id));
   return getGroupRound(db, id);
 }
 
@@ -245,13 +244,7 @@ export async function closeGroupRound(db: any, id: number): Promise<GroupRound |
 
 export async function submitGroupRoundScore(db: any, roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
   const existing = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
-  if (existing[0]) {
-    if (score > existing[0].score) {
-      await db.update(schema.groupRoundScores).set({ score, durationMs: durationMs ?? null, completedAt: new Date() }).where(eq(schema.groupRoundScores.id, existing[0].id));
-      return toGroupRoundScore({ ...existing[0], score, durationMs: durationMs ?? null, completedAt: new Date() });
-    }
-    return toGroupRoundScore(existing[0]);
-  }
+  if (existing[0]) return toGroupRoundScore(existing[0]);
   const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score, durationMs: durationMs ?? null });
   const rows = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.id, result[0].insertId)).limit(1);
   return toGroupRoundScore(rows[0]);
@@ -263,7 +256,7 @@ export async function getGroupRoundScores(db: any, roundId: number): Promise<Arr
     .from(schema.groupRoundScores)
     .innerJoin(schema.users, eq(schema.groupRoundScores.userId, schema.users.id))
     .where(eq(schema.groupRoundScores.roundId, roundId))
-    .orderBy(desc(schema.groupRoundScores.score));
+    .orderBy(desc(schema.groupRoundScores.score), sql`COALESCE(${schema.groupRoundScores.durationMs}, 2147483647) ASC`);
   return rows.map((r: any) => ({ ...toGroupRoundScore(r.score), user: { id: r.user.id, name: r.user.name, avatarUrl: r.user.avatarUrl ?? null } }));
 }
 
@@ -294,8 +287,9 @@ export async function getGroupLeaderboard(db: any, groupId: number): Promise<Arr
 // ── Group Reactions ────────────────────────────────────────────────────────
 
 export async function addGroupReaction(db: any, roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> {
-  await db.insert(schema.groupScoreReactions).values({ roundId, scoreId, userId, emoji }).onDuplicateKeyUpdate({ set: { emoji } });
-  const rows = await db.select().from(schema.groupScoreReactions).where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId), eq(schema.groupScoreReactions.emoji, emoji))).limit(1);
+  await db.delete(schema.groupScoreReactions).where(and(eq(schema.groupScoreReactions.scoreId, scoreId), eq(schema.groupScoreReactions.userId, userId)));
+  const result = await db.insert(schema.groupScoreReactions).values({ roundId, scoreId, userId, emoji });
+  const rows = await db.select().from(schema.groupScoreReactions).where(eq(schema.groupScoreReactions.id, result[0].insertId)).limit(1);
   return toGroupScoreReaction(rows[0]);
 }
 
@@ -314,7 +308,7 @@ export async function logGroupActivity(db: any, groupId: number, userId: number 
   await db.insert(schema.groupActivity).values({ groupId, userId: userId ?? null, type, metadata: metadata ?? {} });
 }
 
-export async function getGroupActivity(db: any, groupId: number, limit = 20): Promise<GroupActivityEntry[]> {
+export async function getGroupActivity(db: any, groupId: number, limit = 30): Promise<GroupActivityEntry[]> {
   const rows = await db
     .select({ activity: schema.groupActivity, user: { id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl } })
     .from(schema.groupActivity)
