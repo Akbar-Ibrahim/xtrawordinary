@@ -120,11 +120,9 @@ export async function getDuelChallengesForUser(db: any, userId: number): Promise
 }
 
 export async function getOpenDuelChallenges(db: any, excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> {
-  const now = new Date();
   const baseWhere = and(
     sql`${schema.duelChallenges.challengeeId} IS NULL`,
     eq(schema.duelChallenges.status, "pending"),
-    sql`${schema.duelChallenges.expiresAt} > ${now}`,
     sql`${schema.duelChallenges.challengerId} != ${excludeUserId}`,
   );
   const whereClause = gameSlug ? and(baseWhere, eq(schema.duelChallenges.gameSlug, gameSlug)) : baseWhere;
@@ -142,9 +140,14 @@ export async function getOpenDuelChallenges(db: any, excludeUserId: number, game
 
 export async function expireOpenChallenges(db: any): Promise<number> {
   const now = new Date();
+  const fallbackCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const baseCondition = and(
+    sql`${schema.duelChallenges.challengeeId} IS NULL`,
+    eq(schema.duelChallenges.status, "pending"),
+  );
   const result = await db.update(schema.duelChallenges)
     .set({ status: "expired" })
-    .where(and(sql`${schema.duelChallenges.challengeeId} IS NULL`, eq(schema.duelChallenges.status, "pending"), lt(schema.duelChallenges.expiresAt, now)));
+    .where(and(baseCondition, sql`(${schema.duelChallenges.expiresAt} IS NOT NULL AND ${schema.duelChallenges.expiresAt} < ${now}) OR (${schema.duelChallenges.expiresAt} IS NULL AND ${schema.duelChallenges.createdAt} < ${fallbackCutoff})`));
   return result[0]?.affectedRows ?? 0;
 }
 
@@ -192,9 +195,8 @@ export async function updateDuelSession(db: any, id: number, updates: Partial<Pi
 
 export async function getDuelSessionsForUser(db: any, userId: number): Promise<DuelSession[]> {
   const rows = await db.select().from(schema.duelSessions)
-    .where(and(or(eq(schema.duelSessions.player1Id, userId), eq(schema.duelSessions.player2Id, userId)), sql`${schema.duelSessions.endedAt} IS NOT NULL`))
-    .orderBy(desc(schema.duelSessions.startedAt))
-    .limit(20);
+    .where(or(eq(schema.duelSessions.player1Id, userId), eq(schema.duelSessions.player2Id, userId)))
+    .orderBy(desc(schema.duelSessions.startedAt));
   return rows.map((r: any) => mapDuelSession(r));
 }
 
@@ -214,19 +216,27 @@ export async function upsertDuelRating(db: any, userId: number, updates: Partial
     .onDuplicateKeyUpdate({
       set: {
         elo: updates.elo !== undefined ? updates.elo : schema.duelRatings.elo,
-        wins: updates.wins !== undefined ? sql`wins + ${updates.wins}` : schema.duelRatings.wins,
-        losses: updates.losses !== undefined ? sql`losses + ${updates.losses}` : schema.duelRatings.losses,
-        draws: updates.draws !== undefined ? sql`draws + ${updates.draws}` : schema.duelRatings.draws,
+        wins: updates.wins !== undefined ? updates.wins : schema.duelRatings.wins,
+        losses: updates.losses !== undefined ? updates.losses : schema.duelRatings.losses,
+        draws: updates.draws !== undefined ? updates.draws : schema.duelRatings.draws,
         updatedAt: new Date(),
       },
     });
   return (await getDuelRating(db, userId))!;
 }
 
-export async function getDuelLeaderboard(db: any, limit = 50, _format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
-  const rows = await db.select().from(schema.duelRatings).orderBy(desc(schema.duelRatings.elo)).limit(limit);
+export async function getDuelLeaderboard(db: any, limit = 50, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+  let ratingRows = await db.select().from(schema.duelRatings).orderBy(desc(schema.duelRatings.elo));
+  if (format) {
+    const sessionRows = await db.select({ player1Id: schema.duelSessions.player1Id, player2Id: schema.duelSessions.player2Id })
+      .from(schema.duelSessions).where(eq(schema.duelSessions.format, format));
+    const userIdsInFormat = new Set<number>();
+    sessionRows.forEach((s: any) => { userIdsInFormat.add(s.player1Id); userIdsInFormat.add(s.player2Id); });
+    ratingRows = ratingRows.filter((r: any) => userIdsInFormat.has(r.userId));
+  }
+  const rows = ratingRows.slice(0, limit);
   if (rows.length === 0) return [];
-  const userIds = rows.map((r: any) => r.userId);
+  const userIds = rows.map((r: any) => r.userId as number);
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   return rows.map((r: any, i: number) => {
@@ -234,13 +244,13 @@ export async function getDuelLeaderboard(db: any, limit = 50, _format?: "turn" |
     return {
       rank: i + 1,
       userId: r.userId,
-      displayName: (userMap.get(r.userId) as any)?.name ?? "Unknown",
+      displayName: (userMap.get(r.userId) as any)?.name ?? `User #${r.userId}`,
       avatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null,
       elo: r.elo,
       wins: r.wins,
       losses: r.losses,
       draws: r.draws,
-      winRate: total > 0 ? Math.round((r.wins / total) * 100) / 100 : 0,
+      winRate: total > 0 ? Math.round((r.wins / total) * 100) : 0,
     };
   });
 }

@@ -104,7 +104,7 @@ export class MySQLStorage implements IStorage {
     if (this.wordSet.size > 0) {
       const l = letter.toUpperCase();
       let count = 0;
-      this.wordSet.forEach((w) => { if (w[position] === l) count++; });
+      this.wordSet.forEach((w) => { if (w[position - 1] === l) count++; });
       return count;
     }
     return this.gameData.countLetterPositionWords(letter, position);
@@ -142,11 +142,13 @@ export class MySQLStorage implements IStorage {
 
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
     await this.getDb();
-    return Words.validateShellWord(this.wordSet, word);
+    if (this.wordSet.size > 0) return Words.validateShellWord(this.wordSet, word);
+    return this.gameData.validateShellWord(word);
   }
   async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
     await this.getDb();
-    return Words.validateDeepShellWord(this.wordSet, word);
+    if (this.wordSet.size > 0) return Words.validateDeepShellWord(this.wordSet, word);
+    return this.gameData.validateDeepShellWord(word);
   }
   async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return Words.getShellWordPuzzle(await this.getDb(), this.gameData, seed); }
   async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return Words.getCrackPuzzle(await this.getDb(), this.gameData, seed); }
