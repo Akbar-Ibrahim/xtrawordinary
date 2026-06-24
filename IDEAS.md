@@ -112,8 +112,15 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Group profile picture / avatar
 - Weekly group digest email: recap of the week's rounds and top scores
 
+### Post-Game Vocabulary Spotlight
+After a game ends, show a small "word spotlight" card with definitions (and optionally etymology or fun facts) for 2–3 interesting words the player encountered during that game. The goal is a moment of delight — "I didn't know QUAFF was a real word." Dictionary data could come from a free public API (e.g. Free Dictionary API) or a small curated dataset stored on the server.
+
+**Scope:** Small. Mostly frontend — a new game-over card component, a server utility to pull definitions, and wiring it into whichever game-end events fire. Low risk, high delight.
+
+---
+
 ### Daily Challenge
-- Daily challenge streak separate from the general play streak
+- Daily challenge streak separate from the general play streak *(implemented June 2026)*
 - Optional difficulty toggle for the daily (same game, different seed tier)
 - Historical archive: play any previous day's challenge
 - Teacher-assigned daily: override the daily game for a classroom group
@@ -192,6 +199,60 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 ---
 
 ## 4. Bigger Concepts Not Yet Built
+
+### Word Explorer (Pressure-Free Discovery Mode)
+**Status:** Thinking stage — shelved for now, needs dedicated build effort
+
+**Core idea:** A pressure-free mode where players explore the dictionary through the lens of each game's mechanic — no timer, no score, just curiosity. Players query words by constraint and browse the results. This is distinct from playing a game; it's more like using a smart dictionary filtered by game logic.
+
+**Name options under consideration:**
+- **Explore** — adventurous, open-ended; works as both a nav label and a tab ("Explore Words")
+- **WordLab** — tinkering/experimental feel; implies "try something and see"
+- **Discover** — curious and light; pairs well with the xtraWordinary brand voice
+- **Lexicon** — vocabulary-forward, slightly prestigious
+- **Deep Dive** — action-oriented; implies going beyond the game surface
+- **Sandbox** — no-pressure feel, but risks confusion with the existing "Custom Play" feature
+- **Browse** — dead simple, zero ambiguity
+- **WordScope** — searching/scoping through the dictionary
+- **Vocab Vault** — browsing the vocabulary collection
+- **WordMine** — mining for words
+
+**Applicable games and their explorer mechanics:**
+
+| Game | What "Explore" means |
+|---|---|
+| **Letter Hunt** | Show all words containing specific letters — ordered (E then B then R) or unordered (any arrangement) |
+| **Letter Dodge** | Show all words that avoid a chosen set of letters |
+| **Position Master** | Show all words where a specific letter appears at a specific position (e.g. R in position 3 of a 6-letter word) |
+| **Length Challenge** | Browse all valid words of a chosen length (e.g. all 9-letter words) |
+| **Letter Frequency** | Show words where a letter appears N or more times (e.g. E appears 3+ times) |
+| **Word Maker** | Show all words buildable from a custom set of tiles — reuses existing endpoint |
+| **Shell Words** | Browse all shell words, or find every shell that wraps a given inner word (e.g. what shells ORAL?) |
+| **Deep Shell Words** | Same as above but for deeper nesting levels |
+| **Word Roots** | Browse all words derived from a chosen root (e.g. all words from -RUPT-) |
+| **Word Split** | Show valid compound splits for words matching a prefix or suffix pattern |
+| **Ladder Rush / Double Swap** | Show all valid one-letter-change (or two-letter-swap) neighbors of a given word |
+
+**Entry points:**
+- A dedicated `/explore` hub page in the nav listing all supported games
+- A "Explore" tab on each eligible game's detail page (alongside Play, Stats, Comments)
+
+**Technical notes:**
+- Most game engines already have server-side word validation — the explorer reuses that logic in query/browse mode rather than timed-play mode
+- Word Maker already has a working endpoint (`/api/games/word-maker/words`) that can be adapted
+- Shell Words and Deep Shell Words have validate endpoints that can be reversed into browse endpoints
+- New filter endpoints needed for: Letter Hunt, Letter Dodge, Position Master, Length Challenge, Letter Frequency, Word Split, Ladder Rush neighbors
+- Pagination is important — results can easily be hundreds of words
+- Results should be capped (e.g. show first 50 with a "load more") to keep performance acceptable
+
+**Recommended build order (when ready):**
+1. Word Maker (easiest — server logic already exists)
+2. Shell Words / Deep Shell Words (validation logic exists, needs browse direction)
+3. Word Roots (puzzle data exists, needs search/browse endpoint)
+4. Letter Hunt / Letter Dodge / Position Master / Letter Frequency (new filter endpoints)
+5. Length Challenge, Word Split, Ladder Rush (additive once the pattern is established)
+
+---
 
 ### League Seasons (within Groups)
 **Status:** Thinking stage, not yet planned or built
