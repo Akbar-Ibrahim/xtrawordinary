@@ -1,6 +1,5 @@
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
-import * as schema from "./db-schema";
 import type {
   Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord,
   WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig,
@@ -9,15 +8,16 @@ import type {
   EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats,
   LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship,
   InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember,
-  GroupRound, InsertGroupRound, GroupRoundScore, InsertGroupRoundScore, Comment, InsertComment,
-  CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession,
-  QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelSession, InsertDuelSession,
+  GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupRoundAttempt,
+  DailyChallengeAttempt, GroupActivityEntry, Comment, InsertComment, CommentReport,
+  CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore,
+  DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession,
   DuelRating, Notification, InsertNotification, NotificationType, DailyLeaderboardEntry,
   HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge,
   WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch,
-  InsertWordWarsMatch, WordWarsMatchGame, InsertWordWarsMatchGame, WordWarsChampion,
-  GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch,
-  InsertGuildWarsMatch, GuildWarsMatchGame, InsertGuildWarsMatchGame, GuildWarsChampion,
+  WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament,
+  GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion,
+  InsertGroupSeason, GroupSeason,
 } from "@shared/schema";
 
 import * as Games from "./mysql/games";
@@ -52,9 +52,13 @@ export class MySQLStorage implements IStorage {
     }
     this.dbPromise = import("./db").then(async (m) => {
       const db = m.db;
-      const rows = await db.select({ word: schema.words.word }).from(schema.words);
-      for (const row of rows) this.wordSet.add(row.word.toUpperCase());
-      console.log(`[MySQLStorage] Loaded ${this.wordSet.size} words into Set from MySQL`);
+      try {
+        const rows = await db.select({ word: (await import("./db-schema")).words.word }).from((await import("./db-schema")).words);
+        for (const row of rows) this.wordSet.add(row.word.toUpperCase());
+        console.log(`[MySQLStorage] Loaded ${this.wordSet.size} words into Set from MySQL`);
+      } catch (err) {
+        console.warn("[MySQLStorage] Could not preload words:", err);
+      }
       return db;
     });
   }
@@ -63,13 +67,13 @@ export class MySQLStorage implements IStorage {
     return this.dbPromise;
   }
 
-  // ── Games ──────────────────────────────────────────────────────────────────
+  // ── Games ───────────────────────────────────────────────────────────────────
   async getGames(): Promise<Game[]> { return Games.getGames(await this.getDb()); }
   async getAllGames(): Promise<Game[]> { return Games.getAllGames(await this.getDb()); }
   async setGameActive(slug: string, isActive: boolean): Promise<void> { return Games.setGameActive(await this.getDb(), slug, isActive); }
   async getGameBySlug(slug: string): Promise<Game | undefined> { return Games.getGameBySlug(await this.getDb(), slug); }
 
-  // ── Words / Game-data (in-memory fallbacks) ────────────────────────────────
+  // ── Words / Game-data (delegates to MemStorage) ────────────────────────────
   async getWordLadderPuzzles(): Promise<WordLadderPuzzle[]> { return this.gameData.getWordLadderPuzzles(); }
   async getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]> { return this.gameData.getLadderRushPuzzles(wordLength); }
   async getAnagramWordSets(): Promise<AnagramWordSet[]> { return this.gameData.getAnagramWordSets(); }
@@ -86,23 +90,71 @@ export class MySQLStorage implements IStorage {
   async getWordChainConfig(): Promise<WordChainConfig> { return this.gameData.getWordChainConfig(); }
   async getVowelConsonantConfig(): Promise<VowelConsonantConfig> { return this.gameData.getVowelConsonantConfig(); }
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
-  async getWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.getWordSweepGrid(seed); }
-  async getWordUnpackPuzzles(): Promise<WordUnpackPuzzle[]> { return this.gameData.getWordUnpackPuzzles(); }
-  async getWordBloomPuzzles(): Promise<any[]> { return this.gameData.getWordBloomPuzzles(); }
-  async getWordStretchPuzzles(): Promise<any[]> { return this.gameData.getWordStretchPuzzles(); }
+
+  async getWordDictionary(): Promise<string[]> {
+    if (this.wordSet.size > 0) return Array.from(this.wordSet);
+    return this.gameData.getWordDictionary();
+  }
+  async validateWord(word: string): Promise<boolean> {
+    await this.getDb(); // ensure wordSet loaded
+    if (this.wordSet.size > 0) return this.wordSet.has(word.toUpperCase());
+    return this.gameData.validateWord(word);
+  }
+  async countLetterPositionWords(letter: string, position: number): Promise<number> {
+    if (this.wordSet.size > 0) {
+      const l = letter.toUpperCase();
+      let count = 0;
+      this.wordSet.forEach((w) => { if (w[position] === l) count++; });
+      return count;
+    }
+    return this.gameData.countLetterPositionWords(letter, position);
+  }
+  async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
+    if (this.wordSet.size > 0) {
+      const sw = startsWith?.toUpperCase();
+      const ew = endsWith?.toUpperCase();
+      const cw = contains?.toUpperCase();
+      let count = 0;
+      this.wordSet.forEach((w) => {
+        if (w.length !== length) return;
+        if (sw && !w.startsWith(sw)) return;
+        if (ew && !w.endsWith(ew)) return;
+        if (cw && !w.includes(cw)) return;
+        count++;
+      });
+      return count;
+    }
+    return this.gameData.countWordLengthWords(length, startsWith, endsWith, contains);
+  }
+  async generateLengthConstraint(level: number): Promise<LengthConstraint> { return this.gameData.generateLengthConstraint(level); }
+  async generatePositionConstraint(): Promise<PositionConstraint> { return this.gameData.generatePositionConstraint(); }
+  async generateContainsConstraint(): Promise<ContainsConstraint> { return this.gameData.generateContainsConstraint(); }
+  async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> { return this.gameData.generateWordSweepGrid(seed); }
+  async generateWordUnpackPuzzle(seed?: number): Promise<WordUnpackPuzzle> { return this.gameData.generateWordUnpackPuzzle(seed); }
+  async getWordStretchPuzzle(seed: number): Promise<{ word: string; totalSolutions: number }> { return this.gameData.getWordStretchPuzzle(seed); }
+  async validateWordStretch(stretched: string, seedWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordStretch(stretched, seedWord); }
+  async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }
+  async getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }> { return this.gameData.getWordBloomPuzzle(seed); }
+  async validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordBloom(currentWord, nextWord); }
+
   async getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null> { return Words.getWordChainStartWord(await this.getDb(), this.gameData, variation, level, seed); }
   async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return Words.getWordChainComputerWord(await this.getDb(), this.gameData, playerWord, variation, level, usedWords); }
-  validateShellWord(word: string): { valid: boolean; innerWord: string | null } { return Words.validateShellWord(this.wordSet, word); }
-  validateDeepShellWord(word: string): { valid: boolean; innerWord: string | null } { return Words.validateDeepShellWord(this.wordSet, word); }
+
+  async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
+    await this.getDb();
+    return Words.validateShellWord(this.wordSet, word);
+  }
+  async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
+    await this.getDb();
+    return Words.validateDeepShellWord(this.wordSet, word);
+  }
   async getShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return Words.getShellWordPuzzle(await this.getDb(), this.gameData, seed); }
   async getCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return Words.getCrackPuzzle(await this.getDb(), this.gameData, seed); }
   async getDeepShellWordPuzzle(seed: number): Promise<{ middle: string; count: number } | null> { return Words.getDeepShellWordPuzzle(await this.getDb(), this.gameData, seed); }
   async getDeepCrackPuzzle(seed: number): Promise<{ first: string; last: string } | null> { return Words.getDeepCrackPuzzle(await this.getDb(), this.gameData, seed); }
   async getDeepCrackAnswer(seed: number): Promise<string | null> { return Words.getDeepCrackAnswer(await this.getDb(), this.gameData, seed); }
-  async isValidWord(word: string): Promise<boolean> { return this.wordSet.has(word.toUpperCase()); }
-  async searchWords(prefix: string, constraints?: { length?: LengthConstraint; position?: PositionConstraint; contains?: ContainsConstraint }): Promise<string[]> { return this.gameData.searchWords(prefix, constraints); }
 
-  // ── Users ──────────────────────────────────────────────────────────────────
+  // ── Users ───────────────────────────────────────────────────────────────────
   async createUser(user: InsertUser): Promise<User> { return Users.createUser(await this.getDb(), user); }
   async getUserById(id: number): Promise<User | undefined> { return Users.getUserById(await this.getDb(), id); }
   async getUserByEmail(email: string): Promise<User | undefined> { return Users.getUserByEmail(await this.getDb(), email); }
@@ -115,7 +167,7 @@ export class MySQLStorage implements IStorage {
   async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> { return Users.getPasswordResetToken(await this.getDb(), token); }
   async deletePasswordResetToken(token: string): Promise<void> { return Users.deletePasswordResetToken(await this.getDb(), token); }
 
-  // ── Stats & Leaderboard ────────────────────────────────────────────────────
+  // ── Stats & Leaderboard ─────────────────────────────────────────────────────
   async saveUserGameStats(stats: InsertUserGameStats): Promise<UserGameStats> { return Stats.saveUserGameStats(await this.getDb(), stats); }
   async getUserGameStats(userId: number, gameSlug: string): Promise<UserGameStats | undefined> { return Stats.getUserGameStats(await this.getDb(), userId, gameSlug); }
   async getAllUserGameStats(userId: number): Promise<UserGameStats[]> { return Stats.getAllUserGameStats(await this.getDb(), userId); }
@@ -141,14 +193,25 @@ export class MySQLStorage implements IStorage {
   async saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void> { return Stats.saveDailyChallengeScore(await this.getDb(), userId, challengeDate, gameSlug, score); }
   async getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> { return Stats.getDailyLeaderboard(await this.getDb(), challengeDate, gameSlug, requestingUserId); }
 
-  // ── Friends ────────────────────────────────────────────────────────────────
+  // ── Admin ───────────────────────────────────────────────────────────────────
+  async deleteUser(id: number): Promise<void> { return Admin.deleteUser(await this.getDb(), id); }
+  async getAllUsers(): Promise<User[]> { return Admin.getAllUsers(await this.getDb()); }
+  async deleteLeaderboardEntry(id: number): Promise<void> { return Admin.deleteLeaderboardEntry(await this.getDb(), id); }
+  async getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> { return Admin.getAdminStats(await this.getDb()); }
+  async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> { return Admin.getAllLeaderboardEntries(await this.getDb()); }
+  async searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
+  async getSiteSetting(key: string): Promise<string | null> { return Admin.getSiteSetting(await this.getDb(), key); }
+  async setSiteSetting(key: string, value: string | null): Promise<void> { return Admin.setSiteSetting(await this.getDb(), key, value); }
+
+  // ── Friends ─────────────────────────────────────────────────────────────────
   async getFriendshipById(id: number): Promise<Friendship | undefined> { return Friends.getFriendshipById(await this.getDb(), id); }
   async sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship> { return Friends.sendFriendRequest(await this.getDb(), requesterId, addresseeId); }
   async acceptFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.acceptFriendRequest(await this.getDb(), id); }
   async declineFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.declineFriendRequest(await this.getDb(), id); }
   async removeFriend(id: number): Promise<void> { return Friends.removeFriend(await this.getDb(), id); }
-  async getFriends(userId: number): Promise<any[]> { return Friends.getFriends(await this.getDb(), userId); }
-  async getPendingFriendRequests(userId: number): Promise<any[]> { return Friends.getPendingFriendRequests(await this.getDb(), userId); }
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> { return Friends.getFriends(await this.getDb(), userId); }
+  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> { return Friends.getPendingFriendRequests(await this.getDb(), userId); }
   async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> { return Friends.getFriendship(await this.getDb(), userId1, userId2); }
   async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> { return Friends.createFriendChallenge(await this.getDb(), challenge); }
   async getFriendChallenges(userId: number): Promise<FriendChallenge[]> { return Friends.getFriendChallenges(await this.getDb(), userId); }
@@ -161,40 +224,53 @@ export class MySQLStorage implements IStorage {
   async markChallengeReceiverViewed(id: number): Promise<void> { return Friends.markChallengeReceiverViewed(await this.getDb(), id); }
   async expireFriendChallenges(): Promise<number> { return Friends.expireFriendChallenges(await this.getDb()); }
 
-  // ── Groups ─────────────────────────────────────────────────────────────────
+  // ── Groups ──────────────────────────────────────────────────────────────────
   async createGroup(group: InsertGroup): Promise<Group> { return Groups.createGroup(await this.getDb(), group); }
   async getGroup(id: number): Promise<Group | undefined> { return Groups.getGroup(await this.getDb(), id); }
   async getGroupByInviteCode(code: string): Promise<Group | undefined> { return Groups.getGroupByInviteCode(await this.getDb(), code); }
-  async updateGroup(id: number, updates: Partial<InsertGroup>): Promise<Group | undefined> { return Groups.updateGroup(await this.getDb(), id, updates); }
+  async updateGroup(id: number, updates: Partial<Pick<Group, "name" | "description" | "isPublic" | "tags" | "pinnedAnnouncement" | "isFeatured">>): Promise<Group | undefined> { return Groups.updateGroup(await this.getDb(), id, updates); }
   async deleteGroup(id: number): Promise<void> { return Groups.deleteGroup(await this.getDb(), id); }
   async getUserGroups(userId: number): Promise<Group[]> { return Groups.getUserGroups(await this.getDb(), userId); }
-  async getPublicGroups(limit?: number): Promise<Group[]> { return Groups.getPublicGroups(await this.getDb(), limit); }
+  async getPublicGroups(): Promise<Group[]> { return Groups.getPublicGroups(await this.getDb()); }
   async getAllGroups(): Promise<Group[]> { return Groups.getAllGroups(await this.getDb()); }
-  async addGroupMember(groupId: number, userId: number, role: GroupMember["role"]): Promise<GroupMember> { return Groups.addGroupMember(await this.getDb(), groupId, userId, role); }
+  async setGroupFeatured(groupId: number, isFeatured: boolean): Promise<Group | undefined> { return Groups.setGroupFeatured(await this.getDb(), groupId, isFeatured); }
+
+  async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> { return Groups.addGroupMember(await this.getDb(), groupId, userId, role); }
   async removeGroupMember(groupId: number, userId: number): Promise<void> { return Groups.removeGroupMember(await this.getDb(), groupId, userId); }
-  async getGroupMembers(groupId: number): Promise<any[]> { return Groups.getGroupMembers(await this.getDb(), groupId); }
+  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> { return Groups.getGroupMembers(await this.getDb(), groupId); }
   async getGroupMember(groupId: number, userId: number): Promise<GroupMember | undefined> { return Groups.getGroupMember(await this.getDb(), groupId, userId); }
-  async updateGroupMemberRole(groupId: number, userId: number, role: GroupMember["role"]): Promise<GroupMember | undefined> { return Groups.updateGroupMemberRole(await this.getDb(), groupId, userId, role); }
+  async updateGroupMemberRole(groupId: number, userId: number, role: string): Promise<GroupMember | undefined> { return Groups.updateGroupMemberRole(await this.getDb(), groupId, userId, role); }
+
   async createGroupRound(round: InsertGroupRound): Promise<GroupRound> { return Groups.createGroupRound(await this.getDb(), round); }
   async getGroupRound(id: number): Promise<GroupRound | undefined> { return Groups.getGroupRound(await this.getDb(), id); }
-  async getGroupRounds(groupId: number, limit?: number): Promise<GroupRound[]> { return Groups.getGroupRounds(await this.getDb(), groupId, limit); }
+  async getGroupRounds(groupId: number): Promise<GroupRound[]> { return Groups.getGroupRounds(await this.getDb(), groupId); }
   async closeGroupRound(id: number): Promise<GroupRound | undefined> { return Groups.closeGroupRound(await this.getDb(), id); }
-  async submitGroupRoundScore(score: InsertGroupRoundScore): Promise<GroupRoundScore> { return Groups.submitGroupRoundScore(await this.getDb(), score); }
-  async getGroupRoundScores(roundId: number): Promise<any[]> { return Groups.getGroupRoundScores(await this.getDb(), roundId); }
-  async getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined> { return Groups.getUserGroupRoundScore(await this.getDb(), roundId, userId); }
-  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; gamesPlayed: number }>> { return Groups.getGroupLeaderboard(await this.getDb(), groupId); }
-  async setGroupFeatured(id: number, isFeatured: boolean): Promise<void> { return Groups.setGroupFeatured(await this.getDb(), id, isFeatured); }
-  async addGroupReaction(roundId: number, userId: number, emoji: string): Promise<void> { return Groups.addGroupReaction(await this.getDb(), roundId, userId, emoji); }
-  async removeGroupReaction(roundId: number, userId: number, emoji: string): Promise<void> { return Groups.removeGroupReaction(await this.getDb(), roundId, userId, emoji); }
-  async getGroupRoundReactions(roundId: number): Promise<Record<string, number[]>> { return Groups.getGroupRoundReactions(await this.getDb(), roundId); }
-  async logGroupActivity(groupId: number, userId: number, type: string, data?: Record<string, unknown>): Promise<void> { return Groups.logGroupActivity(await this.getDb(), groupId, userId, type, data); }
-  async getGroupActivity(groupId: number, limit?: number): Promise<any[]> { return Groups.getGroupActivity(await this.getDb(), groupId, limit); }
-  async createGroupRoundAttempt(roundId: number, userId: number): Promise<void> { return Groups.createGroupRoundAttempt(await this.getDb(), roundId, userId); }
-  async getGroupRoundAttempt(roundId: number, userId: number): Promise<boolean> { return Groups.getGroupRoundAttempt(await this.getDb(), roundId, userId); }
-  async createDailyChallengeAttempt(userId: number, challengeDate: string, gameSlug: string): Promise<void> { return Groups.createDailyChallengeAttempt(await this.getDb(), userId, challengeDate, gameSlug); }
-  async getDailyChallengeAttempt(userId: number, challengeDate: string, gameSlug: string): Promise<boolean> { return Groups.getDailyChallengeAttempt(await this.getDb(), userId, challengeDate, gameSlug); }
 
-  // ── Comments & Likes ───────────────────────────────────────────────────────
+  async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> { return Groups.submitGroupRoundScore(await this.getDb(), roundId, userId, score, durationMs); }
+  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> { return Groups.getGroupRoundScores(await this.getDb(), roundId); }
+  async getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined> { return Groups.getUserGroupRoundScore(await this.getDb(), roundId, userId); }
+  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupLeaderboard(await this.getDb(), groupId); }
+
+  async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> { return Groups.addGroupReaction(await this.getDb(), roundId, scoreId, userId, emoji); }
+  async removeGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<void> { return Groups.removeGroupReaction(await this.getDb(), roundId, scoreId, userId, emoji); }
+  async getGroupRoundReactions(roundId: number): Promise<GroupScoreReaction[]> { return Groups.getGroupRoundReactions(await this.getDb(), roundId); }
+
+  async logGroupActivity(groupId: number, userId: number | null, type: string, metadata?: Record<string, any>): Promise<void> { return Groups.logGroupActivity(await this.getDb(), groupId, userId, type, metadata); }
+  async getGroupActivity(groupId: number, limit?: number): Promise<GroupActivityEntry[]> { return Groups.getGroupActivity(await this.getDb(), groupId, limit); }
+
+  async createGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt> { return Groups.createGroupRoundAttempt(await this.getDb(), roundId, userId); }
+  async getGroupRoundAttempt(roundId: number, userId: number): Promise<GroupRoundAttempt | undefined> { return Groups.getGroupRoundAttempt(await this.getDb(), roundId, userId); }
+  async createDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt> { return Groups.createDailyChallengeAttempt(await this.getDb(), userId, challengeDate); }
+  async getDailyChallengeAttempt(userId: number, challengeDate: string): Promise<DailyChallengeAttempt | undefined> { return Groups.getDailyChallengeAttempt(await this.getDb(), userId, challengeDate); }
+
+  // ── Group Seasons (stub — no DB table yet) ──────────────────────────────────
+  async createGroupSeason(data: InsertGroupSeason): Promise<GroupSeason> { return Groups.createGroupSeason(await this.getDb(), data); }
+  async getGroupSeasons(groupId: number): Promise<GroupSeason[]> { return Groups.getGroupSeasons(await this.getDb(), groupId); }
+  async getGroupSeason(id: number): Promise<GroupSeason | undefined> { return Groups.getGroupSeason(await this.getDb(), id); }
+  async endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<GroupSeason | undefined> { return Groups.endGroupSeason(await this.getDb(), id, winnerId, winnerName); }
+  async getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupSeasonLeaderboard(await this.getDb(), groupId, startsAt, endsAt); }
+
+  // ── Comments & Likes ────────────────────────────────────────────────────────
   async createComment(comment: InsertComment): Promise<Comment> { return Comments.createComment(await this.getDb(), comment); }
   async getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> { return Comments.getComments(await this.getDb(), targetType, targetId, userId); }
   async getCommentById(id: number): Promise<Comment | null> { return Comments.getCommentById(await this.getDb(), id); }
@@ -208,7 +284,7 @@ export class MySQLStorage implements IStorage {
   async getLikeCounts(targetType: LikeTargetType, targetIds: string[]): Promise<Record<string, number>> { return Comments.getLikeCounts(await this.getDb(), targetType, targetIds); }
   async getUserLikes(userId: number, targetType: LikeTargetType, targetIds: string[]): Promise<Set<string>> { return Comments.getUserLikes(await this.getDb(), userId, targetType, targetIds); }
 
-  // ── Notifications ──────────────────────────────────────────────────────────
+  // ── Notifications ───────────────────────────────────────────────────────────
   async createNotification(data: InsertNotification): Promise<Notification> { return Notifications.createNotification(await this.getDb(), data); }
   async getNotifications(userId: number, limit?: number): Promise<Notification[]> { return Notifications.getNotifications(await this.getDb(), userId, limit); }
   async getUnreadNotificationCount(userId: number): Promise<number> { return Notifications.getUnreadNotificationCount(await this.getDb(), userId); }
@@ -219,7 +295,7 @@ export class MySQLStorage implements IStorage {
   async setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void> { return Notifications.setNotificationPreference(await this.getDb(), userId, type, enabled); }
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> { return Notifications.setAllNotificationPreferences(await this.getDb(), userId, enabled); }
 
-  // ── Quiz ───────────────────────────────────────────────────────────────────
+  // ── Quiz ────────────────────────────────────────────────────────────────────
   async createQuizSession(session: InsertQuizSession): Promise<QuizSession> { return Quiz.createQuizSession(await this.getDb(), session); }
   async getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined> { return Quiz.getQuizSessionByCode(await this.getDb(), shareCode); }
   async getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]> { return Quiz.getQuizSessionsByCreator(await this.getDb(), creatorId); }
@@ -228,98 +304,97 @@ export class MySQLStorage implements IStorage {
   async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> { return Quiz.getQuizSessionScore(await this.getDb(), sessionId, userId); }
   async deleteQuizSession(id: number): Promise<void> { return Quiz.deleteQuizSession(await this.getDb(), id); }
 
-  // ── Duels ──────────────────────────────────────────────────────────────────
-  async createDuelChallenge(c: InsertDuelChallenge): Promise<DuelChallenge> { return Duels.createDuelChallenge(await this.getDb(), c); }
+  // ── Duels ───────────────────────────────────────────────────────────────────
+  async createDuelChallenge(data: InsertDuelChallenge): Promise<DuelChallenge> { return Duels.createDuelChallenge(await this.getDb(), data); }
   async getDuelChallenge(id: number): Promise<DuelChallenge | undefined> { return Duels.getDuelChallenge(await this.getDb(), id); }
   async getDuelChallengeByRoom(roomCode: string): Promise<DuelChallenge | undefined> { return Duels.getDuelChallengeByRoom(await this.getDb(), roomCode); }
-  async updateDuelChallengeStatus(id: number, status: DuelChallenge["status"], roomCode?: string): Promise<DuelChallenge | undefined> { return Duels.updateDuelChallengeStatus(await this.getDb(), id, status, roomCode); }
-  async getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]> { return Duels.getDuelChallengesForUser(await this.getDb(), userId); }
+  async updateDuelChallengeStatus(id: number, status: DuelChallengeStatus, roomCode?: string, seed?: number | null, startWord?: string | null): Promise<DuelChallenge | undefined> { return Duels.updateDuelChallengeStatus(await this.getDb(), id, status, roomCode, seed, startWord); }
   async updateDuelChallengeChallengee(id: number, challengeeId: number): Promise<DuelChallenge | undefined> { return Duels.updateDuelChallengeChallengee(await this.getDb(), id, challengeeId); }
-  async acceptOpenDuelChallenge(id: number, challengeeId: number, roomCode: string): Promise<DuelChallenge | undefined> { return Duels.acceptOpenDuelChallenge(await this.getDb(), id, challengeeId, roomCode); }
-  async getOpenDuelChallenges(gameSlug?: string): Promise<DuelChallenge[]> { return Duels.getOpenDuelChallenges(await this.getDb(), gameSlug); }
+  async acceptOpenDuelChallenge(id: number, challengeeId: number): Promise<DuelChallenge | null> { return Duels.acceptOpenDuelChallenge(await this.getDb(), id, challengeeId); }
+  async getDuelChallengesForUser(userId: number): Promise<DuelChallenge[]> { return Duels.getDuelChallengesForUser(await this.getDb(), userId); }
+  async getOpenDuelChallenges(excludeUserId: number, gameSlug?: string): Promise<DuelChallenge[]> { return Duels.getOpenDuelChallenges(await this.getDb(), excludeUserId, gameSlug); }
   async expireOpenChallenges(): Promise<number> { return Duels.expireOpenChallenges(await this.getDb()); }
-  async createDuelSession(session: InsertDuelSession): Promise<DuelSession> { return Duels.createDuelSession(await this.getDb(), session); }
+
+  async createDuelSession(data: InsertDuelSession): Promise<DuelSession> { return Duels.createDuelSession(await this.getDb(), data); }
   async getDuelSession(id: number): Promise<DuelSession | undefined> { return Duels.getDuelSession(await this.getDb(), id); }
   async getDuelSessionByRoom(roomCode: string): Promise<DuelSession | undefined> { return Duels.getDuelSessionByRoom(await this.getDb(), roomCode); }
-  async updateDuelSession(id: number, updates: any): Promise<DuelSession | undefined> { return Duels.updateDuelSession(await this.getDb(), id, updates); }
-  async getDuelSessionsForUser(userId: number, limit?: number): Promise<DuelSession[]> { return Duels.getDuelSessionsForUser(await this.getDb(), userId, limit); }
-  async getDuelRating(userId: number, gameSlug: string): Promise<DuelRating | undefined> { return Duels.getDuelRating(await this.getDb(), userId, gameSlug); }
-  async getDuelLeaderboard(gameSlug: string, limit?: number): Promise<LeaderboardEntry[]> { return Duels.getDuelLeaderboard(await this.getDb(), gameSlug, limit); }
-  async upsertDuelRating(userId: number, gameSlug: string, rating: number, outcome: "win" | "loss" | "draw"): Promise<DuelRating> { return Duels.upsertDuelRating(await this.getDb(), userId, gameSlug, rating, outcome); }
-  async getDuelRankContext(userId: number, gameSlug: string): Promise<{ rank: number; totalPlayers: number; rating: number } | null> { return Duels.getDuelRankContext(await this.getDb(), userId, gameSlug); }
+  async updateDuelSession(id: number, updates: Partial<Pick<DuelSession, "outcome" | "eloDeltaPlayer1" | "eloDeltaPlayer2" | "endedAt">>): Promise<DuelSession | undefined> { return Duels.updateDuelSession(await this.getDb(), id, updates); }
+  async getDuelSessionsForUser(userId: number): Promise<DuelSession[]> { return Duels.getDuelSessionsForUser(await this.getDb(), userId); }
 
-  // ── Huddle ─────────────────────────────────────────────────────────────────
+  async getDuelRating(userId: number): Promise<DuelRating | undefined> { return Duels.getDuelRating(await this.getDb(), userId); }
+  async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> { return Duels.upsertDuelRating(await this.getDb(), userId, updates); }
+  async getDuelLeaderboard(limit?: number, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> { return Duels.getDuelLeaderboard(await this.getDb(), limit, format); }
+  async getDuelRankContext(userId: number): Promise<{ rank: number; totalPlayers: number } | null> { return Duels.getDuelRankContext(await this.getDb(), userId); }
+
+  // ── Huddle ──────────────────────────────────────────────────────────────────
   async createHuddleChallenge(data: InsertHuddleChallenge): Promise<HuddleChallenge> { return Huddle.createHuddleChallenge(await this.getDb(), data); }
   async getHuddleChallenge(id: number): Promise<HuddleChallenge | undefined> { return Huddle.getHuddleChallenge(await this.getDb(), id); }
   async getHuddleChallengesForGroup(groupId: number): Promise<HuddleChallenge[]> { return Huddle.getHuddleChallengesForGroup(await this.getDb(), groupId); }
-  async updateHuddleChallenge(id: number, updates: Partial<InsertHuddleChallenge>): Promise<HuddleChallenge | undefined> { return Huddle.updateHuddleChallenge(await this.getDb(), id, updates); }
+  async updateHuddleChallenge(id: number, updates: Partial<Pick<HuddleChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord">>): Promise<HuddleChallenge | undefined> { return Huddle.updateHuddleChallenge(await this.getDb(), id, updates); }
   async getHuddleChallengeByRoom(roomCode: string): Promise<HuddleChallenge | undefined> { return Huddle.getHuddleChallengeByRoom(await this.getDb(), roomCode); }
 
-  // ── Team Race ──────────────────────────────────────────────────────────────
+  // ── Team Race ───────────────────────────────────────────────────────────────
   async createTeamRaceChallenge(data: InsertTeamRaceChallenge): Promise<TeamRaceChallenge> { return TeamRace.createTeamRaceChallenge(await this.getDb(), data); }
   async getTeamRaceChallenge(id: number): Promise<TeamRaceChallenge | undefined> { return TeamRace.getTeamRaceChallenge(await this.getDb(), id); }
   async getTeamRaceChallengesForGroup(groupId: number): Promise<TeamRaceChallenge[]> { return TeamRace.getTeamRaceChallengesForGroup(await this.getDb(), groupId); }
-  async updateTeamRaceChallenge(id: number, updates: Partial<InsertTeamRaceChallenge>): Promise<TeamRaceChallenge | undefined> { return TeamRace.updateTeamRaceChallenge(await this.getDb(), id, updates); }
+  async updateTeamRaceChallenge(id: number, updates: Partial<Pick<TeamRaceChallenge, "status" | "challengeeAdminId" | "roomCode" | "seed" | "startWord" | "winnerGroupId">>): Promise<TeamRaceChallenge | undefined> { return TeamRace.updateTeamRaceChallenge(await this.getDb(), id, updates); }
   async getTeamRaceChallengeByRoom(roomCode: string): Promise<TeamRaceChallenge | undefined> { return TeamRace.getTeamRaceChallengeByRoom(await this.getDb(), roomCode); }
 
-  // ── Word Wars ──────────────────────────────────────────────────────────────
+  // ── Word Wars ───────────────────────────────────────────────────────────────
   async createWordWarsTournament(data: InsertWordWarsTournament): Promise<WordWarsTournament> { return WordWars.createWordWarsTournament(await this.getDb(), data); }
   async getWordWarsTournament(id: number): Promise<WordWarsTournament | undefined> { return WordWars.getWordWarsTournament(await this.getDb(), id); }
   async listWordWarsTournaments(): Promise<WordWarsTournament[]> { return WordWars.listWordWarsTournaments(await this.getDb()); }
-  async updateWordWarsTournament(id: number, updates: any): Promise<WordWarsTournament | undefined> { return WordWars.updateWordWarsTournament(await this.getDb(), id, updates); }
-  async createWordWarsRegistration(tournamentId: number, userId: number, seed?: number): Promise<WordWarsRegistration> { return WordWars.createWordWarsRegistration(await this.getDb(), tournamentId, userId, seed); }
-  async getWordWarsRegistration(id: number): Promise<WordWarsRegistration | undefined> { return WordWars.getWordWarsRegistration(await this.getDb(), id); }
+  async updateWordWarsTournament(id: number, updates: Partial<Pick<WordWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minPlayers" | "maxPlayers" | "recurringCron">>): Promise<WordWarsTournament | undefined> { return WordWars.updateWordWarsTournament(await this.getDb(), id, updates); }
+
+  async createWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration> { return WordWars.createWordWarsRegistration(await this.getDb(), tournamentId, userId); }
+  async getWordWarsRegistration(tournamentId: number, userId: number): Promise<WordWarsRegistration | undefined> { return WordWars.getWordWarsRegistration(await this.getDb(), tournamentId, userId); }
   async deleteWordWarsRegistration(tournamentId: number, userId: number): Promise<void> { return WordWars.deleteWordWarsRegistration(await this.getDb(), tournamentId, userId); }
-  async getWordWarsRegistrationsForTournament(tournamentId: number): Promise<any[]> { return WordWars.getWordWarsRegistrationsForTournament(await this.getDb(), tournamentId); }
-  async createWordWarsMatch(data: InsertWordWarsMatch): Promise<WordWarsMatch> { return WordWars.createWordWarsMatch(await this.getDb(), data); }
+  async getWordWarsRegistrationsForTournament(tournamentId: number): Promise<WordWarsRegistration[]> { return WordWars.getWordWarsRegistrationsForTournament(await this.getDb(), tournamentId); }
+
+  async createWordWarsMatch(data: Omit<WordWarsMatch, "id" | "createdAt">): Promise<WordWarsMatch> { return WordWars.createWordWarsMatch(await this.getDb(), data); }
   async getWordWarsMatch(id: number): Promise<WordWarsMatch | undefined> { return WordWars.getWordWarsMatch(await this.getDb(), id); }
   async listWordWarsMatchesForTournament(tournamentId: number): Promise<WordWarsMatch[]> { return WordWars.listWordWarsMatchesForTournament(await this.getDb(), tournamentId); }
-  async updateWordWarsMatch(id: number, updates: any): Promise<WordWarsMatch | undefined> { return WordWars.updateWordWarsMatch(await this.getDb(), id, updates); }
-  async createWordWarsMatchGame(data: InsertWordWarsMatchGame): Promise<WordWarsMatchGame> { return WordWars.createWordWarsMatchGame(await this.getDb(), data); }
-  async getWordWarsMatchGame(id: number): Promise<WordWarsMatchGame | undefined> { return WordWars.getWordWarsMatchGame(await this.getDb(), id); }
+  async updateWordWarsMatch(id: number, updates: Partial<Pick<WordWarsMatch, "status" | "winnerId" | "deadline">>): Promise<WordWarsMatch | undefined> { return WordWars.updateWordWarsMatch(await this.getDb(), id, updates); }
+
+  async createWordWarsMatchGame(data: Omit<WordWarsMatchGame, "id">): Promise<WordWarsMatchGame> { return WordWars.createWordWarsMatchGame(await this.getDb(), data); }
+  async getWordWarsMatchGame(matchId: number, gameNumber: number): Promise<WordWarsMatchGame | undefined> { return WordWars.getWordWarsMatchGame(await this.getDb(), matchId, gameNumber); }
   async getWordWarsMatchGames(matchId: number): Promise<WordWarsMatchGame[]> { return WordWars.getWordWarsMatchGames(await this.getDb(), matchId); }
-  async updateWordWarsMatchGame(id: number, updates: any): Promise<WordWarsMatchGame | undefined> { return WordWars.updateWordWarsMatchGame(await this.getDb(), id, updates); }
+  async updateWordWarsMatchGame(id: number, updates: Partial<Pick<WordWarsMatchGame, "status" | "winnerId" | "roomCode">>): Promise<WordWarsMatchGame | undefined> { return WordWars.updateWordWarsMatchGame(await this.getDb(), id, updates); }
   async getMatchGameByRoomCode(roomCode: string): Promise<WordWarsMatchGame | undefined> { return WordWars.getMatchGameByRoomCode(await this.getDb(), roomCode); }
+
   async createWordWarsChampion(tournamentId: number, userId: number): Promise<WordWarsChampion> { return WordWars.createWordWarsChampion(await this.getDb(), tournamentId, userId); }
   async getChampionsForTournament(tournamentId: number): Promise<WordWarsChampion[]> { return WordWars.getChampionsForTournament(await this.getDb(), tournamentId); }
   async getChampionshipsForUser(userId: number): Promise<WordWarsChampion[]> { return WordWars.getChampionshipsForUser(await this.getDb(), userId); }
-  async listAllWordWarsChampions(): Promise<any[]> { return WordWars.listAllWordWarsChampions(await this.getDb()); }
-  async getWordWarsStatsForUser(userId: number): Promise<any> { return WordWars.getWordWarsStatsForUser(await this.getDb(), userId); }
-  async getWordWarsStatsForGroup(groupId: number): Promise<any[]> { return WordWars.getWordWarsStatsForGroup(await this.getDb(), groupId); }
+  async listAllWordWarsChampions(): Promise<WordWarsChampion[]> { return WordWars.listAllWordWarsChampions(await this.getDb()); }
+  async getWordWarsStatsForUser(userId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> { return WordWars.getWordWarsStatsForUser(await this.getDb(), userId); }
 
-  // ── Guild Wars ─────────────────────────────────────────────────────────────
+  // ── Guild Wars ──────────────────────────────────────────────────────────────
   async createGuildWarsTournament(data: InsertGuildWarsTournament): Promise<GuildWarsTournament> { return GuildWars.createGuildWarsTournament(await this.getDb(), data); }
   async getGuildWarsTournament(id: number): Promise<GuildWarsTournament | undefined> { return GuildWars.getGuildWarsTournament(await this.getDb(), id); }
   async listGuildWarsTournaments(): Promise<GuildWarsTournament[]> { return GuildWars.listGuildWarsTournaments(await this.getDb()); }
-  async updateGuildWarsTournament(id: number, updates: any): Promise<GuildWarsTournament | undefined> { return GuildWars.updateGuildWarsTournament(await this.getDb(), id, updates); }
-  async createGuildWarsRegistration(tournamentId: number, groupId: number, adminId: number, seed?: number): Promise<GuildWarsRegistration> { return GuildWars.createGuildWarsRegistration(await this.getDb(), tournamentId, groupId, adminId, seed); }
-  async getGuildWarsRegistration(id: number): Promise<GuildWarsRegistration | undefined> { return GuildWars.getGuildWarsRegistration(await this.getDb(), id); }
+  async updateGuildWarsTournament(id: number, updates: Partial<Pick<GuildWarsTournament, "status" | "name" | "registrationDeadline" | "roundDeadlineHours" | "minGroups" | "maxGroups">>): Promise<GuildWarsTournament | undefined> { return GuildWars.updateGuildWarsTournament(await this.getDb(), id, updates); }
+
+  async createGuildWarsRegistration(tournamentId: number, groupId: number, registeredBy: number): Promise<GuildWarsRegistration> { return GuildWars.createGuildWarsRegistration(await this.getDb(), tournamentId, groupId, registeredBy); }
+  async getGuildWarsRegistration(tournamentId: number, groupId: number): Promise<GuildWarsRegistration | undefined> { return GuildWars.getGuildWarsRegistration(await this.getDb(), tournamentId, groupId); }
   async deleteGuildWarsRegistration(tournamentId: number, groupId: number): Promise<void> { return GuildWars.deleteGuildWarsRegistration(await this.getDb(), tournamentId, groupId); }
-  async getGuildWarsRegistrationsForTournament(tournamentId: number): Promise<any[]> { return GuildWars.getGuildWarsRegistrationsForTournament(await this.getDb(), tournamentId); }
+  async getGuildWarsRegistrationsForTournament(tournamentId: number): Promise<GuildWarsRegistration[]> { return GuildWars.getGuildWarsRegistrationsForTournament(await this.getDb(), tournamentId); }
   async getGuildWarsRegistrationsForGroup(groupId: number): Promise<GuildWarsRegistration[]> { return GuildWars.getGuildWarsRegistrationsForGroup(await this.getDb(), groupId); }
-  async createGuildWarsMatch(data: InsertGuildWarsMatch): Promise<GuildWarsMatch> { return GuildWars.createGuildWarsMatch(await this.getDb(), data); }
+
+  async createGuildWarsMatch(data: Omit<GuildWarsMatch, "id" | "createdAt">): Promise<GuildWarsMatch> { return GuildWars.createGuildWarsMatch(await this.getDb(), data); }
   async getGuildWarsMatch(id: number): Promise<GuildWarsMatch | undefined> { return GuildWars.getGuildWarsMatch(await this.getDb(), id); }
   async listGuildWarsMatchesForTournament(tournamentId: number): Promise<GuildWarsMatch[]> { return GuildWars.listGuildWarsMatchesForTournament(await this.getDb(), tournamentId); }
-  async updateGuildWarsMatch(id: number, updates: any): Promise<GuildWarsMatch | undefined> { return GuildWars.updateGuildWarsMatch(await this.getDb(), id, updates); }
-  async createGuildWarsMatchGame(data: InsertGuildWarsMatchGame): Promise<GuildWarsMatchGame> { return GuildWars.createGuildWarsMatchGame(await this.getDb(), data); }
-  async getGuildWarsMatchGame(id: number): Promise<GuildWarsMatchGame | undefined> { return GuildWars.getGuildWarsMatchGame(await this.getDb(), id); }
+  async updateGuildWarsMatch(id: number, updates: Partial<Pick<GuildWarsMatch, "status" | "winnerGroupId" | "deadline">>): Promise<GuildWarsMatch | undefined> { return GuildWars.updateGuildWarsMatch(await this.getDb(), id, updates); }
+
+  async createGuildWarsMatchGame(data: Omit<GuildWarsMatchGame, "id">): Promise<GuildWarsMatchGame> { return GuildWars.createGuildWarsMatchGame(await this.getDb(), data); }
+  async getGuildWarsMatchGame(matchId: number, gameNumber: number): Promise<GuildWarsMatchGame | undefined> { return GuildWars.getGuildWarsMatchGame(await this.getDb(), matchId, gameNumber); }
   async getGuildWarsMatchGames(matchId: number): Promise<GuildWarsMatchGame[]> { return GuildWars.getGuildWarsMatchGames(await this.getDb(), matchId); }
-  async updateGuildWarsMatchGame(id: number, updates: any): Promise<GuildWarsMatchGame | undefined> { return GuildWars.updateGuildWarsMatchGame(await this.getDb(), id, updates); }
+  async updateGuildWarsMatchGame(id: number, updates: Partial<Pick<GuildWarsMatchGame, "status" | "winnerGroupId" | "roomCode">>): Promise<GuildWarsMatchGame | undefined> { return GuildWars.updateGuildWarsMatchGame(await this.getDb(), id, updates); }
   async getGuildWarsMatchGameByRoomCode(roomCode: string): Promise<GuildWarsMatchGame | undefined> { return GuildWars.getGuildWarsMatchGameByRoomCode(await this.getDb(), roomCode); }
-  async createGuildWarsChampion(tournamentId: number, groupId: number): Promise<GuildWarsChampion> { return GuildWars.createGuildWarsChampion(await this.getDb(), tournamentId, groupId); }
+
+  async createGuildWarsChampion(tournamentId: number, groupId: number, tournamentName: string): Promise<GuildWarsChampion> { return GuildWars.createGuildWarsChampion(await this.getDb(), tournamentId, groupId, tournamentName); }
   async getGuildWarsChampionsForTournament(tournamentId: number): Promise<GuildWarsChampion[]> { return GuildWars.getGuildWarsChampionsForTournament(await this.getDb(), tournamentId); }
   async getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]> { return GuildWars.getGuildWarsChampionshipsForGroup(await this.getDb(), groupId); }
-  async listAllGuildWarsChampions(): Promise<any[]> { return GuildWars.listAllGuildWarsChampions(await this.getDb()); }
-  async getGuildWarsStatsForGroup(groupId: number): Promise<any> { return GuildWars.getGuildWarsStatsForGroup(await this.getDb(), groupId); }
-
-  // ── Admin ──────────────────────────────────────────────────────────────────
-  async getAllUsers(limit?: number, offset?: number): Promise<User[]> { return Admin.getAllUsers(await this.getDb(), limit, offset); }
-  async deleteUser(id: number): Promise<void> { return Admin.deleteUser(await this.getDb(), id); }
-  async searchUsers(query: string, limit?: number): Promise<User[]> { return Admin.searchUsers(await this.getDb(), query, limit); }
-  async getPublicProfile(userId: number): Promise<any> { return Admin.getPublicProfile(await this.getDb(), userId); }
-  async getAdminStats(): Promise<any> { return Admin.getAdminStats(await this.getDb()); }
-  async getAllLeaderboardEntries(gameSlug?: string): Promise<LeaderboardEntry[]> { return Admin.getAllLeaderboardEntries(await this.getDb(), gameSlug); }
-  async deleteLeaderboardEntry(id: number): Promise<void> { return Admin.deleteLeaderboardEntry(await this.getDb(), id); }
-  async getSiteSetting(key: string): Promise<string | null> { return Admin.getSiteSetting(await this.getDb(), key); }
-  async setSiteSetting(key: string, value: string): Promise<void> { return Admin.setSiteSetting(await this.getDb(), key, value); }
+  async listAllGuildWarsChampions(): Promise<GuildWarsChampion[]> { return GuildWars.listAllGuildWarsChampions(await this.getDb()); }
+  async getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> { return GuildWars.getGuildWarsStatsForGroup(await this.getDb(), groupId); }
+  async getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> { return GuildWars.getWordWarsStatsForGroup(await this.getDb(), groupId); }
 }

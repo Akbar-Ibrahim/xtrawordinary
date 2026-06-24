@@ -29,9 +29,9 @@ export async function createComment(db: any, comment: InsertComment): Promise<Co
 export async function getComments(db: any, targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> {
   const rows = await db.select().from(schema.comments).where(and(eq(schema.comments.targetType, targetType), eq(schema.comments.targetId, targetId))).orderBy(asc(schema.comments.createdAt));
   if (rows.length === 0) return [];
-  const userIds = [...new Set(rows.map((r: any) => r.userId))];
+  const userIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
-  const userMap = new Map(userRows.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  const userMap = new Map<number, { id: number; name: string; avatarUrl: string | null }>(userRows.map((u: any) => [u.id as number, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
   const commentIdStrings = rows.map((r: any) => String(r.id));
   const countRows = await db.select({ targetId: schema.likes.targetId, count: sql<number>`COUNT(*)` }).from(schema.likes).where(and(eq(schema.likes.targetType, "comment"), inArray(schema.likes.targetId, commentIdStrings))).groupBy(schema.likes.targetId);
   const countMap = new Map(countRows.map((r: any) => [r.targetId, Number(r.count)]));
@@ -85,12 +85,12 @@ export async function reportComment(db: any, commentId: number, reportingUserId:
 export async function getCommentReports(db: any): Promise<CommentReport[]> {
   const rows = await db.select().from(schema.commentReports).orderBy(desc(schema.commentReports.createdAt));
   if (rows.length === 0) return [];
-  const commentIds = [...new Set(rows.map((r: any) => r.commentId))];
-  const reporterIds = [...new Set(rows.map((r: any) => r.reportingUserId))];
+  const commentIds = [...new Set(rows.map((r: any) => r.commentId))] as number[];
+  const reporterIds = [...new Set(rows.map((r: any) => r.reportingUserId))] as number[];
   const commentRows = await db.select().from(schema.comments).where(inArray(schema.comments.id, commentIds));
-  const userIds = [...new Set([...reporterIds, ...commentRows.map((c: any) => c.userId)])];
+  const userIds = [...new Set([...reporterIds, ...commentRows.map((c: any) => c.userId as number)])] as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
-  const userMap = new Map(userRows.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  const userMap = new Map<number, { id: number; name: string; avatarUrl: string | null }>(userRows.map((u: any) => [u.id as number, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
   const commentMap = new Map(commentRows.map((c: any) => [c.id, mapDbRowToComment(c, userMap.get(c.userId))]));
   return rows.map((r: any) => ({ id: r.id, commentId: r.commentId, reportingUserId: r.reportingUserId, reason: r.reason, createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt), reporter: userMap.get(r.reportingUserId) ? { id: (userMap.get(r.reportingUserId) as any).id, name: (userMap.get(r.reportingUserId) as any).name } : undefined, comment: commentMap.get(r.commentId) }));
 }

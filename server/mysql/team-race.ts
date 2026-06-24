@@ -4,11 +4,11 @@ import * as schema from "../db-schema";
 
 function mapTeamRaceChallenge(r: any): TeamRaceChallenge {
   const toIso = (v: any) => v instanceof Date ? v.toISOString() : (v ? String(v) : null);
-  return { id: r.id, challengerGroupId: r.challengerGroupId, challengeeGroupId: r.challengeeGroupId, challengerAdminId: r.challengerAdminId, challengeeAdminId: r.challengeeAdminId ?? null, gameSlug: r.gameSlug, format: r.format ?? "race", raceTarget: r.raceTarget ?? null, raceTimeLimit: r.raceTimeLimit ?? null, status: r.status, roomCode: r.roomCode ?? null, seed: r.seed ?? null, startWord: r.startWord ?? null, createdAt: toIso(r.createdAt) ?? "", expiresAt: toIso(r.expiresAt) };
+  return { id: r.id, challengerGroupId: r.challengerGroupId, challengeeGroupId: r.challengeeGroupId, challengerAdminId: r.challengerAdminId, challengeeAdminId: r.challengeeAdminId ?? null, gameSlug: r.gameSlug, raceTarget: r.raceTarget ?? null, raceTimeLimit: r.raceTimeLimit ?? null, status: r.status, roomCode: r.roomCode ?? null, seed: r.seed ?? null, startWord: r.startWord ?? null, createdAt: toIso(r.createdAt) ?? "", expiresAt: toIso(r.expiresAt), winnerGroupId: r.winnerGroupId ?? null };
 }
 
 export async function createTeamRaceChallenge(db: any, data: InsertTeamRaceChallenge): Promise<TeamRaceChallenge> {
-  const result = await db.insert(schema.teamRaceChallenges).values({ challengerGroupId: data.challengerGroupId, challengeeGroupId: data.challengeeGroupId, challengerAdminId: data.challengerAdminId, challengeeAdminId: data.challengeeAdminId ?? null, gameSlug: data.gameSlug, format: data.format ?? "race", raceTarget: data.raceTarget ?? null, raceTimeLimit: data.raceTimeLimit ?? null, status: data.status ?? "pending", roomCode: data.roomCode ?? null, seed: data.seed ?? null, startWord: data.startWord ?? null, expiresAt: data.expiresAt ? new Date(data.expiresAt) : null });
+  const result = await db.insert(schema.teamRaceChallenges).values({ challengerGroupId: data.challengerGroupId, challengeeGroupId: data.challengeeGroupId, challengerAdminId: data.challengerAdminId, challengeeAdminId: data.challengeeAdminId ?? null, gameSlug: data.gameSlug, raceTarget: data.raceTarget ?? null, raceTimeLimit: data.raceTimeLimit ?? null, status: data.status ?? "pending", roomCode: data.roomCode ?? null, seed: data.seed ?? null, startWord: data.startWord ?? null, expiresAt: data.expiresAt ? new Date(data.expiresAt) : null });
   return (await getTeamRaceChallenge(db, result[0].insertId))!;
 }
 

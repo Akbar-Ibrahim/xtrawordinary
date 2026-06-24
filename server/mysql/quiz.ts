@@ -66,7 +66,7 @@ export async function addQuizSessionScore(db: any, sessionId: number, userId: nu
 export async function getQuizSessionScores(db: any, sessionId: number): Promise<QuizSessionScore[]> {
   const rows = await db.select().from(schema.quizSessionScores).where(eq(schema.quizSessionScores.sessionId, sessionId)).orderBy(desc(schema.quizSessionScores.score));
   if (rows.length === 0) return [];
-  const userIds = [...new Set(rows.map((r: any) => r.userId))];
+  const userIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   return rows.map((r: any) => ({ ...mapQuizScore(r), playerName: (userMap.get(r.userId) as any)?.name, playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null }));

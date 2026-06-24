@@ -63,7 +63,7 @@ export async function getNotificationPreferences(db: any, userId: number): Promi
   const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
   const types = notificationTypeSchema.options as NotificationType[];
   const result = {} as Record<NotificationType, boolean>;
-  const prefMap = new Map(rows.map((r: any) => [r.type, r.enabled === 1 || r.enabled === true]));
+  const prefMap = new Map<string, boolean>(rows.map((r: any): [string, boolean] => [r.type, r.enabled === 1 || r.enabled === true]));
   for (const type of types) {
     result[type] = prefMap.has(type) ? prefMap.get(type)! : true;
   }

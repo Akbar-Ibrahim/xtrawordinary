@@ -75,7 +75,7 @@ export async function getLeaderboard(db: any, gameSlug: string, limit = 50, time
     .from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId))
     .orderBy(desc(schema.leaderboardEntries.score)).limit(limit);
   if (rows.length === 0) return [];
-  const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))];
+  const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))] as number[];
   const userRows = userIds.length > 0 ? await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds)) : [];
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = userIds.length > 0 ? await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed }).from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, userIds), eq(schema.userGameStats.gameSlug, gameSlug))) : [];
@@ -142,7 +142,7 @@ export async function getFriendsLeaderboard(db: any, gameSlug: string, userId: n
   const bestRowIds = db.select({ userId: schema.leaderboardEntries.userId, bestId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("best_id") }).from(schema.leaderboardEntries).innerJoin(maxScorePerUser, and(eq(schema.leaderboardEntries.userId, maxScorePerUser.userId), eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore))).where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("best_row_ids");
   const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt }).from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId)).orderBy(desc(schema.leaderboardEntries.score));
   if (rows.length === 0) return [];
-  const uIds = [...new Set(rows.map((r: any) => r.userId))];
+  const uIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed }).from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, uIds), eq(schema.userGameStats.gameSlug, gameSlug)));
@@ -180,7 +180,7 @@ export async function saveUserStreak(db: any, userId: number, currentStreak: num
     return { ...existing, currentStreak, longestStreak, lastPlayedDate };
   }
   const result = await db.insert(schema.userStreaks).values({ userId, currentStreak, longestStreak, lastPlayedDate });
-  return { id: result[0].insertId, userId, currentStreak, longestStreak, lastPlayedDate };
+  return { id: result[0].insertId, userId, currentStreak, longestStreak, lastPlayedDate, dailyChallengeStreak: 0, longestDailyChallengeStreak: 0 };
 }
 
 export async function getTopStreaks(db: any, limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
@@ -220,10 +220,10 @@ export async function updateDailyChallengeStreak(db: any, userId: number, date: 
 }
 
 export async function getLeaderboardPercentile(db: any, gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }> {
-  const [totalRow] = await db.execute<[{ total: number }]>(sql`SELECT COUNT(DISTINCT user_id) as total FROM (SELECT user_id, MAX(score) as best FROM leaderboard_entries WHERE game_slug = ${gameSlug} GROUP BY user_id) t`);
+  const [totalRow] = await (db.execute(sql`SELECT COUNT(DISTINCT user_id) as total FROM (SELECT user_id, MAX(score) as best FROM leaderboard_entries WHERE game_slug = ${gameSlug} GROUP BY user_id) t`) as Promise<any[]>);
   const total = Number((totalRow as any)[0]?.total ?? 0);
   if (total === 0) return { percentile: 100, totalPlayers: 0 };
-  const [belowRow] = await db.execute<[{ below: number }]>(sql`SELECT COUNT(DISTINCT user_id) as below FROM (SELECT user_id, MAX(score) as best FROM leaderboard_entries WHERE game_slug = ${gameSlug} GROUP BY user_id) t WHERE t.best < ${score}`);
+  const [belowRow] = await (db.execute(sql`SELECT COUNT(DISTINCT user_id) as below FROM (SELECT user_id, MAX(score) as best FROM leaderboard_entries WHERE game_slug = ${gameSlug} GROUP BY user_id) t WHERE t.best < ${score}`) as Promise<any[]>);
   const below = Number((belowRow as any)[0]?.below ?? 0);
   return { percentile: Math.round((below / total) * 100), totalPlayers: total };
 }
