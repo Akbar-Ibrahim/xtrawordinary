@@ -82,7 +82,7 @@ export async function createGroup(db: any, group: InsertGroup): Promise<Group> {
     inviteCode: group.inviteCode,
     creatorId: group.creatorId,
     isPublic: group.isPublic ?? true,
-    isFeatured: false,
+    isFeatured: group.isFeatured ?? false,
     tags: group.tags ?? null,
     pinnedAnnouncement: group.pinnedAnnouncement ?? null,
   });
@@ -155,9 +155,7 @@ export async function getPublicGroups(db: any): Promise<Group[]> {
     .from(schema.groups)
     .leftJoin(schema.groupMembers, eq(schema.groups.id, schema.groupMembers.groupId))
     .where(eq(schema.groups.isPublic, true))
-    .groupBy(schema.groups.id)
-    .orderBy(desc(sql`COUNT(${schema.groupMembers.id})`))
-    .limit(50);
+    .groupBy(schema.groups.id);
   return rows.map((r: any) => toGroup({ ...r.group, memberCount: r.memberCount }));
 }
 
@@ -237,7 +235,7 @@ export async function getGroupRounds(db: any, groupId: number): Promise<GroupRou
 }
 
 export async function closeGroupRound(db: any, id: number): Promise<GroupRound | undefined> {
-  await db.update(schema.groupRounds).set({ status: "closed", closesAt: new Date() }).where(eq(schema.groupRounds.id, id));
+  await db.update(schema.groupRounds).set({ status: "closed" }).where(eq(schema.groupRounds.id, id));
   return getGroupRound(db, id);
 }
 
@@ -245,13 +243,7 @@ export async function closeGroupRound(db: any, id: number): Promise<GroupRound |
 
 export async function submitGroupRoundScore(db: any, roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
   const existing = await db.select().from(schema.groupRoundScores).where(and(eq(schema.groupRoundScores.roundId, roundId), eq(schema.groupRoundScores.userId, userId))).limit(1);
-  if (existing[0]) {
-    if (score > existing[0].score) {
-      await db.update(schema.groupRoundScores).set({ score, durationMs: durationMs ?? null, completedAt: new Date() }).where(eq(schema.groupRoundScores.id, existing[0].id));
-      return toGroupRoundScore({ ...existing[0], score, durationMs: durationMs ?? null, completedAt: new Date() });
-    }
-    return toGroupRoundScore(existing[0]);
-  }
+  if (existing[0]) return toGroupRoundScore(existing[0]);
   const result = await db.insert(schema.groupRoundScores).values({ roundId, userId, score, durationMs: durationMs ?? null });
   const rows = await db.select().from(schema.groupRoundScores).where(eq(schema.groupRoundScores.id, result[0].insertId)).limit(1);
   return toGroupRoundScore(rows[0]);

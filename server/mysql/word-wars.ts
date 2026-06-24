@@ -75,7 +75,7 @@ export async function getWordWarsTournament(db: any, id: number): Promise<WordWa
 }
 
 export async function listWordWarsTournaments(db: any): Promise<WordWarsTournament[]> {
-  const rows = await db.select().from(schema.wordWarsTournaments).orderBy(desc(schema.wordWarsTournaments.registrationDeadline)).limit(50);
+  const rows = await db.select().from(schema.wordWarsTournaments).orderBy(desc(schema.wordWarsTournaments.registrationDeadline));
   return rows.map((r: any) => toTournament(r));
 }
 

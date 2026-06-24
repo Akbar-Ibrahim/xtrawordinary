@@ -29,6 +29,9 @@ export async function updateTeamRaceChallenge(db: any, id: number, updates: Part
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.roomCode !== undefined) dbUpdates.roomCode = updates.roomCode;
   if (updates.challengeeAdminId !== undefined) dbUpdates.challengeeAdminId = updates.challengeeAdminId;
+  if (updates.seed !== undefined) dbUpdates.seed = updates.seed;
+  if (updates.startWord !== undefined) dbUpdates.startWord = updates.startWord;
+  if (updates.winnerGroupId !== undefined) dbUpdates.winnerGroupId = updates.winnerGroupId;
   if (Object.keys(dbUpdates).length > 0) await db.update(schema.teamRaceChallenges).set(dbUpdates).where(eq(schema.teamRaceChallenges.id, id));
   return getTeamRaceChallenge(db, id);
 }
