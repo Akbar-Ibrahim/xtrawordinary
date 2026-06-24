@@ -292,6 +292,7 @@ export default function GameDetail() {
     onError: () => toast({ title: "Error", description: "Could not submit your score.", variant: "destructive" }),
   });
 
+  const [isCustomPlay, setIsCustomPlay] = useState(false);
   const alreadySubmittedRef = useRef(false);
 
   useEffect(() => {
@@ -398,7 +399,6 @@ export default function GameDetail() {
   const [customPlayFrozenParams, setCustomPlayFrozenParams] = useState<Record<string, any>>({});
   const [customPlayKey, setCustomPlayKey] = useState(0);
   const [customPlayEnded, setCustomPlayEnded] = useState(false);
-  const [isCustomPlay, setIsCustomPlay] = useState(false);
   const [isUntimed, setIsUntimed] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [quizTitle, setQuizTitle] = useState("");
