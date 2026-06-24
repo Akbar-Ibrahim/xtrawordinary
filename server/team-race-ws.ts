@@ -358,7 +358,7 @@ export class TeamRaceRegistry {
     }
 
     // Fetch user info
-    const user = await storage.getUser(userId);
+    const user = await storage.getUserById(userId);
     if (!user) {
       send(ws, { type: "team:error", message: "User not found" });
       return;
@@ -368,7 +368,7 @@ export class TeamRaceRegistry {
     const player: TeamRacePlayer = {
       ws,
       userId,
-      name: user.name ?? user.username ?? "Player",
+      name: user.name ?? "Player",
       avatarUrl: user.avatarUrl ?? null,
       groupId,
     };

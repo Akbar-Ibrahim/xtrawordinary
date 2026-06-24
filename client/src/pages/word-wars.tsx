@@ -325,7 +325,7 @@ export default function WordWarsLobby() {
         </div>
       </motion.div>
 
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <AuthModal open={authOpen} onOpenChange={(v) => setAuthOpen(v)} />
     </div>
   );
 }

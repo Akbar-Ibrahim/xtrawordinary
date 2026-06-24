@@ -178,7 +178,7 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
                 {loginLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Sign In
               </Button>
-              <Button type="button" variant="link" className="w-full text-sm" onClick={() => setShowForgotPassword(true)} data-testid="button-forgot-password">
+              <Button type="button" variant="ghost" className="w-full text-sm" onClick={() => setShowForgotPassword(true)} data-testid="button-forgot-password">
                 Forgot your password?
               </Button>
             </form>

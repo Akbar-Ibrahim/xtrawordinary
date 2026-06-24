@@ -70,6 +70,8 @@ export type VariationCategory =
   | "start_end_consonant"
   | "start_vowel_end_consonant"
   | "start_consonant_end_vowel"
+  | "consonant_oblivion"
+  | "vowel_oblivion"
   | "locked_balance";
 
 // Level type - either a number or "advanced"

@@ -33,6 +33,7 @@ export function registerChallengesRoutes(app: Express): void {
         seed: typeof seed === "number" ? seed : null,
         gameConfig: configJson,
         senderViewed: false,
+        receiverViewed: false,
       });
       try {
         const senderName = (req.user as any).name as string;

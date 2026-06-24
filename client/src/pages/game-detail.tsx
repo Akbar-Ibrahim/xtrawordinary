@@ -856,7 +856,8 @@ export default function GameDetail() {
                         {openDuels.slice(0, 5).map((challenge) => (
                           <div key={challenge.id} className="flex items-center gap-2 px-3 py-2">
                             <UserAvatar
-                              user={{ name: challenge.challengerName ?? "Player", avatarUrl: challenge.challengerAvatarUrl ?? null }}
+                              name={challenge.challengerName ?? "Player"}
+                              avatarUrl={challenge.challengerAvatarUrl ?? null}
                               className="h-7 w-7 shrink-0"
                             />
                             <span className="text-sm font-medium flex-1 truncate" data-testid={`text-challenger-name-${challenge.id}`}>

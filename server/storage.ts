@@ -328,7 +328,7 @@ export function getStorage(): IStorage {
   if (!_storage) {
     throw new Error("Storage not initialized. Call initStorage() first.");
   }
-  return _storage;
+  return _storage!;
 }
 
 export async function initStorage(): Promise<IStorage> {
@@ -343,7 +343,7 @@ export async function initStorage(): Promise<IStorage> {
     const { MemStorage } = await import("./mem-storage");
     _storage = new MemStorage();
   }
-  return _storage;
+  return _storage!;
 }
 
 export const storage: IStorage = new Proxy({} as IStorage, {

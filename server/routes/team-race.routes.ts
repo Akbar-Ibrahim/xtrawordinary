@@ -85,7 +85,6 @@ export function registerTeamRaceRoutes(app: Express): void {
             title: "Team Race challenge!",
             body: `${challengerGroup?.name ?? "Another group"} challenged your group to a ${gameTitle} Team Race`,
             linkUrl: `/groups/${challengeeGroupId}`,
-            readAt: null,
           });
         }
       } catch {}
@@ -162,7 +161,6 @@ export function registerTeamRaceRoutes(app: Express): void {
             title: "Team Race starting!",
             body: `${challengerGroup?.name ?? "Your group"} vs ${challengeeGroup?.name ?? "another group"} — ${gameTitle} Team Race`,
             linkUrl: tr.roomCode ? `/team-race/${tr.roomCode}` : null,
-            readAt: null,
           });
         }
       } catch {}

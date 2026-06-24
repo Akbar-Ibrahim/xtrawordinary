@@ -999,7 +999,7 @@ export default function GroupDetail() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-2xl font-bold">{group.name}</h1>
-                    {group.isFeatured && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" title="Featured group" />}
+                    {group.isFeatured && <span title="Featured group"><Star className="h-5 w-5 text-yellow-500 fill-yellow-500" /></span>}
                   </div>
                   {group.description && <p className="text-muted-foreground text-sm mt-0.5">{group.description}</p>}
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">

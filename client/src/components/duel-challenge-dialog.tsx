@@ -90,7 +90,7 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
     onError: (err: Error) => {
       let description = "Could not send duel challenge.";
       try {
-        const match = err.message.match(/^\d+: (.+)$/s);
+        const match = err.message.match(/^\d+: ([\s\S]+)$/);
         if (match) {
           const parsed = JSON.parse(match[1]);
           if (parsed?.error) description = parsed.error;

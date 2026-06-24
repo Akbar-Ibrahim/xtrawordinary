@@ -185,7 +185,6 @@ async function runDailyJobs() {
         title: "Your streak is at risk!",
         body: `Play a game today to keep your ${currentStreak}-day streak alive.`,
         linkUrl: "/",
-        readAt: null,
       });
     }
     const expired = await st.expireFriendChallenges();

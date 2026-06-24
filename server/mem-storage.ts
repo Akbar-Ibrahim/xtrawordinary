@@ -1020,7 +1020,7 @@ export class MemStorage implements IStorage {
       .map(u => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl }));
   }
 
-  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
     const user = this.users.get(userId);
     if (!user) return null;
     const stats = Array.from(this.userGameStatsMap.values()).filter(s => s.userId === userId);
@@ -1757,7 +1757,7 @@ export class MemStorage implements IStorage {
     }
     const sorted = ratings.sort((a, b) => b.elo - a.elo).slice(0, limit);
     return sorted.map((r, i) => {
-      const user = this.users.find(u => u.id === r.userId);
+      const user = Array.from(this.users.values()).find(u => u.id === r.userId);
       const total = r.wins + r.losses + r.draws;
       return {
         rank: i + 1,
@@ -2069,7 +2069,7 @@ export class MemStorage implements IStorage {
       this.wordWarsRegistrations.filter(r => memberIds.has(r.userId)).map(r => r.tournamentId)
     ).size;
     const memberMatches = this.wordWarsMatches.filter(
-      m => (memberIds.has(m.player1Id) || memberIds.has(m.player2Id)) &&
+      m => ((m.player1Id !== null && memberIds.has(m.player1Id)) || (m.player2Id !== null && memberIds.has(m.player2Id))) &&
         (m.status === "completed" || m.status === "forfeited")
     );
     let matchWins = 0;
