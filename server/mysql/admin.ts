@@ -1,4 +1,4 @@
-import { eq, desc, asc, like, sql, inArray } from "drizzle-orm";
+import { eq, desc, asc, like, sql, or } from "drizzle-orm";
 import type { User, LeaderboardEntry } from "@shared/schema";
 import * as schema from "../db-schema";
 import { toUser } from "./users";
@@ -10,13 +10,28 @@ export async function getAllUsers(db: any): Promise<User[]> {
 }
 
 export async function deleteUser(db: any, id: number): Promise<void> {
+  await Promise.all([
+    db.delete(schema.leaderboardEntries).where(eq(schema.leaderboardEntries.userId, id)),
+    db.delete(schema.userAchievements).where(eq(schema.userAchievements.userId, id)),
+    db.delete(schema.userStreaks).where(eq(schema.userStreaks.userId, id)),
+    db.delete(schema.userGameStats).where(eq(schema.userGameStats.userId, id)),
+    db.delete(schema.friendships).where(or(eq(schema.friendships.requesterId, id), eq(schema.friendships.addresseeId, id))),
+    db.delete(schema.friendChallenges).where(or(eq(schema.friendChallenges.senderId, id), eq(schema.friendChallenges.receiverId, id))),
+    db.delete(schema.notifications).where(eq(schema.notifications.userId, id)),
+    db.delete(schema.comments).where(eq(schema.comments.userId, id)),
+    db.delete(schema.likes).where(eq(schema.likes.userId, id)),
+    db.delete(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, id)),
+    db.delete(schema.emailVerificationTokens).where(eq(schema.emailVerificationTokens.userId, id)),
+    db.delete(schema.passwordResetTokens).where(eq(schema.passwordResetTokens.userId, id)),
+  ]);
   await db.delete(schema.users).where(eq(schema.users.id, id));
 }
 
 export async function searchUsers(db: any, query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> {
+  const sanitized = query.slice(0, 50).replace(/[%_\\]/g, (c) => `\\${c}`);
   const rows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
     .from(schema.users)
-    .where(like(schema.users.name, `%${query}%`))
+    .where(like(schema.users.name, `%${sanitized}%`))
     .orderBy(asc(schema.users.name))
     .limit(20);
   return rows.map((r: any) => ({ id: r.id, name: r.name, avatarUrl: r.avatarUrl ?? null }));
@@ -31,16 +46,22 @@ export async function getPublicProfile(db: any, userId: number): Promise<{
   const rows = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
   if (!rows[0]) return null;
   const u = toUser(rows[0]);
-  const [stats, achievements, lbRows] = await Promise.all([
+  const [stats, achievements, allUserEntries] = await Promise.all([
     getAllUserGameStats(db, userId),
     getUserAchievements(db, userId),
     db.select().from(schema.leaderboardEntries).where(eq(schema.leaderboardEntries.userId, userId)),
   ]);
+  const slugBestScore = new Map<string, number>();
+  for (const e of allUserEntries) {
+    const existing = slugBestScore.get(e.gameSlug);
+    if (!existing || e.score > existing) slugBestScore.set(e.gameSlug, e.score);
+  }
   const leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> = [];
-  for (const entry of lbRows) {
-    const [{ cnt }] = await db.select({ cnt: sql<number>`COUNT(*)` }).from(schema.leaderboardEntries)
-      .where(sql`${schema.leaderboardEntries.gameSlug} = ${entry.gameSlug} AND ${schema.leaderboardEntries.score} > ${entry.score}`);
-    leaderboardRankings.push({ gameSlug: entry.gameSlug, rank: Number(cnt) + 1, score: entry.score });
+  for (const [slug, score] of slugBestScore) {
+    const [{ cnt }] = await db.select({ cnt: sql<number>`COUNT(DISTINCT ${schema.leaderboardEntries.userId})` })
+      .from(schema.leaderboardEntries)
+      .where(sql`${schema.leaderboardEntries.gameSlug} = ${slug} AND ${schema.leaderboardEntries.score} > ${score}`);
+    leaderboardRankings.push({ gameSlug: slug, rank: Number(cnt) + 1, score });
   }
   return {
     user: { id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, createdAt: u.createdAt, isPremium: u.isPremium, bio: u.bio ?? null },
@@ -51,22 +72,27 @@ export async function getPublicProfile(db: any, userId: number): Promise<{
 }
 
 export async function getAdminStats(db: any): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> {
-  const [[{ total: totalUsers }], [{ total: totalGamesPlayed }], slugRows] = await Promise.all([
+  const [[{ total: totalUsers }], slugRows] = await Promise.all([
     db.select({ total: sql<number>`COUNT(*)` }).from(schema.users),
-    db.select({ total: sql<number>`SUM(gamesPlayed)` }).from(schema.userGameStats),
-    db.select({ gameSlug: schema.gamePlayCounts.gameSlug, count: schema.gamePlayCounts.count }).from(schema.gamePlayCounts),
+    db.select({ gameSlug: schema.userGameStats.gameSlug, total: sql<number>`SUM(${schema.userGameStats.gamesPlayed})` })
+      .from(schema.userGameStats).groupBy(schema.userGameStats.gameSlug),
   ]);
   const gamesPerSlug: Record<string, number> = {};
-  for (const row of slugRows) gamesPerSlug[row.gameSlug] = Number(row.count);
+  let totalGamesPlayed = 0;
+  for (const row of slugRows) {
+    const n = Number(row.total ?? 0);
+    gamesPerSlug[row.gameSlug] = n;
+    totalGamesPlayed += n;
+  }
   return {
     totalUsers: Number(totalUsers ?? 0),
-    totalGamesPlayed: Number(totalGamesPlayed ?? 0),
+    totalGamesPlayed,
     gamesPerSlug,
   };
 }
 
 export async function getAllLeaderboardEntries(db: any): Promise<LeaderboardEntry[]> {
-  const rows = await db.select().from(schema.leaderboardEntries).orderBy(desc(schema.leaderboardEntries.score)).limit(500);
+  const rows = await db.select().from(schema.leaderboardEntries).orderBy(desc(schema.leaderboardEntries.playedAt));
   return rows.map((r: any) => ({
     id: r.id,
     userId: r.userId,
