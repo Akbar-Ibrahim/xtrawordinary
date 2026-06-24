@@ -158,12 +158,12 @@ export class MySQLStorage implements IStorage {
   async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return Words.getWordChainComputerWord(await this.getDb(), this.gameData, playerWord, variation, level, usedWords); }
 
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
-    await this.getDb();
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) return Words.validateShellWord(this.wordSet, word);
     return this.gameData.validateShellWord(word);
   }
   async validateDeepShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
-    await this.getDb();
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) return Words.validateDeepShellWord(this.wordSet, word);
     return this.gameData.validateDeepShellWord(word);
   }
