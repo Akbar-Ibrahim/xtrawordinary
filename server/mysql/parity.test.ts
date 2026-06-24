@@ -1,14 +1,18 @@
 /**
  * MySQL domain-file parity smoke tests.
  *
- * Mocks the `db` argument (recording Drizzle query chains) and asserts that each
- * domain function issues queries with the correct shape — no spurious limits,
- * correct default values, correct operation order, correct computed return values.
+ * Mocks the `db` argument (recording Drizzle query chains) and asserts that
+ * each domain function issues queries with the correct shape:
+ *   – no spurious LIMIT clause
+ *   – correct target table (via drizzle BaseName symbol)
+ *   – correct ORDER BY column and direction (via drizzle queryChunks AST)
+ *   – correct INSERT semantics (plain insert vs onDuplicateKeyUpdate)
+ *   – correct computed return values
  *
  * No live MySQL connection is required; no server is started.
  *
- * Run with:  npx tsx server/mysql/parity.test.ts
- *   or:      node --import tsx/esm server/mysql/parity.test.ts
+ * Run:  npx tsx server/mysql/parity.test.ts
+ *  or:  npm run test:mysql-parity
  */
 
 import { test } from "node:test";
@@ -25,6 +29,7 @@ import {
 } from "./word-wars.js";
 import { listGuildWarsTournaments, createGuildWarsRegistration } from "./guild-wars.js";
 import { addGroupReaction, submitGroupRoundScore } from "./groups.js";
+import { countWordsAtLetterPosition } from "./words.js";
 
 // ── Mock DB infrastructure ─────────────────────────────────────────────────
 
@@ -61,8 +66,8 @@ type Op = "select" | "insert" | "delete" | "update";
 
 /**
  * Minimal mock database.
- * Consumes results from a queue (FIFO); each top-level call (select/insert/…)
- * pops the next result off the queue.  A fallback is used when the queue is empty.
+ * Consumes results from a queue (FIFO); each top-level call pops the next
+ * result.  A default fallback is used when the queue is exhausted.
  */
 class MockDb {
   readonly ops: { op: Op; recorder: ChainRecorder }[] = [];
@@ -101,11 +106,50 @@ class MockDb {
   }
 }
 
-// ── Small assertion helpers ────────────────────────────────────────────────
+// ── Assertion helpers ──────────────────────────────────────────────────────
 
 /** True when the chain never called .limit() */
 function noLimit(rec: ChainRecorder): boolean {
   return !rec.calls.some(c => c.method === "limit");
+}
+
+/**
+ * Verify the FROM target matches the expected drizzle table name.
+ * Drizzle exposes the SQL table name via Symbol.for("drizzle:BaseName").
+ */
+const DRIZZLE_TABLE_SYM = Symbol.for("drizzle:BaseName");
+function fromTable(rec: ChainRecorder, tableName: string): boolean {
+  const call = rec.calls.find(c => c.method === "from");
+  if (!call) return false;
+  return (call.args[0] as any)?.[DRIZZLE_TABLE_SYM] === tableName;
+}
+
+/**
+ * Verify that orderBy was called with a drizzle `desc(col)` / `asc(col)` SQL
+ * expression targeting the given column name.
+ *
+ * Drizzle SQL objects expose their AST via `queryChunks`:
+ *   queryChunks[0] = { value: [""] }          (empty prefix)
+ *   queryChunks[1] = { name: "col_name", … }  (the column)
+ *   queryChunks[2] = { value: [" desc"] }     (direction keyword)
+ */
+function hasSortByColumn(
+  rec: ChainRecorder,
+  columnName: string,
+  direction: "asc" | "desc",
+): boolean {
+  const call = rec.calls.find(c => c.method === "orderBy");
+  if (!call) return false;
+  const arg = call.args[0] as any;
+  const chunks: any[] = arg?.queryChunks ?? [];
+  const colChunk = chunks.find((c: any) => typeof c?.name === "string");
+  const dirChunk = chunks.find(
+    (c: any) =>
+      Array.isArray(c?.value) &&
+      typeof c.value[0] === "string" &&
+      c.value[0].trim().length > 0,
+  );
+  return colChunk?.name === columnName && dirChunk?.value?.[0]?.trim() === direction;
 }
 
 /** Returns the ChainRecorder for the first "insert" op */
@@ -115,54 +159,68 @@ function firstInsert(db: MockDb): ChainRecorder {
   return op.recorder;
 }
 
-// ── No-limit tests ─────────────────────────────────────────────────────────
-// Each test verifies that the primary (first) select query carries no .limit()
-// call.  Returning [] short-circuits any follow-up selects so we only inspect
-// the main query.
+// ── No-limit + table-target + sort-order tests ─────────────────────────────
 
-test("getAllUsers: primary query has no limit", async () => {
+test("getAllUsers: no limit, targets users table, ordered by created_at desc", async () => {
   const db = new MockDb([]);
   await getAllUsers(db);
-  assert.ok(noLimit(db.ops[0].recorder), "getAllUsers must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                               "must not apply a row limit");
+  assert.ok(fromTable(rec, "users"),                    "must query the users table");
+  assert.ok(hasSortByColumn(rec, "created_at", "desc"), "must order by created_at DESC");
 });
 
-test("getDuelChallengesForUser: primary query has no limit", async () => {
+test("getDuelChallengesForUser: no limit, targets duel_challenges table", async () => {
   const db = new MockDb([]);
   await getDuelChallengesForUser(db, 1);
-  assert.ok(noLimit(db.ops[0].recorder), "getDuelChallengesForUser must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                      "must not apply a row limit");
+  assert.ok(fromTable(rec, "duel_challenges"), "must query the duel_challenges table");
 });
 
-test("getOpenDuelChallenges: primary query has no limit", async () => {
+test("getOpenDuelChallenges: no limit, targets duel_challenges table", async () => {
   const db = new MockDb([]);
   await getOpenDuelChallenges(db, 1);
-  assert.ok(noLimit(db.ops[0].recorder), "getOpenDuelChallenges must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                      "must not apply a row limit");
+  assert.ok(fromTable(rec, "duel_challenges"), "must query the duel_challenges table");
 });
 
-test("getHuddleChallengesForGroup: primary query has no limit", async () => {
+test("getHuddleChallengesForGroup: no limit, targets huddle_challenges table", async () => {
   const db = new MockDb([]);
   await getHuddleChallengesForGroup(db, 1);
-  assert.ok(noLimit(db.ops[0].recorder), "getHuddleChallengesForGroup must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                         "must not apply a row limit");
+  assert.ok(fromTable(rec, "huddle_challenges"),  "must query the huddle_challenges table");
 });
 
-test("getTeamRaceChallengesForGroup: primary query has no limit", async () => {
+test("getTeamRaceChallengesForGroup: no limit, targets team_race_challenges table", async () => {
   const db = new MockDb([]);
   await getTeamRaceChallengesForGroup(db, 1);
-  assert.ok(noLimit(db.ops[0].recorder), "getTeamRaceChallengesForGroup must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                              "must not apply a row limit");
+  assert.ok(fromTable(rec, "team_race_challenges"),   "must query the team_race_challenges table");
 });
 
-test("listWordWarsTournaments: primary query has no limit", async () => {
+test("listWordWarsTournaments: no limit, targets word_wars_tournaments, ordered by created_at desc", async () => {
   const db = new MockDb([]);
   await listWordWarsTournaments(db);
-  assert.ok(noLimit(db.ops[0].recorder), "listWordWarsTournaments must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                               "must not apply a row limit");
+  assert.ok(fromTable(rec, "word_wars_tournaments"),    "must query word_wars_tournaments");
+  assert.ok(hasSortByColumn(rec, "created_at", "desc"), "must order by created_at DESC");
 });
 
-test("listGuildWarsTournaments: primary query has no limit", async () => {
+test("listGuildWarsTournaments: no limit, targets guild_wars_tournaments, ordered by created_at desc", async () => {
   const db = new MockDb([]);
   await listGuildWarsTournaments(db);
-  assert.ok(noLimit(db.ops[0].recorder), "listGuildWarsTournaments must not apply a row limit");
+  const rec = db.ops[0].recorder;
+  assert.ok(noLimit(rec),                               "must not apply a row limit");
+  assert.ok(fromTable(rec, "guild_wars_tournaments"),   "must query guild_wars_tournaments");
+  assert.ok(hasSortByColumn(rec, "created_at", "desc"), "must order by created_at DESC");
 });
 
-// ── Default-value tests ────────────────────────────────────────────────────
+// ── Default-value test ─────────────────────────────────────────────────────
 
 test("createWordWarsTournament: minPlayers defaults to 2 when not provided", async () => {
   const db = new MockDb(
@@ -187,13 +245,13 @@ test("createWordWarsTournament: minPlayers defaults to 2 when not provided", asy
   assert.equal(
     (valuesCall.args[0] as any).minPlayers,
     2,
-    "minPlayers must default to 2 when not provided in input data",
+    "minPlayers must default to 2 when not provided",
   );
 });
 
 // ── Plain-insert (no upsert) tests ─────────────────────────────────────────
 
-test("createWordWarsRegistration: uses plain insert, not onDuplicateKeyUpdate", async () => {
+test("createWordWarsRegistration: plain insert into word_wars_registrations, no onDuplicateKeyUpdate", async () => {
   const db = new MockDb(
     [{ insertId: 5 }],
     [{ id: 5, tournamentId: 1, userId: 2, createdAt: new Date() }],
@@ -202,11 +260,11 @@ test("createWordWarsRegistration: uses plain insert, not onDuplicateKeyUpdate", 
   const rec = firstInsert(db);
   assert.ok(
     !rec.calls.some(c => c.method === "onDuplicateKeyUpdate"),
-    "createWordWarsRegistration must use a plain insert — no onDuplicateKeyUpdate",
+    "must be a plain insert — no onDuplicateKeyUpdate",
   );
 });
 
-test("createGuildWarsRegistration: uses plain insert, not onDuplicateKeyUpdate", async () => {
+test("createGuildWarsRegistration: plain insert into guild_wars_registrations, no onDuplicateKeyUpdate", async () => {
   const db = new MockDb(
     [{ insertId: 7 }],
     [{ id: 7, tournamentId: 1, groupId: 3, registeredBy: 4, createdAt: new Date() }],
@@ -215,27 +273,27 @@ test("createGuildWarsRegistration: uses plain insert, not onDuplicateKeyUpdate",
   const rec = firstInsert(db);
   assert.ok(
     !rec.calls.some(c => c.method === "onDuplicateKeyUpdate"),
-    "createGuildWarsRegistration must use a plain insert — no onDuplicateKeyUpdate",
+    "must be a plain insert — no onDuplicateKeyUpdate",
   );
 });
 
-// ── Operation-sequence tests ───────────────────────────────────────────────
+// ── Operation-sequence test ────────────────────────────────────────────────
 
 test("addGroupReaction: delete fires before insert (not upsert)", async () => {
   const db = new MockDb(
     { affectedRows: 0 },        // delete result
     [{ insertId: 42 }],         // insert result
-    [{                          // select result for the fetch-after-insert
+    [{                          // select for fetch-after-insert
       id: 42, roundId: 1, scoreId: 2, userId: 3,
       emoji: "🔥", createdAt: new Date(),
     }],
   );
   await addGroupReaction(db, 1, 2, 3, "🔥");
-  assert.equal(db.ops[0].op, "delete", "First operation must be delete");
-  assert.equal(db.ops[1].op, "insert", "Second operation must be insert");
+  assert.equal(db.ops[0].op, "delete", "first operation must be delete");
+  assert.equal(db.ops[1].op, "insert", "second operation must be insert");
   assert.ok(
     !db.ops[1].recorder.calls.some(c => c.method === "onDuplicateKeyUpdate"),
-    "addGroupReaction insert must not use onDuplicateKeyUpdate",
+    "insert must not use onDuplicateKeyUpdate",
   );
 });
 
@@ -244,17 +302,53 @@ test("submitGroupRoundScore: returns existing score without inserting on duplica
     id: 9, roundId: 1, userId: 2,
     score: 150, durationMs: 5000, completedAt: new Date(),
   };
-  // Provide only one result — the check-existing select; if insert runs it will
-  // consume a second result (which doesn't exist → fallback insertId:1 would
-  // cause a subsequent select that has no row → crash or wrong result).
-  // Cleanest proof: verify no insert op occurred at all.
+  // Only one queued result — if insert fires it consumes the fallback and the
+  // subsequent re-fetch returns [] causing a crash or wrong return value.
   const db = new MockDb([existingRow]);
   const result = await submitGroupRoundScore(db, 1, 2, 200, 3000);
-  assert.equal(result.score, 150, "Must return the existing score, not the new score 200");
-  assert.equal(result.id, 9, "Must return the existing record id");
+  assert.equal(result.score, 150, "must return existing score (150), not the new score (200)");
+  assert.equal(result.id, 9, "must return the existing record id");
   assert.ok(
     !db.ops.some(o => o.op === "insert"),
-    "Must not insert when a score for this (roundId, userId) already exists",
+    "must not insert when a score for this (roundId, userId) already exists",
+  );
+});
+
+// ── countWordsAtLetterPosition pure function ───────────────────────────────
+// Validates the 1-based → 0-based position conversion that was the root cause
+// of a prior regression in MySQLStorage.countLetterPositionWords.
+
+test("countWordsAtLetterPosition: position=1 matches first character (0-based index 0)", () => {
+  const words = new Set(["APPLE", "ANVIL", "BRAVE", "CRANE"]);
+  // Position 1 = first letter.  Words starting with A: APPLE, ANVIL → 2
+  const count = countWordsAtLetterPosition(words, "A", 1);
+  assert.equal(count, 2, "position=1 must match words whose first letter is A");
+});
+
+test("countWordsAtLetterPosition: position=2 matches second character", () => {
+  // BRAVE[1]=R, CRANE[1]=R, APPLE[1]=P, DANCE[1]=A  → 2 words with R at index 1
+  const words = new Set(["BRAVE", "CRANE", "APPLE", "DANCE"]);
+  const countR = countWordsAtLetterPosition(words, "R", 2);
+  assert.equal(countR, 2, "position=2 must match words whose second letter is R");
+});
+
+test("countWordsAtLetterPosition: position=1 is NOT equivalent to position=2", () => {
+  // Regression guard: the old bug used `w[position]` (0-based) instead of
+  // `w[position - 1]` (1-based), meaning position=1 behaved like position=2.
+  const words = new Set(["APPLE", "BRAVE"]);
+  const atPos1 = countWordsAtLetterPosition(words, "A", 1); // APPLE → 1
+  const atPos2 = countWordsAtLetterPosition(words, "A", 2); // none  → 0
+  assert.equal(atPos1, 1, "position=1 should match APPLE (starts with A)");
+  assert.equal(atPos2, 0, "position=2 should not match APPLE (second letter is P, not A)");
+  assert.notEqual(atPos1, atPos2, "position=1 and position=2 must not be interchangeable");
+});
+
+test("countWordsAtLetterPosition: letter comparison is case-insensitive", () => {
+  const words = new Set(["APPLE", "ANVIL"]);
+  assert.equal(
+    countWordsAtLetterPosition(words, "a", 1),
+    countWordsAtLetterPosition(words, "A", 1),
+    "lowercase and uppercase letter args must produce identical counts",
   );
 });
 
@@ -262,20 +356,14 @@ test("submitGroupRoundScore: returns existing score without inserting on duplica
 
 test("getDuelLeaderboard: winRate is an integer percentage (0-100)", async () => {
   const db = new MockDb(
-    // First select: all rating rows (ordered by ELO desc in real code)
     [{ id: 1, userId: 42, elo: 1300, wins: 3, losses: 1, draws: 0, updatedAt: new Date() }],
-    // Second select: matching user rows
     [{ id: 42, name: "Alice", avatarUrl: null }],
   );
   const result = await getDuelLeaderboard(db, 10);
   assert.equal(result.length, 1);
-  // 3 wins / (3+1+0) total = 75%, not 0.75
   assert.equal(result[0].winRate, 75, "3/4 games = 75, not 0.75");
-  assert.ok(Number.isInteger(result[0].winRate), "winRate must be an integer");
-  assert.ok(
-    result[0].winRate >= 0 && result[0].winRate <= 100,
-    "winRate must be in the 0-100 range",
-  );
+  assert.ok(Number.isInteger(result[0].winRate),                              "winRate must be an integer");
+  assert.ok(result[0].winRate >= 0 && result[0].winRate <= 100,               "winRate must be in the 0-100 range");
 });
 
 test("getDuelLeaderboard: winRate is 0 when no games played", async () => {
@@ -287,6 +375,3 @@ test("getDuelLeaderboard: winRate is 0 when no games played", async () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].winRate, 0, "winRate must be 0 when no games have been played");
 });
-
-// Force exit after tests complete (avoids lingering async handles)
-setTimeout(() => process.exit(process.exitCode ?? 0), 3000).unref();

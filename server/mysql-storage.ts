@@ -102,10 +102,7 @@ export class MySQLStorage implements IStorage {
   }
   async countLetterPositionWords(letter: string, position: number): Promise<number> {
     if (this.wordSet.size > 0) {
-      const l = letter.toUpperCase();
-      let count = 0;
-      this.wordSet.forEach((w) => { if (w[position - 1] === l) count++; });
-      return count;
+      return Words.countWordsAtLetterPosition(this.wordSet, letter, position);
     }
     return this.gameData.countLetterPositionWords(letter, position);
   }

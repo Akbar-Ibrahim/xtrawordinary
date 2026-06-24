@@ -203,3 +203,19 @@ export async function getDeepCrackAnswer(db: any, gameData: any, seed: number): 
     return gameData.getDeepCrackAnswer(seed);
   }
 }
+
+/**
+ * Pure helper: count words in wordSet whose character at the given 1-based
+ * position equals letter (case-insensitive).  Exported so it can be unit
+ * tested independently of MySQLStorage.
+ */
+export function countWordsAtLetterPosition(
+  wordSet: Set<string>,
+  letter: string,
+  position: number,
+): number {
+  const l = letter.toUpperCase();
+  let count = 0;
+  wordSet.forEach((w) => { if (w[position - 1] === l) count++; });
+  return count;
+}
