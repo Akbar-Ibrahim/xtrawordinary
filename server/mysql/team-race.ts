@@ -20,7 +20,7 @@ export async function getTeamRaceChallenge(db: any, id: number): Promise<TeamRac
 export async function getTeamRaceChallengesForGroup(db: any, groupId: number): Promise<TeamRaceChallenge[]> {
   const rows = await db.select().from(schema.teamRaceChallenges)
     .where(or(eq(schema.teamRaceChallenges.challengerGroupId, groupId), eq(schema.teamRaceChallenges.challengeeGroupId, groupId)))
-    .orderBy(desc(schema.teamRaceChallenges.createdAt)).limit(50);
+    .orderBy(desc(schema.teamRaceChallenges.createdAt));
   return rows.map((r: any) => mapTeamRaceChallenge(r));
 }
 

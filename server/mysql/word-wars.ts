@@ -61,7 +61,7 @@ export async function createWordWarsTournament(db: any, data: InsertWordWarsTour
     name: data.name,
     registrationDeadline: new Date(data.registrationDeadline),
     roundDeadlineHours: data.roundDeadlineHours ?? 24,
-    minPlayers: data.minPlayers ?? 4,
+    minPlayers: data.minPlayers ?? 2,
     maxPlayers: data.maxPlayers ?? null,
     recurringCron: data.recurringCron ?? null,
     createdBy: data.createdBy ?? 0,
@@ -75,7 +75,7 @@ export async function getWordWarsTournament(db: any, id: number): Promise<WordWa
 }
 
 export async function listWordWarsTournaments(db: any): Promise<WordWarsTournament[]> {
-  const rows = await db.select().from(schema.wordWarsTournaments).orderBy(desc(schema.wordWarsTournaments.registrationDeadline)).limit(50);
+  const rows = await db.select().from(schema.wordWarsTournaments).orderBy(desc(schema.wordWarsTournaments.createdAt));
   return rows.map((r: any) => toTournament(r));
 }
 
@@ -93,8 +93,8 @@ export async function updateWordWarsTournament(db: any, id: number, updates: Par
 }
 
 export async function createWordWarsRegistration(db: any, tournamentId: number, userId: number): Promise<WordWarsRegistration> {
-  await db.insert(schema.wordWarsRegistrations).values({ tournamentId, userId }).onDuplicateKeyUpdate({ set: { tournamentId } });
-  const rows = await db.select().from(schema.wordWarsRegistrations).where(and(eq(schema.wordWarsRegistrations.tournamentId, tournamentId), eq(schema.wordWarsRegistrations.userId, userId))).limit(1);
+  const result = await db.insert(schema.wordWarsRegistrations).values({ tournamentId, userId });
+  const rows = await db.select().from(schema.wordWarsRegistrations).where(eq(schema.wordWarsRegistrations.id, result[0].insertId)).limit(1);
   return toRegistration(rows[0]);
 }
 

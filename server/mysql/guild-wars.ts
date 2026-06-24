@@ -73,7 +73,7 @@ export async function getGuildWarsTournament(db: any, id: number): Promise<Guild
 }
 
 export async function listGuildWarsTournaments(db: any): Promise<GuildWarsTournament[]> {
-  const rows = await db.select().from(schema.guildWarsTournaments).orderBy(desc(schema.guildWarsTournaments.registrationDeadline)).limit(50);
+  const rows = await db.select().from(schema.guildWarsTournaments).orderBy(desc(schema.guildWarsTournaments.createdAt));
   return rows.map((r: any) => toGWTournament(r));
 }
 
@@ -90,8 +90,8 @@ export async function updateGuildWarsTournament(db: any, id: number, updates: Pa
 }
 
 export async function createGuildWarsRegistration(db: any, tournamentId: number, groupId: number, registeredBy: number): Promise<GuildWarsRegistration> {
-  await db.insert(schema.guildWarsRegistrations).values({ tournamentId, groupId, registeredBy }).onDuplicateKeyUpdate({ set: { tournamentId } });
-  const rows = await db.select().from(schema.guildWarsRegistrations).where(and(eq(schema.guildWarsRegistrations.tournamentId, tournamentId), eq(schema.guildWarsRegistrations.groupId, groupId))).limit(1);
+  const result = await db.insert(schema.guildWarsRegistrations).values({ tournamentId, groupId, registeredBy });
+  const rows = await db.select().from(schema.guildWarsRegistrations).where(eq(schema.guildWarsRegistrations.id, result[0].insertId)).limit(1);
   return toGWRegistration(rows[0]);
 }
 

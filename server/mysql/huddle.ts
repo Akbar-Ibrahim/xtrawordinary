@@ -20,7 +20,7 @@ export async function getHuddleChallenge(db: any, id: number): Promise<HuddleCha
 export async function getHuddleChallengesForGroup(db: any, groupId: number): Promise<HuddleChallenge[]> {
   const rows = await db.select().from(schema.huddleChallenges)
     .where(or(eq(schema.huddleChallenges.challengerGroupId, groupId), eq(schema.huddleChallenges.challengeeGroupId, groupId)))
-    .orderBy(desc(schema.huddleChallenges.createdAt)).limit(50);
+    .orderBy(desc(schema.huddleChallenges.createdAt));
   if (rows.length === 0) return [];
   const groupIds = [...new Set([...rows.map((r: any) => r.challengerGroupId), ...rows.map((r: any) => r.challengeeGroupId)])];
   const userIds = [...new Set([...rows.map((r: any) => r.challengerAdminId), ...rows.filter((r: any) => r.challengeeAdminId).map((r: any) => r.challengeeAdminId)])];
