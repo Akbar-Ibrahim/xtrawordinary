@@ -114,7 +114,8 @@ export async function acceptOpenDuelChallenge(db: any, id: number, challengeeId:
 export async function getDuelChallengesForUser(db: any, userId: number): Promise<DuelChallenge[]> {
   const rows = await db.select().from(schema.duelChallenges)
     .where(or(eq(schema.duelChallenges.challengerId, userId), eq(schema.duelChallenges.challengeeId, userId)))
-    .orderBy(desc(schema.duelChallenges.createdAt));
+    .orderBy(desc(schema.duelChallenges.createdAt))
+    .limit(50);
   return rows.map((r: any) => mapDuelChallenge(r));
 }
 
@@ -125,7 +126,7 @@ export async function getOpenDuelChallenges(db: any, excludeUserId: number, game
     sql`${schema.duelChallenges.challengerId} != ${excludeUserId}`,
   );
   const whereClause = gameSlug ? and(baseWhere, eq(schema.duelChallenges.gameSlug, gameSlug)) : baseWhere;
-  const rows = await db.select().from(schema.duelChallenges).where(whereClause as any).orderBy(desc(schema.duelChallenges.createdAt));
+  const rows = await db.select().from(schema.duelChallenges).where(whereClause as any).orderBy(desc(schema.duelChallenges.createdAt)).limit(20);
   if (rows.length === 0) return [];
   const challengerIds = Array.from(new Set(rows.map((r: any) => r.challengerId as number))) as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, challengerIds));

@@ -5,7 +5,7 @@ import { toUser } from "./users";
 import { getAllUserGameStats, getUserAchievements } from "./stats";
 
 export async function getAllUsers(db: any): Promise<User[]> {
-  const rows = await db.select().from(schema.users).orderBy(desc(schema.users.createdAt));
+  const rows = await db.select().from(schema.users).orderBy(desc(schema.users.createdAt)).limit(500);
   return rows.map((r: any) => toUser(r));
 }
 
