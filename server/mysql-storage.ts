@@ -39,6 +39,7 @@ import * as Admin from "./mysql/admin";
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
   private dbPromise: Promise<any>;
+  private wordPreloadPromise: Promise<void>;
   private wordSet: Set<string> = new Set();
 
   static tsToIso(d: Date | string | null | undefined): string | null {
@@ -50,16 +51,32 @@ export class MySQLStorage implements IStorage {
     if (!process.env.MYSQL_DATABASE_URL) {
       throw new Error("MYSQL_DATABASE_URL is required");
     }
-    this.dbPromise = import("./db").then(async (m) => {
-      const db = m.db;
+
+    // dbPromise resolves to the raw drizzle db handle; non-word operations
+    // await this directly without waiting for the (slower) word preload.
+    this.dbPromise = import("./db").then(m => m.db);
+
+    // wordPreloadPromise runs in the background after the DB connection is
+    // ready.  Word-dependent methods await this before checking wordSet.size.
+    //
+    // DESIGN CHOICE — graceful degradation:
+    //   If the words table is inaccessible at startup the server falls back to
+    //   the in-memory word list and continues running.  This keeps the server
+    //   available when only the words table has a problem.  If fail-fast
+    //   behaviour is ever preferred (e.g. words are safety-critical), reject
+    //   this.dbPromise here rather than catching the error below.
+    this.wordPreloadPromise = this.dbPromise.then(async (db) => {
       try {
-        const rows = await db.select({ word: (await import("./db-schema")).words.word }).from((await import("./db-schema")).words);
+        const schema = await import("./db-schema");
+        const rows = await db.select({ word: schema.words.word }).from(schema.words);
         for (const row of rows) this.wordSet.add(row.word.toUpperCase());
-        console.log(`[MySQLStorage] Loaded ${this.wordSet.size} words into Set from MySQL`);
+        console.log(`[MySQLStorage] Loaded ${this.wordSet.size} words from MySQL`);
       } catch (err) {
-        console.warn("[MySQLStorage] Could not preload words:", err);
+        console.error("[MySQLStorage] Word preload failed — falling back to in-memory word list.", err);
       }
-      return db;
+      if (this.wordSet.size === 0) {
+        console.warn("[MySQLStorage] WARNING: running on in-memory word list (MySQL words table empty or unavailable)");
+      }
     });
   }
 
@@ -92,21 +109,24 @@ export class MySQLStorage implements IStorage {
   async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
 
   async getWordDictionary(): Promise<string[]> {
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) return Array.from(this.wordSet);
     return this.gameData.getWordDictionary();
   }
   async validateWord(word: string): Promise<boolean> {
-    await this.getDb(); // ensure wordSet loaded
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) return this.wordSet.has(word.toUpperCase());
     return this.gameData.validateWord(word);
   }
   async countLetterPositionWords(letter: string, position: number): Promise<number> {
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) {
       return Words.countWordsAtLetterPosition(this.wordSet, letter, position);
     }
     return this.gameData.countLetterPositionWords(letter, position);
   }
   async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
+    await this.wordPreloadPromise;
     if (this.wordSet.size > 0) {
       const sw = startsWith?.toUpperCase();
       const ew = endsWith?.toUpperCase();
