@@ -84,7 +84,7 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournament.id] });
       toast({ title: data.registered ? "Registered for the war!" : "Registration withdrawn" });
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const canRegister = tournament.status === "registration" && new Date(tournament.registrationDeadline) > new Date();

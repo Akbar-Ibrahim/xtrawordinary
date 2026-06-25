@@ -5,20 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import type { Game } from "@shared/schema";
 
 export function GamesTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: games, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/games"] });
+  const { data: games, isLoading } = useQuery<Game[]>({ queryKey: ["/api/admin/games"] });
 
   const toggleMutation = useMutation({
     mutationFn: ({ slug, isActive }: { slug: string; isActive: boolean }) =>
       apiRequest("PATCH", `/api/admin/games/${slug}/active`, { isActive }),
     onMutate: async ({ slug, isActive }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/admin/games"] });
-      const previous = queryClient.getQueryData<any[]>(["/api/admin/games"]);
-      queryClient.setQueryData<any[]>(["/api/admin/games"], (old) =>
+      const previous = queryClient.getQueryData<Game[]>(["/api/admin/games"]);
+      queryClient.setQueryData<Game[]>(["/api/admin/games"], (old) =>
         old?.map((g) => g.slug === slug ? { ...g, isActive } : g) ?? []
       );
       return { previous };
@@ -62,7 +63,7 @@ export function GamesTab() {
               </tr>
             </thead>
             <tbody>
-              {games.map((g: any) => (
+              {games.map((g) => (
                 <tr key={g.slug} className="border-b hover:bg-muted/50" data-testid={`game-row-${g.slug}`}>
                   <td className="py-3 px-2 font-medium">{g.name}</td>
                   <td className="py-3 px-2 text-muted-foreground font-mono text-xs">{g.slug}</td>

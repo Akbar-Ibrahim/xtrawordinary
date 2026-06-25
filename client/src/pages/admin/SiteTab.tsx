@@ -29,13 +29,13 @@ export function SiteTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/site/announcement"] });
       setAnnouncementText("");
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const removeAnnouncement = useMutation({
     mutationFn: () => apiRequest("DELETE", "/api/site/announcement"),
     onSuccess: () => { toast({ title: "Announcement removed" }); queryClient.invalidateQueries({ queryKey: ["/api/site/announcement"] }); },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   return (

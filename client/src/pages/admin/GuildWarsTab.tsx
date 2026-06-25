@@ -45,19 +45,19 @@ export function GuildWarsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/guild-wars"] });
       setName(""); setDeadline(""); setRoundHours("24"); setMinGroups("2"); setMaxGroups("");
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const drawMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/guild-wars/${id}/draw`),
     onSuccess: () => { toast({ title: "Bracket drawn!" }); queryClient.invalidateQueries({ queryKey: ["/api/guild-wars"] }); },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: number) => { setCancellingId(id); return apiRequest("PATCH", `/api/guild-wars/${id}/cancel`); },
     onSuccess: () => { toast({ title: "Tournament cancelled." }); queryClient.invalidateQueries({ queryKey: ["/api/guild-wars"] }); setCancellingId(null); },
-    onError: (err: any) => { toast({ title: "Error", description: err.message, variant: "destructive" }); setCancellingId(null); },
+    onError: (err: Error) => { toast({ title: "Error", description: err.message, variant: "destructive" }); setCancellingId(null); },
   });
 
   return (

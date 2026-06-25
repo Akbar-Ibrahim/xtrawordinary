@@ -63,7 +63,7 @@ function MatchCard({
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
       navigate(`/duel/${roomCode}`);
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const isUserHighlighted = isUserMatch && isActive;
@@ -259,8 +259,8 @@ function MyMatchesSection({
       const { roomCode } = await res.json() as { roomCode: string };
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars", tournamentId] });
       navigate(`/duel/${roomCode}`);
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
     } finally {
       setPendingGame(null);
     }

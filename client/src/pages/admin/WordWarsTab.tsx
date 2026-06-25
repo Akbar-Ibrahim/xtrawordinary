@@ -61,13 +61,13 @@ export function WordWarsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] });
       setName(""); setDeadline(""); setRoundHours("24"); setMinPlayers("2"); setMaxPlayers("");
     },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const drawMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/word-wars/${id}/draw`),
     onSuccess: () => { toast({ title: "Bracket drawn!" }); queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] }); },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const updateMutation = useMutation({
@@ -79,13 +79,13 @@ export function WordWarsTab() {
       maxPlayers: editMaxPlayers ? parseInt(editMaxPlayers) : null,
     }),
     onSuccess: () => { toast({ title: "Tournament updated!" }); queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] }); setEditingId(null); },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: number) => { setCancellingId(id); return apiRequest("POST", `/api/word-wars/${id}/cancel`); },
     onSuccess: () => { toast({ title: "Tournament cancelled." }); queryClient.invalidateQueries({ queryKey: ["/api/word-wars"] }); setCancellingId(null); },
-    onError: (err: any) => { toast({ title: "Error", description: err.message, variant: "destructive" }); setCancellingId(null); },
+    onError: (err: Error) => { toast({ title: "Error", description: err.message, variant: "destructive" }); setCancellingId(null); },
   });
 
   function startEdit(t: Tournament) {
