@@ -70,77 +70,10 @@ import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { QuizCreateDialog } from "./game-detail/QuizCreateDialog";
 import { CustomPlayDialog } from "./game-detail/CustomPlayDialog";
 import { ChallengeDialog } from "./game-detail/ChallengeDialog";
-
-const difficultyColors = {
-  easy: "bg-accent text-accent-foreground",
-  medium: "bg-chart-3 text-white",
-  hard: "bg-destructive text-destructive-foreground",
-};
-
-const LadderRushDoubleGame = (props: { groupSeed?: number; locked?: boolean }) =>
-  <LadderRushGame {...props} doubleSwap />;
-
-const gameComponents: Record<string, React.ComponentType<{ groupSeed?: number; locked?: boolean }>> = {
-  "word-ladder": WordLadderGame,
-  "anagram-solver": AnagramSolverGame,
-  "word-scramble": WordScrambleGame,
-  "definition-match": DefinitionMatchGame,
-  "letter-pool": LetterPoolGame,
-  "word-maker": WordMakerGame,
-  "word-length": WordLengthGame,
-  "letter-position": LetterPositionGame,
-  "letter-hunt": LetterHuntGame,
-  "word-chain": WordChainGame,
-  "letter-balance": LetterBalanceGame,
-  "letter-frequency": LetterFrequencyGame,
-  "word-stack": WordStackGame,
-  "no-repeats": NoRepeatsGame,
-  "word-split": WordSplitGame,
-  "progressive-reveal": ProgressiveRevealGame,
-  "word-sweep": WordSweepGame,
-  "word-roots": WordRootsGame,
-  "ladder-rush": LadderRushGame,
-  "ladder-rush-double": LadderRushDoubleGame,
-  "shell-words": ShellWordsGame,
-  "deep-shell-words": DeepShellWordsGame,
-  "word-stretch": WordStretchGame,
-  "word-bloom": WordBloomGame,
-  "letter-dodge": LetterDodgeGame,
-};
-
-const CUSTOM_PLAY_SLUGS = new Set([
-  "letter-position",
-  "letter-hunt",
-  "letter-frequency",
-  "letter-balance",
-  "word-length",
-  "letter-dodge",
-]);
-
-const UNTIMED_GAME_SLUGS = new Set([
-  "word-chain",
-  "word-ladder",
-  "letter-hunt",
-  "word-scramble",
-  "no-repeats",
-]);
-
-const LETTER_BALANCE_CATEGORIES_DETAIL = [
-  { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
-  { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2, 3, 4, 5, 6, 7] },
-  { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10, 11, 12] },
-  { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [4, 5, 6, 7, 8, 9, 10] },
-] as const;
-
-interface ChallengeResult {
-  myScore: number;
-  opponentScore: number;
-  won: boolean;
-  isSender: boolean;
-}
+import { GameDetailSidebar } from "./game-detail/GameDetailSidebar";
+import { FriendChallengeCard } from "./game-detail/FriendChallengeCard";
+import { difficultyColors, gameComponents, CUSTOM_PLAY_SLUGS, UNTIMED_GAME_SLUGS } from "./game-detail/constants";
+import type { ChallengeResult } from "./game-detail/constants";
 
 function FriendsWhoPlay({ slug }: { slug: string }) {
   const { user } = useAuth();
@@ -593,128 +526,19 @@ export default function GameDetail() {
               <CommentSection targetType="game" targetId={game.slug} />
             </div>
 
-            <div className="lg:sticky lg:top-24 h-fit space-y-4">
-              <Card>
-                <CardContent className="p-6 space-y-4">
-                  <div className="text-center">
-                    <h3 className="font-semibold mb-2">Ready to play?</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Test your word skills and have fun!
-                    </p>
-                  </div>
-                  <Button
-                    className="w-full gap-2"
-                    size="lg"
-                    onClick={() => setIsPlaying(true)}
-                    data-testid="button-play"
-                  >
-                    <Play className="h-5 w-5" />
-                    Play Now
-                  </Button>
-                  {isAuthenticated && slug && SEEDED_GAME_SLUGS.has(slug) && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={() => setShowChallengeDialog(true)}
-                      data-testid="button-challenge-friend"
-                    >
-                      <Swords className="h-4 w-4" />
-                      Challenge a Player
-                    </Button>
-                  )}
-                  {isAuthenticated && user?.isPremium && slug && (DUEL_GAME_SLUGS.has(slug) || slug === "ladder-rush" || slug === "ladder-rush-double") && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"
-                      onClick={() => setShowDuelDialog(true)}
-                      data-testid="button-duel-friend"
-                    >
-                      <Swords className="h-4 w-4" />
-                      Duel a Player
-                    </Button>
-                  )}
-                  {isAuthenticated && slug && DUEL_GAME_SLUGS.has(slug) && openDuels.length > 0 && (
-                    <div className="border border-violet-200 dark:border-violet-800 rounded-lg overflow-hidden">
-                      <div className="px-3 py-2 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800 flex items-center justify-between">
-                        <span className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Swords className="h-3 w-3" />
-                          Players Waiting
-                        </span>
-                        <span className="text-xs text-violet-500" data-testid="text-open-duels-count">{openDuels.length}</span>
-                      </div>
-                      <div className="divide-y divide-border">
-                        {openDuels.slice(0, 5).map((challenge) => (
-                          <div key={challenge.id} className="flex items-center gap-2 px-3 py-2">
-                            <UserAvatar
-                              name={challenge.challengerName ?? "Player"}
-                              avatarUrl={challenge.challengerAvatarUrl ?? null}
-                              className="h-7 w-7 shrink-0"
-                            />
-                            <span className="text-sm font-medium flex-1 truncate" data-testid={`text-challenger-name-${challenge.id}`}>
-                              {challenge.challengerName ?? "Player"}
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs shrink-0 ${challenge.format === "race" ? "border-orange-400 text-orange-600" : "border-blue-400 text-blue-600"}`}
-                            >
-                              {challenge.format === "race" ? "Race" : "Turn"}
-                            </Badge>
-                            <Button
-                              size="sm"
-                              className="h-6 px-2 text-xs shrink-0 bg-violet-600 hover:bg-violet-700 text-white"
-                              onClick={() => navigate(`/duel/${challenge.roomCode}`)}
-                              data-testid={`button-join-duel-${challenge.id}`}
-                            >
-                              Join
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="px-3 py-2 border-t border-border bg-muted/30">
-                        <Link href="/duels" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                          View all live duels →
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                  {isAuthenticated && slug && QUIZ_MASTER_GAME_SLUGS.has(slug) && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={() => setShowQuizDialog(true)}
-                      data-testid="button-create-quiz"
-                    >
-                      <GraduationCap className="h-4 w-4" />
-                      Create Quiz Session
-                    </Button>
-                  )}
-                  {isAuthenticated && user?.isPremium && slug && CUSTOM_PLAY_SLUGS.has(slug) && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-                      onClick={() => setShowCustomPlayDialog(true)}
-                      data-testid="button-custom-play"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      Custom Play
-                    </Button>
-                  )}
-                  {isAuthenticated && user?.isPremium && slug && UNTIMED_GAME_SLUGS.has(slug) && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-blue-400 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                      onClick={() => { setIsUntimed(true); setIsPlaying(true); }}
-                      data-testid="button-untimed-mode"
-                    >
-                      <span className="text-base leading-none">∞</span>
-                      Untimed Mode
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-              <PremiumBanner variant="card" />
-              <MiniLeaderboard game={game} />
-            </div>
+            <GameDetailSidebar
+              slug={slug}
+              game={game}
+              isAuthenticated={isAuthenticated}
+              isPremium={!!user?.isPremium}
+              openDuels={openDuels}
+              onPlay={() => setIsPlaying(true)}
+              onChallenge={() => setShowChallengeDialog(true)}
+              onDuel={() => setShowDuelDialog(true)}
+              onQuiz={() => setShowQuizDialog(true)}
+              onCustomPlay={() => setShowCustomPlayDialog(true)}
+              onUntimed={() => { setIsUntimed(true); setIsPlaying(true); }}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -838,65 +662,21 @@ export default function GameDetail() {
               </Card>
             )}
 
-            {challengeResult && (() => {
-              const opponentAvatarUrl = !challengeResult.isSender
-                ? (receiverChallenge?.senderAvatarUrl ?? null)
-                : (friends.find(f => String(f.friendUser.id) === challengeNewFriendId)?.friendUser.avatarUrl ?? null);
-              return (
-                <Card className={`mb-6 border-2 ${isTied ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
-                  <CardContent className="py-5 px-6">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Trophy className={`h-6 w-6 ${isTied ? "text-blue-500" : challengeResult.won ? "text-yellow-500" : "text-muted-foreground"}`} />
-                      <p className="text-lg font-bold">
-                        {isTied
-                          ? "It's a tie!"
-                          : challengeResult.won
-                            ? opponentName ? `You beat ${opponentName}!` : "You won the challenge!"
-                            : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
-                      </p>
-                    </div>
-                    {slug === "letter-balance" && (() => {
-                      const lbCfgStr = isReceiverMode ? receiverChallenge?.gameConfig : null;
-                      const senderLbStr = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
-                        ? JSON.stringify({ category: "locked_balance", level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) })
-                        : null;
-                      const cfgStr = isReceiverMode ? lbCfgStr : senderLbStr;
-                      if (!cfgStr) return null;
-                      try {
-                        const cfg = JSON.parse(cfgStr);
-                        if (cfg?.category === "locked_balance" && cfg.level && cfg.consonantCount) {
-                          const vowels = cfg.level - cfg.consonantCount;
-                          return (
-                            <p className="text-xs text-muted-foreground mt-1" data-testid="text-challenge-lb-config">
-                              Locked Balance · {cfg.level}-letter words · {cfg.consonantCount}C/{vowels}V
-                            </p>
-                          );
-                        }
-                      } catch {}
-                      return null;
-                    })()}
-                    <div className="flex gap-6 text-sm mt-2">
-                      <div>
-                        <p className="text-muted-foreground">Your score</p>
-                        <p className="text-2xl font-bold">{challengeResult.myScore}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground flex items-center gap-1.5">
-                          <UserAvatar name={opponentName ?? "Opponent"} avatarUrl={opponentAvatarUrl} className="h-6 w-6 inline-block align-middle" data-testid="img-result-opponent-avatar" />
-                          {opponentName ? `${opponentName}'s score` : "Their score"}
-                        </p>
-                        <p className="text-2xl font-bold">{challengeResult.opponentScore}</p>
-                      </div>
-                    </div>
-                    <Link href="/friends">
-                      <Button className="mt-4" size="sm" data-testid="button-back-to-friends">
-                        See all challenges
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })()}
+            {challengeResult && (
+              <FriendChallengeCard
+                challengeResult={challengeResult}
+                isTied={isTied}
+                opponentName={opponentName}
+                receiverChallenge={receiverChallenge}
+                challengeNewFriendId={challengeNewFriendId}
+                friends={friends}
+                slug={slug}
+                challengeNewLbCategory={challengeNewLbCategory}
+                challengeNewLbLevel={challengeNewLbLevel}
+                challengeNewLbConsonantCount={challengeNewLbConsonantCount}
+                isReceiverMode={isReceiverMode}
+              />
+            )}
 
             {isReceiverMode && challengeError ? (
               <Card>
