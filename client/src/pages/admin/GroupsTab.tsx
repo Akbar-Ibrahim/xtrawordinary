@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Star } from "lucide-react";
+import type { Group } from "@shared/schema/groups";
 
 export function GroupsTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: allGroups, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/groups"] });
+  const { data: allGroups, isLoading } = useQuery<Group[]>({ queryKey: ["/api/admin/groups"] });
 
   const featureMutation = useMutation({
     mutationFn: ({ id, isFeatured }: { id: number; isFeatured: boolean }) =>
@@ -48,7 +49,7 @@ export function GroupsTab() {
               </tr>
             </thead>
             <tbody>
-              {(allGroups || []).map((g: any) => (
+              {(allGroups || []).map((g) => (
                 <tr key={g.id} className="border-b hover:bg-muted/50" data-testid={`group-row-${g.id}`}>
                   <td className="py-3 px-2 font-medium">{g.name}</td>
                   <td className="py-3 px-2">

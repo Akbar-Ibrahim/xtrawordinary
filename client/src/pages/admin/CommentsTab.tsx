@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Loader2, Flag } from "lucide-react";
+import type { CommentReport } from "@shared/schema/comments";
 
 export function CommentsTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: reports, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/comments/reported"] });
+  const { data: reports, isLoading } = useQuery<CommentReport[]>({ queryKey: ["/api/admin/comments/reported"] });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/comments/${id}`),
@@ -36,7 +37,7 @@ export function CommentsTab() {
       <CardHeader><CardTitle>Reported Comments ({reports.length})</CardTitle></CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {reports.map((r: any) => (
+          {reports.map((r) => (
             <div key={r.id} className="border rounded-lg p-4 space-y-2" data-testid={`report-row-${r.id}`}>
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div className="space-y-1 flex-1 min-w-0">
@@ -64,7 +65,7 @@ export function CommentsTab() {
                   )}
                 </div>
                 {r.comment && !r.comment.isDeleted && (
-                  <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.comment.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-reported-${r.comment.id}`}>
+                  <Button size="sm" variant="destructive" onClick={() => deleteMutation.mutate(r.comment!.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-reported-${r.comment!.id}`}>
                     <Trash2 className="h-3 w-3 mr-1" />Delete Comment
                   </Button>
                 )}

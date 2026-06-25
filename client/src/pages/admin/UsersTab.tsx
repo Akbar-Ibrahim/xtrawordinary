@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Ban, ShieldCheck, Loader2, Star } from "lucide-react";
+import type { PublicUser } from "@shared/schema/users";
 
 export function UsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/users"] });
+  const { data: users, isLoading } = useQuery<PublicUser[]>({ queryKey: ["/api/admin/users"] });
 
   const banMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/admin/users/${id}/ban`),
@@ -51,7 +52,7 @@ export function UsersTab() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u: any) => (
+                {users.map((u) => (
                   <tr key={u.id} className="border-b hover:bg-muted/50" data-testid={`user-row-${u.id}`}>
                     <td className="py-3 px-2 font-medium">{u.name}</td>
                     <td className="py-3 px-2 text-muted-foreground">{u.email}</td>

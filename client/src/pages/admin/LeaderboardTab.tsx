@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Loader2 } from "lucide-react";
+import type { LeaderboardEntry } from "@shared/schema/stats";
 
 interface Props {
   gameFilter: string;
@@ -15,7 +16,7 @@ export function LeaderboardTab({ gameFilter, setGameFilter }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: entries, isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/leaderboard"] });
+  const { data: entries, isLoading } = useQuery<LeaderboardEntry[]>({ queryKey: ["/api/admin/leaderboard"] });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/leaderboard/${id}`),
@@ -62,7 +63,7 @@ export function LeaderboardTab({ gameFilter, setGameFilter }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((entry: any) => (
+                {filtered.map((entry) => (
                   <tr key={entry.id} className="border-b hover:bg-muted/50" data-testid={`lb-row-${entry.id}`}>
                     <td className="py-3 px-2 font-medium">{entry.playerName}</td>
                     <td className="py-3 px-2 text-muted-foreground">{entry.gameSlug}</td>
