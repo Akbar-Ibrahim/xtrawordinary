@@ -277,8 +277,15 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 - Is a league within a group, or a standalone public competition?
 - What is the point system — raw scores, win/loss, or something else?
 - Does participating require playing every round, or is it cumulative opt-in?
+- When a season ends, do its scores also feed the group's regular all-time leaderboard, or does the season leaderboard stay a separate, independent view?
+- While a season is active, can admins still start regular ad-hoc rounds outside the season, or does every round during that window automatically count toward the season?
 - How is a season winner celebrated? (badge, notification, hall of fame?)
 - Does this overlap too much with Guild Wars, or are they clearly complementary?
+
+**Implementation notes (as of July 2026):**
+- A `groupSeason` schema already exists in `shared/schema/groups.ts` (start/end dates, etc.), but the backend in `server/mysql/groups.ts` is a stub — it throws/returns empty. So this is "finish something started," not greenfield.
+- Scope is meaningfully bigger than it might look: season lifecycle (create/close), date-bounded round eligibility, a season-scoped leaderboard, champion crowning, and an admin UI for setting all of it up — on top of the open questions above.
+- For comparison, "Post-Game Vocabulary Spotlight" (above) is a much smaller/lower-risk task if a quick win is wanted first — mostly frontend, no schema or admin flows involved.
 
 ---
 
