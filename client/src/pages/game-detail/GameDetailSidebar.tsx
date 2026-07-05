@@ -74,7 +74,7 @@ export function GameDetailSidebar({
               Challenge a Player
             </Button>
           )}
-          {isAuthenticated && isPremium && (DUEL_GAME_SLUGS.has(slug) || slug === "ladder-rush" || slug === "ladder-rush-double") && (
+          {isAuthenticated && (DUEL_GAME_SLUGS.has(slug) || slug === "ladder-rush" || slug === "ladder-rush-double") && (
             <Button
               variant="outline"
               className="w-full gap-2 border-violet-400 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/20"

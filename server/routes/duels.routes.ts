@@ -113,9 +113,6 @@ export function registerDuelsRoutes(app: Express): void {
         overrideStartWord = sw;
       }
       const challengerId = req.user.id;
-      if (!req.user.isPremium) {
-        return res.status(403).json({ error: "Duels require a Premium account." });
-      }
       const targetId: number | null = challengeeId != null ? Number(challengeeId) : null;
       if (targetId !== null) {
         if (!Number.isFinite(targetId) || targetId <= 0 || !Number.isInteger(targetId)) {

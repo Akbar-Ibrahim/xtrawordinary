@@ -510,8 +510,6 @@ export default function DuelLobby() {
   function handleDuelPlay(slug: string) {
     if (!isAuthenticated) {
       openAuth("signup");
-    } else if (!user?.isPremium) {
-      toast({ title: "Premium required", description: "Duelling requires a premium account.", variant: "destructive" });
     } else {
       setSelectedDuelGameSlug(slug);
     }
@@ -851,13 +849,6 @@ export default function DuelLobby() {
           </div>
         ) : lobbyTab === "challenges" ? (
           <>
-            {/* Premium teaser for free signed-in users */}
-            {!user?.isPremium && (
-              <div className="mb-4">
-                <PremiumBanner variant="card" />
-              </div>
-            )}
-
             {/* ── My Open Challenges sub-section ── */}
             {visibleMyOpen.length > 0 && (
               <div className="mb-5" data-testid="section-my-open-challenges">
