@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -457,6 +457,7 @@ export default function GroupDetail() {
             groupId={groupId}
             isAdmin={isAdmin}
             currentUserId={user?.id}
+            currentUserName={user?.name}
             huddles={huddles}
             teamRaces={teamRaces}
             activeRound={activeRound}
@@ -487,7 +488,9 @@ export default function GroupDetail() {
 
           <ActivityTab activity={activity} activityLoading={activityLoading} />
 
-          <SeasonTab groupId={groupId} isAdmin={isAdmin} />
+          <TabsContent value="season">
+            <SeasonTab groupId={groupId} isAdmin={isAdmin} />
+          </TabsContent>
 
           <GuildWarsGroupTab groupId={groupId} />
         </Tabs>

@@ -17,6 +17,7 @@ export function RoundsTab({
   groupId,
   isAdmin,
   currentUserId,
+  currentUserName,
   huddles,
   teamRaces,
   activeRound,
@@ -34,6 +35,7 @@ export function RoundsTab({
   groupId: number;
   isAdmin: boolean;
   currentUserId: number | undefined;
+  currentUserName: string | undefined;
   huddles: EnrichedHuddleChallenge[] | undefined;
   teamRaces: EnrichedTeamRaceChallenge[] | undefined;
   activeRound: GroupRound | undefined;
@@ -78,6 +80,7 @@ export function RoundsTab({
                             {DUEL_GAME_NAMES[h.gameSlug] || h.gameSlug} · {h.format === "race" ? "Race" : "Turn-Based"}
                             {h.format === "race" && ` · ${h.raceTarget} words`}
                           </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Typist will be: <strong>{currentUserName}</strong></p>
                         </div>
                         {isAdmin && (
                           <div className="flex gap-2">
