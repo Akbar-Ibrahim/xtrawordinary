@@ -287,7 +287,7 @@ export class MySQLStorage implements IStorage {
   async getGroupSeasons(groupId: number): Promise<GroupSeason[]> { return Groups.getGroupSeasons(await this.getDb(), groupId); }
   async getGroupSeason(id: number): Promise<GroupSeason | undefined> { return Groups.getGroupSeason(await this.getDb(), id); }
   async endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<GroupSeason | undefined> { return Groups.endGroupSeason(await this.getDb(), id, winnerId, winnerName); }
-  async getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupSeasonLeaderboard(await this.getDb(), groupId, startsAt, endsAt); }
+  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupSeasonLeaderboard(await this.getDb(), season); }
 
   // ── Comments & Likes ────────────────────────────────────────────────────────
   async createComment(comment: InsertComment): Promise<Comment> { return Comments.createComment(await this.getDb(), comment); }

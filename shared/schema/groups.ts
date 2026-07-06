@@ -35,6 +35,7 @@ export const groupRoundSchema = z.object({
   createdById: z.number(),
   closesAt: z.string().nullable(),
   gameConfig: z.string().nullable(),
+  seasonId: z.number().nullable(),
   createdAt: z.string(),
 });
 export type GroupRound = z.infer<typeof groupRoundSchema>;
@@ -114,12 +115,14 @@ export const groupSeasonSchema = z.object({
   startsAt: z.string(),
   endsAt: z.string(),
   status: z.enum(["active", "ended"]),
+  createdById: z.number(),
   winnerId: z.number().nullable(),
   winnerName: z.string().nullable(),
+  eligibleMemberIds: z.array(z.number()),
   createdAt: z.string(),
 });
 export type GroupSeason = z.infer<typeof groupSeasonSchema>;
-export const insertGroupSeasonSchema = groupSeasonSchema.omit({ id: true, createdAt: true, winnerId: true, winnerName: true });
+export const insertGroupSeasonSchema = groupSeasonSchema.omit({ id: true, createdAt: true, winnerId: true, winnerName: true, eligibleMemberIds: true });
 export type InsertGroupSeason = z.infer<typeof insertGroupSeasonSchema>;
 
 export const groupSeasonLeaderboardEntrySchema = z.object({

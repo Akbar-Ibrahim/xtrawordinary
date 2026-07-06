@@ -36,6 +36,50 @@ const CHALLENGE_GAME_SLUGS = [
   "word-sweep", "word-roots", "shell-words", "deep-shell-words",
 ];
 
+function todayDateStr(): string {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+}
+
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function dateStrToUtcMs(dateStr: string): number {
+  return new Date(`${dateStr}T00:00:00.000Z`).getTime();
+}
+
+// Deterministically picks a game+seed for a given season+day so every member gets the
+// same puzzle for that day, mirroring the global Daily Challenge date-hash pattern.
+async function ensureTodaySeasonRound(season: import("@shared/schema").GroupSeason): Promise<void> {
+  if (season.status !== "active") return;
+  const now = Date.now();
+  if (now < new Date(season.startsAt).getTime() || now > new Date(season.endsAt).getTime()) return;
+  const dateStr = todayDateStr();
+  const existingRounds = await storage.getGroupRounds(season.groupId);
+  const alreadyGenerated = existingRounds.some(r => r.seasonId === season.id && r.createdAt.slice(0, 10) === dateStr);
+  if (alreadyGenerated) return;
+  const key = `${season.id}:${dateStr}`;
+  const hash = hashString(key);
+  const slug = CHALLENGE_GAME_SLUGS[hash % CHALLENGE_GAME_SLUGS.length];
+  const seed = hash % 2147483647;
+  const closesAt = new Date(dateStrToUtcMs(dateStr) + 24 * 60 * 60 * 1000).toISOString();
+  await storage.createGroupRound({
+    groupId: season.groupId,
+    gameSlug: slug,
+    seed,
+    status: "active",
+    createdById: season.createdById ?? 0,
+    closesAt,
+    gameConfig: null,
+    seasonId: season.id,
+  });
+}
+
 export function registerGroupsRoutes(app: Express): void {
   app.get("/api/groups/my/admin", requireAuth, async (req, res) => {
     try {
@@ -342,6 +386,9 @@ export function registerGroupsRoutes(app: Express): void {
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
+      const seasons = await storage.getGroupSeasons(groupId);
+      const activeSeason = seasons.find(s => s.status === "active");
+      if (activeSeason) await ensureTodaySeasonRound(activeSeason);
       const rounds = await storage.getGroupRounds(groupId);
       res.json(rounds.map(withEffectiveStatus));
     } catch {
@@ -358,6 +405,10 @@ export function registerGroupsRoutes(app: Express): void {
       if (!membership || !["owner", "admin"].includes(membership.role)) {
         return res.status(403).json({ error: "Only admins can create rounds" });
       }
+      const seasons = await storage.getGroupSeasons(groupId);
+      if (seasons.some(s => s.status === "active")) {
+        return res.status(409).json({ error: "Ad-hoc rounds are paused while a season is active" });
+      }
       const { gameSlug, closesAt, gameConfig } = req.body;
       const slug = gameSlug && CHALLENGE_GAME_SLUGS.includes(gameSlug) ? gameSlug : CHALLENGE_GAME_SLUGS[Math.floor(Math.random() * CHALLENGE_GAME_SLUGS.length)];
       const seed = Math.floor(Math.random() * 2147483647);
@@ -372,6 +423,7 @@ export function registerGroupsRoutes(app: Express): void {
         createdById: userId,
         closesAt: closesAt || null,
         gameConfig: configJson,
+        seasonId: null,
       });
       await storage.logGroupActivity(groupId, userId, "round_started", { gameSlug: slug, roundId: round.id, name: (req.user as any).name });
       try {
@@ -425,6 +477,12 @@ export function registerGroupsRoutes(app: Express): void {
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       if (!isRoundActive(round)) return res.status(400).json({ error: "Round is not active" });
+      if (round.seasonId !== null) {
+        const season = await storage.getGroupSeason(round.seasonId);
+        if (season && !season.eligibleMemberIds.includes(userId)) {
+          return res.status(403).json({ error: "You joined after this season started, so you can't play its rounds" });
+        }
+      }
       const attempt = await storage.createGroupRoundAttempt(roundId, userId);
       res.json(attempt);
     } catch {
@@ -460,6 +518,12 @@ export function registerGroupsRoutes(app: Express): void {
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       if (!isRoundActive(round)) return res.status(400).json({ error: "Round is not active" });
+      if (round.seasonId !== null) {
+        const season = await storage.getGroupSeason(round.seasonId);
+        if (season && !season.eligibleMemberIds.includes(userId)) {
+          return res.status(403).json({ error: "You joined after this season started, so you can't play its rounds" });
+        }
+      }
       const { score, durationMs } = req.body;
       if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
       const existing = await storage.getUserGroupRoundScore(roundId, userId);
@@ -531,6 +595,8 @@ export function registerGroupsRoutes(app: Express): void {
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const seasons = await storage.getGroupSeasons(groupId);
+      const active = seasons.find(s => s.status === "active");
+      if (active) await ensureTodaySeasonRound(active);
       res.json(seasons);
     } catch {
       res.status(500).json({ error: "Failed to fetch seasons" });
@@ -543,12 +609,14 @@ export function registerGroupsRoutes(app: Express): void {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
       const membership = await storage.getGroupMember(groupId, userId);
-      if (!membership || membership.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      if (!membership || !["owner", "admin"].includes(membership.role)) return res.status(403).json({ error: "Admin only" });
       const { name, startsAt, endsAt } = req.body;
-      if (!name || !startsAt || !endsAt) return res.status(400).json({ error: "name, startsAt, endsAt required" });
+      if (!startsAt || !endsAt) return res.status(400).json({ error: "startsAt, endsAt required" });
       const existing = await storage.getGroupSeasons(groupId);
       if (existing.some(s => s.status === "active")) return res.status(409).json({ error: "A season is already active" });
-      const season = await storage.createGroupSeason({ groupId, name, startsAt, endsAt, status: "active" });
+      const seasonName = name && String(name).trim() ? String(name).trim() : `Season ${existing.length + 1}`;
+      const season = await storage.createGroupSeason({ groupId, name: seasonName, startsAt, endsAt, status: "active", createdById: userId });
+      await ensureTodaySeasonRound(season);
       res.status(201).json(season);
     } catch {
       res.status(500).json({ error: "Failed to create season" });
@@ -565,7 +633,8 @@ export function registerGroupsRoutes(app: Express): void {
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const season = await storage.getGroupSeason(seasonId);
       if (!season || season.groupId !== groupId) return res.status(404).json({ error: "Season not found" });
-      const leaderboard = await storage.getGroupSeasonLeaderboard(groupId, season.startsAt, season.endsAt);
+      await ensureTodaySeasonRound(season);
+      const leaderboard = await storage.getGroupSeasonLeaderboard(season);
       res.json(leaderboard);
     } catch {
       res.status(500).json({ error: "Failed to fetch season leaderboard" });
@@ -579,11 +648,11 @@ export function registerGroupsRoutes(app: Express): void {
       const seasonId = parseInt(req.params.seasonId);
       if (isNaN(groupId) || isNaN(seasonId)) return res.status(400).json({ error: "Invalid ID" });
       const membership = await storage.getGroupMember(groupId, userId);
-      if (!membership || membership.role !== "admin") return res.status(403).json({ error: "Admin only" });
+      if (!membership || !["owner", "admin"].includes(membership.role)) return res.status(403).json({ error: "Admin only" });
       const season = await storage.getGroupSeason(seasonId);
       if (!season || season.groupId !== groupId) return res.status(404).json({ error: "Season not found" });
       if (season.status === "ended") return res.status(400).json({ error: "Season already ended" });
-      const lb = await storage.getGroupSeasonLeaderboard(groupId, season.startsAt, season.endsAt);
+      const lb = await storage.getGroupSeasonLeaderboard(season);
       const winner = lb[0] || null;
       const updated = await storage.endGroupSeason(seasonId, winner?.userId ?? null, winner?.name ?? null);
       res.json(updated);

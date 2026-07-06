@@ -47,6 +47,25 @@ function toGroupRound(r: any): GroupRound {
     createdById: r.createdById,
     closesAt: tsToIso(r.closesAt),
     gameConfig: r.gameConfig ?? null,
+    seasonId: r.seasonId ?? null,
+    createdAt: tsToIso(r.createdAt) ?? "",
+  };
+}
+
+function toGroupSeason(r: any): GroupSeason {
+  let eligibleMemberIds: number[] = [];
+  try { eligibleMemberIds = JSON.parse(r.eligibleMemberIds ?? "[]"); } catch { eligibleMemberIds = []; }
+  return {
+    id: r.id,
+    groupId: r.groupId,
+    name: r.name,
+    startsAt: tsToIso(r.startsAt) ?? "",
+    endsAt: tsToIso(r.endsAt) ?? "",
+    status: r.status as GroupSeason["status"],
+    createdById: r.createdById,
+    winnerId: r.winnerId ?? null,
+    winnerName: r.winnerName ?? null,
+    eligibleMemberIds,
     createdAt: tsToIso(r.createdAt) ?? "",
   };
 }
@@ -220,6 +239,7 @@ export async function createGroupRound(db: any, round: InsertGroupRound): Promis
     createdById: round.createdById,
     closesAt: round.closesAt ? new Date(round.closesAt) : null,
     gameConfig: round.gameConfig ?? null,
+    seasonId: round.seasonId ?? null,
   });
   const rows = await db.select().from(schema.groupRounds).where(eq(schema.groupRounds.id, result[0].insertId)).limit(1);
   return toGroupRound(rows[0]);
@@ -353,24 +373,61 @@ export async function getDailyChallengeAttempt(db: any, userId: number, challeng
   return { id: rows[0].id, userId: rows[0].userId, challengeDate: rows[0].challengeDate, startedAt: tsToIso(rows[0].startedAt) ?? "" };
 }
 
-// ── Group Seasons (stub — no DB table yet) ────────────────────────────────
+// ── Group Seasons ──────────────────────────────────────────────────────────
 
-export async function createGroupSeason(_db: any, data: InsertGroupSeason): Promise<GroupSeason> {
-  throw new Error("createGroupSeason: not yet persisted in MySQL (no group_seasons table)");
+export async function createGroupSeason(db: any, data: InsertGroupSeason): Promise<GroupSeason> {
+  const members = await db.select({ userId: schema.groupMembers.userId }).from(schema.groupMembers).where(eq(schema.groupMembers.groupId, data.groupId));
+  const eligibleMemberIds = members.map((m: any) => m.userId);
+  const result = await db.insert(schema.groupSeasons).values({
+    groupId: data.groupId,
+    name: data.name,
+    startsAt: new Date(data.startsAt),
+    endsAt: new Date(data.endsAt),
+    status: data.status ?? "active",
+    createdById: data.createdById,
+    eligibleMemberIds: JSON.stringify(eligibleMemberIds),
+  });
+  const rows = await db.select().from(schema.groupSeasons).where(eq(schema.groupSeasons.id, result[0].insertId)).limit(1);
+  return toGroupSeason(rows[0]);
 }
 
-export async function getGroupSeasons(_db: any, _groupId: number): Promise<GroupSeason[]> {
-  return [];
+export async function getGroupSeasons(db: any, groupId: number): Promise<GroupSeason[]> {
+  const rows = await db.select().from(schema.groupSeasons).where(eq(schema.groupSeasons.groupId, groupId)).orderBy(desc(schema.groupSeasons.createdAt));
+  return rows.map((r: any) => toGroupSeason(r));
 }
 
-export async function getGroupSeason(_db: any, _id: number): Promise<GroupSeason | undefined> {
-  return undefined;
+export async function getGroupSeason(db: any, id: number): Promise<GroupSeason | undefined> {
+  const rows = await db.select().from(schema.groupSeasons).where(eq(schema.groupSeasons.id, id)).limit(1);
+  return rows[0] ? toGroupSeason(rows[0]) : undefined;
 }
 
-export async function endGroupSeason(_db: any, _id: number, _winnerId: number | null, _winnerName: string | null): Promise<GroupSeason | undefined> {
-  return undefined;
+export async function endGroupSeason(db: any, id: number, winnerId: number | null, winnerName: string | null): Promise<GroupSeason | undefined> {
+  await db.update(schema.groupSeasons).set({ status: "ended", winnerId, winnerName }).where(eq(schema.groupSeasons.id, id));
+  return getGroupSeason(db, id);
 }
 
-export async function getGroupSeasonLeaderboard(_db: any, _groupId: number, _startsAt: string, _endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
-  return [];
+export async function getGroupSeasonLeaderboard(db: any, season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+  if (season.eligibleMemberIds.length === 0) return [];
+  const roundRows = await db.select({ id: schema.groupRounds.id }).from(schema.groupRounds).where(eq(schema.groupRounds.seasonId, season.id));
+  if (roundRows.length === 0) return [];
+  const roundIds = roundRows.map((r: any) => r.id);
+  const scoreRows = await db
+    .select({
+      userId: schema.groupRoundScores.userId,
+      totalScore: sql<number>`SUM(${schema.groupRoundScores.score})`,
+      roundsPlayed: sql<number>`COUNT(*)`,
+    })
+    .from(schema.groupRoundScores)
+    .where(and(inArray(schema.groupRoundScores.userId, season.eligibleMemberIds), inArray(schema.groupRoundScores.roundId, roundIds)))
+    .groupBy(schema.groupRoundScores.userId);
+  const userIds = scoreRows.map((r: any) => r.userId as number);
+  if (userIds.length === 0) return [];
+  const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+  const userMap = new Map<number, { name: string; avatarUrl: string | null }>(users.map((u: any) => [u.id, { name: u.name, avatarUrl: u.avatarUrl ?? null }]));
+  return scoreRows
+    .map((r: any) => {
+      const u = userMap.get(r.userId as number);
+      return { userId: r.userId as number, name: u?.name ?? "Unknown", avatarUrl: u?.avatarUrl ?? null, totalScore: Number(r.totalScore), roundsPlayed: Number(r.roundsPlayed) };
+    })
+    .sort((a: any, b: any) => b.totalScore - a.totalScore);
 }

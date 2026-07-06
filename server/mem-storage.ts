@@ -2242,7 +2242,8 @@ export class MemStorage implements IStorage {
   }
 
   async createGroupSeason(data: InsertGroupSeason): Promise<GroupSeason> {
-    const s: GroupSeason = { ...data, id: this.groupSeasonIdCounter++, winnerId: null, winnerName: null, createdAt: new Date().toISOString() };
+    const eligibleMemberIds = this.groupMembersStore.filter(m => m.groupId === data.groupId).map(m => m.userId);
+    const s: GroupSeason = { ...data, id: this.groupSeasonIdCounter++, winnerId: null, winnerName: null, eligibleMemberIds, createdAt: new Date().toISOString() };
     this.groupSeasonsStore.push(s);
     return s;
   }
@@ -2264,11 +2265,10 @@ export class MemStorage implements IStorage {
     return s;
   }
 
-  async getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
-    const roundIds = this.groupRoundsStore.filter(r => r.groupId === groupId).map(r => r.id);
-    const scores = this.groupRoundScoresStore.filter(s =>
-      roundIds.includes(s.roundId) && s.completedAt >= startsAt && s.completedAt <= endsAt
-    );
+  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+    const roundIds = this.groupRoundsStore.filter(r => r.seasonId === season.id).map(r => r.id);
+    const eligible = new Set(season.eligibleMemberIds);
+    const scores = this.groupRoundScoresStore.filter(s => roundIds.includes(s.roundId) && eligible.has(s.userId));
     const tally = new Map<number, { totalScore: number; roundsPlayed: number }>();
     for (const s of scores) {
       const e = tally.get(s.userId);

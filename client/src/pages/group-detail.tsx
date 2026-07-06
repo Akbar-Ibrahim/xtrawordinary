@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
-import type { Group, GroupRound, GroupActivityEntry } from "@shared/schema";
+import type { Group, GroupRound, GroupActivityEntry, GroupSeason } from "@shared/schema";
 import { PlayerChallengeDialog } from "@/components/player-challenge-dialog";
 import {
   DUEL_GAME_SLUGS_LIST,
@@ -107,6 +107,17 @@ export default function GroupDetail() {
     },
     enabled: !isNaN(groupId),
   });
+
+  const { data: seasons } = useQuery<GroupSeason[]>({
+    queryKey: ["/api/groups", groupId, "seasons"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/seasons`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load seasons");
+      return res.json();
+    },
+    enabled: !isNaN(groupId),
+  });
+  const hasActiveSeason = (seasons || []).some((s) => s.status === "active");
 
   const { data: guildWarsStats } = useQuery<GuildWarsStats>({
     queryKey: ["/api/groups", groupId, "guild-wars-stats"],
@@ -465,6 +476,7 @@ export default function GroupDetail() {
             expandedRoundId={expandedRoundId}
             setExpandedRoundId={setExpandedRoundId}
             onStartRound={() => setCreateRoundOpen(true)}
+            hasActiveSeason={hasActiveSeason}
             acceptHuddleMutation={acceptHuddleMutation}
             declineHuddleMutation={declineHuddleMutation}
             cancelHuddleMutation={cancelHuddleMutation}

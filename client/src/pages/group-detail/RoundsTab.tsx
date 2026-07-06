@@ -25,6 +25,7 @@ export function RoundsTab({
   expandedRoundId,
   setExpandedRoundId,
   onStartRound,
+  hasActiveSeason,
   acceptHuddleMutation,
   declineHuddleMutation,
   cancelHuddleMutation,
@@ -43,6 +44,7 @@ export function RoundsTab({
   expandedRoundId: number | null;
   setExpandedRoundId: (id: number | null) => void;
   onStartRound: () => void;
+  hasActiveSeason?: boolean;
   acceptHuddleMutation: UseMutationResult<any, any, number>;
   declineHuddleMutation: UseMutationResult<any, any, number>;
   cancelHuddleMutation: UseMutationResult<any, any, number>;
@@ -339,7 +341,7 @@ export function RoundsTab({
               )}
             </CardContent>
           </Card>
-        ) : isAdmin ? (
+        ) : isAdmin && !hasActiveSeason ? (
           <Card className="border-dashed">
             <CardContent className="p-6 text-center">
               <p className="text-muted-foreground mb-4">No active round. Start one!</p>
@@ -347,6 +349,14 @@ export function RoundsTab({
                 <Plus className="h-4 w-4 mr-2" />
                 Start New Round
               </Button>
+            </CardContent>
+          </Card>
+        ) : isAdmin && hasActiveSeason ? (
+          <Card className="border-dashed">
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground">
+                Ad-hoc rounds are paused while a season is active. Check the Season tab for today's round.
+              </p>
             </CardContent>
           </Card>
         ) : (

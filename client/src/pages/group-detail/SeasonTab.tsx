@@ -12,10 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Trophy, CalendarRange, Timer } from "lucide-react";
-import type { GroupSeason } from "@shared/schema";
+import { Plus, Trophy, CalendarRange, Timer, Play } from "lucide-react";
+import type { GroupSeason, GroupRound } from "@shared/schema";
 import type { SeasonLeaderboardEntry } from "./types";
 import { useCountdown } from "./utils";
+import { GAME_NAMES } from "./constants";
 
 function SeasonLeaderboard({ groupId, seasonId, isAdmin, onEnd }: { groupId: number; seasonId: number; isAdmin: boolean; onEnd: () => void }) {
   const { data: lb = [], isLoading } = useQuery<SeasonLeaderboardEntry[]>({
@@ -107,6 +108,21 @@ export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: bool
 
   const countdown = useCountdown(activeSeason?.endsAt ?? new Date(0).toISOString());
 
+  const { data: rounds = [] } = useQuery<GroupRound[]>({
+    queryKey: ["/api/groups", groupId, "rounds"],
+    queryFn: async () => {
+      const res = await fetch(`/api/groups/${groupId}/rounds`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!activeSeason,
+    refetchInterval: 30_000,
+  });
+
+  const todaysRound = activeSeason
+    ? rounds.find(r => r.seasonId === activeSeason.id && (r as any).status !== "closed")
+    : undefined;
+
   if (isLoading) return <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>;
 
   return (
@@ -133,6 +149,22 @@ export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: bool
               </div>
             </div>
           </div>
+          {todaysRound && (
+            <Card className="border-primary/30 bg-primary/5" data-testid="card-todays-round">
+              <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Today's Round</p>
+                  <p className="font-semibold">{GAME_NAMES[todaysRound.gameSlug] ?? todaysRound.gameSlug}</p>
+                </div>
+                <Link href={`/groups/${groupId}/rounds/${todaysRound.id}/play`}>
+                  <Button size="sm" data-testid="button-play-todays-round">
+                    <Play className="h-4 w-4 mr-1.5" />
+                    Play
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
           <SeasonLeaderboard
             groupId={groupId}
             seasonId={activeSeason.id}
@@ -164,25 +196,27 @@ export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: bool
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Past Seasons</h3>
           <div className="space-y-2">
             {pastSeasons.map((s) => (
-              <Card key={s.id} data-testid={`card-past-season-${s.id}`}>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <CalendarRange className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(s.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      {" — "}
-                      {new Date(s.endsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </p>
-                  </div>
-                  {s.winnerName && (
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <Trophy className="h-4 w-4 text-yellow-500" />
-                      <span className="font-medium">{s.winnerName}</span>
+              <Link key={s.id} href={`/groups/${groupId}/seasons/${s.id}`}>
+                <Card className="cursor-pointer hover:bg-accent/50 transition-colors" data-testid={`card-past-season-${s.id}`}>
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <CalendarRange className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{s.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(s.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                        {" — "}
+                        {new Date(s.endsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    {s.winnerName && (
+                      <div className="flex items-center gap-1.5 text-sm">
+                        <Trophy className="h-4 w-4 text-yellow-500" />
+                        <span className="font-medium">{s.winnerName}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>

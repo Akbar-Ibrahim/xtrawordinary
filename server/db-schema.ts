@@ -182,10 +182,29 @@ export const groupRounds = mysqlTable("group_rounds", {
   createdById: int("created_by_id").notNull(),
   closesAt: timestamp("closes_at"),
   gameConfig: text("game_config"),
+  seasonId: int("season_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("gr_group_idx").on(table.groupId),
   index("gr_status_idx").on(table.status),
+  index("gr_season_idx").on(table.seasonId),
+]);
+
+export const groupSeasons = mysqlTable("group_seasons", {
+  id: int("id").primaryKey().autoincrement(),
+  groupId: int("group_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  createdById: int("created_by_id").notNull(),
+  winnerId: int("winner_id"),
+  winnerName: varchar("winner_name", { length: 255 }),
+  eligibleMemberIds: text("eligible_member_ids").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("gs_group_idx").on(table.groupId),
+  index("gs_status_idx").on(table.status),
 ]);
 
 export const groupRoundScores = mysqlTable("group_round_scores", {

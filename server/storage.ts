@@ -317,7 +317,7 @@ export interface IStorage {
   getGroupSeasons(groupId: number): Promise<import("@shared/schema").GroupSeason[]>;
   getGroupSeason(id: number): Promise<import("@shared/schema").GroupSeason | undefined>;
   endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<import("@shared/schema").GroupSeason | undefined>;
-  getGroupSeasonLeaderboard(groupId: number, startsAt: string, endsAt: string): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>>;
+  getGroupSeasonLeaderboard(season: import("@shared/schema").GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>>;
 }
 
 export { MemStorage } from "./mem-storage";

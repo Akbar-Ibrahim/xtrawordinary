@@ -30,6 +30,7 @@ import Groups from "@/pages/groups";
 import GroupsBrowse from "@/pages/groups-browse";
 import GroupDetail from "@/pages/group-detail";
 import GroupRoundPlay from "@/pages/group-round-play";
+import GroupSeasonSummary from "@/pages/group-season-summary";
 import QuizPlay from "@/pages/quiz-play";
 import QuizResults from "@/pages/quiz-results";
 import CreateQuiz from "@/pages/create-quiz";
@@ -70,6 +71,7 @@ function Router() {
       <Route path="/groups/browse" component={GroupsBrowse} />
       <Route path="/groups/:id" component={GroupDetail} />
       <Route path="/groups/:id/rounds/:roundId/play" component={GroupRoundPlay} />
+      <Route path="/groups/:id/seasons/:seasonId" component={GroupSeasonSummary} />
       <Route path="/quiz/:code/results" component={QuizResults} />
       <Route path="/quiz/:code" component={QuizPlay} />
       <Route path="/create-quiz" component={CreateQuiz} />
