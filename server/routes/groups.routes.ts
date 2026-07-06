@@ -1,7 +1,23 @@
 import type { Express } from "express";
+import type { GroupRound } from "@shared/schema";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { createNotificationIfEnabled } from "./helpers";
+
+function isRoundPastDeadline(round: GroupRound): boolean {
+  return !!round.closesAt && new Date(round.closesAt).getTime() <= Date.now();
+}
+
+function withEffectiveStatus(round: GroupRound): GroupRound {
+  if (round.status === "active" && isRoundPastDeadline(round)) {
+    return { ...round, status: "closed" };
+  }
+  return round;
+}
+
+function isRoundActive(round: GroupRound): boolean {
+  return round.status === "active" && !isRoundPastDeadline(round);
+}
 
 function generateInviteCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -327,7 +343,7 @@ export function registerGroupsRoutes(app: Express): void {
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const rounds = await storage.getGroupRounds(groupId);
-      res.json(rounds);
+      res.json(rounds.map(withEffectiveStatus));
     } catch {
       res.status(500).json({ error: "Failed to fetch rounds" });
     }
@@ -392,7 +408,7 @@ export function registerGroupsRoutes(app: Express): void {
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       const myScore = await storage.getUserGroupRoundScore(roundId, userId);
-      res.json({ round, myScore: myScore || null });
+      res.json({ round: withEffectiveStatus(round), myScore: myScore || null });
     } catch {
       res.status(500).json({ error: "Failed to fetch round" });
     }
@@ -408,7 +424,7 @@ export function registerGroupsRoutes(app: Express): void {
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
-      if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
+      if (!isRoundActive(round)) return res.status(400).json({ error: "Round is not active" });
       const attempt = await storage.createGroupRoundAttempt(roundId, userId);
       res.json(attempt);
     } catch {
@@ -443,7 +459,7 @@ export function registerGroupsRoutes(app: Express): void {
       if (!membership) return res.status(403).json({ error: "Not a member" });
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
-      if (round.status !== "active") return res.status(400).json({ error: "Round is not active" });
+      if (!isRoundActive(round)) return res.status(400).json({ error: "Round is not active" });
       const { score, durationMs } = req.body;
       if (typeof score !== "number") return res.status(400).json({ error: "Score required" });
       const existing = await storage.getUserGroupRoundScore(roundId, userId);

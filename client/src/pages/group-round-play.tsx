@@ -185,7 +185,7 @@ export default function GroupRoundPlay() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !isNaN(groupId) && !isNaN(roundIdNum) && (submitted || !!data?.myScore || !!attemptData?.attempt),
+    enabled: !isNaN(groupId) && !isNaN(roundIdNum) && (submitted || !!data?.myScore || !!attemptData?.attempt || data?.round.status !== "active"),
     refetchInterval: submitted ? 10000 : false,
   });
 
@@ -414,12 +414,59 @@ export default function GroupRoundPlay() {
                   <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : round.status !== "active" ? (
-                  <div className="text-center py-4">
-                    <p className="text-muted-foreground mb-4">This round is closed.</p>
+                  <>
+                  <div className="space-y-5">
+                    <div className="text-center py-2">
+                      <div className="inline-flex items-center gap-2 text-muted-foreground mb-2">
+                        <Lock className="h-6 w-6" />
+                        <span className="font-semibold text-lg">This Round Has Closed</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">You didn't play this round before it closed.</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Round Leaderboard
+                      </p>
+                      {scoresLoading ? (
+                        <div className="space-y-1">
+                          {[1, 2].map(i => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+                        </div>
+                      ) : roundScores && roundScores.length > 0 ? (
+                        <div className="space-y-1" data-testid="round-leaderboard">
+                          {roundScores.map((entry, i) => (
+                            <div key={entry.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40" data-testid={`round-score-${entry.userId}`}>
+                              <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
+                                {i + 1}
+                              </span>
+                              <Link href={`/profile/${entry.user.id}`}>
+                                <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
+                              </Link>
+                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              </Link>
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                {entry.durationMs != null
+                                  ? `${Math.floor(entry.durationMs / 60000)}:${String(Math.floor((entry.durationMs % 60000) / 1000)).padStart(2, "0")}`
+                                  : new Date(entry.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              <span className="font-bold text-sm">{entry.score.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">No scores were submitted for this round.</p>
+                      )}
+                    </div>
                     <Link href={`/groups/${groupId}`}>
-                      <Button variant="outline">Back to Group</Button>
+                      <Button variant="outline" className="w-full gap-2">
+                        <ArrowLeft className="h-4 w-4" />
+                        Back to Group
+                      </Button>
                     </Link>
                   </div>
+                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
+                  </>
                 ) : (
                   <Button
                     className="w-full gap-2"
