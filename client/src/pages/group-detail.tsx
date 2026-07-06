@@ -501,7 +501,7 @@ export default function GroupDetail() {
           <ActivityTab activity={activity} activityLoading={activityLoading} />
 
           <TabsContent value="season">
-            <SeasonTab groupId={groupId} isAdmin={isAdmin} />
+            <SeasonTab groupId={groupId} isAdmin={isAdmin} isPremium={!!user?.isPremium} />
           </TabsContent>
 
           <GuildWarsGroupTab groupId={groupId} />

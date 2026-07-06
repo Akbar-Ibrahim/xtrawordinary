@@ -264,6 +264,7 @@ export class MySQLStorage implements IStorage {
   async getGroupRound(id: number): Promise<GroupRound | undefined> { return Groups.getGroupRound(await this.getDb(), id); }
   async getGroupRounds(groupId: number): Promise<GroupRound[]> { return Groups.getGroupRounds(await this.getDb(), groupId); }
   async closeGroupRound(id: number): Promise<GroupRound | undefined> { return Groups.closeGroupRound(await this.getDb(), id); }
+  async deleteGroupRound(id: number): Promise<void> { return Groups.deleteGroupRound(await this.getDb(), id); }
 
   async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> { return Groups.submitGroupRoundScore(await this.getDb(), roundId, userId, score, durationMs); }
   async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> { return Groups.getGroupRoundScores(await this.getDb(), roundId); }

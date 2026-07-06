@@ -1260,6 +1260,11 @@ export class MemStorage implements IStorage {
     return r;
   }
 
+  async deleteGroupRound(id: number): Promise<void> {
+    this.groupRoundsStore = this.groupRoundsStore.filter(r => r.id !== id);
+    this.groupRoundScoresStore = this.groupRoundScoresStore.filter(s => s.roundId !== id);
+  }
+
   async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
     const existing = this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
     if (existing) return existing;

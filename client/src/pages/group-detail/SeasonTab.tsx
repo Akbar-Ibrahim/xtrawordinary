@@ -12,11 +12,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Trophy, CalendarRange, Timer, Play } from "lucide-react";
+import { Plus, Trophy, CalendarRange, Timer, Play, Settings2, Lock } from "lucide-react";
 import type { GroupSeason, GroupRound } from "@shared/schema";
 import type { SeasonLeaderboardEntry } from "./types";
 import { useCountdown } from "./utils";
 import { GAME_NAMES } from "./constants";
+import { SeasonRoundConfigDialog } from "./SeasonRoundConfigDialog";
 
 function SeasonLeaderboard({ groupId, seasonId, isAdmin, onEnd }: { groupId: number; seasonId: number; isAdmin: boolean; onEnd: () => void }) {
   const { data: lb = [], isLoading } = useQuery<SeasonLeaderboardEntry[]>({
@@ -64,11 +65,13 @@ function SeasonLeaderboard({ groupId, seasonId, isAdmin, onEnd }: { groupId: num
   );
 }
 
-export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: boolean }) {
+export function SeasonTab({ groupId, isAdmin, isPremium }: { groupId: number; isAdmin: boolean; isPremium: boolean }) {
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [seasonName, setSeasonName] = useState("");
   const [durationWeeks, setDurationWeeks] = useState("2");
+  const [configOpen, setConfigOpen] = useState(false);
+  const [premiumUpsellOpen, setPremiumUpsellOpen] = useState(false);
 
   const { data: seasons = [], isLoading } = useQuery<GroupSeason[]>({
     queryKey: ["/api/groups", groupId, "seasons"],
@@ -156,12 +159,44 @@ export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: bool
                   <p className="text-xs text-muted-foreground mb-0.5">Today's Round</p>
                   <p className="font-semibold">{GAME_NAMES[todaysRound.gameSlug] ?? todaysRound.gameSlug}</p>
                 </div>
-                <Link href={`/groups/${groupId}/rounds/${todaysRound.id}/play`}>
-                  <Button size="sm" data-testid="button-play-todays-round">
-                    <Play className="h-4 w-4 mr-1.5" />
-                    Play
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => (isPremium ? setConfigOpen(true) : setPremiumUpsellOpen(true))}
+                      data-testid="button-configure-round"
+                    >
+                      {isPremium ? <Settings2 className="h-4 w-4 mr-1.5" /> : <Lock className="h-4 w-4 mr-1.5" />}
+                      Configure Round
+                    </Button>
+                  )}
+                  <Link href={`/groups/${groupId}/rounds/${todaysRound.id}/play`}>
+                    <Button size="sm" data-testid="button-play-todays-round">
+                      <Play className="h-4 w-4 mr-1.5" />
+                      Play
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {!todaysRound && isAdmin && (
+            <Card className="border-dashed" data-testid="card-no-round-yet">
+              <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">No round yet today</p>
+                  <p className="text-sm text-muted-foreground">An automatic round will be picked, or configure one yourself.</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => (isPremium ? setConfigOpen(true) : setPremiumUpsellOpen(true))}
+                  data-testid="button-configure-round-empty"
+                >
+                  {isPremium ? <Settings2 className="h-4 w-4 mr-1.5" /> : <Lock className="h-4 w-4 mr-1.5" />}
+                  Configure Round
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -263,6 +298,34 @@ export function SeasonTab({ groupId, isAdmin }: { groupId: number; isAdmin: bool
             >
               {createMutation.isPending ? "Starting…" : "Start Season"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Configure Round dialog (premium admin only) */}
+      {activeSeason && (
+        <SeasonRoundConfigDialog
+          open={configOpen}
+          onOpenChange={setConfigOpen}
+          groupId={groupId}
+          seasonId={activeSeason.id}
+        />
+      )}
+
+      {/* Premium upsell for non-premium admins */}
+      <Dialog open={premiumUpsellOpen} onOpenChange={setPremiumUpsellOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Premium Feature
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Manually configuring a season round is a premium feature. Upgrade to premium to pick the exact game and settings for your group's season rounds, instead of relying only on the automatic daily pick.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPremiumUpsellOpen(false)} data-testid="button-close-premium-upsell">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

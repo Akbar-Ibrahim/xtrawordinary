@@ -150,6 +150,7 @@ export interface IStorage {
   getGroupRound(id: number): Promise<GroupRound | undefined>;
   getGroupRounds(groupId: number): Promise<GroupRound[]>;
   closeGroupRound(id: number): Promise<GroupRound | undefined>;
+  deleteGroupRound(id: number): Promise<void>;
 
   submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore>;
   getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>>;

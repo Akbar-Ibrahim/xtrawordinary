@@ -3,6 +3,7 @@ import type { GroupRound } from "@shared/schema";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { createNotificationIfEnabled } from "./helpers";
+import { QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
 
 function isRoundPastDeadline(round: GroupRound): boolean {
   return !!round.closesAt && new Date(round.closesAt).getTime() <= Date.now();
@@ -446,6 +447,89 @@ export function registerGroupsRoutes(app: Express): void {
       res.status(201).json(round);
     } catch {
       res.status(500).json({ error: "Failed to create round" });
+    }
+  });
+
+  // Premium admin-only: manually configure a season round using one of the Quiz-Master-eligible
+  // games and its exact parameters, reusing the same validation Quiz Master applies. Any member
+  // (regardless of premium status) can still play the resulting round.
+  app.post("/api/groups/:id/seasons/:seasonId/rounds/configured", requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user!.id;
+      const groupId = parseInt(req.params.id);
+      const seasonId = parseInt(req.params.seasonId);
+      if (isNaN(groupId) || isNaN(seasonId)) return res.status(400).json({ error: "Invalid ID" });
+      const membership = await storage.getGroupMember(groupId, userId);
+      if (!membership || !["owner", "admin"].includes(membership.role)) {
+        return res.status(403).json({ error: "Only admins can configure rounds" });
+      }
+      if (!req.user.isPremium) {
+        return res.status(403).json({ error: "Configuring League Season rounds requires a Premium account." });
+      }
+      const season = await storage.getGroupSeason(seasonId);
+      if (!season || season.groupId !== groupId) return res.status(404).json({ error: "Season not found" });
+      if (season.status !== "active") return res.status(400).json({ error: "Season is not active" });
+
+      const { gameSlug, params, closesAt } = req.body;
+      if (!gameSlug || !QUIZ_MASTER_GAME_SLUGS.has(gameSlug)) {
+        return res.status(400).json({ error: "Game does not support configured rounds" });
+      }
+
+      let finalParams = (params && typeof params === "object") ? params : {};
+      if (gameSlug === "letter-position") {
+        const letter = (typeof finalParams.letter === "string" ? finalParams.letter : "").toUpperCase().trim();
+        const position = Number(finalParams.position);
+        if (!letter || !/^[A-Z]$/.test(letter)) return res.status(400).json({ error: "letter must be a single A-Z character" });
+        if (!position || position < 1 || position > 8) return res.status(400).json({ error: "position must be between 1 and 8" });
+        const count = await storage.countLetterPositionWords(letter, position);
+        if (count < 10) return res.status(400).json({ error: `Only ${count} words match — need at least 10. Choose a different letter or position.` });
+        finalParams = { ...finalParams, letter, position };
+      }
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const existingRounds = await storage.getGroupRounds(groupId);
+      const todaysRound = existingRounds.find(r => r.seasonId === season.id && r.createdAt.slice(0, 10) === dateStr);
+      if (todaysRound) {
+        const scores = await storage.getGroupRoundScores(todaysRound.id);
+        if (scores.length > 0) {
+          return res.status(409).json({ error: "Today's round already has scores and can't be reconfigured." });
+        }
+        await storage.deleteGroupRound(todaysRound.id);
+      }
+
+      const seed = Math.floor(Math.random() * 2147483647);
+      const defaultClosesAt = new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000).toISOString();
+      const round = await storage.createGroupRound({
+        groupId,
+        gameSlug,
+        seed,
+        status: "active",
+        createdById: userId,
+        closesAt: closesAt || defaultClosesAt,
+        gameConfig: JSON.stringify(finalParams),
+        seasonId: season.id,
+      });
+      await storage.logGroupActivity(groupId, userId, "round_started", { gameSlug, roundId: round.id, name: (req.user as any).name });
+      try {
+        const group = await storage.getGroup(groupId);
+        const members = await storage.getGroupMembers(groupId);
+        const creatorName = (req.user as any).name as string;
+        const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        for (const m of members) {
+          if (m.userId !== userId) {
+            createNotificationIfEnabled({
+              userId: m.userId,
+              type: "group_round_start",
+              title: "New group round started",
+              body: `${creatorName} configured a ${gameTitle} round in "${group?.name ?? "your group"}"`,
+              linkUrl: `/groups/${groupId}`,
+            });
+          }
+        }
+      } catch {}
+      res.status(201).json(round);
+    } catch {
+      res.status(500).json({ error: "Failed to create configured round" });
     }
   });
 

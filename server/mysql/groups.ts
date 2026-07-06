@@ -260,6 +260,11 @@ export async function closeGroupRound(db: any, id: number): Promise<GroupRound |
   return getGroupRound(db, id);
 }
 
+export async function deleteGroupRound(db: any, id: number): Promise<void> {
+  await db.delete(schema.groupRoundScores).where(eq(schema.groupRoundScores.roundId, id));
+  await db.delete(schema.groupRounds).where(eq(schema.groupRounds.id, id));
+}
+
 // ── Group Round Scores ─────────────────────────────────────────────────────
 
 export async function submitGroupRoundScore(db: any, roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> {
