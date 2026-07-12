@@ -187,10 +187,17 @@ async function runDailyJobs() {
         linkUrl: "/",
       });
     }
-    const expired = await st.expireFriendChallenges();
-    if (expired > 0) log(`[daily] Expired ${expired} friend challenges`, "daily");
   } catch (err) {
     log(`[daily] Job error: ${err}`, "daily");
+  }
+}
+
+async function runFriendChallengeExpiry() {
+  try {
+    const expired = await getStorage().expireFriendChallenges();
+    if (expired > 0) log(`[friend-challenges] Expired ${expired} pending challenge(s)`, "friend-challenges");
+  } catch (err) {
+    log(`[friend-challenges] Expiry error: ${err}`, "friend-challenges");
   }
 }
 
@@ -202,6 +209,8 @@ async function runDailyJobs() {
   scheduleGuildWarsJobs();
   runDailyJobs();
   setInterval(runDailyJobs, 60 * 60 * 1000);
+  runFriendChallengeExpiry();
+  setInterval(runFriendChallengeExpiry, 30 * 60 * 1000);
   setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);
