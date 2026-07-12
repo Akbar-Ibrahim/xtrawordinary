@@ -19,6 +19,7 @@ import {
   WordScrambleConfig,
   DefinitionMatchConfig,
   WordRootsConfig,
+  LetterBalanceConfig,
   SurvivalModeToggle,
 } from "@/components/game-config";
 
@@ -57,7 +58,6 @@ export function SeasonRoundConfigDialog({ open, onOpenChange, groupId, seasonId 
   const { toast } = useToast();
   const [slug, setSlug] = useState<string>("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
-  const [lbMode, setLbMode] = useState<"count" | "structural">("count");
 
   const lpLetter = quizParams.letter as string | undefined;
   const lpPosition = quizParams.position as number | undefined;
@@ -125,7 +125,6 @@ export function SeasonRoundConfigDialog({ open, onOpenChange, groupId, seasonId 
   const resetState = () => {
     setSlug("");
     setQuizParams({});
-    setLbMode("count");
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -136,7 +135,6 @@ export function SeasonRoundConfigDialog({ open, onOpenChange, groupId, seasonId 
   const selectSlug = (v: string) => {
     setSlug(v);
     setQuizParams({});
-    setLbMode("count");
   };
 
   const canSubmit = (() => {
@@ -213,163 +211,9 @@ export function SeasonRoundConfigDialog({ open, onOpenChange, groupId, seasonId 
             <LetterFrequencyConfig params={quizParams} setParams={setQuizParams} dialogType="season" open={open} />
           )}
 
-          {slug === "letter-balance" && (() => {
-            const isStructural = lbMode === "structural";
-            const structuralCats = [
-              { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2,3,4,5,6,7,"advanced"] as (number | "advanced")[] },
-              { id: "vowel_count", name: "Vowel Count", levelType: "count", levels: [2,3,4,5,6,7,"advanced"] as (number | "advanced")[] },
-              { id: "start_end_vowel", name: "Start & End Vowels", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
-              { id: "start_end_consonant", name: "Start & End Consonants", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
-              { id: "start_vowel_end_consonant", name: "Start Vowel, End Consonant", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
-              { id: "start_consonant_end_vowel", name: "Start Consonant, End Vowel", levelType: "length", levels: [4,5,6,7,8,9,10,11,12] as number[] },
-              { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [] as number[] },
-            ];
-            const selectedCat = structuralCats.find(c => c.id === quizParams.category);
-            return (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium">Mode</label>
-                  <div className="flex gap-2 mt-1">
-                    <Button type="button" size="sm" variant={!isStructural ? "default" : "outline"} onClick={() => { setLbMode("count"); setQuizParams(p => { const n = { ...p }; delete n.category; delete n.level; delete n.consonantCount; return n; }); }} data-testid="button-season-lb-mode-count">
-                      Vowel/Consonant Count
-                    </Button>
-                    <Button type="button" size="sm" variant={isStructural ? "default" : "outline"} onClick={() => { setLbMode("structural"); setQuizParams(p => { const n = { ...p }; delete n.vowels; delete n.consonants; return n; }); }} data-testid="button-season-lb-mode-structural">
-                      Structural
-                    </Button>
-                  </div>
-                </div>
-                {!isStructural ? (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium">Vowels</label>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {[0,1,2,3,4,5,6].map(v => (
-                          <Button key={v} type="button" size="sm" variant={quizParams.vowels === v ? "default" : "outline"} onClick={() => setQuizParams(p => ({ ...p, vowels: v }))} data-testid={`button-season-lb-vowels-${v}`}>{v}</Button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Consonants</label>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {[0,1,2,3,4,5,6,7,8].map(c => (
-                          <Button key={c} type="button" size="sm" variant={quizParams.consonants === c ? "default" : "outline"} onClick={() => setQuizParams(p => ({ ...p, consonants: c }))} data-testid={`button-season-lb-consonants-${c}`}>{c}</Button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium">Category</label>
-                      <Select value={quizParams.category ?? ""} onValueChange={(v) => setQuizParams(p => ({ ...p, category: v, level: undefined, consonantCount: undefined }))}>
-                        <SelectTrigger className="mt-1" data-testid="select-season-lb-category"><SelectValue placeholder="Pick a category" /></SelectTrigger>
-                        <SelectContent>
-                          {structuralCats.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {quizParams.category === "locked_balance" ? (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium">Word length</label>
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {[4,5,6,7,8,9,10].map(lv => (
-                              <Button key={lv} type="button" size="sm"
-                                variant={quizParams.level === lv ? "default" : "outline"}
-                                onClick={() => setQuizParams(p => ({ ...p, level: lv, consonantCount: undefined }))}
-                                data-testid={`button-season-lb-level-${lv}`}
-                              >
-                                {lv}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                        {quizParams.level !== undefined && (
-                          <div>
-                            <label className="text-sm font-medium">Consonant count <span className="text-xs font-normal text-muted-foreground">(vowels = {quizParams.level} − count)</span></label>
-                            <div className="flex gap-1 mt-1 flex-wrap">
-                              {Array.from({ length: quizParams.level - 1 }, (_, i) => i + 1).map(c => {
-                                const v = quizParams.level - c;
-                                return (
-                                  <Button key={c} type="button" size="sm"
-                                    variant={quizParams.consonantCount === c ? "default" : "outline"}
-                                    onClick={() => setQuizParams(p => ({ ...p, consonantCount: c }))}
-                                    data-testid={`button-season-lb-consonant-${c}`}
-                                    title={`${c}C / ${v}V`}
-                                  >
-                                    {c}C/{v}V
-                                  </Button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        {(!quizParams.level || !quizParams.consonantCount) && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400">
-                            {!quizParams.level ? "Pick a word length." : "Pick a consonant count."}
-                          </p>
-                        )}
-                      </>
-                    ) : selectedCat ? (
-                      <div>
-                        <label className="text-sm font-medium">
-                          Level <span className="text-xs font-normal text-muted-foreground">({selectedCat.levelType === "length" ? "word length" : "count"})</span>
-                        </label>
-                        <div className="flex gap-1 mt-1 flex-wrap">
-                          {selectedCat.levels.map(lv => (
-                            <Button
-                              key={String(lv)}
-                              type="button"
-                              size="sm"
-                              variant={quizParams.level === lv ? "default" : "outline"}
-                              className={lv === "advanced" ? "bg-gradient-to-r from-primary to-accent text-primary-foreground border-0" : ""}
-                              onClick={() => setQuizParams(p => ({ ...p, level: lv }))}
-                              data-testid={`button-season-lb-level-${lv}`}
-                            >
-                              {lv === "advanced" ? "Advanced" : lv}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {!quizParams.category && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400">Pick a category to configure this round.</p>
-                    )}
-                  </>
-                )}
-                {!quizParams.survival && (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium">Words to find</label>
-                      <Input
-                        type="number" min={1} max={50} placeholder="20"
-                        className="mt-1 h-8 text-sm w-24"
-                        data-testid="input-season-lb-word-count"
-                        value={quizParams.wordCount ?? ""}
-                        onChange={(e) => setQuizParams(p => ({ ...p, wordCount: e.target.value === "" ? undefined : Math.min(50, Math.max(1, parseInt(e.target.value) || 1)) }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Time limit</label>
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {[60, 90, 120, 180, 300].map(t => (
-                          <Button key={t} type="button" size="sm"
-                            variant={(quizParams.timeLimit ?? 120) === t ? "default" : "outline"}
-                            onClick={() => setQuizParams(p => ({ ...p, timeLimit: t }))}
-                            data-testid={`button-season-lb-time-${t}`}
-                          >
-                            {t < 60 ? `${t}s` : `${t / 60}min`}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })()}
+          {slug === "letter-balance" && (
+            <LetterBalanceConfig params={quizParams} setParams={setQuizParams} dialogType="season" open={open} />
+          )}
 
           {slug === "progressive-reveal" && (
             <ProgressiveRevealConfig params={quizParams} setParams={setQuizParams} dialogType="season" open={open} />

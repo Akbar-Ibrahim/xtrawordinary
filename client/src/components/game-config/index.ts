@@ -11,3 +11,4 @@ export * from "./AnagramSolverConfig";
 export * from "./WordScrambleConfig";
 export * from "./DefinitionMatchConfig";
 export * from "./WordRootsConfig";
+export * from "./LetterBalanceConfig";
