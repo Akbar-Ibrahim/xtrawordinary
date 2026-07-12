@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -744,6 +744,14 @@ export default function Leaderboard() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [view, setView] = useState<LeaderboardView>("global");
   const { user } = useAuth();
+
+  useEffect(() => {
+    const gameParam = new URLSearchParams(search).get("game");
+    if (gameParam && gameParam !== selectedGame) {
+      setSelectedGame(gameParam);
+      setIsSurvival(false);
+    }
+  }, [search]);
 
   const { data: friends = [] } = useQuery<Array<{ id: number }>>({
     queryKey: ["/api/friends"],
