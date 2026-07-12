@@ -40,14 +40,19 @@ async function fireOvertakenNotification(
   const prefs = await storage.getNotificationPreferences(displaceUserId);
   if (prefs["leaderboard_overtaken"] === false) return;
 
+  const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
   const gameName = slugToGameTitle(gameSlug);
-  await storage.createNotification({
-    userId: displaceUserId,
-    type: "leaderboard_overtaken",
-    title: `You've been overtaken in ${gameName}`,
-    body: `${submitterName} just passed you on the ${gameName} leaderboard.`,
-    linkUrl: `/leaderboard`,
-  });
+  await storage.createOvertakenNotificationIfAllowed(
+    {
+      userId: displaceUserId,
+      type: "leaderboard_overtaken",
+      title: `You've been overtaken in ${gameName}`,
+      body: `${submitterName} just passed you on the ${gameName} leaderboard.`,
+      linkUrl: `/leaderboard?game=${gameSlug}`,
+    },
+    gameSlug,
+    COOLDOWN_MS,
+  );
 }
 
 export function registerLeaderboardRoutes(app: Express): void {

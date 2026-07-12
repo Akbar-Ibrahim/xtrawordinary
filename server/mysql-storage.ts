@@ -305,6 +305,7 @@ export class MySQLStorage implements IStorage {
   async getUserLikes(userId: number, targetType: LikeTargetType, targetIds: string[]): Promise<Set<string>> { return Comments.getUserLikes(await this.getDb(), userId, targetType, targetIds); }
 
   // ── Notifications ───────────────────────────────────────────────────────────
+  async createOvertakenNotificationIfAllowed(data: InsertNotification, gameSlug: string, windowMs: number): Promise<boolean> { return Notifications.createOvertakenNotificationIfAllowed(await this.getDb(), data, gameSlug, windowMs); }
   async createNotification(data: InsertNotification): Promise<Notification> { return Notifications.createNotification(await this.getDb(), data); }
   async getNotifications(userId: number, limit?: number): Promise<Notification[]> { return Notifications.getNotifications(await this.getDb(), userId, limit); }
   async getUnreadNotificationCount(userId: number): Promise<number> { return Notifications.getUnreadNotificationCount(await this.getDb(), userId); }

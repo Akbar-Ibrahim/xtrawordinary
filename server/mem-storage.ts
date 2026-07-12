@@ -1862,6 +1862,21 @@ export class MemStorage implements IStorage {
     return this.teamRaceChallenges.find(tr => tr.roomCode === roomCode);
   }
 
+  async createOvertakenNotificationIfAllowed(data: InsertNotification, gameSlug: string, windowMs: number): Promise<boolean> {
+    // Node.js is single-threaded: no true concurrent DB race exists in MemStorage.
+    const cutoff = new Date(Date.now() - windowMs).toISOString();
+    const alreadySent = this.notifications.some(
+      (n) =>
+        n.userId === data.userId &&
+        n.type === "leaderboard_overtaken" &&
+        n.linkUrl === `/leaderboard?game=${gameSlug}` &&
+        n.createdAt >= cutoff,
+    );
+    if (alreadySent) return false;
+    await this.createNotification(data);
+    return true;
+  }
+
   async createNotification(data: InsertNotification): Promise<Notification> {
     const notif: Notification = {
       ...data,

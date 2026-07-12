@@ -243,6 +243,13 @@ export interface IStorage {
   setSiteSetting(key: string, value: string | null): Promise<void>;
 
   // Notifications
+  /**
+   * Atomically insert a leaderboard_overtaken notification only when no such
+   * notification has been sent to the same user for the same game within the
+   * given cooldown window. Returns true if the notification was created, false
+   * if it was suppressed by the cooldown.
+   */
+  createOvertakenNotificationIfAllowed(data: InsertNotification, gameSlug: string, windowMs: number): Promise<boolean>;
   createNotification(data: InsertNotification): Promise<Notification>;
   getNotifications(userId: number, limit?: number): Promise<Notification[]>;
   getUnreadNotificationCount(userId: number): Promise<number>;
