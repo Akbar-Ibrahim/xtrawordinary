@@ -68,13 +68,11 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - "Streak at risk" push notification
 
 ### Achievements
-- Tiered achievements: Bronze / Silver / Gold versions of the same goal
 - Secret achievements: hidden until unlocked
-- Achievement points total: a score representing overall platform mastery
 - Shareable achievement cards
 - Game-specific achievement sets (e.g. Shell Words-specific badges)
 - Seasonal achievements (e.g. "Played on New Year's Day 2026")
-- More achievement definitions (currently 19 — could grow to 50+)
+- More achievement definitions (currently 30 across 9 tiered groups — could grow further)
 
 ### Global Leaderboard
 - Leaderboard notifications: "You've been overtaken by Alice in Word Ladder"
@@ -171,14 +169,6 @@ These were proposed as follow-up tasks but not yet started. Reference numbers ar
 
 ### Word Wars — Notifications & Alerts
 - **#270** Send an email nudge to registered players when a tournament is at risk of not starting (email reminder when <24h to deadline and sign-up count is still below minPlayers)
-- **#281** Let players opt out of "room is live" alerts separately from match-start alerts (separate notification preference for word_war_round_start)
-
-### Word Wars — Spectators & Public Access
-- **#282** Let anyone with a link watch a tournament bracket without signing in (currently SSE + bracket data requires auth; unauthenticated viewers get 15s poll only)
-- **#283** Let spectators see live match results update without refreshing (spectators not connected via SSE miss real-time match_completed events)
-
-### Guild Wars — Group Stats (polish)
-- Extend the Guild Wars stats card on the group leaderboard tab to show the last 3 **completed** tournament outcomes (win or loss), not just championship titles. Currently only championship wins appear under "Recent titles"; a group that entered 3 tournaments and lost them all shows nothing there.
 
 ### Duel Milestones — War/Medieval Achievement Titles
 A set of escalating war/medieval-themed achievement titles earned through duel performance. Each title would display on the player's profile and optionally beside their name in the duel lobby.
@@ -255,37 +245,12 @@ A set of escalating war/medieval-themed achievement titles earned through duel p
 ---
 
 ### League Seasons (within Groups)
-**Status:** Thinking stage, not yet planned or built
+**Status:** *(Implemented June 2026)* — Season lifecycle, date-bounded round eligibility, season-scoped leaderboard, champion crowning, and admin UI are all live. `SeasonTab` on group detail page, `/group-season-summary` route, full MySQL backend in `server/mysql/groups.ts`.
 
-**Core idea:** A time-boxed competitive season — a defined window where points accumulate, then a champion is crowned. Meaningfully different from Groups (which are permanent social clubs). A league feels like something you *compete in and win*; a group feels like somewhere you *belong*.
-
-**Recommended path:** Add a "League Season" mode within Groups rather than a separate feature:
-- Group admin sets a timeframe (start + end date)
-- Admin picks 2–5 eligible games
-- Any round played in those games during the period feeds the season leaderboard
-- When time's up, the season closes, winner is celebrated, a new season can start
-- Reuses all existing round/leaderboard infrastructure — just adds a season container
-
-**Other angles:**
+**Future angles (not yet built):**
 - Cross-group leagues — open entry (public ladder), any group can join
-- Point system options: raw score sum, bonus for consistency, bonus for top-3 finishes, bonus for improvement
-- Relegation / promotion tiers after a season (keeps experienced players from crushing newcomers)
-- Complement to Guild Wars: a group league could be the regular season that precedes the Guild Wars playoff
-
-**Open questions before building:**
-- Solo league, group league, or both?
-- Is a league within a group, or a standalone public competition?
-- What is the point system — raw scores, win/loss, or something else?
-- Does participating require playing every round, or is it cumulative opt-in?
-- When a season ends, do its scores also feed the group's regular all-time leaderboard, or does the season leaderboard stay a separate, independent view?
-- While a season is active, can admins still start regular ad-hoc rounds outside the season, or does every round during that window automatically count toward the season?
-- How is a season winner celebrated? (badge, notification, hall of fame?)
-- Does this overlap too much with Guild Wars, or are they clearly complementary?
-
-**Implementation notes (as of July 2026):**
-- A `groupSeason` schema already exists in `shared/schema/groups.ts` (start/end dates, etc.), but the backend in `server/mysql/groups.ts` is a stub — it throws/returns empty. So this is "finish something started," not greenfield.
-- Scope is meaningfully bigger than it might look: season lifecycle (create/close), date-bounded round eligibility, a season-scoped leaderboard, champion crowning, and an admin UI for setting all of it up — on top of the open questions above.
-- For comparison, "Post-Game Vocabulary Spotlight" (above) is a much smaller/lower-risk task if a quick win is wanted first — mostly frontend, no schema or admin flows involved.
+- Relegation / promotion tiers after a season
+- Complement to Guild Wars: a group league as a regular season that precedes a Guild Wars playoff
 
 ---
 
