@@ -22,7 +22,7 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   {
     label: "Social",
     icon: Users,
-    types: ["group_join", "comment_reply", "group_round_start", "friend_request_received", "achievement_unlocked", "comment_liked", "streak_at_risk"],
+    types: ["group_join", "comment_reply", "group_round_start", "friend_request_received", "achievement_unlocked", "comment_liked", "streak_at_risk", "leaderboard_overtaken"],
     subcategories: [
       {
         label: "Friend Challenges",

@@ -27,6 +27,7 @@ export const notificationTypeSchema = z.enum([
   "achievement_unlocked",
   "comment_liked",
   "streak_at_risk",
+  "leaderboard_overtaken",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 
@@ -80,4 +81,5 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   achievement_unlocked: "You unlocked a new achievement",
   comment_liked: "Someone liked your comment",
   streak_at_risk: "Your streak is at risk",
+  leaderboard_overtaken: "Someone passed you on the leaderboard",
 };

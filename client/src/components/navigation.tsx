@@ -48,6 +48,7 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
   friend_request_received: <UserPlus className="h-4 w-4 text-emerald-500" />,
   achievement_unlocked: <Award className="h-4 w-4 text-amber-500" />,
   comment_liked: <Heart className="h-4 w-4 text-rose-500" />,
+  leaderboard_overtaken: <BarChart3 className="h-4 w-4 text-indigo-500" />,
 };
 
 const NOTIF_BG: Record<string, string> = {
@@ -74,6 +75,7 @@ const NOTIF_BG: Record<string, string> = {
   friend_request_received: "bg-emerald-500/10",
   achievement_unlocked: "bg-amber-500/10",
   comment_liked: "bg-rose-500/10",
+  leaderboard_overtaken: "bg-indigo-500/10",
 };
 
 function timeAgo(isoString: string): string {

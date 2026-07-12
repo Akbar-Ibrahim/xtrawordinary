@@ -9,6 +9,47 @@ function parseTimeFilter(raw: unknown): string | undefined {
   return undefined;
 }
 
+function slugToGameTitle(slug: string): string {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+
+async function fireOvertakenNotification(
+  gameSlug: string,
+  submitterId: number,
+  submitterName: string,
+  rankBefore: Map<number, number>,
+): Promise<void> {
+  const topAfter = await storage.getLeaderboard(gameSlug, 50);
+  const rankAfter = new Map<number, number>();
+  topAfter.forEach((e, i) => rankAfter.set(e.userId, i + 1));
+
+  let displaceUserId: number | null = null;
+  let bestDisplacedRank = Infinity;
+
+  for (const [userId, oldRank] of rankBefore.entries()) {
+    if (userId === submitterId) continue;
+    const newRank = rankAfter.get(userId) ?? topAfter.length + 1;
+    if (newRank > oldRank && oldRank < bestDisplacedRank) {
+      bestDisplacedRank = oldRank;
+      displaceUserId = userId;
+    }
+  }
+
+  if (displaceUserId === null) return;
+
+  const prefs = await storage.getNotificationPreferences(displaceUserId);
+  if (prefs["leaderboard_overtaken"] === false) return;
+
+  const gameName = slugToGameTitle(gameSlug);
+  await storage.createNotification({
+    userId: displaceUserId,
+    type: "leaderboard_overtaken",
+    title: `You've been overtaken in ${gameName}`,
+    body: `${submitterName} just passed you on the ${gameName} leaderboard.`,
+    linkUrl: `/leaderboard`,
+  });
+}
+
 export function registerLeaderboardRoutes(app: Express): void {
   app.get("/api/leaderboard/streaks", async (req, res) => {
     try {
@@ -79,6 +120,12 @@ export function registerLeaderboardRoutes(app: Express): void {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
       const { gameSlug, score } = parsed.data;
+
+      // Snapshot leaderboard before saving so we can detect displacement
+      const topBefore = await storage.getLeaderboard(gameSlug, 50);
+      const rankBefore = new Map<number, number>();
+      topBefore.forEach((e, i) => rankBefore.set(e.userId, i + 1));
+
       const entry = await storage.saveLeaderboardEntry({
         userId: req.user!.id,
         gameSlug,
@@ -88,6 +135,9 @@ export function registerLeaderboardRoutes(app: Express): void {
       });
       await storage.incrementGamePlayCount(gameSlug);
       res.json(entry);
+
+      // Non-blocking: fire overtaken notification after response is sent
+      fireOvertakenNotification(gameSlug, req.user!.id, req.user!.name, rankBefore).catch(() => {});
     } catch (error) {
       res.status(500).json({ error: "Failed to submit score" });
     }
