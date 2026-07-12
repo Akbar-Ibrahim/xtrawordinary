@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -36,12 +36,28 @@ import { HuddleChallengeDialog } from "./group-detail/HuddleChallengeDialog";
 import { TeamRaceChallengeDialog } from "./group-detail/TeamRaceChallengeDialog";
 import { ConfirmDialogs } from "./group-detail/ConfirmDialogs";
 
+const GROUP_TABS = ["rounds", "leaderboard", "members", "activity", "season", "guild-wars"] as const;
+type GroupTab = typeof GROUP_TABS[number];
+
+function getGroupTabFromSearch(): GroupTab {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  return (GROUP_TABS as readonly string[]).includes(tab ?? "") ? (tab as GroupTab) : "rounds";
+}
+
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const groupId = parseInt(id);
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<GroupTab>(getGroupTabFromSearch);
+
+  useEffect(() => {
+    setActiveTab(getGroupTabFromSearch());
+  }, [location]);
+
   const [createRoundOpen, setCreateRoundOpen] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState("random");
   const [closesAt, setClosesAt] = useState("");
@@ -454,7 +470,7 @@ export default function GroupDetail() {
           onCopyInvite={copyInviteCode}
         />
 
-        <Tabs defaultValue="rounds">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as GroupTab)}>
           <TabsList className="w-full mb-6 flex-wrap h-auto gap-1">
             <TabsTrigger value="rounds" className="flex-1" data-testid="tab-rounds">Rounds</TabsTrigger>
             <TabsTrigger value="leaderboard" className="flex-1" data-testid="tab-leaderboard">Leaderboard</TabsTrigger>

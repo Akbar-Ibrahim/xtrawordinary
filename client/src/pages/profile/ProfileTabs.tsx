@@ -15,6 +15,8 @@ import { SettingsTab } from "./SettingsTab";
 import type { loadStats, loadStreak, loadDuelStats } from "@/lib/game-stats";
 
 interface Props {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
   isOwnProfile: boolean;
   profileName: string;
   stats: UserGameStats[];
@@ -51,6 +53,7 @@ interface Props {
 }
 
 export function ProfileTabs({
+  activeTab, onTabChange,
   isOwnProfile, profileName, stats, rankings, formatGameName, gameMap,
   ownStreak, ownDailyStreak, viewedStreak, isAuthenticated,
   quizzes, quizzesLoading, copiedCode, onCopyLink, onDeleteQuizClick,
@@ -62,7 +65,7 @@ export function ProfileTabs({
   return (
     <Card>
       <CardContent className="pt-4">
-        <Tabs defaultValue="stats">
+        <Tabs value={activeTab} onValueChange={onTabChange}>
           <div className="w-full overflow-x-auto">
             <TabsList className="flex w-max min-w-full h-auto" data-testid="tabs-profile-sections">
               <TabsTrigger value="stats" className="flex items-center gap-1.5 flex-shrink-0" data-testid="tab-game-stats">

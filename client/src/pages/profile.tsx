@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useRoute } from "wouter";
+import { useState, useEffect } from "react";
+import { useRoute, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { User } from "lucide-react";
@@ -14,9 +14,25 @@ import { WordWarsCard } from "./profile/WordWarsCard";
 import { EditProfileDialog } from "./profile/EditProfileDialog";
 import { ProfileTabs } from "./profile/ProfileTabs";
 
+const PROFILE_TABS = ["stats", "quizzes", "rankings", "achievements", "duels", "social", "settings"] as const;
+type ProfileTab = typeof PROFILE_TABS[number];
+
+function getProfileTabFromSearch(): ProfileTab {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  return (PROFILE_TABS as readonly string[]).includes(tab ?? "") ? (tab as ProfileTab) : "stats";
+}
+
 export default function Profile() {
   const [, params] = useRoute("/profile/:id");
   const userId = parseInt(params?.id || "0");
+  const [location] = useLocation();
+
+  const [activeTab, setActiveTab] = useState<ProfileTab>(getProfileTabFromSearch);
+
+  useEffect(() => {
+    setActiveTab(getProfileTabFromSearch());
+  }, [location]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -96,6 +112,8 @@ export default function Profile() {
         <WordWarsCard wordWarsStats={wordWarsStats} championships={championships} />
 
         <ProfileTabs
+          activeTab={activeTab}
+          onTabChange={(tab) => setActiveTab(tab as ProfileTab)}
           isOwnProfile={isOwnProfile}
           profileName={profile.user.name}
           stats={profile.stats}

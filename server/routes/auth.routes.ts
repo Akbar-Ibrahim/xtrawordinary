@@ -24,22 +24,28 @@ export function registerAuthRoutes(app: Express): void {
         return res.status(409).json({ error: "Email already registered" });
       }
       const passwordHash = await bcrypt.hash(password, 10);
+      const noEmailService = !process.env.RESEND_API_KEY;
       const user = await storage.createUser({
         email,
         name,
         passwordHash,
         googleId: null,
-        emailVerified: false,
+        emailVerified: noEmailService,
         avatarUrl: null,
         isAdmin: false,
         isBanned: false,
         isPremium: false,
       });
-      const token = crypto.randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      await storage.createEmailVerificationToken(user.id, token, expiresAt);
-      await sendVerificationEmail(email, token);
-      res.status(201).json({ user: sanitizeUser(user), message: "Registration successful. Please verify your email." });
+      if (!noEmailService) {
+        const token = crypto.randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        await storage.createEmailVerificationToken(user.id, token, expiresAt);
+        await sendVerificationEmail(email, token);
+      }
+      const message = noEmailService
+        ? "Registration successful."
+        : "Registration successful. Please verify your email.";
+      res.status(201).json({ user: sanitizeUser(user), message });
     } catch (error) {
       res.status(500).json({ error: "Registration failed" });
     }
