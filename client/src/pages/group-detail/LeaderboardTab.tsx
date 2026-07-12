@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TabsContent } from "@/components/ui/tabs";
 import { UserAvatar } from "@/components/user-avatar";
-import { Trophy, Swords } from "lucide-react";
+import { Trophy, Swords, TrendingUp, TrendingDown } from "lucide-react";
 import type { GuildWarsStats, LeaderboardEntry } from "./types";
 
 export function LeaderboardTab({
@@ -89,9 +89,35 @@ export function LeaderboardTab({
                 </Link>
               </div>
             )}
+            {guildWarsStats.recentMatches && guildWarsStats.recentMatches.length > 0 && (
+              <div className="pt-1 border-t border-purple-200/40 dark:border-purple-700/30">
+                <p className="text-xs text-muted-foreground mb-1.5">Recent battles:</p>
+                <div className="space-y-1">
+                  {guildWarsStats.recentMatches.map((m) => (
+                    <Link key={m.matchId} href={`/guild-wars/${m.tournamentId}`}>
+                      <div className="flex items-center gap-2 py-0.5 cursor-pointer hover:opacity-80" data-testid={`row-recent-match-${m.matchId}`}>
+                        {m.outcome === "win" ? (
+                          <TrendingUp className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <TrendingDown className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                        )}
+                        <span className={`text-[11px] font-medium ${m.outcome === "win" ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                          {m.outcome === "win" ? "W" : "L"}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground truncate">
+                          {m.tournamentName}
+                          {m.opponentGroupName ? ` vs ${m.opponentGroupName}` : ""}
+                          {" · "}Rd {m.round}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
             {guildWarsStats.recentChampionships.length > 0 && (
               <div className="pt-1 border-t border-purple-200/40 dark:border-purple-700/30">
-                <p className="text-xs text-muted-foreground mb-1.5">Recent titles:</p>
+                <p className="text-xs text-muted-foreground mb-1.5">Titles:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {guildWarsStats.recentChampionships.map((c) => (
                     <Link key={c.tournamentId} href={`/guild-wars/${c.tournamentId}`}>

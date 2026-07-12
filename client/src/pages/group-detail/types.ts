@@ -52,6 +52,16 @@ export interface SeasonLeaderboardEntry {
   roundsPlayed: number;
 }
 
+export interface RecentGuildWarsMatch {
+  matchId: number;
+  tournamentId: number;
+  tournamentName: string;
+  round: number;
+  outcome: "win" | "loss";
+  opponentGroupId: number | null;
+  opponentGroupName: string | null;
+}
+
 export interface GuildWarsStats {
   tournamentsEntered: number;
   matchWins: number;
@@ -59,6 +69,7 @@ export interface GuildWarsStats {
   championshipsWon: number;
   activeTournament: { id: number; name: string } | null;
   recentChampionships: { tournamentId: number; tournamentName: string }[];
+  recentMatches: RecentGuildWarsMatch[];
 }
 
 export type GroupRoundLite = GroupRound;

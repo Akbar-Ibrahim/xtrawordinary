@@ -2235,6 +2235,25 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getRecentMatchesForGroup(groupId: number): Promise<{ matchId: number; tournamentId: number; tournamentName: string; round: number; outcome: "win" | "loss"; opponentGroupId: number | null; opponentGroupName: string | null }[]> {
+    const matches = this.guildWarsMatches
+      .filter(m => (m.group1Id === groupId || m.group2Id === groupId) && m.status === "completed")
+      .slice(-3)
+      .reverse();
+    return matches.map(m => {
+      const opponentGroupId = m.group1Id === groupId ? m.group2Id : m.group1Id;
+      return {
+        matchId: m.id,
+        tournamentId: m.tournamentId,
+        tournamentName: "Tournament",
+        round: m.round,
+        outcome: m.winnerGroupId === groupId ? "win" : "loss",
+        opponentGroupId: opponentGroupId ?? null,
+        opponentGroupName: null,
+      };
+    });
+  }
+
   async getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
     const tournamentsEntered = this.guildWarsRegistrations.filter(r => r.groupId === groupId).length;
     const groupMatches = this.guildWarsMatches.filter(

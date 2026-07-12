@@ -416,5 +416,6 @@ export class MySQLStorage implements IStorage {
   async getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]> { return GuildWars.getGuildWarsChampionshipsForGroup(await this.getDb(), groupId); }
   async listAllGuildWarsChampions(): Promise<GuildWarsChampion[]> { return GuildWars.listAllGuildWarsChampions(await this.getDb()); }
   async getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> { return GuildWars.getGuildWarsStatsForGroup(await this.getDb(), groupId); }
+  async getRecentMatchesForGroup(groupId: number): Promise<{ matchId: number; tournamentId: number; tournamentName: string; round: number; outcome: "win" | "loss"; opponentGroupId: number | null; opponentGroupName: string | null }[]> { return GuildWars.getRecentMatchesForGroup(await this.getDb(), groupId); }
   async getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> { return GuildWars.getWordWarsStatsForGroup(await this.getDb(), groupId); }
 }

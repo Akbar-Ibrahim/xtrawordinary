@@ -226,6 +226,63 @@ export async function listAllGuildWarsChampions(db: any): Promise<Array<GuildWar
   return rows.map((r: any) => ({ ...toGWChampion(r), group: groupMap.get(r.groupId), tournament: tournMap.get(r.tournamentId) }));
 }
 
+export async function getRecentMatchesForGroup(
+  db: any,
+  groupId: number,
+): Promise<{ matchId: number; tournamentId: number; tournamentName: string; round: number; outcome: "win" | "loss"; opponentGroupId: number | null; opponentGroupName: string | null }[]> {
+  const matches = await db
+    .select({
+      id: schema.guildWarsMatches.id,
+      tournamentId: schema.guildWarsMatches.tournamentId,
+      round: schema.guildWarsMatches.round,
+      group1Id: schema.guildWarsMatches.group1Id,
+      group2Id: schema.guildWarsMatches.group2Id,
+      winnerGroupId: schema.guildWarsMatches.winnerGroupId,
+    })
+    .from(schema.guildWarsMatches)
+    .where(
+      and(
+        or(eq(schema.guildWarsMatches.group1Id, groupId), eq(schema.guildWarsMatches.group2Id, groupId)),
+        eq(schema.guildWarsMatches.status, "completed"),
+      ),
+    )
+    .orderBy(desc(schema.guildWarsMatches.id))
+    .limit(3);
+
+  if (matches.length === 0) return [];
+
+  const tournamentIds = [...new Set(matches.map((m: any) => m.tournamentId))] as number[];
+  const opponentGroupIds = matches
+    .map((m: any) => (m.group1Id === groupId ? m.group2Id : m.group1Id))
+    .filter((id: any) => id != null) as number[];
+  const uniqueOpponentIds = [...new Set(opponentGroupIds)] as number[];
+
+  const [tournaments, opponentGroups] = await Promise.all([
+    tournamentIds.length > 0
+      ? db.select({ id: schema.guildWarsTournaments.id, name: schema.guildWarsTournaments.name }).from(schema.guildWarsTournaments).where(inArray(schema.guildWarsTournaments.id, tournamentIds))
+      : [],
+    uniqueOpponentIds.length > 0
+      ? db.select({ id: schema.groups.id, name: schema.groups.name }).from(schema.groups).where(inArray(schema.groups.id, uniqueOpponentIds))
+      : [],
+  ]);
+
+  const tournMap = new Map((tournaments as any[]).map((t) => [t.id, t.name]));
+  const groupMap = new Map((opponentGroups as any[]).map((g) => [g.id, g.name]));
+
+  return matches.map((m: any) => {
+    const opponentGroupId = m.group1Id === groupId ? m.group2Id : m.group1Id;
+    return {
+      matchId: m.id,
+      tournamentId: m.tournamentId,
+      tournamentName: tournMap.get(m.tournamentId) ?? "Tournament",
+      round: m.round,
+      outcome: m.winnerGroupId === groupId ? "win" : "loss",
+      opponentGroupId: opponentGroupId ?? null,
+      opponentGroupName: opponentGroupId ? (groupMap.get(opponentGroupId) ?? null) : null,
+    };
+  });
+}
+
 export async function getGuildWarsStatsForGroup(db: any, groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }> {
   const [reg] = await db.select({ count: sql<number>`COUNT(*)` }).from(schema.guildWarsRegistrations).where(eq(schema.guildWarsRegistrations.groupId, groupId));
   const matches = await db.select({ winnerGroupId: schema.guildWarsMatches.winnerGroupId }).from(schema.guildWarsMatches)

@@ -353,10 +353,11 @@ export function registerGuildWarsRoutes(app: Express): void {
     try {
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
-      const [stats, championships, registrations] = await Promise.all([
+      const [stats, championships, registrations, recentMatches] = await Promise.all([
         storage.getGuildWarsStatsForGroup(groupId),
         storage.getGuildWarsChampionshipsForGroup(groupId),
         storage.getGuildWarsRegistrationsForGroup(groupId),
+        storage.getRecentMatchesForGroup(groupId),
       ]);
       const tournamentDetails = await Promise.all(
         registrations.map((r) => storage.getGuildWarsTournament(r.tournamentId)),
@@ -373,6 +374,7 @@ export function registerGuildWarsRoutes(app: Express): void {
         championshipsWon: championships.length,
         activeTournament: activeTournament ? { id: activeTournament.id, name: activeTournament.name } : null,
         recentChampionships,
+        recentMatches,
       });
     } catch (err) {
       console.error("[guild-wars] group stats error", err);

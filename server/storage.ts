@@ -311,6 +311,7 @@ export interface IStorage {
   getGuildWarsChampionshipsForGroup(groupId: number): Promise<GuildWarsChampion[]>;
   listAllGuildWarsChampions(): Promise<GuildWarsChampion[]>;
   getGuildWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
+  getRecentMatchesForGroup(groupId: number): Promise<{ matchId: number; tournamentId: number; tournamentName: string; round: number; outcome: "win" | "loss"; opponentGroupId: number | null; opponentGroupName: string | null }[]>;
   getWordWarsStatsForGroup(groupId: number): Promise<{ tournamentsEntered: number; matchWins: number; matchLosses: number }>;
 
   // Group Seasons
