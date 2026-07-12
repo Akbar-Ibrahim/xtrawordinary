@@ -104,7 +104,6 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Round announcement: admin posts a message when starting a round
 - Pinned announcement on group page for important news
 - Group tags: categorise groups (school, family, competitive, casual)
-- Per-member stats within a group: rounds played, average score, rank
 - Group rounds history: archive of past rounds with full results
 - Maximum member limit per group (free vs. paid tier gating)
 - Group profile picture / avatar
