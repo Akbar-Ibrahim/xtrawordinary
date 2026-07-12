@@ -899,7 +899,7 @@ export default function Leaderboard() {
                           })()}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span>{selectedGameObj.name}</span>
+                          <span data-testid="text-selected-game-name">{selectedGameObj.name}</span>
                           {showSurvivalToggle && (
                             <Badge variant={isSurvival ? "destructive" : "secondary"} className="text-xs gap-1">
                               {isSurvival ? <><Flame className="h-3 w-3" /> Survival</> : <><Timer className="h-3 w-3" /> Classic</>}
