@@ -1,0 +1,52 @@
+CREATE TABLE word_derivatives (
+    word_id INT NOT NULL,
+    derivative_id INT NOT NULL,
+    PRIMARY KEY (word_id, derivative_id),
+    FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
+    FOREIGN KEY (derivative_id) REFERENCES words(id) ON DELETE CASCADE
+);
+
+-- Crucial index for the reverse lookup (finding the base word from a derivative)
+CREATE INDEX idx_derivative_to_word ON word_derivatives(derivative_id, word_id);
+Use code with caution.2. TypeScript / Express ImplementationUsing pure SQL queries via a pool driver (like mysql2), here is how you efficiently handle both lookup directions in your Express routes.Find all derivatives of a base wordtypescriptimport { Request, Response } from 'express';
+import { db } from './db'; // Your MySQL pool connection
+
+// GET /api/word/:word/derivatives
+export const getDerivatives = async (req: Request, res: Response) => {
+  const { word } = req.params;
+  
+  const query = `
+    SELECT w2.word 
+    FROM words w1
+    JOIN word_derivatives wd ON w1.id = wd.word_id
+    JOIN words w2 ON wd.derivative_id = w2.id
+    WHERE w1.word = ?
+  `;
+
+  try {
+    const [rows] = await db.execute(query, [word]);
+    res.json({ word, derivatives: (rows as any[]).map(r => r.word) });
+  } catch (error) {
+    res.status(500).json({ error: 'Database query failed' });
+  }
+};
+Use code with caution.Find all base words a derivative belongs totypescript// GET /api/word/:word/base-words
+export const getBaseWords = async (req: Request, res: Response) => {
+  const { word } = req.params;
+
+  const query = `
+    SELECT w2.word 
+    FROM words w1
+    JOIN word_derivatives wd ON w1.id = wd.derivative_id
+    JOIN words w2 ON wd.word_id = w2.id
+    WHERE w1.word = ?
+  `;
+
+  try {
+    const [rows] = await db.execute(query, [word]);
+    res.json({ derivative: word, baseWords: (rows as any[]).map(r => r.word) });
+  } catch (error) {
+    res.status(500).json({ error: 'Database query failed' });
+  }
+};
+Use code with caution.Why this kills the JSON approachCovering Indexes: The queries above use "covering indexes". MySQL can find the relationship entirely within the index memory without even touching the actual data rows on the disk.Low Memory Footprint: Your TypeScript server only receives the lean array of strings it requested, rather than parsing a massive JSON string block on every API call.Are you using a bare driver (like mysql2) or an ORM (like Prisma, TypeORM, or Drizzle)? I can provide the exact code block for your specific setup if needed.

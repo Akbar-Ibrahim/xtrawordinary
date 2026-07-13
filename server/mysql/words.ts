@@ -1,4 +1,4 @@
-import { eq, and, sql, between, isNotNull } from "drizzle-orm";
+import { eq, and, sql, between, isNotNull, inArray, gte } from "drizzle-orm";
 import type { DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
@@ -27,29 +27,69 @@ export async function getLetterPoolWords(db: any, gameData: any): Promise<Letter
 
 export async function getMakerWords(db: any, gameData: any): Promise<MakerWord[]> {
   try {
-    const pool = await db.select().from(schema.words)
-      .where(and(between(schema.words.wordLength, 6, 10), isNotNull(schema.words.derivatives)))
-      .orderBy(sql`RAND()`).limit(50);
-    const words: MakerWord[] = pool
-      .filter((w: any) => Array.isArray(w.derivatives) && w.derivatives.length > 0)
-      .map((w: any) => {
-        const filtered = (w.derivatives as string[]).filter((d: string) => d.length >= 3);
-        return { baseWord: w.word, derivatives: filtered, maxWords: Math.min(filtered.length, 10) };
-      }).filter((m: any) => m.derivatives.length > 0);
-    if (words.length > 0) return words;
+    const baseWords = await db
+      .select({ id: schema.words.id, word: schema.words.word })
+      .from(schema.words)
+      .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
+      .where(between(schema.words.wordLength, 6, 10))
+      .groupBy(schema.words.id, schema.words.word)
+      .orderBy(sql`RAND()`)
+      .limit(50);
+    if (baseWords.length === 0) return gameData.getMakerWords();
+    const baseIds = baseWords.map((b: any) => b.id);
+    const derivWords = schema.words;
+    const pairs = await db
+      .select({ wordId: schema.wordDerivatives.wordId, derivWord: derivWords.word })
+      .from(schema.wordDerivatives)
+      .innerJoin(derivWords, eq(schema.wordDerivatives.derivativeId, derivWords.id))
+      .where(and(inArray(schema.wordDerivatives.wordId, baseIds), gte(derivWords.wordLength, 3)));
+    const derivMap = new Map<number, string[]>();
+    for (const p of pairs) {
+      const arr = derivMap.get(p.wordId) ?? [];
+      arr.push(p.derivWord);
+      derivMap.set(p.wordId, arr);
+    }
+    const result: MakerWord[] = baseWords
+      .map((b: any) => {
+        const derivatives = derivMap.get(b.id) ?? [];
+        return { baseWord: b.word, derivatives, maxWords: Math.min(derivatives.length, 10) };
+      })
+      .filter((m: MakerWord) => m.derivatives.length > 0);
+    if (result.length > 0) return result;
   } catch {}
   return gameData.getMakerWords();
 }
 
 export async function getWordRootsPuzzles(db: any, gameData: any): Promise<WordRootsPuzzle[]> {
   try {
-    const pool = await db.select().from(schema.words)
-      .where(and(between(schema.words.wordLength, 6, 10), isNotNull(schema.words.derivatives)))
-      .orderBy(sql`RAND()`).limit(50);
-    const puzzles: WordRootsPuzzle[] = pool
-      .filter((w: any) => Array.isArray(w.derivatives) && w.derivatives.length > 0)
-      .map((w: any) => ({ canonicalWord: w.word, derivatives: (w.derivatives as string[]).filter((d: string) => d.length >= 3) }))
-      .filter((p: any) => p.derivatives.length > 0);
+    const baseWords = await db
+      .select({ id: schema.words.id, word: schema.words.word })
+      .from(schema.words)
+      .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
+      .where(between(schema.words.wordLength, 6, 10))
+      .groupBy(schema.words.id, schema.words.word)
+      .orderBy(sql`RAND()`)
+      .limit(50);
+    if (baseWords.length === 0) return gameData.getWordRootsPuzzles();
+    const baseIds = baseWords.map((b: any) => b.id);
+    const derivWords = schema.words;
+    const pairs = await db
+      .select({ wordId: schema.wordDerivatives.wordId, derivWord: derivWords.word })
+      .from(schema.wordDerivatives)
+      .innerJoin(derivWords, eq(schema.wordDerivatives.derivativeId, derivWords.id))
+      .where(and(inArray(schema.wordDerivatives.wordId, baseIds), gte(derivWords.wordLength, 3)));
+    const derivMap = new Map<number, string[]>();
+    for (const p of pairs) {
+      const arr = derivMap.get(p.wordId) ?? [];
+      arr.push(p.derivWord);
+      derivMap.set(p.wordId, arr);
+    }
+    const puzzles: WordRootsPuzzle[] = baseWords
+      .map((b: any) => ({
+        canonicalWord: b.word,
+        derivatives: derivMap.get(b.id) ?? [],
+      }))
+      .filter((p: WordRootsPuzzle) => p.derivatives.length > 0);
     if (puzzles.length > 0) return puzzles;
   } catch {}
   return gameData.getWordRootsPuzzles();

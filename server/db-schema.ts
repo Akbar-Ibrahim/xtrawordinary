@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey } from "drizzle-orm/mysql-core";
 import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
@@ -133,6 +133,14 @@ export const words = mysqlTable("words", {
   index("words_length_idx").on(table.wordLength),
   index("words_anagram_idx").on(table.isAnagram),
   index("words_stack_idx").on(table.isWordStack),
+]);
+
+export const wordDerivatives = mysqlTable("word_derivatives", {
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  derivativeId: int("derivative_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+}, (table) => [
+  primaryKey({ columns: [table.wordId, table.derivativeId] }),
+  index("idx_derivative_to_word").on(table.derivativeId, table.wordId),
 ]);
 
 export const shellWords = mysqlTable("shell_words", {
