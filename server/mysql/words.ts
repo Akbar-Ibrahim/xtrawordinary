@@ -1,5 +1,5 @@
 import { eq, and, sql, between, isNotNull, inArray, gte } from "drizzle-orm";
-import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
+import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
 
@@ -16,13 +16,43 @@ export async function getDefinitionWords(db: any, gameData: any): Promise<Defini
 
 export async function getLetterPoolWords(db: any, gameData: any): Promise<LetterPoolWord[]> {
   try {
-    const pool = await db.select().from(schema.words).where(isNotNull(schema.words.category)).orderBy(sql`RAND()`).limit(50);
-    const words: LetterPoolWord[] = pool.map((w: any) => ({
-      word: w.word, hint: w.hint ?? "", category: w.category!, letterPool: generateLetterPool(w.word),
-    }));
-    if (words.length > 0) return words;
+    const catPool = await db.select().from(schema.wordCategories).orderBy(sql`RAND()`).limit(50);
+    if (catPool.length > 0) {
+      return catPool.map((w: any) => ({
+        word: w.word,
+        hint: Array.isArray(w.definitions) && w.definitions.length > 0 ? w.definitions[0] : "",
+        category: w.partOfSpeech ?? "",
+        letterPool: generateLetterPool(w.word),
+      }));
+    }
+    const wordPool = await db.select().from(schema.words).where(isNotNull(schema.words.category)).orderBy(sql`RAND()`).limit(50);
+    if (wordPool.length > 0) {
+      return wordPool.map((w: any) => ({
+        word: w.word, hint: w.hint ?? "", category: w.category!, letterPool: generateLetterPool(w.word),
+      }));
+    }
   } catch {}
   return gameData.getLetterPoolWords();
+}
+
+export async function getProgressiveRevealWords(db: any, gameData: any): Promise<ProgressiveRevealWord[]> {
+  try {
+    const catPool = await db.select().from(schema.wordCategories).orderBy(sql`RAND()`).limit(50);
+    if (catPool.length > 0) {
+      return catPool.map((w: any) => ({
+        word: w.word,
+        subcategory: w.partOfSpeech ?? "",
+      }));
+    }
+    const wordPool = await db.select().from(schema.words).where(isNotNull(schema.words.category)).orderBy(sql`RAND()`).limit(50);
+    if (wordPool.length > 0) {
+      return wordPool.map((w: any) => ({
+        word: w.word,
+        subcategory: w.category ?? "",
+      }));
+    }
+  } catch {}
+  return gameData.getProgressiveRevealWords();
 }
 
 export async function getScrambleWords(db: any, gameData: any): Promise<ScrambleWord[]> {

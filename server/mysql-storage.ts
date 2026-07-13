@@ -106,7 +106,7 @@ export class MySQLStorage implements IStorage {
   async getLetterHuntConfig(): Promise<LetterHuntConfig> { return this.gameData.getLetterHuntConfig(); }
   async getWordChainConfig(): Promise<WordChainConfig> { return this.gameData.getWordChainConfig(); }
   async getVowelConsonantConfig(): Promise<VowelConsonantConfig> { return this.gameData.getVowelConsonantConfig(); }
-  async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return this.gameData.getProgressiveRevealWords(); }
+  async getProgressiveRevealWords(): Promise<ProgressiveRevealWord[]> { return Words.getProgressiveRevealWords(await this.getDb(), this.gameData); }
 
   async getWordDictionary(): Promise<string[]> {
     await this.wordPreloadPromise;
