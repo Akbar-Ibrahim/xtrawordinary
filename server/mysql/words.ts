@@ -1,5 +1,5 @@
 import { eq, and, sql, between, isNotNull, inArray, gte } from "drizzle-orm";
-import type { AnagramWordSet, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
+import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
 
@@ -23,6 +23,25 @@ export async function getLetterPoolWords(db: any, gameData: any): Promise<Letter
     if (words.length > 0) return words;
   } catch {}
   return gameData.getLetterPoolWords();
+}
+
+export async function getScrambleWords(db: any, gameData: any): Promise<ScrambleWord[]> {
+  try {
+    const rows = await db
+      .select({ word: schema.words.word, category: schema.words.category })
+      .from(schema.words)
+      .innerJoin(schema.wordAnagrams, eq(schema.words.id, schema.wordAnagrams.wordId))
+      .groupBy(schema.words.id, schema.words.word, schema.words.category)
+      .orderBy(sql`RAND()`)
+      .limit(100);
+    if (rows.length === 0) return gameData.getScrambleWords();
+    const result: ScrambleWord[] = rows.map((r: any) => ({
+      word: r.word,
+      category: r.category ?? "",
+    }));
+    return result;
+  } catch {}
+  return gameData.getScrambleWords();
 }
 
 export async function getAnagramWordSets(db: any, gameData: any): Promise<AnagramWordSet[]> {
