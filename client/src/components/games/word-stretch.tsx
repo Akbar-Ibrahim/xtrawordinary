@@ -467,7 +467,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
             data-testid="text-timer"
           >
-            {timeLeft}s
+            {mode === "survival" ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </span>
         </div>
         <div className="text-center">

@@ -410,9 +410,9 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
             className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
             data-testid="badge-timer"
             role="timer"
-            aria-label={`Time remaining: ${timeLeft} seconds`}
+            aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
           >
-            {timeLeft}s
+            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
           </span>
           {isSurvivalRef.current && (
             <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
