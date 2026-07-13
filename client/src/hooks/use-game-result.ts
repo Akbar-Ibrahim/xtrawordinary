@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
@@ -159,7 +159,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
               toast({
                 title: "Your progress is saved locally",
                 description: "Sign in to keep your stats and scores across all your devices.",
-                action: ToastAction({ altText: "Sign in", onClick: openAuthModal, children: "Sign in" }) as ToastActionElement,
+                action: React.createElement(ToastAction, { altText: "Sign in", onClick: openAuthModal }, "Sign in") as unknown as ToastActionElement,
                 duration: 8000,
               });
             }, 1200);
