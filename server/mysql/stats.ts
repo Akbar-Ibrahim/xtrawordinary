@@ -44,16 +44,22 @@ export async function getAllUserGameStats(db: any, userId: number): Promise<User
 }
 
 export async function saveLeaderboardEntry(db: any, entry: InsertLeaderboardEntry): Promise<LeaderboardEntry> {
-  await db.insert(schema.leaderboardEntries).values({
-    userId: entry.userId, gameSlug: entry.gameSlug, score: entry.score,
-    playerName: entry.playerName, playedAt: new Date(entry.playedAt),
-  }).onDuplicateKeyUpdate({
-    set: {
-      score: sql`IF(VALUES(score) > score, VALUES(score), score)`,
-      playerName: sql`IF(VALUES(score) > score, VALUES(player_name), player_name)`,
-      playedAt: sql`IF(VALUES(score) > score, VALUES(played_at), played_at)`,
-    },
-  });
+  const existing = await db.select().from(schema.leaderboardEntries)
+    .where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug))).limit(1);
+  if (existing.length > 0) {
+    if (entry.score > existing[0].score) {
+      await db.update(schema.leaderboardEntries).set({
+        score: entry.score,
+        playerName: entry.playerName,
+        playedAt: new Date(entry.playedAt),
+      }).where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug)));
+    }
+  } else {
+    await db.insert(schema.leaderboardEntries).values({
+      userId: entry.userId, gameSlug: entry.gameSlug, score: entry.score,
+      playerName: entry.playerName, playedAt: new Date(entry.playedAt),
+    });
+  }
   const saved = await db.select().from(schema.leaderboardEntries)
     .where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug))).limit(1);
   const row = saved[0];
