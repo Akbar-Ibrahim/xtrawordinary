@@ -135,6 +135,14 @@ export const words = mysqlTable("words", {
   index("words_stack_idx").on(table.isWordStack),
 ]);
 
+export const wordAnagrams = mysqlTable("word_anagrams", {
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  anagramId: int("anagram_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+}, (table) => [
+  primaryKey({ columns: [table.wordId, table.anagramId] }),
+  index("idx_anagram_to_word").on(table.anagramId, table.wordId),
+]);
+
 export const wordDerivatives = mysqlTable("word_derivatives", {
   wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
   derivativeId: int("derivative_id").notNull().references(() => words.id, { onDelete: "cascade" }),

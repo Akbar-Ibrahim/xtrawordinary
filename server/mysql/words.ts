@@ -1,5 +1,5 @@
 import { eq, and, sql, between, isNotNull, inArray, gte } from "drizzle-orm";
-import type { DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
+import type { AnagramWordSet, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
 
@@ -23,6 +23,40 @@ export async function getLetterPoolWords(db: any, gameData: any): Promise<Letter
     if (words.length > 0) return words;
   } catch {}
   return gameData.getLetterPoolWords();
+}
+
+export async function getAnagramWordSets(db: any, gameData: any): Promise<AnagramWordSet[]> {
+  try {
+    const originals = await db
+      .select({ id: schema.words.id, word: schema.words.word })
+      .from(schema.words)
+      .innerJoin(schema.wordAnagrams, eq(schema.words.id, schema.wordAnagrams.wordId))
+      .groupBy(schema.words.id, schema.words.word)
+      .orderBy(sql`RAND()`)
+      .limit(30);
+    if (originals.length === 0) return gameData.getAnagramWordSets();
+    const originalIds = originals.map((o: any) => o.id);
+    const anagramWords = schema.words;
+    const pairs = await db
+      .select({ wordId: schema.wordAnagrams.wordId, anagramWord: anagramWords.word })
+      .from(schema.wordAnagrams)
+      .innerJoin(anagramWords, eq(schema.wordAnagrams.anagramId, anagramWords.id))
+      .where(inArray(schema.wordAnagrams.wordId, originalIds));
+    const anagramMap = new Map<number, string[]>();
+    for (const p of pairs) {
+      const arr = anagramMap.get(p.wordId) ?? [];
+      arr.push(p.anagramWord);
+      anagramMap.set(p.wordId, arr);
+    }
+    const result: AnagramWordSet[] = originals
+      .map((o: any) => ({
+        original: o.word,
+        anagrams: anagramMap.get(o.id) ?? [],
+      }))
+      .filter((s: AnagramWordSet) => s.anagrams.length > 0);
+    if (result.length > 0) return result;
+  } catch {}
+  return gameData.getAnagramWordSets();
 }
 
 export async function getMakerWords(db: any, gameData: any): Promise<MakerWord[]> {
