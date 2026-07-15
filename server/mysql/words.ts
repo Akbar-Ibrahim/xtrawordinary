@@ -58,18 +58,31 @@ export async function getProgressiveRevealWords(db: any, gameData: any): Promise
 export async function getScrambleWords(db: any, gameData: any): Promise<ScrambleWord[]> {
   try {
     const rows = await db
-      .select({ word: schema.words.word, category: schema.words.category })
+      .select({ id: schema.words.id, word: schema.words.word, category: schema.words.category })
       .from(schema.words)
       .innerJoin(schema.wordAnagrams, eq(schema.words.id, schema.wordAnagrams.wordId))
       .groupBy(schema.words.id, schema.words.word, schema.words.category)
       .orderBy(sql`RAND()`)
       .limit(100);
     if (rows.length === 0) return gameData.getScrambleWords();
-    const result: ScrambleWord[] = rows.map((r: any) => ({
+    const wordIds = rows.map((r: any) => r.id);
+    const anagramWords = schema.words;
+    const pairs = await db
+      .select({ wordId: schema.wordAnagrams.wordId, anagramWord: anagramWords.word })
+      .from(schema.wordAnagrams)
+      .innerJoin(anagramWords, eq(schema.wordAnagrams.anagramId, anagramWords.id))
+      .where(inArray(schema.wordAnagrams.wordId, wordIds));
+    const anagramMap = new Map<number, string[]>();
+    for (const p of pairs) {
+      const arr = anagramMap.get(p.wordId) ?? [];
+      arr.push(p.anagramWord);
+      anagramMap.set(p.wordId, arr);
+    }
+    return rows.map((r: any) => ({
       word: r.word,
       category: r.category ?? "",
+      validAnswers: anagramMap.get(r.id) ?? [],
     }));
-    return result;
   } catch {}
   return gameData.getScrambleWords();
 }
@@ -167,10 +180,23 @@ export async function getWordRootsPuzzles(db: any, gameData: any): Promise<WordR
       arr.push(p.derivWord);
       derivMap.set(p.wordId, arr);
     }
+    const anagramWords = schema.words;
+    const anagramPairs = await db
+      .select({ wordId: schema.wordAnagrams.wordId, anagramWord: anagramWords.word })
+      .from(schema.wordAnagrams)
+      .innerJoin(anagramWords, eq(schema.wordAnagrams.anagramId, anagramWords.id))
+      .where(inArray(schema.wordAnagrams.wordId, baseIds));
+    const anagramMap = new Map<number, string[]>();
+    for (const p of anagramPairs) {
+      const arr = anagramMap.get(p.wordId) ?? [];
+      arr.push(p.anagramWord);
+      anagramMap.set(p.wordId, arr);
+    }
     const puzzles: WordRootsPuzzle[] = baseWords
       .map((b: any) => ({
         canonicalWord: b.word,
         derivatives: derivMap.get(b.id) ?? [],
+        validAnswers: anagramMap.get(b.id) ?? [],
       }))
       .filter((p: WordRootsPuzzle) => p.derivatives.length > 0);
     if (puzzles.length > 0) return puzzles;

@@ -51,6 +51,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
+  const [alsoCorrect, setAlsoCorrect] = useState<string[]>([]);
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -122,9 +123,12 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
 
   const checkAnswer = () => {
     if (!currentWord) return;
-    if (userInput.toUpperCase() === currentWord.word) {
+    const allValid = [currentWord.word, ...(currentWord.validAnswers ?? [])];
+    if (allValid.includes(userInput.toUpperCase())) {
       playSound("correct");
       setFeedback("correct");
+      const others = allValid.filter(a => a !== userInput.toUpperCase()).slice(0, 3);
+      setAlsoCorrect(others);
       setStreak(prev => prev + 1);
       const points = 100 + level * 20;
       setScore((prev) => prev + points);
@@ -136,8 +140,9 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
 
       setTimeout(() => {
         setFeedback(null);
+        setAlsoCorrect([]);
         selectNewWord();
-      }, 800);
+      }, 1200);
     } else {
       playSound("wrong");
       setFeedback("wrong");
@@ -315,6 +320,19 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
                       )}
                     </div>
                   </div>
+                  <AnimatePresence>
+                    {feedback === "correct" && alsoCorrect.length > 0 && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center text-xs text-muted-foreground"
+                        data-testid="text-also-correct"
+                      >
+                        Also correct: {alsoCorrect.join(", ")}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
 
                   <div className="flex gap-2 justify-center">
                     <Button
@@ -401,7 +419,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
                     ? "You unscrambled all the words!"
-                    : `The word was "${currentWord.word}"`}
+                    : `The word was "${currentWord.word}"${(currentWord.validAnswers ?? []).length > 0 ? ` · also: ${(currentWord.validAnswers ?? []).join(", ")}` : ""}`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">

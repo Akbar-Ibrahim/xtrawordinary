@@ -43,6 +43,7 @@ export const anagramWordSetsSchema = z.array(anagramWordSetSchema);
 export const scrambleWordSchema = z.object({
   word: z.string(),
   category: z.string(),
+  validAnswers: z.array(z.string()).optional(),
 });
 export type ScrambleWord = z.infer<typeof scrambleWordSchema>;
 export const scrambleWordsSchema = z.array(scrambleWordSchema);
@@ -75,6 +76,7 @@ export const makerWordsSchema = z.array(makerWordSchema);
 export const wordRootsPuzzleSchema = z.object({
   canonicalWord: z.string(),
   derivatives: z.array(z.string()),
+  validAnswers: z.array(z.string()).optional(),
 });
 export type WordRootsPuzzle = z.infer<typeof wordRootsPuzzleSchema>;
 

@@ -117,11 +117,14 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
         setIsValidating(false);
         return;
       }
-      const isCanonical = upperWord === currentPuzzle.canonicalWord.toUpperCase();
+      const allValidCanonicals = [currentPuzzle.canonicalWord.toUpperCase(), ...(currentPuzzle.validAnswers ?? []).map(v => v.toUpperCase())];
+      const isCanonical = allValidCanonicals.includes(upperWord);
       const pts = BASE_POINTS + (isCanonical ? BONUS_POINTS : 0);
       setScore(s => s + pts);
       setRoundResults(prev => [...prev, { word: upperWord, canonical: isCanonical, points: pts }]);
-      setFeedback({ type: isCanonical ? "bonus" : "correct", message: isCanonical ? `Exact match! +${pts} pts` : `Valid word! +${pts} pts` });
+      const others = allValidCanonicals.filter(v => v !== upperWord);
+      const alsoMsg = isCanonical && others.length > 0 ? ` · also: ${others.slice(0, 2).join(", ")}` : "";
+      setFeedback({ type: isCanonical ? "bonus" : "correct", message: isCanonical ? `Exact match! +${pts} pts${alsoMsg}` : `Valid word! +${pts} pts` });
       setTimeout(() => {
         setFeedback(null);
         setUserInput("");
