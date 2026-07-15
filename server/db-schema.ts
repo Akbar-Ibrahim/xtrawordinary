@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum } from "drizzle-orm/mysql-core";
 import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
@@ -129,6 +129,7 @@ export const words = mysqlTable("words", {
   hint: varchar("hint", { length: 255 }),
   category: varchar("category", { length: 100 }),
   isWordSplit: boolean("is_word_split").notNull().default(false),
+  frequencyLevel: mysqlEnum("frequency_level", ["very_low", "low", "medium_low", "medium", "medium_high", "high", "very_high"]),
 }, (table) => [
   index("words_length_idx").on(table.wordLength),
   index("words_anagram_idx").on(table.isAnagram),
