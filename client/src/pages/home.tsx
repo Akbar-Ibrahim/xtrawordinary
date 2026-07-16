@@ -372,7 +372,7 @@ export default function Home() {
                 className="flex flex-col flex-1 min-w-[200px]"
               >
                 <Card
-                  className="hover-elevate cursor-pointer border-dashed h-full"
+                  className="hover-elevate cursor-pointer border-emerald-500/20 bg-emerald-500/5 h-full"
                   onClick={pickSurpriseGame}
                   data-testid="card-surprise-me"
                 >
@@ -399,7 +399,7 @@ export default function Home() {
               className="flex flex-col flex-1 min-w-[200px]"
             >
               <Link href="/duels" className="flex-1 flex flex-col">
-                <Card className="hover-elevate cursor-pointer h-full" data-testid="card-duels-shortcut">
+                <Card className="hover-elevate cursor-pointer border-violet-500/20 bg-violet-500/5 h-full" data-testid="card-duels-shortcut">
                   <CardContent className="p-4 flex items-center gap-3 h-full">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-violet-500">
                       <Swords className="h-5 w-5 text-white" />
@@ -440,7 +440,7 @@ export default function Home() {
                 return (
                   <Link href="/word-wars" className="flex-1 flex flex-col">
                     <Card
-                      className={`hover-elevate cursor-pointer h-full${openTournament ? " border-amber-400/40" : ""}`}
+                      className={`hover-elevate cursor-pointer bg-rose-500/5 h-full${openTournament ? " border-amber-400/40" : " border-rose-500/20"}`}
                       data-testid="card-word-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
@@ -484,7 +484,7 @@ export default function Home() {
                 return (
                   <Link href="/guild-wars" className="flex-1 flex flex-col">
                     <Card
-                      className={`hover-elevate cursor-pointer h-full${openGuildWar ? " border-purple-400/40" : ""}`}
+                      className={`hover-elevate cursor-pointer bg-purple-500/5 h-full${openGuildWar ? " border-purple-400/40" : " border-purple-500/20"}`}
                       data-testid="card-guild-wars-shortcut"
                     >
                       <CardContent className="p-4 flex items-center gap-3 h-full">
