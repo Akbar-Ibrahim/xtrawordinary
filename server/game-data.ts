@@ -701,7 +701,7 @@ export const gamesData: Game[] = [
   {
     id: 1,
     slug: "word-ladder",
-    name: "Word Ladder",
+    name: "Word Ladder: Classic",
     description: "Change one letter at a time to climb from the start word to the target word!",
     longDescription: "Transform one word into another, one letter at a time! You're given a start word and a target word. Each step, change exactly one letter to form a new valid word. Can you find the shortest path? Beat par for bonus points, and discover all the possible routes!",
     rules: [
@@ -962,7 +962,7 @@ export const gamesData: Game[] = [
   {
     id: 14,
     slug: "no-repeats",
-    name: "No Repeats",
+    name: "No Repeats: Isogram",
     description: "Find words where every letter is unique - no repeating letters allowed!",
     longDescription: "Challenge your vocabulary with words that have no repeating letters! From 3-letter words to 9-letter masterpieces, every letter in your word must be different. Can you think of words without any duplicate letters?",
     rules: [

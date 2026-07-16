@@ -14,7 +14,7 @@ export const DUEL_GAME_NAMES: Record<string, string> = {
   "word-chain": "Word Chain", "letter-hunt": "Letter Hunt", "word-length": "Length Challenge",
   "letter-frequency": "Letter Frequency", "letter-position": "Position Master",
   "letter-balance": "Letter Balance", "word-scramble": "Word Scramble",
-  "no-repeats": "No Repeats", "anagram-solver": "Anagram Solver",
+  "no-repeats": "No Repeats: Isogram", "anagram-solver": "Anagram Solver",
   "word-stack": "Word Stack", "letter-pool": "Letter Pool", "word-maker": "Word Maker",
   "word-split": "Word Split", "definition-match": "Definition Match",
 };
@@ -24,7 +24,7 @@ export const TEAM_RACE_GAME_SLUGS_LIST = [
   "letter-hunt", "letter-frequency", "word-length", "letter-dodge", "word-roots",
 ];
 export const TEAM_RACE_GAME_NAMES: Record<string, string> = {
-  "no-repeats": "No Repeats", "anagram-solver": "Anagram Solver", "word-maker": "Word Maker",
+  "no-repeats": "No Repeats: Isogram", "anagram-solver": "Anagram Solver", "word-maker": "Word Maker",
   "definition-match": "Definition Match", "letter-hunt": "Letter Hunt",
   "letter-frequency": "Letter Frequency", "word-length": "Length Challenge",
   "letter-dodge": "Letter Dodge", "word-roots": "Word Roots",
@@ -38,13 +38,13 @@ export const GAME_SLUGS = [
 ];
 
 export const GAME_NAMES: Record<string, string> = {
-  "word-ladder": "Word Ladder", "anagram-solver": "Anagram Solver",
+  "word-ladder": "Word Ladder: Classic", "anagram-solver": "Anagram Solver",
   "word-scramble": "Word Scramble", "definition-match": "Definition Match",
   "letter-pool": "Letter Pool", "word-maker": "Word Maker",
   "word-length": "Length Challenge", "letter-position": "Position Master",
   "letter-hunt": "Letter Hunt", "letter-dodge": "Letter Dodge",
   "letter-balance": "Letter Balance",
-  "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
+  "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats: Isogram",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
   "shell-words": "Shell Words", "deep-shell-words": "Deep Shell Words",
 };

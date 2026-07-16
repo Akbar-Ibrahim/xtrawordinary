@@ -47,12 +47,12 @@ const SLUG_TO_PRIMARY: Record<string, string> = {
 function primarySlug(slug: string): string { return SLUG_TO_PRIMARY[slug] ?? slug; }
 
 const GAME_NAMES: Record<string, string> = {
-  "word-ladder": "Word Ladder", "anagram-solver": "Anagram Solver",
+  "word-ladder": "Word Ladder: Classic", "anagram-solver": "Anagram Solver",
   "word-scramble": "Word Scramble", "definition-match": "Definition Match",
   "letter-pool": "Letter Pool", "word-maker": "Word Maker",
   "word-length": "Length Challenge", "letter-position": "Position Master",
   "letter-hunt": "Letter Hunt", "letter-dodge": "Letter Dodge", "letter-balance": "Letter Balance",
-  "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats",
+  "letter-frequency": "Letter Frequency", "no-repeats": "No Repeats: Isogram",
   "word-sweep": "Word Sweep", "word-roots": "Word Roots",
   "shell-words": "Shell Words",
   "deep-shell-words": "Deep Shell Words",

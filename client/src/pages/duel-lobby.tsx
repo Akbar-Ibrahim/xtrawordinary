@@ -230,7 +230,7 @@ const ALL_GAME_LABELS: Record<string, string> = {
   "letter-position": "Letter Position",
   "letter-balance": "Letter Balance",
   "word-scramble": "Word Scramble",
-  "no-repeats": "No Repeats",
+  "no-repeats": "No Repeats: Isogram",
   "anagram-solver": "Anagram Solver",
   "word-stack": "Word Stack",
   "letter-pool": "Letter Pool",

@@ -377,7 +377,7 @@ export function NoRepeatsGame({ initialChallenge, locked, groupSeed, isUntimed }
             )}
 
             <ShareResults
-              gameName="No Repeats"
+              gameName="No Repeats: Isogram"
               gameSlug={isSurvival ? "no-repeats-survival" : "no-repeats"}
               score={score}
               wordsCompleted={wordsCompleted}

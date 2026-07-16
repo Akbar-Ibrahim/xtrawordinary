@@ -27,7 +27,7 @@ interface RoomInfo {
 }
 
 const GAME_NAMES: Record<string, string> = {
-  "no-repeats": "No Repeats",
+  "no-repeats": "No Repeats: Isogram",
   "anagram-solver": "Anagram Solver",
   "word-maker": "Word Maker",
   "definition-match": "Definition Match",

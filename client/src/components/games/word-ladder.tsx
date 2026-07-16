@@ -646,7 +646,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                 </AnimatePresence>
 
                 <ShareResults
-                  gameName="Word Ladder"
+                  gameName="Word Ladder: Classic"
                   gameSlug="word-ladder"
                   score={score}
                   isWin={true}
@@ -702,7 +702,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                   </p>
                 )}
                 <ShareResults
-                  gameName="Word Ladder"
+                  gameName="Word Ladder: Classic"
                   gameSlug="word-ladder"
                   score={score}
                   isWin={false}
