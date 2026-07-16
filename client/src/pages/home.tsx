@@ -185,9 +185,20 @@ export default function Home() {
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
               Word games worth obsessing over.
             </h1>
-            <p className="text-base sm:text-lg text-muted-foreground mb-5">
+            <p className="text-base sm:text-lg text-muted-foreground mb-6">
               Daily challenges, leaderboards, duels — all free.
             </p>
+            <div className="flex justify-center mb-6">
+              <Link href="/daily">
+                <Button size="lg" className="gap-2 font-semibold" data-testid="button-daily-cta">
+                  Play today's challenge
+                  {dailyChallenge?.game?.name && (
+                    <span className="opacity-70 font-normal">· {dailyChallenge.game.name}</span>
+                  )}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
             <div className="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Gamepad2 className="h-4 w-4 text-primary" />
