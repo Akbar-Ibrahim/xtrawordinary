@@ -191,6 +191,9 @@ export default function Home() {
             <div className="flex justify-center mb-6">
               <Link href="/daily">
                 <Button size="lg" className="gap-2 font-semibold" data-testid="button-daily-cta">
+                  {dailyChallenge && getDailyChallengeRecord(dailyChallenge.date)
+                    ? <CheckCircle className="h-4 w-4 text-white/80" />
+                    : null}
                   Play today's challenge
                   {dailyChallenge?.game?.name && (
                     <span className="opacity-70 font-normal">· {dailyChallenge.game.name}</span>
@@ -327,42 +330,6 @@ export default function Home() {
           )}
 
           <div className="flex overflow-x-auto gap-3 mb-8 scrollbar-none pb-1">
-            {dailyChallenge && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
-                className="flex flex-col flex-1 min-w-[200px]"
-              >
-                <Link href="/daily" className="flex-1 flex flex-col">
-                  <Card className="hover-elevate cursor-pointer border-primary/20 h-full" data-testid="card-daily-challenge">
-                    <CardContent className="p-4 flex items-center gap-3 h-full">
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: dailyChallenge.game.color }}
-                      >
-                        {(() => {
-                          const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[dailyChallenge.game.icon] || LucideIcons.Gamepad2;
-                          return <Icon className="h-5 w-5 text-white" />;
-                        })()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-sm">Daily Challenge</span>
-                          {getDailyChallengeRecord(dailyChallenge.date) && (
-                            <CheckCircle className="h-3.5 w-3.5 text-accent shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          Today: {dailyChallenge.game.name}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            )}
 
             {!isLoading && games && games.length > 0 && (
               <motion.div
