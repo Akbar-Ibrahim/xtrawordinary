@@ -23,6 +23,7 @@ import {
 import type { Game, QuizSession } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 import {
   LetterPoolConfig,
   LetterDodgeConfig,
@@ -230,6 +231,13 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             {slug === "letter-dodge" && (
               <LetterDodgeConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
+            {slug === "letter-dodge" && (
+              <WordExamplesPanel
+                game="letter-dodge"
+                letters={(quizParams.letters ?? []).filter((l: string) => l && l !== "any")}
+                buttonLabel="Preview sample words"
+              />
+            )}
             {slug === "letter-position" && (
               <LetterPositionConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
@@ -238,6 +246,13 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             )}
             {slug === "letter-hunt" && (
               <LetterHuntConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
+            )}
+            {slug === "letter-hunt" && (
+              <WordExamplesPanel
+                game="letter-hunt"
+                letters={(quizParams.letters ?? []).filter((l: string) => l && l !== "any")}
+                buttonLabel="Preview sample words"
+              />
             )}
             {slug === "letter-frequency" && (
               <LetterFrequencyConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />

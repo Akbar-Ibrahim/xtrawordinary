@@ -1,4 +1,4 @@
-import { eq, and, sql, between, isNotNull, inArray, gte } from "drizzle-orm";
+import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike } from "drizzle-orm";
 import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
@@ -350,6 +350,44 @@ export async function getDeepCrackAnswer(db: any, gameData: any, seed: number): 
     return rows.length > 0 ? rows[0].innerWord : null;
   } catch {
     return gameData.getDeepCrackAnswer(seed);
+  }
+}
+
+export async function getWordExamples(
+  db: any,
+  game: "letter-hunt" | "letter-dodge",
+  letters: string[],
+  limit: number
+): Promise<{ words: string[]; total: number }> {
+  if (letters.length === 0) return { words: [], total: 0 };
+  try {
+    const upper = letters.map(l => l.toUpperCase());
+    const conditions =
+      game === "letter-hunt"
+        ? upper.map(l => like(schema.words.word, `%${l}%`))
+        : upper.map(l => notLike(schema.words.word, `%${l}%`));
+
+    const where = conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    const countResult = await db
+      .select({ cnt: sql<number>`count(*)` })
+      .from(schema.words)
+      .where(where);
+    const total = Number(countResult[0]?.cnt ?? 0);
+
+    if (total === 0) return { words: [], total: 0 };
+
+    const rows = await db
+      .select({ word: schema.words.word })
+      .from(schema.words)
+      .where(where)
+      .orderBy(sql`RAND()`)
+      .limit(limit);
+
+    const words = rows.map((r: any) => (r.word as string).toUpperCase());
+    return { words, total };
+  } catch {
+    return { words: [], total: 0 };
   }
 }
 

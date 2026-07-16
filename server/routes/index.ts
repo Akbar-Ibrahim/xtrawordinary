@@ -16,8 +16,10 @@ import { registerDuelsRoutes } from "./duels.routes";
 import { registerWordWarsRoutes } from "./word-wars.routes";
 import { registerGuildWarsRoutes } from "./guild-wars.routes";
 import { registerAdminRoutes } from "./admin.routes";
+import { registerWordExamplesRoutes } from "./word-examples.routes";
 
 export function registerAllRoutes(httpServer: Server, app: Express): Server {
+  registerWordExamplesRoutes(app);
   registerGamesRoutes(app);
   registerAuthRoutes(app);
   registerStatsRoutes(app);

@@ -17,7 +17,9 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
+const DODGE_EXAMPLES_THRESHOLD = 3;
 const DODGE_LETTER_POOL = ["E", "T", "A", "O", "I", "N", "S", "R", "H", "L", "D", "C", "U", "M", "F", "P", "G", "W", "Y", "B"];
 const VOWELS_SET = new Set(["A", "E", "I", "O", "U"]);
 const MAX_VOWELS = 3;
@@ -673,6 +675,13 @@ export function LetterDodgeGame({
               ))}
             </div>
           </div>
+        )}
+
+        {foundWords.length < DODGE_EXAMPLES_THRESHOLD && (
+          <WordExamplesPanel
+            game="letter-dodge"
+            letters={forbiddenLetters}
+          />
         )}
 
         {!user && (

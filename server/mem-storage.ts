@@ -143,6 +143,19 @@ export class MemStorage implements IStorage {
     return wordDictionary.filter(w => w.length > idx && w[idx] === upper).length;
   }
 
+  async getWordExamples(game: "letter-hunt" | "letter-dodge", letters: string[], limit: number): Promise<{ words: string[]; total: number }> {
+    if (letters.length === 0) return { words: [], total: 0 };
+    const upper = letters.map(l => l.toUpperCase());
+    const matches = wordDictionary.filter(w =>
+      game === "letter-hunt"
+        ? upper.every(l => w.includes(l))
+        : upper.every(l => !w.includes(l))
+    );
+    const total = matches.length;
+    const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
+    return { words: shuffled, total };
+  }
+
   async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
     return wordDictionary.filter(w => {
       if (w.length !== length) return false;

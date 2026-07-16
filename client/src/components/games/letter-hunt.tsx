@@ -19,8 +19,10 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 const SURVIVAL_TIME_PER_WORD = 8;
+const HUNT_EXAMPLES_THRESHOLD = 5;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 15 },
   { label: "Normal", seconds: 8  },
@@ -900,6 +902,13 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                       ))}
                     </div>
                   </div>
+                )}
+                {wordsCompleted < HUNT_EXAMPLES_THRESHOLD && (
+                  <WordExamplesPanel
+                    game="letter-hunt"
+                    letters={currentLetters}
+                    className="pt-1"
+                  />
                 )}
                 {customPlay && (
                   <div className="flex justify-center">

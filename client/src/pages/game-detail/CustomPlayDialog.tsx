@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Play, Sparkles } from "lucide-react";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 import { getLettersForCount, LETTER_FREQUENCY_CHALLENGE_COUNTS } from "@/components/games/letter-frequency";
 import type { Game } from "@shared/schema";
 
@@ -234,6 +235,14 @@ export function CustomPlayDialog({ open, onOpenChange, slug, game, onPlay }: Pro
             </div>
           )}
 
+          {slug === "letter-hunt" && (
+            <WordExamplesPanel
+              game="letter-hunt"
+              letters={(customPlayParams.letters ?? []).filter((l: string) => l && l !== "any")}
+              buttonLabel="Preview sample words"
+            />
+          )}
+
           {slug === "letter-dodge" && (
             <div className="space-y-3">
               <div>
@@ -324,6 +333,14 @@ export function CustomPlayDialog({ open, onOpenChange, slug, game, onPlay }: Pro
                 </>
               )}
             </div>
+          )}
+
+          {slug === "letter-dodge" && (
+            <WordExamplesPanel
+              game="letter-dodge"
+              letters={(customPlayParams.letters ?? []).filter((l: string) => l && l !== "any")}
+              buttonLabel="Preview sample words"
+            />
           )}
 
           {slug === "letter-frequency" && (
