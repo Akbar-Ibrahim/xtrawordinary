@@ -487,15 +487,13 @@ export default function Home() {
             className="mb-4"
           >
             <div className="flex flex-wrap items-center gap-2 mb-6">
-              <Gamepad2 className="h-5 w-5 text-primary shrink-0" />
-              <h2 className="text-xl font-semibold mr-auto">Available Games</h2>
-              <div className="relative">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Search…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9 w-36 sm:w-44"
+                  className="pl-9 pr-9"
                   data-testid="input-game-search"
                 />
                 {searchQuery && (
