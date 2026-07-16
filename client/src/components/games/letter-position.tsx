@@ -583,7 +583,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                 >
                   <Trophy className="h-16 w-16 mx-auto text-accent" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Position Master!</h3>
+                <h3 className="text-2xl font-bold">Letter Position!</h3>
                 {isSurvival && (
                   <Badge variant="secondary" className="gap-1.5">
                     <Flame className="h-3 w-3" />
@@ -603,7 +603,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   )}
                 </div>
                 <ShareResults
-                  gameName="Position Master"
+                  gameName="Letter Position"
                   gameSlug={isSurvival ? "letter-position-survival" : "letter-position"}
                   score={score}
                   wordsCompleted={wordsCompleted}
@@ -706,7 +706,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   )}
                 </div>
                 <ShareResults
-                  gameName="Position Master"
+                  gameName="Letter Position"
                   gameSlug={isSurvival ? "letter-position-survival" : "letter-position"}
                   score={score}
                   wordsCompleted={wordsCompleted}

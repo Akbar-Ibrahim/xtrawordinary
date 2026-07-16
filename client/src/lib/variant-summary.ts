@@ -40,7 +40,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       const parts: string[] = [];
       if (letter && position) parts.push(`Letter ${letter} at position ${position}`);
       else if (letter) parts.push(`Letter: ${letter}`);
-      else parts.push("Position Master");
+      else parts.push("Letter Position");
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
         const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
@@ -82,7 +82,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
         if (p.vowels !== undefined) parts.push(`${p.vowels} vowel${p.vowels !== 1 ? "s" : ""}`);
         if (p.consonants !== undefined) parts.push(`${p.consonants} consonant${p.consonants !== 1 ? "s" : ""}`);
         if (p.length !== undefined) parts.push(`${p.length} letters`);
-        return `Letter Balance: ${parts.join(", ")}${survival}`;
+        return `Vowel & Consonant: ${parts.join(", ")}${survival}`;
       }
       const cat = p.category ?? LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
       const level = p.level;

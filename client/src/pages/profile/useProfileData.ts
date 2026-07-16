@@ -45,7 +45,7 @@ export function useProfileData(userId: number) {
       return `Locked Balance (${length}L/${consonants}C/${length - consonants}V)`;
     }
     if (gameSlug === "letter-balance-locked-advanced") return "Locked Balance (Advanced)";
-    if (gameSlug === "letter-balance-survival") return "Letter Balance (Survival)";
+    if (gameSlug === "letter-balance-survival") return "Vowel & Consonant (Survival)";
     return gameSlug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 

@@ -145,7 +145,7 @@ function LetterBalanceDisplay({ currentWord, usedWords, isMyTurn }: DuelDisplayP
   return (
     <div className="text-center space-y-3">
       <div className="flex items-center justify-center gap-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Letter Balance</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Vowel & Consonant</p>
         {isMyTurn ? (
           <span
             className="inline-flex items-center rounded-full bg-primary/10 border border-primary/30 px-2 py-0.5 text-xs font-semibold text-primary"

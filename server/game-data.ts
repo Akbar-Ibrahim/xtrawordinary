@@ -840,7 +840,7 @@ export const gamesData: Game[] = [
   {
     id: 8,
     slug: "letter-position",
-    name: "Position Master",
+    name: "Letter Position",
     description: "Find words with the right letter at the right position!",
     longDescription: "Put your word knowledge to the ultimate test! You'll be given a position number and a letter - form words where that letter appears exactly at that position. Choose from 2 challenge variations to test your skills!",
     rules: [
@@ -900,7 +900,7 @@ export const gamesData: Game[] = [
   {
     id: 11,
     slug: "letter-balance",
-    name: "Letter Balance",
+    name: "Vowel & Consonant",
     description: "Form words based on vowel and consonant requirements across many variations.",
     longDescription: "Master the art of balancing vowels and consonants! Choose your challenge from multiple variations - form words with specific numbers of vowels or consonants, or words that start/end with certain letter types. Each variation offers a unique puzzle!",
     rules: [
@@ -1003,7 +1003,7 @@ export const gamesData: Game[] = [
   {
     id: 16,
     slug: "progressive-reveal",
-    name: "Progressive Reveal",
+    name: "Word Reveal: Tile Tap",
     description: "Reveal letters one at a time and guess the word before you run out!",
     longDescription: "All the letters are hidden behind tiles. You know the category and how many letters the word has - that's it. Tap any tile to reveal the letter underneath, but each reveal costs you points. Can you figure out the word with the fewest reveals for the highest score? Be careful though - wrong guesses cost a life!",
     rules: [

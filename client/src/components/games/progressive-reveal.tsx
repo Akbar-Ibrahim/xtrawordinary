@@ -445,7 +445,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
                   )}
                 </div>
                 <ShareResults
-                  gameName="Progressive Reveal"
+                  gameName="Word Reveal: Tile Tap"
                   gameSlug="progressive-reveal"
                   score={score}
                   wordsCompleted={wordsCompleted}

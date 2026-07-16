@@ -228,7 +228,7 @@ const ALL_GAME_LABELS: Record<string, string> = {
   "word-length": "Word Length",
   "letter-frequency": "Letter Frequency",
   "letter-position": "Letter Position",
-  "letter-balance": "Letter Balance",
+  "letter-balance": "Vowel & Consonant",
   "word-scramble": "Word Scramble",
   "no-repeats": "No Repeats: Isogram",
   "anagram-solver": "Anagram Solver",

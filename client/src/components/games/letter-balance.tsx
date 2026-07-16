@@ -953,7 +953,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             {personalBest > 0 && (
               <p className="text-sm text-muted-foreground" data-testid="text-personal-best">Personal Best: {personalBest} pts</p>
             )}
-            <ShareResults gameName="Letter Balance" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} customPlay={customPlay} />
+            <ShareResults gameName="Vowel & Consonant" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} customPlay={customPlay} />
             {usedWords.size > 0 && (
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
@@ -1038,7 +1038,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
 
             <ShareResults
-              gameName="Letter Balance"
+              gameName="Vowel & Consonant"
               gameSlug="letter-balance"
               score={score}
               wordsCompleted={wordsCompleted}
@@ -1155,7 +1155,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
             )}
 
             <ShareResults
-              gameName="Letter Balance"
+              gameName="Vowel & Consonant"
               gameSlug="letter-balance"
               score={score}
               wordsCompleted={wordsCompleted}
