@@ -182,7 +182,13 @@ export default function Home() {
             transition={{ duration: 0.5 }}
             className="text-center max-w-3xl mx-auto mb-12"
           >
-            <div className="flex items-center justify-center gap-3 sm:gap-5 mb-8 flex-wrap">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
+              Word games worth obsessing over.
+            </h1>
+            <p className="text-base sm:text-lg text-muted-foreground mb-5">
+              Daily challenges, leaderboards, duels — all free.
+            </p>
+            <div className="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Gamepad2 className="h-4 w-4 text-primary" />
                 <span>{games?.length ?? "—"} games</span>
@@ -198,12 +204,6 @@ export default function Home() {
                 <span>Free to play</span>
               </div>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
-              Word games worth obsessing over.
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground">
-              Daily challenges, leaderboards, duels — all free.
-            </p>
           </motion.div>
 
           <AnimatePresence>
