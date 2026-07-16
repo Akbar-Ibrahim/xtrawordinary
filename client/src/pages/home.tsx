@@ -198,8 +198,11 @@ export default function Home() {
                 <span>Free to play</span>
               </div>
             </div>
-            <p className="text-lg sm:text-xl text-muted-foreground">
-              Daily challenges, leaderboards, and word games to obsess over.
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
+              Word games worth obsessing over.
+            </h1>
+            <p className="text-base sm:text-lg text-muted-foreground">
+              Daily challenges, leaderboards, duels — all free.
             </p>
           </motion.div>
 
