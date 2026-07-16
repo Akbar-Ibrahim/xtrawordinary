@@ -153,13 +153,12 @@ export const wordDerivatives = mysqlTable("word_derivatives", {
 ]);
 
 export const shellWords = mysqlTable("shell_words", {
-  id: int("id").primaryKey().autoincrement(),
-  outerWord: varchar("outer_word", { length: 50 }).notNull(),
-  innerWord: varchar("inner_word", { length: 50 }).notNull(),
-  shellDepth: int("shell_depth").notNull(),
+  shellWordId: int("shell_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  innerWordId: int("inner_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  depth: int("depth").notNull(),
 }, (table) => [
-  index("shell_words_inner_depth_idx").on(table.innerWord, table.shellDepth),
-  index("shell_words_outer_depth_idx").on(table.outerWord, table.shellDepth),
+  primaryKey({ columns: [table.shellWordId, table.depth] }),
+  index("shell_words_inner_depth_idx").on(table.innerWordId, table.depth),
 ]);
 
 export const groups = mysqlTable("groups", {

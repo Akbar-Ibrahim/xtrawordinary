@@ -1,4 +1,4 @@
-import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike } from "drizzle-orm";
+import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike, alias } from "drizzle-orm";
 import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
@@ -278,9 +278,14 @@ export function validateDeepShellWord(wordSet: Set<string>, word: string): { val
 
 export async function getShellWordPuzzle(db: any, gameData: any, seed: number): Promise<{ middle: string; count: number } | null> {
   try {
-    const groups = await db.select({ innerWord: schema.shellWords.innerWord, cnt: sql<number>`COUNT(*)` })
-      .from(schema.shellWords).where(eq(schema.shellWords.shellDepth, 1))
-      .groupBy(schema.shellWords.innerWord).having(sql`COUNT(*) >= 3`).orderBy(schema.shellWords.innerWord);
+    const innerWords = alias(schema.words, "inner_words");
+    const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
+      .from(schema.shellWords)
+      .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
+      .where(eq(schema.shellWords.depth, 1))
+      .groupBy(schema.shellWords.innerWordId)
+      .having(sql`COUNT(*) >= 3`)
+      .orderBy(innerWords.word);
     if (groups.length === 0) return gameData.getShellWordPuzzle(seed);
     const idx = ((seed % groups.length) + groups.length) % groups.length;
     return { middle: groups[idx].innerWord, count: groups[idx].cnt };
@@ -291,13 +296,17 @@ export async function getShellWordPuzzle(db: any, gameData: any, seed: number): 
 
 export async function getCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
+    const outerWords = alias(schema.words, "outer_words");
     const pairs = await db.select({
-      first: sql<string>`LEFT(${schema.shellWords.outerWord}, 1)`,
-      last: sql<string>`RIGHT(${schema.shellWords.outerWord}, 1)`,
-    }).from(schema.shellWords).where(eq(schema.shellWords.shellDepth, 1))
-      .groupBy(sql`LEFT(${schema.shellWords.outerWord}, 1)`, sql`RIGHT(${schema.shellWords.outerWord}, 1)`)
+      first: sql<string>`LEFT(${outerWords.word}, 1)`,
+      last: sql<string>`RIGHT(${outerWords.word}, 1)`,
+    })
+      .from(schema.shellWords)
+      .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
+      .where(eq(schema.shellWords.depth, 1))
+      .groupBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`)
       .having(sql`COUNT(*) >= 2`)
-      .orderBy(sql`LEFT(${schema.shellWords.outerWord}, 1)`, sql`RIGHT(${schema.shellWords.outerWord}, 1)`);
+      .orderBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`);
     if (pairs.length === 0) return gameData.getCrackPuzzle(seed);
     const idx = ((seed % pairs.length) + pairs.length) % pairs.length;
     return pairs[idx];
@@ -308,9 +317,14 @@ export async function getCrackPuzzle(db: any, gameData: any, seed: number): Prom
 
 export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: number): Promise<{ middle: string; count: number } | null> {
   try {
-    const groups = await db.select({ innerWord: schema.shellWords.innerWord, cnt: sql<number>`COUNT(*)` })
-      .from(schema.shellWords).where(eq(schema.shellWords.shellDepth, 2))
-      .groupBy(schema.shellWords.innerWord).having(sql`COUNT(*) >= 3`).orderBy(schema.shellWords.innerWord);
+    const innerWords = alias(schema.words, "inner_words");
+    const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
+      .from(schema.shellWords)
+      .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
+      .where(eq(schema.shellWords.depth, 2))
+      .groupBy(schema.shellWords.innerWordId)
+      .having(sql`COUNT(*) >= 3`)
+      .orderBy(innerWords.word);
     if (groups.length === 0) return gameData.getDeepShellWordPuzzle(seed);
     const idx = ((seed % groups.length) + groups.length) % groups.length;
     return { middle: groups[idx].innerWord, count: groups[idx].cnt };
@@ -321,13 +335,17 @@ export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: numbe
 
 export async function getDeepCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
+    const outerWords = alias(schema.words, "outer_words");
     const pairs = await db.select({
-      first: sql<string>`LEFT(${schema.shellWords.outerWord}, 2)`,
-      last: sql<string>`RIGHT(${schema.shellWords.outerWord}, 2)`,
-    }).from(schema.shellWords).where(eq(schema.shellWords.shellDepth, 2))
-      .groupBy(sql`LEFT(${schema.shellWords.outerWord}, 2)`, sql`RIGHT(${schema.shellWords.outerWord}, 2)`)
+      first: sql<string>`LEFT(${outerWords.word}, 2)`,
+      last: sql<string>`RIGHT(${outerWords.word}, 2)`,
+    })
+      .from(schema.shellWords)
+      .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
+      .where(eq(schema.shellWords.depth, 2))
+      .groupBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`)
       .having(sql`COUNT(*) >= 2`)
-      .orderBy(sql`LEFT(${schema.shellWords.outerWord}, 2)`, sql`RIGHT(${schema.shellWords.outerWord}, 2)`);
+      .orderBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`);
     if (pairs.length === 0) return gameData.getDeepCrackPuzzle(seed);
     const idx = ((seed % pairs.length) + pairs.length) % pairs.length;
     return pairs[idx];
@@ -340,12 +358,16 @@ export async function getDeepCrackAnswer(db: any, gameData: any, seed: number): 
   try {
     const pair = await getDeepCrackPuzzle(db, gameData, seed);
     if (!pair) return null;
-    const rows = await db.select({ innerWord: schema.shellWords.innerWord })
+    const outerWords = alias(schema.words, "outer_words");
+    const innerWords = alias(schema.words, "inner_words");
+    const rows = await db.select({ innerWord: innerWords.word })
       .from(schema.shellWords)
+      .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
+      .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
       .where(and(
-        eq(schema.shellWords.shellDepth, 2),
-        sql`LEFT(${schema.shellWords.outerWord}, 2) = ${pair.first}`,
-        sql`RIGHT(${schema.shellWords.outerWord}, 2) = ${pair.last}`,
+        eq(schema.shellWords.depth, 2),
+        sql`LEFT(${outerWords.word}, 2) = ${pair.first}`,
+        sql`RIGHT(${outerWords.word}, 2) = ${pair.last}`,
       )).limit(1);
     return rows.length > 0 ? rows[0].innerWord : null;
   } catch {
