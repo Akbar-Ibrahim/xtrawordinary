@@ -55,12 +55,15 @@ export async function getProgressiveRevealWords(db: any, gameData: any): Promise
   return gameData.getProgressiveRevealWords();
 }
 
+const COMMON_FREQUENCY_LEVELS = ["medium_low", "medium", "medium_high", "high", "very_high"] as const;
+
 export async function getScrambleWords(db: any, gameData: any): Promise<ScrambleWord[]> {
   try {
     const rows = await db
       .select({ id: schema.words.id, word: schema.words.word, category: schema.words.category })
       .from(schema.words)
       .innerJoin(schema.wordAnagrams, eq(schema.words.id, schema.wordAnagrams.wordId))
+      .where(inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS))
       .groupBy(schema.words.id, schema.words.word, schema.words.category)
       .orderBy(sql`RAND()`)
       .limit(100);
@@ -93,6 +96,7 @@ export async function getAnagramWordSets(db: any, gameData: any): Promise<Anagra
       .select({ id: schema.words.id, word: schema.words.word })
       .from(schema.words)
       .innerJoin(schema.wordAnagrams, eq(schema.words.id, schema.wordAnagrams.wordId))
+      .where(inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS))
       .groupBy(schema.words.id, schema.words.word)
       .orderBy(sql`RAND()`)
       .limit(30);
@@ -127,7 +131,7 @@ export async function getMakerWords(db: any, gameData: any): Promise<MakerWord[]
       .select({ id: schema.words.id, word: schema.words.word })
       .from(schema.words)
       .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
-      .where(between(schema.words.wordLength, 6, 10))
+      .where(and(between(schema.words.wordLength, 6, 10), inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(schema.words.id, schema.words.word)
       .orderBy(sql`RAND()`)
       .limit(50);
@@ -162,7 +166,7 @@ export async function getWordRootsPuzzles(db: any, gameData: any): Promise<WordR
       .select({ id: schema.words.id, word: schema.words.word })
       .from(schema.words)
       .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
-      .where(between(schema.words.wordLength, 6, 10))
+      .where(and(between(schema.words.wordLength, 6, 10), inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(schema.words.id, schema.words.word)
       .orderBy(sql`RAND()`)
       .limit(50);
@@ -203,8 +207,6 @@ export async function getWordRootsPuzzles(db: any, gameData: any): Promise<WordR
   } catch {}
   return gameData.getWordRootsPuzzles();
 }
-
-const COMMON_FREQUENCY_LEVELS = ["medium_low", "medium", "medium_high", "high", "very_high"] as const;
 
 export async function getWordStackPuzzles(db: any, gameData: any): Promise<WordStackPuzzle[]> {
   try {
@@ -290,7 +292,7 @@ export async function getShellWordPuzzle(db: any, gameData: any, seed: number): 
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
-      .where(eq(schema.shellWords.depth, 1))
+      .where(and(eq(schema.shellWords.depth, 1), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(schema.shellWords.innerWordId)
       .having(sql`COUNT(*) >= 3`)
       .orderBy(innerWords.word);
@@ -311,7 +313,7 @@ export async function getCrackPuzzle(db: any, gameData: any, seed: number): Prom
     })
       .from(schema.shellWords)
       .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
-      .where(eq(schema.shellWords.depth, 1))
+      .where(and(eq(schema.shellWords.depth, 1), inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`)
       .having(sql`COUNT(*) >= 2`)
       .orderBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`);
@@ -329,7 +331,7 @@ export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: numbe
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
-      .where(eq(schema.shellWords.depth, 2))
+      .where(and(eq(schema.shellWords.depth, 2), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(schema.shellWords.innerWordId)
       .having(sql`COUNT(*) >= 3`)
       .orderBy(innerWords.word);
@@ -350,7 +352,7 @@ export async function getDeepCrackPuzzle(db: any, gameData: any, seed: number): 
     })
       .from(schema.shellWords)
       .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
-      .where(eq(schema.shellWords.depth, 2))
+      .where(and(eq(schema.shellWords.depth, 2), inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
       .groupBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`)
       .having(sql`COUNT(*) >= 2`)
       .orderBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`);
