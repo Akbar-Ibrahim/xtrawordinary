@@ -198,14 +198,6 @@ export default function Home() {
                 <span>Free to play</span>
               </div>
             </div>
-            <h1 className="tracking-tight mb-4">
-              <span className="block text-xl sm:text-2xl font-medium text-foreground/60 mb-2">
-                Think you know words?
-              </span>
-              <span className="text-5xl sm:text-6xl lg:text-7xl font-extrabold italic bg-gradient-to-r from-primary via-violet-400 to-fuchsia-500 bg-clip-text text-transparent">
-                xtra<span className="not-italic font-black">W</span>ordinary
-              </span>
-            </h1>
             <p className="text-lg sm:text-xl text-muted-foreground">
               Daily challenges, leaderboards, and word games to obsess over.
             </p>
