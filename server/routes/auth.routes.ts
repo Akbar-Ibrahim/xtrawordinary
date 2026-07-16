@@ -33,7 +33,7 @@ export function registerAuthRoutes(app: Express): void {
         googleId: null,
         emailVerified: noEmailService,
         avatarUrl: null,
-        isAdmin: false,
+        isAdmin: !!(process.env.ADMIN_EMAIL && email.toLowerCase() === process.env.ADMIN_EMAIL.trim().toLowerCase()),
         isBanned: false,
         isPremium: false,
       });

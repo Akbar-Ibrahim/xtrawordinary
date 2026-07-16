@@ -33,6 +33,15 @@ declare global {
   }
 }
 
+export async function maybePromoteToAdmin(user: Express.User): Promise<Express.User> {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (adminEmail && user.email.toLowerCase() === adminEmail && !user.isAdmin) {
+    await storage.updateUser(user.id, { isAdmin: true });
+    return { ...user, isAdmin: true };
+  }
+  return user;
+}
+
 export function setupAuth(app: Express) {
   if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
     console.error("[Session] WARNING: SESSION_SECRET is not set in production! Using insecure fallback.");
@@ -122,7 +131,7 @@ export function setupAuth(app: Express) {
           if (!isMatch) {
             return done(null, false, { message: "Invalid email or password" });
           }
-          return done(null, user);
+          return done(null, await maybePromoteToAdmin(user));
         } catch (err) {
           return done(err);
         }
@@ -150,7 +159,7 @@ export function setupAuth(app: Express) {
               if (user.isBanned) {
                 return done(null, false, { message: "Your account has been suspended" } as any);
               }
-              return done(null, user);
+              return done(null, await maybePromoteToAdmin(user));
             }
 
             const email = profile.emails?.[0]?.value;
@@ -162,10 +171,11 @@ export function setupAuth(app: Express) {
                 }
                 await storage.updateUser(user.id, { googleId: profile.id, emailVerified: true });
                 const updated = await storage.getUserById(user.id);
-                return done(null, updated || user);
+                return done(null, await maybePromoteToAdmin(updated || user));
               }
             }
 
+            const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
             user = await storage.createUser({
               email: email || `${profile.id}@google.oauth`,
               name: profile.displayName || "Google User",
@@ -173,7 +183,7 @@ export function setupAuth(app: Express) {
               googleId: profile.id,
               emailVerified: true,
               avatarUrl: profile.photos?.[0]?.value || null,
-              isAdmin: false,
+              isAdmin: !!(adminEmail && email && email.toLowerCase() === adminEmail),
               isBanned: false,
               isPremium: false,
             });
