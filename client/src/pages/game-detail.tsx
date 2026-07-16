@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link, useSearch, useLocation } from "wouter";
@@ -302,6 +303,11 @@ export default function GameDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <PageSEO
+        title={game?.name ?? "Word Game"}
+        description={game ? `Play ${game.name} — ${game.description ?? "a fun vocabulary challenge on xtraWordinary."}` : "Play word games on xtraWordinary."}
+        path={`/game/${slug}`}
+      />
       <Link href={challengeResult ? "/friends" : "/"}>
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />

@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,6 +85,11 @@ export default function Profile() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <PageSEO
+        title={`${profile.user.name}'s Profile`}
+        description={`View ${profile.user.name}'s word game stats, achievements, and leaderboard rankings on xtraWordinary.`}
+        path={`/profile/${params?.id}`}
+      />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <ProfileHeader
           profile={profile}

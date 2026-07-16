@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useMemo, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -172,6 +173,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
+      <PageSEO title="Free Word Games" description="Play 23 free vocabulary and word games. Challenge your brain with Letter Hunt, Word Chain, Anagrams, Duels, and more." path="/" />
       <section className="py-12 sm:py-16 lg:py-20">
         <div className="container mx-auto px-4">
           <motion.div

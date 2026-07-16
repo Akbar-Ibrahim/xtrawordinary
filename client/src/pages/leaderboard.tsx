@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearch, useLocation } from "wouter";
@@ -790,6 +791,7 @@ export default function Leaderboard() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <PageSEO title="Global Leaderboard" description="See the top word game players on xtraWordinary. Compare your scores across all games." path="/leaderboard" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

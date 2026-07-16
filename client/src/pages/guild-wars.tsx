@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCountdown, formatCountdown } from "@/lib/use-countdown";
@@ -310,6 +311,7 @@ export default function GuildWarsLobby() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <PageSEO title="Guild Wars" description="Group vs group bracket tournaments — rally your guild and compete for glory." path="/guild-wars" />
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
         <div className="flex items-center justify-between flex-wrap gap-3 mb-8">

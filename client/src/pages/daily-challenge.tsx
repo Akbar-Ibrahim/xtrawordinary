@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -326,6 +327,7 @@ export default function DailyChallenge() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <PageSEO title="Daily Challenge" description="A new word game challenge every day. Play today's puzzle and see how you rank on the daily leaderboard." path="/daily" />
       {ConfirmDialog}
       <Link href="/">
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back-daily">

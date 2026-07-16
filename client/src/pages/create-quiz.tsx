@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ export default function CreateQuiz() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <PageSEO title="Create a Quiz" description="Set up a shareable quiz session for friends — pick a game, configure the rules, and send the link." path="/create-quiz" />
       <Link href={backHref}>
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back-create-quiz">
           <ArrowLeft className="h-4 w-4" />

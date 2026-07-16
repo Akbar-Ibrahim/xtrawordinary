@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { motion } from "framer-motion";
 export default function NotFound() {
   return (
     <div className="container mx-auto px-4 py-16">
+      <PageSEO title="Page Not Found" description="The page you're looking for doesn't exist." />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

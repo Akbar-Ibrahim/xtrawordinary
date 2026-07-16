@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Gamepad2, Brain, Users, Zap } from "lucide-react";
@@ -32,6 +33,7 @@ const features = [
 export default function About() {
   return (
     <div className="container mx-auto px-4 py-12">
+      <PageSEO title="About" description="Learn about xtraWordinary — a collection of 23 word games built to improve vocabulary and challenge your brain." path="/about" />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

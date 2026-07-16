@@ -28,6 +28,16 @@ export function Footer() {
               Pricing
             </span>
           </Link>
+          <Link href="/privacy">
+            <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-privacy">
+              Privacy
+            </span>
+          </Link>
+          <Link href="/terms">
+            <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-terms">
+              Terms
+            </span>
+          </Link>
         </nav>
       </div>
     </footer>

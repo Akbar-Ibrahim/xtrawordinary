@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCountdown } from "@/lib/use-countdown";
@@ -640,6 +641,7 @@ export default function DuelLobby() {
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
+      <PageSEO title="Duels" description="Challenge other players to real-time 1-on-1 word game duels. Turn-based or race format." path="/duels" />
 
       {/* ── Header ── */}
       <div className="flex items-start gap-3 mb-8">

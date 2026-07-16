@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,7 @@ export default function MyQuizzes() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <PageSEO title="My Quizzes" description="View and manage your created quiz sessions on xtraWordinary." path="/my-quizzes" />
       <div className="flex items-center gap-3 mb-6">
         <Link href="/">
           <Button variant="ghost" size="icon" data-testid="button-back">

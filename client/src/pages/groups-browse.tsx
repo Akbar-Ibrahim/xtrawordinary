@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -67,6 +68,7 @@ export default function GroupsBrowse() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <PageSEO title="Browse Groups" description="Discover public word game groups to join, compete in rounds, and meet other vocabulary enthusiasts." path="/groups/browse" />
       <Link href="/groups">
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back-groups">
           <ArrowLeft className="h-4 w-4" />

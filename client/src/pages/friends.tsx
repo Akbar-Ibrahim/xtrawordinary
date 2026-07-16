@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, Redirect, useLocation } from "wouter";
@@ -337,6 +338,7 @@ export default function Friends() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <PageSEO title="Friends" description="Connect with friends, send word game challenges, and see how your vocabulary stacks up." path="/friends" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2">

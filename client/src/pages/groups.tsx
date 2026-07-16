@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -120,6 +121,7 @@ export default function Groups() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <PageSEO title="Groups" description="Join or create word game groups, compete in group rounds, and climb your group's leaderboard." path="/groups" />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>

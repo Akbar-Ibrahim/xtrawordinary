@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCountdown, formatCountdown } from "@/lib/use-countdown";
@@ -186,6 +187,7 @@ export default function WordWarsLobby() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <PageSEO title="Word Wars" description="Enter solo bracket tournaments — compete in best-of-3 duel series to become Word Wars champion." path="/word-wars" />
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
 
         {/* ── Header ── */}

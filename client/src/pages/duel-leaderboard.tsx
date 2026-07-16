@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -61,6 +62,7 @@ export default function DuelLeaderboard() {
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8 space-y-6">
+      <PageSEO title="Duel Rankings" description="See the top-ranked players in xtraWordinary 1-on-1 word game duels." path="/duels/leaderboard" />
       <div className="flex items-center gap-3">
         <Link href="/duels">
           <Button variant="ghost" size="icon" className="shrink-0" data-testid="button-back-duels">

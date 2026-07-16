@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -196,6 +197,7 @@ export default function Stats() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <PageSEO title="Your Stats" description="Track your personal word game statistics — scores, streaks, games played, and progress over time." path="/stats" />
       <Link href="/">
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />

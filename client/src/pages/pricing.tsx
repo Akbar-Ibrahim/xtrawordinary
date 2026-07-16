@@ -1,3 +1,4 @@
+import { PageSEO } from "@/components/page-seo";
 import { Check, Minus, GraduationCap, School, Users, User, ChevronDown, ChevronUp, Crown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO title="Premium Pricing" description="Unlock Premium features on xtraWordinary — custom game modes, exclusive stats, and more." path="/pricing" />
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
 
       {/* Hero */}
