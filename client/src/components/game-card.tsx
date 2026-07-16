@@ -78,10 +78,10 @@ export function GameCard({ game, index, onFavoriteChange, playedToday, waitingCo
         >
           <CardContent className="p-0">
             <div
-              className="flex h-32 items-center justify-center rounded-t-lg"
+              className="flex h-24 items-center justify-center rounded-t-lg"
               style={{ backgroundColor: game.color }}
             >
-              <IconComponent className="h-16 w-16 text-white drop-shadow-lg transition-transform duration-300 group-hover:scale-110" />
+              <IconComponent className="h-12 w-12 text-white drop-shadow-lg transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div className="p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">

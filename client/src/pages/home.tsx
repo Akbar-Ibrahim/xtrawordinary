@@ -586,7 +586,11 @@ export default function Home() {
                     })();
                     return (
                       <Link key={game.id} href={`/game/${game.slug}`}>
-                        <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-game-compact-${game.slug}`}>
+                        <Card
+                          className="hover-elevate cursor-pointer h-full border-l-[3px]"
+                          style={{ borderLeftColor: game.color }}
+                          data-testid={`card-game-compact-${game.slug}`}
+                        >
                           <CardContent className="p-3 flex items-center gap-3">
                             <div
                               className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
@@ -605,11 +609,20 @@ export default function Home() {
                               </div>
                               <p className="text-xs text-muted-foreground line-clamp-1">{game.description}</p>
                             </div>
-                            {playedToday ? (
-                              <CheckCircle className="h-4 w-4 shrink-0 text-accent" data-testid={`badge-played-today-compact-${game.slug}`} />
-                            ) : (
-                              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            )}
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-4 ${
+                                game.difficulty === "easy" ? "bg-accent/15 text-accent-foreground" :
+                                game.difficulty === "medium" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
+                                "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                              }`}>
+                                {game.difficulty}
+                              </span>
+                              {playedToday ? (
+                                <CheckCircle className="h-4 w-4 text-accent" data-testid={`badge-played-today-compact-${game.slug}`} />
+                              ) : (
+                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
                           </CardContent>
                         </Card>
                       </Link>
