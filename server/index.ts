@@ -6,6 +6,7 @@ import { createServer } from "http";
 import { initStorage, getStorage } from "./storage";
 import { setupDuelWebSocket } from "./duel-ws";
 import { setupTeamRaceWebSocket } from "./team-race-ws";
+import { applySecurityMiddleware, apiLimiter } from "./middleware/security";
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,6 +16,9 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+applySecurityMiddleware(app);
+app.use("/api", apiLimiter);
 
 app.use(
   express.json({

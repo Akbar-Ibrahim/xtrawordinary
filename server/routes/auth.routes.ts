@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { storage } from "../storage";
 import { sendVerificationEmail, sendPasswordResetEmail } from "../email";
 import { registerSchema, loginSchema } from "../validators";
+import { authLimiter, passwordLimiter } from "../middleware/security";
 
 function sanitizeUser(user: any) {
   const { passwordHash, ...publicUser } = user;
@@ -12,7 +13,7 @@ function sanitizeUser(user: any) {
 }
 
 export function registerAuthRoutes(app: Express): void {
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", authLimiter, async (req, res) => {
     try {
       const parsed = registerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -51,7 +52,7 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/login", (req, res, next) => {
+  app.post("/api/auth/login", authLimiter, (req, res, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
@@ -116,7 +117,7 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/forgot-password", async (req, res) => {
+  app.post("/api/auth/forgot-password", passwordLimiter, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: "Email is required" });
@@ -134,7 +135,7 @@ export function registerAuthRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/auth/reset-password", async (req, res) => {
+  app.post("/api/auth/reset-password", passwordLimiter, async (req, res) => {
     try {
       const { token, password } = req.body;
       if (!token || !password) return res.status(400).json({ error: "Token and password are required" });
