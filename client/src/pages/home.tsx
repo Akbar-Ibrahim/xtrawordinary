@@ -486,9 +486,43 @@ export default function Home() {
             transition={{ delay: 0.22 }}
             className="mb-4"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <Gamepad2 className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold flex-1">Available Games</h2>
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              <Gamepad2 className="h-5 w-5 text-primary shrink-0" />
+              <h2 className="text-xl font-semibold mr-auto">Available Games</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9 w-36 sm:w-44"
+                  data-testid="input-game-search"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
+                    data-testid="button-clear-search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-1">
+                {DIFFICULTIES.map((d) => (
+                  <Button
+                    key={d}
+                    variant={difficultyFilter === d ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setDifficultyFilter(d)}
+                    data-testid={`button-filter-${d}`}
+                    className="px-2.5"
+                  >
+                    {difficultyLabel[d]}
+                  </Button>
+                ))}
+              </div>
               <div className="flex items-center gap-0.5 p-0.5 rounded-md border bg-muted">
                 <button
                   onClick={() => toggleViewMode("grid")}
@@ -506,42 +540,6 @@ export default function Home() {
                 >
                   <List className="h-4 w-4" />
                 </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder="Search games…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9"
-                  data-testid="input-game-search"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label="Clear search"
-                    data-testid="button-clear-search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-1.5 flex-wrap">
-                {DIFFICULTIES.map((d) => (
-                  <Button
-                    key={d}
-                    variant={difficultyFilter === d ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setDifficultyFilter(d)}
-                    data-testid={`button-filter-${d}`}
-                  >
-                    {difficultyLabel[d]}
-                  </Button>
-                ))}
               </div>
             </div>
           </motion.div>
