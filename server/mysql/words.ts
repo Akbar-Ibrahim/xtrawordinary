@@ -204,9 +204,14 @@ export async function getWordRootsPuzzles(db: any, gameData: any): Promise<WordR
   return gameData.getWordRootsPuzzles();
 }
 
+const COMMON_FREQUENCY_LEVELS = ["medium_low", "medium", "medium_high", "high", "very_high"] as const;
+
 export async function getWordStackPuzzles(db: any, gameData: any): Promise<WordStackPuzzle[]> {
   try {
-    const pool = await db.select().from(schema.words).where(sql`${schema.words.isWordStack} = 1`).orderBy(sql`RAND()`).limit(50);
+    const pool = await db.select().from(schema.words).where(and(
+      sql`${schema.words.isWordStack} = 1`,
+      inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+    )).orderBy(sql`RAND()`).limit(50);
     const puzzles: WordStackPuzzle[] = pool.map((w: any) => ({ targetWord: w.word, startWord: "", hint: w.hint ?? "" }));
     if (puzzles.length > 0) return puzzles;
   } catch {}
@@ -215,7 +220,10 @@ export async function getWordStackPuzzles(db: any, gameData: any): Promise<WordS
 
 export async function getWordSplitPuzzles(db: any, gameData: any): Promise<WordSplitPuzzle[]> {
   try {
-    const pool = await db.select().from(schema.words).where(sql`${schema.words.isWordSplit} = 1`).orderBy(sql`RAND()`).limit(50);
+    const pool = await db.select().from(schema.words).where(and(
+      sql`${schema.words.isWordSplit} = 1`,
+      inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+    )).orderBy(sql`RAND()`).limit(50);
     const puzzles: WordSplitPuzzle[] = pool.map((w: any) => ({ targetWord: w.word, hint: w.hint ?? "" }));
     if (puzzles.length > 0) return puzzles;
   } catch {}
