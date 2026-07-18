@@ -1,4 +1,4 @@
-import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike, alias } from "drizzle-orm";
+import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike, aliasedTable } from "drizzle-orm";
 import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
@@ -288,7 +288,7 @@ export function validateDeepShellWord(wordSet: Set<string>, word: string): { val
 
 export async function getShellWordPuzzle(db: any, gameData: any, seed: number): Promise<{ middle: string; count: number } | null> {
   try {
-    const innerWords = alias(schema.words, "inner_words");
+    const innerWords = aliasedTable(schema.words, "inner_words");
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
@@ -306,7 +306,7 @@ export async function getShellWordPuzzle(db: any, gameData: any, seed: number): 
 
 export async function getCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
-    const outerWords = alias(schema.words, "outer_words");
+    const outerWords = aliasedTable(schema.words, "outer_words");
     const pairs = await db.select({
       first: sql<string>`LEFT(${outerWords.word}, 1)`,
       last: sql<string>`RIGHT(${outerWords.word}, 1)`,
@@ -327,7 +327,7 @@ export async function getCrackPuzzle(db: any, gameData: any, seed: number): Prom
 
 export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: number): Promise<{ middle: string; count: number } | null> {
   try {
-    const innerWords = alias(schema.words, "inner_words");
+    const innerWords = aliasedTable(schema.words, "inner_words");
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
@@ -345,7 +345,7 @@ export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: numbe
 
 export async function getDeepCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
-    const outerWords = alias(schema.words, "outer_words");
+    const outerWords = aliasedTable(schema.words, "outer_words");
     const pairs = await db.select({
       first: sql<string>`LEFT(${outerWords.word}, 2)`,
       last: sql<string>`RIGHT(${outerWords.word}, 2)`,
@@ -368,8 +368,8 @@ export async function getDeepCrackAnswer(db: any, gameData: any, seed: number): 
   try {
     const pair = await getDeepCrackPuzzle(db, gameData, seed);
     if (!pair) return null;
-    const outerWords = alias(schema.words, "outer_words");
-    const innerWords = alias(schema.words, "inner_words");
+    const outerWords = aliasedTable(schema.words, "outer_words");
+    const innerWords = aliasedTable(schema.words, "inner_words");
     const rows = await db.select({ innerWord: innerWords.word })
       .from(schema.shellWords)
       .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
