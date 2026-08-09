@@ -3,6 +3,46 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { seededShuffle } from "../seeded-rng";
+import { wordDictionary, wordDictSet } from "../game-data";
+
+// ── Ladder Rush hint helpers ──────────────────────────────────────────────────
+
+function _lrIsNLetterDiff(a: string, b: string, n: number): boolean {
+  if (a.length !== b.length) return false;
+  const freqA: Record<string, number> = {};
+  const freqB: Record<string, number> = {};
+  for (const c of a) freqA[c] = (freqA[c] || 0) + 1;
+  for (const c of b) freqB[c] = (freqB[c] || 0) + 1;
+  let added = 0, removed = 0;
+  const allLetters = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
+  for (const c of allLetters) {
+    const diff = (freqB[c] || 0) - (freqA[c] || 0);
+    if (diff > 0) added += diff;
+    else removed -= diff;
+  }
+  return added === n && removed === n;
+}
+
+function _lrFindNeighbors(word: string, swapCount: number, used: Set<string>): string[] {
+  const results: string[] = [];
+  if (swapCount === 1) {
+    const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (let i = 0; i < word.length; i++) {
+      for (const ch of LETTERS) {
+        if (ch === word[i]) continue;
+        const candidate = word.slice(0, i) + ch + word.slice(i + 1);
+        if (wordDictSet.has(candidate) && !used.has(candidate)) results.push(candidate);
+      }
+    }
+  } else {
+    for (const candidate of wordDictionary) {
+      if (candidate.length !== word.length) continue;
+      if (used.has(candidate)) continue;
+      if (_lrIsNLetterDiff(word, candidate, swapCount)) results.push(candidate);
+    }
+  }
+  return results;
+}
 
 const DAILY_CHALLENGE_SLUGS = [
   "word-ladder",
@@ -71,6 +111,39 @@ export function registerGamesRoutes(app: Express): void {
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch ladder rush puzzles" });
+    }
+  });
+
+  app.post("/api/games/ladder-rush/hint", (req, res) => {
+    try {
+      const { currentWord, usedWords = [], doubleSwap = false } = req.body;
+      if (!currentWord || typeof currentWord !== "string") {
+        return res.status(400).json({ message: "currentWord is required" });
+      }
+      const word = currentWord.toUpperCase();
+      const swapCount = doubleSwap ? 2 : 1;
+      const used = new Set((usedWords as string[]).map((w: string) => w.toUpperCase()));
+      used.add(word);
+
+      const neighbors = _lrFindNeighbors(word, swapCount, used);
+      if (neighbors.length === 0) {
+        return res.status(404).json({ message: "No hint available" });
+      }
+
+      // Only return a neighbor that itself has at least one onward move (no dead ends)
+      const goodNeighbors = neighbors.filter(n => {
+        const nextUsed = new Set([...used, n]);
+        return _lrFindNeighbors(n, swapCount, nextUsed).length > 0;
+      });
+
+      if (goodNeighbors.length === 0) {
+        return res.status(404).json({ message: "No hint available" });
+      }
+
+      const hint = goodNeighbors[Math.floor(Math.random() * goodNeighbors.length)];
+      return res.json({ word: hint });
+    } catch {
+      return res.status(500).json({ message: "Hint generation failed" });
     }
   });
 
@@ -234,6 +307,42 @@ export function registerGamesRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/games/letter-position/examples", async (req, res) => {
+    try {
+      const letter = (req.query.letter as string || "").toUpperCase().trim();
+      const position = parseInt(req.query.position as string);
+      const limit = Math.min(20, Math.max(1, parseInt(req.query.limit as string) || 10));
+      if (!letter || letter.length !== 1 || !/^[A-Z]$/.test(letter)) {
+        return res.status(400).json({ message: "letter must be a single A-Z character" });
+      }
+      if (isNaN(position) || position < 1 || position > 8) {
+        return res.status(400).json({ message: "position must be between 1 and 8" });
+      }
+      const result = await storage.getLetterPositionExamples(letter, position, limit);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch letter position examples" });
+    }
+  });
+
+  app.get("/api/games/no-repeats/examples", async (req, res) => {
+    try {
+      const challenge = parseInt(req.query.challenge as string);
+      const limit = Math.min(20, Math.max(1, parseInt(req.query.limit as string) || 10));
+      const requiredLetters = ((req.query.requiredLetters as string) || "")
+        .split(",")
+        .map(l => l.trim().toUpperCase())
+        .filter(l => /^[A-Z]$/.test(l));
+      if (isNaN(challenge) || challenge < 3 || challenge > 9) {
+        return res.status(400).json({ message: "challenge must be between 3 and 9" });
+      }
+      const result = await storage.getNoRepeatsExamples(challenge, requiredLetters, limit);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch no-repeats examples" });
+    }
+  });
+
   app.get("/api/games/word-length/validate", async (req, res) => {
     try {
       const length = parseInt(req.query.length as string);
@@ -363,6 +472,42 @@ export function registerGamesRoutes(app: Express): void {
       res.json(words);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch progressive reveal words" });
+    }
+  });
+
+  app.get("/api/games/word-extension/puzzles", async (req, res) => {
+    try {
+      const lettersToAdd = parseInt(req.query.lettersToAdd as string);
+      if (isNaN(lettersToAdd) || lettersToAdd < 1 || lettersToAdd > 4) {
+        return res.status(400).json({ message: "lettersToAdd must be 1–4" });
+      }
+      const puzzles = await storage.getWordExtensionPuzzles(lettersToAdd);
+      res.json(puzzles);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word extension puzzles" });
+    }
+  });
+
+  app.post("/api/games/word-extension/validate", async (req, res) => {
+    try {
+      const { shownWord, submittedWord, lettersToAdd } = req.body;
+      if (!shownWord || typeof shownWord !== "string" || !submittedWord || typeof submittedWord !== "string") {
+        return res.status(400).json({ message: "shownWord and submittedWord are required" });
+      }
+      const n = parseInt(lettersToAdd);
+      if (isNaN(n) || n < 1 || n > 4) {
+        return res.status(400).json({ message: "lettersToAdd must be 1–4" });
+      }
+      const shown = shownWord.trim().toUpperCase();
+      const submitted = submittedWord.trim().toUpperCase();
+      // Enforce exact length server-side — prevents cross-difficulty abuse.
+      if (submitted.length !== shown.length + n) {
+        return res.json({ valid: false });
+      }
+      const result = await storage.validateWordExtension(shown, submitted, n);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Validation failed" });
     }
   });
 

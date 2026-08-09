@@ -1,4 +1,14 @@
-import 'dotenv/config';
+import "dotenv/config";
+import * as Sentry from "@sentry/node";
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? "development",
+    tracesSampleRate: 0.2,
+  });
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
@@ -31,7 +41,9 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-export function log(message: string, source = "express") {
+export type LogLevel = "info" | "warn" | "error";
+
+export function log(message: string, source = "express", level: LogLevel = "info") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
@@ -39,7 +51,8 @@ export function log(message: string, source = "express") {
     hour12: true,
   });
 
-  console.log(`${formattedTime} [${source}] ${message}`);
+  const levelTag = level === "error" ? " [ERROR]" : level === "warn" ? " [WARN]" : "";
+  console.log(`${formattedTime} [${source}]${levelTag} ${message}`);
 }
 
 app.use((req, res, next) => {
@@ -60,8 +73,8 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
-      log(logLine);
+      const level: LogLevel = res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+      log(logLine, "express", level);
     }
   });
 
@@ -74,10 +87,10 @@ async function runPruneJob() {
   try {
     const count = await getStorage().pruneNotifications();
     if (count > 0) {
-      log(`[prune] Deleted ${count} old notification(s)`, "prune");
+      log(`Deleted ${count} old notification(s)`, "prune");
     }
   } catch (err) {
-    log(`[prune] Error pruning notifications: ${err}`, "prune");
+    log(`Error pruning notifications: ${err}`, "prune", "error");
   }
 }
 
@@ -89,14 +102,13 @@ async function runWordWarsJobs() {
     const now = new Date();
 
     for (const t of tournaments) {
-      // Auto-draw bracket when registration window expires
       if (t.status === "registration" && new Date(t.registrationDeadline) <= now) {
-        log(`[word-wars] Tournament ${t.id} registration closed — auto-drawing bracket`, "word-wars");
+        log(`Tournament ${t.id} registration closed — auto-drawing bracket`, "word-wars");
         const result = await executeBracketDraw(t.id);
         if ("error" in result) {
-          log(`[word-wars] Tournament ${t.id} auto-draw failed: ${result.error}`, "word-wars");
+          log(`Tournament ${t.id} auto-draw failed: ${result.error}`, "word-wars", "warn");
         } else {
-          log(`[word-wars] Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "word-wars");
+          log(`Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "word-wars");
         }
         continue;
       }
@@ -113,7 +125,7 @@ async function runWordWarsJobs() {
             else if (p2Wins > p1Wins) forfeitWinner = m.player2Id;
             else forfeitWinner = Math.random() < 0.5 ? m.player1Id : m.player2Id;
             await st.updateWordWarsMatch(m.id, { status: "forfeited", winnerId: forfeitWinner });
-            log(`[word-wars] Match ${m.id} timed out — winner: ${forfeitWinner}`, "word-wars");
+            log(`Match ${m.id} timed out — winner: ${forfeitWinner}`, "word-wars", "warn");
           }
         }
 
@@ -122,12 +134,12 @@ async function runWordWarsJobs() {
         );
         if (unresolvedMatches.length === 0 && matches.length > 0) {
           await st.updateWordWarsTournament(t.id, { status: "completed" });
-          log(`[word-wars] Tournament ${t.id} completed`, "word-wars");
+          log(`Tournament ${t.id} completed`, "word-wars");
         }
       }
     }
   } catch (err) {
-    log(`[word-wars] Scheduler error: ${err}`, "word-wars");
+    log(`Scheduler error: ${err}`, "word-wars", "error");
   }
 }
 
@@ -145,25 +157,22 @@ async function runGuildWarsJobs() {
 
     for (const t of tournaments) {
       if (t.status === "registration" && new Date(t.registrationDeadline) <= now) {
-        log(`[guild-wars] Tournament ${t.id} registration closed — auto-drawing bracket`, "guild-wars");
+        log(`Tournament ${t.id} registration closed — auto-drawing bracket`, "guild-wars");
         const result = await executeGuildBracketDraw(t.id);
         if ("error" in result) {
-          log(`[guild-wars] Tournament ${t.id} auto-draw failed: ${result.error}`, "guild-wars");
+          log(`Tournament ${t.id} auto-draw failed: ${result.error}`, "guild-wars", "warn");
         } else {
-          log(`[guild-wars] Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "guild-wars");
+          log(`Tournament ${t.id} bracket drawn (${result.matches.length} matches)`, "guild-wars");
         }
         continue;
       }
 
       if (t.status === "active") {
-        // checkAndForfeitExpiredGuildMatches internally triggers bracket advancement,
-        // which is also the sole owner of marking the tournament "completed" and
-        // creating the champion record. Do NOT mark completed here to avoid a race.
         await checkAndForfeitExpiredGuildMatches(t);
       }
     }
   } catch (err) {
-    log(`[guild-wars] Scheduler error: ${err}`, "guild-wars");
+    log(`Scheduler error: ${err}`, "guild-wars", "error");
   }
 }
 
@@ -193,18 +202,28 @@ async function runDailyJobs() {
       });
     }
   } catch (err) {
-    log(`[daily] Job error: ${err}`, "daily");
+    log(`Job error: ${err}`, "daily", "error");
   }
 }
 
 async function runFriendChallengeExpiry() {
   try {
     const expired = await getStorage().expireFriendChallenges();
-    if (expired > 0) log(`[friend-challenges] Expired ${expired} pending challenge(s)`, "friend-challenges");
+    if (expired > 0) log(`Expired ${expired} pending challenge(s)`, "friend-challenges");
   } catch (err) {
-    log(`[friend-challenges] Expiry error: ${err}`, "friend-challenges");
+    log(`Expiry error: ${err}`, "friend-challenges", "error");
   }
 }
+
+process.on("uncaughtException", (err) => {
+  log(`Uncaught exception: ${err.stack ?? err.message}`, "process", "error");
+  if (process.env.SENTRY_DSN) Sentry.captureException(err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  log(`Unhandled rejection: ${reason}`, "process", "error");
+  if (process.env.SENTRY_DSN) Sentry.captureException(reason);
+});
 
 (async () => {
   await initStorage();
@@ -221,17 +240,18 @@ async function runFriendChallengeExpiry() {
   setupDuelWebSocket(httpServer);
   setupTeamRaceWebSocket(httpServer);
 
+  if (process.env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
+    log(`Unhandled error: ${err.message}`, "express", "error");
     res.status(status).json({ message });
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -239,10 +259,6 @@ async function runFriendChallengeExpiry() {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {

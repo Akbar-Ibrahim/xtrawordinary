@@ -24,6 +24,10 @@ export const gameSchema = z.object({
   isActive: z.boolean().optional(),
   hasSurvival: z.boolean().optional(),
   modes: z.array(gameModeSchema).optional(),
+  timeLimitSeconds: z.number().int().positive().nullable().optional(),
+  wordTarget: z.number().int().positive().nullable().optional(),
+  livesCount: z.number().int().positive().nullable().optional(),
+  survivalSecondsPerWord: z.number().int().positive().nullable().optional(),
 });
 
 export type Game = z.infer<typeof gameSchema>;
@@ -123,14 +127,12 @@ export type VowelConsonantConfig = z.infer<typeof vowelConsonantConfigSchema>;
 export const wordStackPuzzleSchema = z.object({
   targetWord: z.string(),
   startWord: z.string(),
-  hint: z.string(),
 });
 export type WordStackPuzzle = z.infer<typeof wordStackPuzzleSchema>;
 export const wordStackPuzzlesSchema = z.array(wordStackPuzzleSchema);
 
 export const wordSplitPuzzleSchema = z.object({
   targetWord: z.string(),
-  hint: z.string(),
 });
 export type WordSplitPuzzle = z.infer<typeof wordSplitPuzzleSchema>;
 export const wordSplitPuzzlesSchema = z.array(wordSplitPuzzleSchema);
@@ -138,6 +140,7 @@ export const wordSplitPuzzlesSchema = z.array(wordSplitPuzzleSchema);
 export const progressiveRevealWordSchema = z.object({
   word: z.string(),
   subcategory: z.string(),
+  hint: z.string().optional(),
 });
 export type ProgressiveRevealWord = z.infer<typeof progressiveRevealWordSchema>;
 export const progressiveRevealWordsSchema = z.array(progressiveRevealWordSchema);
@@ -170,3 +173,29 @@ export const ladderRushPuzzleSchema = z.object({
 });
 export type LadderRushPuzzle = z.infer<typeof ladderRushPuzzleSchema>;
 export const ladderRushPuzzlesSchema = z.array(ladderRushPuzzleSchema);
+
+export const partOfSpeechSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+});
+export type PartOfSpeech = z.infer<typeof partOfSpeechSchema>;
+export const wordExtensionPuzzleSchema = z.object({
+  shownWord: z.string(),
+  lettersToAdd: z.number(),
+  validAnswers: z.array(z.string()).optional(),
+});
+export type WordExtensionPuzzle = z.infer<typeof wordExtensionPuzzleSchema>;
+
+export const insertPartOfSpeechSchema = partOfSpeechSchema.omit({ id: true });
+export type InsertPartOfSpeech = z.infer<typeof insertPartOfSpeechSchema>;
+
+export const wordDefinitionSchema = z.object({
+  id: z.number(),
+  wordId: z.number(),
+  partOfSpeechId: z.number(),
+  definition: z.string(),
+  sortOrder: z.number(),
+});
+export type WordDefinition = z.infer<typeof wordDefinitionSchema>;
+export const insertWordDefinitionSchema = wordDefinitionSchema.omit({ id: true });
+export type InsertWordDefinition = z.infer<typeof insertWordDefinitionSchema>;

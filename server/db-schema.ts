@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum, tinyint, char } from "drizzle-orm/mysql-core";
 import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
@@ -125,15 +125,25 @@ export const words = mysqlTable("words", {
   wordLength: int("word_length").notNull().default(0),
   isAnagram: boolean("is_anagram").notNull().default(false),
   isWordStack: boolean("is_word_stack").notNull().default(false),
-  derivatives: json("derivatives").$type<string[]>(),
-  hint: varchar("hint", { length: 255 }),
+  // Production migration required before deploying: ALTER TABLE words MODIFY COLUMN hint JSON;
+  hint: json("hint").$type<string[]>(),
   category: varchar("category", { length: 100 }),
   isWordSplit: boolean("is_word_split").notNull().default(false),
   frequencyLevel: mysqlEnum("frequency_level", ["very_low", "low", "medium_low", "medium", "medium_high", "high", "very_high"]),
+  isIsogram: boolean("is_isogram").notNull().default(false),
+  consonantCount: int("consonant_count"),
+  vowelCount: int("vowel_count"),
+  meta: json("meta"),
+  isPalindrome: boolean("is_palindrome").notNull().default(false),
 }, (table) => [
   index("words_length_idx").on(table.wordLength),
   index("words_anagram_idx").on(table.isAnagram),
   index("words_stack_idx").on(table.isWordStack),
+  index("words_frequency_idx").on(table.frequencyLevel),
+  index("words_isogram_idx").on(table.isIsogram),
+  index("words_consonant_idx").on(table.consonantCount),
+  index("words_vowel_idx").on(table.vowelCount),
+  index("words_palindrome_idx").on(table.isPalindrome),
 ]);
 
 export const wordAnagrams = mysqlTable("word_anagrams", {
@@ -152,6 +162,15 @@ export const wordDerivatives = mysqlTable("word_derivatives", {
   index("idx_derivative_to_word").on(table.derivativeId, table.wordId),
 ]);
 
+export const letterFrequency = mysqlTable("letter_frequency", {
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  letter: char("letter", { length: 1 }).notNull(),
+  frequency: int("frequency").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.wordId, table.letter] }),
+  index("idx_letter_frequency").on(table.letter, table.frequency),
+]);
+
 export const shellWords = mysqlTable("shell_words", {
   shellWordId: int("shell_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
   innerWordId: int("inner_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
@@ -159,6 +178,34 @@ export const shellWords = mysqlTable("shell_words", {
 }, (table) => [
   primaryKey({ columns: [table.shellWordId, table.depth] }),
   index("shell_words_inner_depth_idx").on(table.innerWordId, table.depth),
+]);
+
+export const wordLetterPositions = mysqlTable("word_letter_positions", {
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  position: tinyint("position").notNull(),
+  letter: char("letter", { length: 1 }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.wordId, table.position] }),
+  index("wlp_letter_idx").on(table.letter),
+  index("wlp_position_idx").on(table.position),
+  index("wlp_letter_position_idx").on(table.letter, table.position),
+]);
+
+export const partsOfSpeech = mysqlTable("parts_of_speech", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+});
+
+export const wordDefinitions = mysqlTable("word_definitions", {
+  id: int("id").primaryKey().autoincrement(),
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  partOfSpeechId: int("part_of_speech_id").notNull().references(() => partsOfSpeech.id),
+  definition: text("definition").notNull(),
+  sortOrder: int("sort_order").notNull().default(0),
+}, (table) => [
+  index("wd_word_id_idx").on(table.wordId),
+  index("wd_pos_id_idx").on(table.partOfSpeechId),
+  index("wd_word_sort_idx").on(table.wordId, table.sortOrder),
 ]);
 
 export const groups = mysqlTable("groups", {
@@ -310,6 +357,10 @@ export const games = mysqlTable("games", {
   isActive: boolean("is_active").notNull().default(true),
   hasSurvival: boolean("has_survival").notNull().default(false),
   modes: json("modes").$type<GameMode[]>(),
+  timeLimitSeconds: int("time_limit_seconds"),
+  wordTarget: int("word_target"),
+  livesCount: int("lives_count"),
+  survivalSecondsPerWord: int("survival_seconds_per_word"),
 });
 
 export const wordCategories = mysqlTable("word_categories", {
@@ -317,7 +368,7 @@ export const wordCategories = mysqlTable("word_categories", {
   word: varchar("word", { length: 100 }).notNull().unique(),
   definitions: json("definitions").$type<string[]>().notNull(),
   wordLength: int("word_length").notNull(),
-  partOfSpeech: varchar("part_of_speech", { length: 50 }),
+  partOfSpeechId: int("part_of_speech_id").references(() => partsOfSpeech.id),
 });
 
 export const comments = mysqlTable("comments", {

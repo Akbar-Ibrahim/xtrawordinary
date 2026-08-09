@@ -101,16 +101,17 @@ export function QuizzesTab({
                       className="h-8 w-8"
                       onClick={() => onCopyLink(quiz.shareCode)}
                       title="Copy play link"
+                      aria-label="Copy play link"
                       data-testid={`button-copy-quiz-${quiz.id}`}
                     >
                       {copiedCode === quiz.shareCode
-                        ? <CheckCheck className="h-4 w-4 text-green-500" />
-                        : <Copy className="h-4 w-4" />}
+                        ? <CheckCheck className="h-4 w-4 text-green-500" aria-hidden="true" />
+                        : <Copy className="h-4 w-4" aria-hidden="true" />}
                     </Button>
                   )}
                   <Link href={`/quiz/${quiz.shareCode}`}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Play quiz" data-testid={`button-play-quiz-${quiz.id}`}>
-                      <Play className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Play quiz" aria-label="Play quiz" data-testid={`button-play-quiz-${quiz.id}`}>
+                      <Play className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </Link>
                   <Link href={`/quiz/${quiz.shareCode}/results`}>
@@ -125,9 +126,10 @@ export function QuizzesTab({
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={() => onDeleteClick(quiz.shareCode)}
                       title="Delete quiz"
+                      aria-label="Delete quiz"
                       data-testid={`button-delete-quiz-${quiz.id}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   )}
                 </div>

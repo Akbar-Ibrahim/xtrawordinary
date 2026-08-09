@@ -22,6 +22,7 @@ import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { WordStretchGame } from "@/components/games/word-stretch";
 import { WordBloomGame } from "@/components/games/word-bloom";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
+import { WordExtensionGame } from "@/components/games/word-extension";
 
 export const difficultyColors: Record<string, string> = {
   easy: "bg-accent text-accent-foreground",
@@ -58,6 +59,7 @@ export const gameComponents: Record<string, React.ComponentType<{ groupSeed?: nu
   "word-stretch": WordStretchGame,
   "word-bloom": WordBloomGame,
   "letter-dodge": LetterDodgeGame,
+  "word-extension": WordExtensionGame,
 };
 
 export const CUSTOM_PLAY_SLUGS = new Set([
@@ -75,6 +77,16 @@ export const UNTIMED_GAME_SLUGS = new Set([
   "letter-hunt",
   "word-scramble",
   "no-repeats",
+  "ladder-rush",
+  "ladder-rush-double",
+  "letter-dodge",
+  "shell-words",
+  "deep-shell-words",
+  "word-length",
+  "letter-position",
+  "word-roots",
+  "letter-balance",
+  "letter-frequency",
 ]);
 
 export const LETTER_BALANCE_CATEGORIES_DETAIL = [

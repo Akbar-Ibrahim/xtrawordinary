@@ -504,7 +504,7 @@ export function Navigation() {
         </div>
 
         {/* ── Bottom row: navigation links ── */}
-        <div className="border-t border-border/40">
+        <nav aria-label="Main" className="border-t border-border/40">
           <div className="container mx-auto flex h-10 items-center gap-0.5 px-4 overflow-x-auto scrollbar-none">
             {navLinks.map((link) => {
               const isActive = location === link.href;
@@ -515,6 +515,7 @@ export function Navigation() {
                   <Button
                     variant={isActive ? "secondary" : "ghost"}
                     size="sm"
+                    aria-current={isActive ? "page" : undefined}
                     className="gap-1.5 relative shrink-0 h-8 px-3 text-xs"
                     data-testid={`link-nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
                   >
@@ -546,7 +547,7 @@ export function Navigation() {
               </Link>
             )}
           </div>
-        </div>
+        </nav>
       </motion.header>
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </>

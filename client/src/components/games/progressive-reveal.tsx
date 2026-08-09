@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, XCircle, Heart, Loader2, Eye, Send, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, XCircle, Heart, Loader2, Eye, Send, LogIn, Lightbulb } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -20,8 +20,9 @@ import { useLocation } from "wouter";
 
 const BASE_POINTS = 200;
 const REVEAL_COST = 30;
+const ZERO_FLIP_BONUS = 50;
 
-export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ProgressiveRevealWord[] } = {}) {
+export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords, livesCount }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ProgressiveRevealWord[]; livesCount?: number } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal", quizMode });
@@ -55,7 +56,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
   const [guess, setGuess] = useState("");
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(livesCount ?? 3);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -64,6 +65,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [lastRevealedIndex, setLastRevealedIndex] = useState<number | null>(null);
+  const [hintUsed, setHintUsed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const setupWord = useCallback((word: ProgressiveRevealWord) => {
@@ -72,6 +74,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     setGuess("");
     setFeedback(null);
     setLastRevealedIndex(null);
+    setHintUsed(false);
   }, []);
 
   const selectNewWord = useCallback((currentUsed: Set<string>, allWords: ProgressiveRevealWord[]) => {
@@ -113,7 +116,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     wordIndexRef.current = 1;
     setScore(0);
     setStreak(0);
-    setLives(3);
+    setLives(livesCount ?? 3);
     setWordsCompleted(0);
     setGameStatus("playing");
     setFeedback(null);
@@ -150,9 +153,12 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [currentWord, feedback, revealed, playSound]);
 
-  const potentialPoints = currentWord
-    ? Math.max(0, BASE_POINTS - revealCount * REVEAL_COST)
-    : BASE_POINTS;
+  const basePoints = currentWord
+    ? revealCount === 0
+      ? BASE_POINTS + ZERO_FLIP_BONUS
+      : Math.max(10, BASE_POINTS - Math.max(0, revealCount - 1) * REVEAL_COST)
+    : BASE_POINTS + ZERO_FLIP_BONUS;
+  const potentialPoints = Math.max(10, basePoints - (hintUsed ? REVEAL_COST : 0));
 
   const handleGuess = useCallback(() => {
     if (!currentWord || feedback || !guess.trim()) return;
@@ -162,7 +168,10 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
       setFeedback("correct");
       setRevealed(new Array(currentWord.word.length).fill(true));
       setStreak(prev => prev + 1);
-      const points = Math.max(10, BASE_POINTS - revealCount * REVEAL_COST);
+      const rawPoints = revealCount === 0
+        ? BASE_POINTS + ZERO_FLIP_BONUS
+        : Math.max(10, BASE_POINTS - Math.max(0, revealCount - 1) * REVEAL_COST);
+      const points = Math.max(10, rawPoints - (hintUsed ? REVEAL_COST : 0));
       setScore(prev => prev + points);
       setWordsCompleted(prev => prev + 1);
       setTimeout(() => {
@@ -193,7 +202,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
         setTimeout(() => inputRef.current?.focus(), 50);
       }, 1000);
     }
-  }, [currentWord, feedback, guess, revealCount, playSound, selectNewWord, words]);
+  }, [currentWord, feedback, guess, revealCount, hintUsed, playSound, selectNewWord, words]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleGuess();
@@ -295,8 +304,25 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
                     {currentWord.subcategory}
                   </Badge>
                   <p className="text-sm text-muted-foreground">
-                    {currentWord.word.length} letters — tap tiles to reveal, then guess the word
+                    {currentWord.word.length} letters — guess blind for bonus points! First tile is always free.
                   </p>
+                  {currentWord.hint && !hintUsed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setHintUsed(true)}
+                      className="text-muted-foreground"
+                      data-testid="button-hint"
+                    >
+                      <Lightbulb className="mr-2 h-4 w-4" />
+                      Show Hint (−{REVEAL_COST} pts)
+                    </Button>
+                  )}
+                  {currentWord.hint && hintUsed && (
+                    <p className="text-sm text-muted-foreground italic" data-testid="text-hint">
+                      {currentWord.hint}
+                    </p>
+                  )}
                 </div>
 
                 <motion.div

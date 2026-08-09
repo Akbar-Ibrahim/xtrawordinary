@@ -16,16 +16,19 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
-export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[] } = {}) {
+export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, timeLimitSeconds: timeLimitSecondsProp }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[]; timeLimitSeconds?: number } = {}) {
+  const DEFAULT_TIME = timeLimitSecondsProp ?? 90;
   const { playSound } = useSound();
   const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver", quizMode });
   const personalBest = usePersonalBest("anagram-solver");
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;
+  const { markSeen, filterUnseen } = usePuzzleHistory("anagram-solver");
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
@@ -44,7 +47,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
   const [wordsSolved, setWordsSolved] = useState(0);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(90);
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_TIME);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "timeup">("playing");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong"; message: string } | null>(null);
   const [usedSets, setUsedSets] = useState<Set<number>>(new Set());
@@ -68,32 +71,35 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords }: 
     setCurrentSet(newSet);
     setUserInput("");
     setUsedSets(prev => new Set(Array.from(prev).concat(randomIndex)));
+    if (!seeded && !hasCustomWords) markSeen(newSet.original);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedSets, activeWordSets]);
+  }, [usedSets, activeWordSets, seeded, hasCustomWords, markSeen]);
 
   const lastSetRef = useRef<(typeof wordSets)[0] | null>(null);
 
   const initGame = useCallback((overrideSet?: (typeof wordSets)[0]) => {
     if (wordSets.length === 0) return;
     resetRecorded();
-    setActiveWordSets(wordSets);
+    const setPool = seeded || hasCustomWords || overrideSet ? wordSets : filterUnseen(wordSets, (s) => s.original);
+    setActiveWordSets(setPool);
     setScore(0);
     setStreak(0);
-    setTimeLeft(90);
+    setTimeLeft(DEFAULT_TIME);
     setGameStatus("playing");
     setUsedSets(new Set());
     setWordsSolved(0);
     setSolvedWords([]);
     const rng = seedRngRef.current ?? Math.random;
-    const randomIndex = Math.floor(rng() * wordSets.length);
-    const newSet = overrideSet ?? wordSets[randomIndex];
+    const randomIndex = Math.floor(rng() * setPool.length);
+    const newSet = overrideSet ?? setPool[randomIndex];
     lastSetRef.current = newSet;
     setCurrentSet(newSet);
     setUserInput("");
-    const idx = overrideSet ? wordSets.findIndex(s => s === overrideSet) : randomIndex;
+    const idx = overrideSet ? setPool.findIndex(s => s === overrideSet) : randomIndex;
     setUsedSets(new Set([idx >= 0 ? idx : 0]));
+    if (!seeded && !hasCustomWords) markSeen(newSet.original);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [wordSets, resetRecorded]);
+  }, [wordSets, resetRecorded, seeded, hasCustomWords, filterUnseen, markSeen]);
 
   useEffect(() => {
     if (wordSets.length > 0 && !currentSet) {

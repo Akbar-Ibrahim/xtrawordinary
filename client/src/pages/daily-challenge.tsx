@@ -108,7 +108,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     case "no-repeats": {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
       const challenge = options[seed % options.length];
-      return <NoRepeatsGame initialChallenge={challenge} locked />;
+      return <NoRepeatsGame initialChallenge={challenge} groupSeed={seed} locked />;
     }
     case "word-ladder":
       return <WordLadderGame initialChallenge locked />;

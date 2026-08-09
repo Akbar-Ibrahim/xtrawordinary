@@ -17,7 +17,7 @@ import type {
   WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch,
   WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament,
   GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion,
-  InsertGroupSeason, GroupSeason,
+  InsertGroupSeason, GroupSeason, InsertWordDefinition,
 } from "@shared/schema";
 
 import * as Games from "./mysql/games";
@@ -35,6 +35,7 @@ import * as TeamRace from "./mysql/team-race";
 import * as WordWars from "./mysql/word-wars";
 import * as GuildWars from "./mysql/guild-wars";
 import * as Admin from "./mysql/admin";
+import * as WordDefs from "./mysql/word-definitions";
 
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
@@ -77,6 +78,13 @@ export class MySQLStorage implements IStorage {
       if (this.wordSet.size === 0) {
         console.warn("[MySQLStorage] WARNING: running on in-memory word list (MySQL words table empty or unavailable)");
       }
+      // Seed standard parts-of-speech rows (idempotent — uses ON DUPLICATE KEY UPDATE)
+      try {
+        await WordDefs.seedPartsOfSpeech(db);
+        console.log("[MySQLStorage] Parts of speech seeded");
+      } catch (err) {
+        console.error("[MySQLStorage] Parts-of-speech seeding failed (non-fatal).", err);
+      }
     });
   }
 
@@ -88,6 +96,7 @@ export class MySQLStorage implements IStorage {
   async getGames(): Promise<Game[]> { return Games.getGames(await this.getDb()); }
   async getAllGames(): Promise<Game[]> { return Games.getAllGames(await this.getDb()); }
   async setGameActive(slug: string, isActive: boolean): Promise<void> { return Games.setGameActive(await this.getDb(), slug, isActive); }
+  async updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void> { return Games.updateGameConfig(await this.getDb(), slug, config); }
   async getGameBySlug(slug: string): Promise<Game | undefined> { return Games.getGameBySlug(await this.getDb(), slug); }
 
   // ── Words / Game-data (delegates to MemStorage) ────────────────────────────
@@ -126,6 +135,38 @@ export class MySQLStorage implements IStorage {
     }
     return this.gameData.countLetterPositionWords(letter, position);
   }
+  async getLetterPositionExamples(letter: string, position: number, limit: number): Promise<{ words: string[]; total: number }> {
+    await this.wordPreloadPromise;
+    if (this.wordSet.size > 0) {
+      const upper = letter.toUpperCase();
+      const idx = position - 1;
+      const matches: string[] = [];
+      this.wordSet.forEach(w => { if (w.length > idx && w[idx] === upper) matches.push(w); });
+      const total = matches.length;
+      const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
+      return { words: shuffled, total };
+    }
+    return this.gameData.getLetterPositionExamples(letter, position, limit);
+  }
+  async getNoRepeatsExamples(challenge: number, requiredLetters: string[], limit: number): Promise<{ words: string[]; total: number }> {
+    await this.wordPreloadPromise;
+    if (this.wordSet.size > 0) {
+      const upper = requiredLetters.map(l => l.toUpperCase());
+      const matches: string[] = [];
+      this.wordSet.forEach(w => {
+        if (
+          w.length === challenge &&
+          new Set(w).size === w.length &&
+          upper.every(l => w.includes(l))
+        ) matches.push(w);
+      });
+      const total = matches.length;
+      const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
+      return { words: shuffled, total };
+    }
+    return this.gameData.getNoRepeatsExamples(challenge, requiredLetters, limit);
+  }
+
   async countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number> {
     await this.wordPreloadPromise;
     if (this.wordSet.size > 0) {
@@ -154,6 +195,15 @@ export class MySQLStorage implements IStorage {
   async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }
   async getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }> { return this.gameData.getWordBloomPuzzle(seed); }
   async validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordBloom(currentWord, nextWord); }
+  async getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> { return Words.getWordExtensionPuzzles(await this.getDb(), this.gameData, lettersToAdd); }
+  async validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> { return Words.validateWordExtension(await this.getDb(), this.gameData, shownWord, submittedWord, lettersToAdd); }
+
+  // ── Parts of speech & word definitions ─────────────────────────────────────
+  async listPartsOfSpeech() { return WordDefs.listPartsOfSpeech(await this.getDb()); }
+  async getPartOfSpeech(id: number) { return WordDefs.getPartOfSpeech(await this.getDb(), id); }
+  async getWordDefinitions(wordId: number) { return WordDefs.getWordDefinitions(await this.getDb(), wordId); }
+  async addWordDefinition(def: InsertWordDefinition) { return WordDefs.addWordDefinition(await this.getDb(), def); }
+  async deleteWordDefinition(id: number) { return WordDefs.deleteWordDefinition(await this.getDb(), id); }
 
   async getWordChainStartWord(variation: number, level: number, seed?: number): Promise<string | null> { return Words.getWordChainStartWord(await this.getDb(), this.gameData, variation, level, seed); }
   async getWordChainComputerWord(playerWord: string, variation: number, level: number, usedWords: string[]): Promise<string | null> { return Words.getWordChainComputerWord(await this.getDb(), this.gameData, playerWord, variation, level, usedWords); }

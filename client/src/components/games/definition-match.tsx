@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2, LogIn, Eye, Lock } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, BookOpen, Loader2, LogIn, Eye, Lock, Timer, Clock } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -16,20 +16,27 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
 const POINTS_BY_HINTS = [100, 75, 50] as const;
 
-export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: customWordsProp }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: DefinitionWord[] } = {}) {
+const DEFAULT_TIME_LIMIT = 180;
+
+export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: customWordsProp, wordTarget, timeLimitSeconds, isUntimed }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: DefinitionWord[]; wordTarget?: number; timeLimitSeconds?: number; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match", quizMode });
   const personalBest = usePersonalBest("definition-match");
   const seeded = groupSeed !== undefined;
+  const { markSeen, filterUnseen } = usePuzzleHistory("definition-match");
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
+  const effectiveTimeLimit = timeLimitSeconds ?? DEFAULT_TIME_LIMIT;
+  const [timeLeft, setTimeLeft] = useState(effectiveTimeLimit);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { data: fetchedWords = [], isLoading: fetchLoading, error: fetchError } = useQuery<DefinitionWord[]>({
     queryKey: seeded ? ["/api/games/definition-match/words", groupSeed] : ["/api/games/definition-match/words"],
     ...(seeded ? { queryFn: async () => { const r = await fetch(`/api/games/definition-match/words?seed=${groupSeed}`, { credentials: "include" }); return r.json(); } } : {}),
@@ -53,6 +60,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
   const [hintsUsed, setHintsUsed] = useState(0);
   const [answerRevealed, setAnswerRevealed] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
+  const [timedOut, setTimedOut] = useState(false);
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +68,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
   const selectNewWord = useCallback(() => {
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       playSound("win");
       setGameStatus("won");
       setCompletionMessage(getCompletionMessage(true));
@@ -73,31 +82,62 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
     setAnswerRevealed(false);
     setFeedback(null);
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    if (!seeded && !customWordsProp) markSeen(randomWord.word);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, activeWords, playSound]);
+  }, [usedWords, activeWords, playSound, seeded, customWordsProp, markSeen]);
 
   const lastWordRef = useRef<(typeof words)[0] | null>(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback((duration: number) => {
+    stopTimer();
+    let remaining = duration;
+    setTimeLeft(remaining);
+    timerRef.current = setInterval(() => {
+      remaining -= 1;
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        stopTimer();
+        setCompletionMessage(getCompletionMessage(false));
+        setTimedOut(true);
+        setGameStatus("lost");
+      }
+    }, 1000);
+  }, [stopTimer]);
+
+  useEffect(() => () => stopTimer(), [stopTimer]);
 
   const initGame = useCallback((overrideWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
-    setActiveWords(words);
+    const wordPool = seeded || customWordsProp || overrideWord ? words : filterUnseen(words, (w) => w.word);
+    const effectivePool = wordTarget ? wordPool.slice(0, wordTarget) : wordPool;
+    setActiveWords(effectivePool);
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
     setGameStatus("playing");
+    setTimedOut(false);
     setUsedWords(new Set());
     setHintsUsed(0);
     setAnswerRevealed(false);
     setFeedback(null);
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = overrideWord ?? words[Math.floor(rng() * words.length)];
+    const randomWord = overrideWord ?? effectivePool[Math.floor(rng() * effectivePool.length)];
     lastWordRef.current = randomWord;
     setCurrentWord(randomWord);
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
+    if (!seeded && !customWordsProp) markSeen(randomWord.word);
+    if (!isUntimed) startTimer(effectiveTimeLimit);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words, resetRecorded]);
+  }, [words, resetRecorded, seeded, customWordsProp, filterUnseen, markSeen, startTimer, effectiveTimeLimit, isUntimed]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {
@@ -177,6 +217,8 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
 
   const visibleCount = hintsUsed + 1;
   const pointsAvailable = POINTS_BY_HINTS[Math.min(hintsUsed, 2) as 0 | 1 | 2];
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const timerWarning = timeLeft <= 30 && gameStatus === "playing";
 
   return (
     <div className="space-y-6">
@@ -187,6 +229,16 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
             <AnimatedNumber value={score} /> pts
           </Badge>
           <StreakIndicator streak={streak} />
+          {gameStatus === "playing" && (
+            <Badge
+              variant="outline"
+              className={`gap-1.5 tabular-nums ${timerWarning ? "border-destructive text-destructive animate-pulse" : ""}`}
+              data-testid="badge-timer"
+            >
+              <Timer className="h-3.5 w-3.5" />
+              {formatTime(timeLeft)}
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {!locked && (
@@ -205,7 +257,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
               className="gap-1.5"
               data-testid="button-end-game"
             >
@@ -489,13 +541,32 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
             <Card>
               <CardContent className="p-6 text-center space-y-4">
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", bounce: 0.5 }}>
-                  <XCircle className="h-16 w-16 mx-auto text-destructive" />
+                  {timedOut ? (
+                    <Clock className="h-16 w-16 mx-auto text-destructive" />
+                  ) : (
+                    <XCircle className="h-16 w-16 mx-auto text-destructive" />
+                  )}
                 </motion.div>
-                <h3 className="text-2xl font-bold">Game Over</h3>
+                {timedOut ? (
+                  <div>
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", bounce: 0.4 }}
+                      className="inline-block bg-destructive text-destructive-foreground px-4 py-1.5 rounded-full text-sm font-semibold mb-2"
+                      data-testid="banner-times-up"
+                    >
+                      Time's up!
+                    </motion.div>
+                    <h3 className="text-2xl font-bold">Game Over</h3>
+                  </div>
+                ) : (
+                  <h3 className="text-2xl font-bold">Game Over</h3>
+                )}
                 <p className="text-muted-foreground">
                   {wordsCompleted > 0
-                    ? `You matched ${wordsCompleted} definition${wordsCompleted !== 1 ? "s" : ""} before ending.`
-                    : "You ended the game early."}
+                    ? `You matched ${wordsCompleted} definition${wordsCompleted !== 1 ? "s" : ""} before ${timedOut ? "time ran out." : "ending."}`
+                    : timedOut ? "Time ran out before you matched any definitions." : "You ended the game early."}
                 </p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>

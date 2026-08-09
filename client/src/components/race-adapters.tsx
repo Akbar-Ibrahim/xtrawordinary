@@ -150,28 +150,60 @@ export const wordScrambleRaceAdapter: DuelGameAdapter = makeAdapter({
 
 // ─── no-repeats ────────────────────────────────────────────────────────────────
 
+/** Parse the no-repeats startWord encoding "minLen|LETTER|LETTER…" */
+function parseNoRepeatsConstraint(currentWord: string): { minLen: number; reqLetters: string[] } {
+  const parts = currentWord.split("|");
+  return { minLen: parseInt(parts[0], 10), reqLetters: parts.slice(1) };
+}
+
 export const noRepeatsRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type a word with no repeated letters…",
+  placeholder: "Type an isogram containing the required letters…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
     if (usedWords.includes(upper)) return "You already used that word";
-    const minLen = parseInt(currentWord, 10);
+    const { minLen, reqLetters } = parseNoRepeatsConstraint(currentWord);
     if (upper.length < minLen) return `Word must be at least ${minLen} letters long`;
     const letterSet = new Set(upper.split(""));
     if (letterSet.size !== upper.length) return "Word must have no repeated letters";
+    for (const letter of reqLetters) {
+      if (!upper.includes(letter)) {
+        return reqLetters.length === 1
+          ? `Word must contain the letter "${letter}"`
+          : `Word must contain all required letters — missing "${letter}"`;
+      }
+    }
     return null;
   },
   renderGameDisplay({ currentWord }) {
-    const minLen = parseInt(currentWord, 10);
+    const { minLen, reqLetters } = parseNoRepeatsConstraint(currentWord);
     return (
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-3">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">No-Repeats Race</p>
-        <p className="text-5xl font-black text-primary tabular-nums" data-testid="text-current-word">
+        <p className="text-4xl font-black text-primary tabular-nums" data-testid="text-current-word">
           {minLen}+
         </p>
+        {reqLetters.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Must contain</p>
+            <div className="flex justify-center gap-1.5">
+              {reqLetters.map((letter, idx) => (
+                <div
+                  key={idx}
+                  className="w-10 h-10 flex items-center justify-center text-lg font-bold rounded-lg bg-primary text-primary-foreground"
+                  data-testid={`duel-required-letter-${idx}`}
+                >
+                  {letter}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
-          Submit words with at least <strong>{minLen}</strong> letters and <strong>no repeated letters</strong>
+          Isograms ≥<strong>{minLen}</strong> letters
+          {reqLetters.length > 0 && (
+            <> containing <strong>{reqLetters.join(" + ")}</strong></>
+          )}
         </p>
       </div>
     );

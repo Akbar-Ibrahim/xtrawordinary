@@ -99,6 +99,7 @@ export function LetterDodgeGame({
   initialWordCount,
   initialTimeLimit,
   initialForbiddenLetters,
+  isUntimed,
 }: {
   groupSeed?: number;
   locked?: boolean;
@@ -111,6 +112,7 @@ export function LetterDodgeGame({
   initialWordCount?: number;
   initialTimeLimit?: number;
   initialForbiddenLetters?: string[];
+  isUntimed?: boolean;
 } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
@@ -119,6 +121,7 @@ export function LetterDodgeGame({
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-dodge-survival" : "letter-dodge",
     quizMode,
+    isUntimed,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-dodge-survival" : "letter-dodge");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -216,10 +219,10 @@ export function LetterDodgeGame({
       }
 
       setGameStatus("playing");
-      startCountdown(isSurvival ? SURVIVAL_TIME : (initialTimeLimit ?? GAME_TIME));
+      if (!isUntimed) startCountdown(isSurvival ? SURVIVAL_TIME : (initialTimeLimit ?? GAME_TIME));
       setTimeout(() => inputRef.current?.focus(), 100);
     },
-    [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed, initialForbiddenLetters, initialTimeLimit]
+    [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed, initialForbiddenLetters, initialTimeLimit, isUntimed]
   );
 
   useEffect(() => {
@@ -309,7 +312,7 @@ export function LetterDodgeGame({
       }
 
       // Reset survival timer on correct word
-      if (isSurvivalRef.current) {
+      if (isSurvivalRef.current && !isUntimed) {
         startCountdown(SURVIVAL_TIME);
       }
 
@@ -417,24 +420,32 @@ export function LetterDodgeGame({
         {/* Timer + Score header */}
         <div className="flex items-center justify-center gap-8">
           <div className="flex items-center gap-2 text-muted-foreground">
-            {isSurvivalActive ? (
-              <Flame className="h-4 w-4 text-orange-500" />
-            ) : (
-              <Timer className="h-4 w-4" />
-            )}
-            <span
-              className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalActive ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
-              data-testid="badge-timer"
-              role="timer"
-              aria-label={`Time remaining: ${isSurvivalActive ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
-            >
-              {isSurvivalActive ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-            </span>
-            {isSurvivalActive && (
-              <Badge variant="outline" className="gap-1 text-orange-600 border-orange-400/50 text-xs" data-testid="badge-survival">
-                <Flame className="h-3 w-3" />
-                Survival
+            {isUntimed ? (
+              <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+                ∞ Untimed
               </Badge>
+            ) : (
+              <>
+                {isSurvivalActive ? (
+                  <Flame className="h-4 w-4 text-orange-500" />
+                ) : (
+                  <Timer className="h-4 w-4" />
+                )}
+                <span
+                  className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalActive ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+                  data-testid="badge-timer"
+                  role="timer"
+                  aria-label={`Time remaining: ${isSurvivalActive ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+                >
+                  {isSurvivalActive ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+                </span>
+                {isSurvivalActive && (
+                  <Badge variant="outline" className="gap-1 text-orange-600 border-orange-400/50 text-xs" data-testid="badge-survival">
+                    <Flame className="h-3 w-3" />
+                    Survival
+                  </Badge>
+                )}
+              </>
             )}
           </div>
           <div className="text-center">
@@ -443,14 +454,14 @@ export function LetterDodgeGame({
           </div>
         </div>
 
-        {isSurvivalActive ? (
+        {!isUntimed && (isSurvivalActive ? (
           <Progress
             value={(timeLeft / SURVIVAL_TIME) * 100}
             className={`h-2 ${timeLeft <= 3 ? "[&>div]:bg-destructive" : "[&>div]:bg-orange-500"}`}
           />
         ) : (
           <Progress value={(timeLeft / (initialTimeLimit ?? GAME_TIME)) * 100} className="h-1.5" />
-        )}
+        ))}
 
         {/* Forbidden letters */}
         <Card className="border-destructive/40 bg-destructive/5">

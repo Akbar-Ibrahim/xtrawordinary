@@ -19,6 +19,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -80,13 +81,14 @@ function validateConstraint(word: string, constraint: PositionConstraint): { val
   return { valid: true, message: "" };
 }
 
-export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
+export function LetterPositionGame({ initialChallenge, groupSeed, locked, initialLetter, initialPosition, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain, isUntimed }: { initialChallenge?: Challenge; groupSeed?: number; locked?: boolean; initialLetter?: string; initialPosition?: number; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-position-survival" : "letter-position",
     quizMode,
+    isUntimed,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-position-survival" : "letter-position");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -110,6 +112,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
+  const [timedOut, setTimedOut] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -138,6 +141,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
           stopTimer();
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
+          setTimedOut(true);
           setGameStatus("lost");
           return 0;
         }
@@ -149,6 +153,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const startGame = useCallback((c: Challenge, survival: boolean, seedOverride?: number) => {
     resetRecorded();
     stopTimer();
+    setTimedOut(false);
     isSurvivalRef.current = survival;
     setIsSurvival(survival);
     setChallenge(c);
@@ -175,9 +180,9 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
       : null;
     setConstraint(fixedConstraint ?? generateRandomConstraint(constraintRng));
     setGameStatus("playing");
-    startTimer(survival);
+    if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, resetRecorded, initialLetter, initialPosition]);
+  }, [startTimer, stopTimer, resetRecorded, initialLetter, initialPosition, isUntimed]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -264,7 +269,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
             const rng = groupSeed !== undefined ? seedRngRef.current : constraintRngRef.current ?? undefined;
             setConstraint(generateRandomConstraint(rng));
           }
-          if (isSurvivalRef.current) {
+          if (isSurvivalRef.current && !isUntimed) {
             startTimer(true);
           }
         }
@@ -386,15 +391,23 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
     <div className="space-y-6">
       <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-            aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
-          >
-            {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </span>
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
+            </Badge>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`} />
+              <span
+                className={`font-mono font-bold text-lg ${timeLeft <= (isSurvival ? 3 : 30) ? "text-destructive animate-pulse" : ""}`}
+                data-testid="badge-timer"
+                role="timer"
+                aria-label={`Time remaining: ${isSurvival ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+              >
+                {isSurvival ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+              </span>
+            </>
+          )}
           {isSurvival && (
             <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
               <Flame className="h-3 w-3" />
@@ -632,6 +645,16 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     </div>
                   </div>
                 )}
+                {constraint && (
+                  <WordExamplesPanel
+                    game="letter-position"
+                    letters={[constraint.letter]}
+                    position={constraint.position}
+                    limit={12}
+                    buttonLabel={`See more words with '${constraint.letter}' at position ${constraint.position}`}
+                    className="text-left"
+                  />
+                )}
                 {customPlay && (
                   <div className="flex justify-center">
                     <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
@@ -686,7 +709,11 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                 >
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {timedOut ? (
+                  <h3 className="text-2xl font-bold" data-testid="heading-times-up">Time's Up!</h3>
+                ) : (
+                  <h3 className="text-2xl font-bold">Game Over</h3>
+                )}
                 {isSurvival && (
                   <Badge variant="secondary" className="gap-1.5">
                     <Flame className="h-3 w-3" />
@@ -734,6 +761,16 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                       ))}
                     </div>
                   </div>
+                )}
+                {constraint && (
+                  <WordExamplesPanel
+                    game="letter-position"
+                    letters={[constraint.letter]}
+                    position={constraint.position}
+                    limit={12}
+                    buttonLabel={`See words with '${constraint.letter}' at position ${constraint.position}`}
+                    className="text-left"
+                  />
                 )}
                 {customPlay && (
                   <div className="flex justify-center">

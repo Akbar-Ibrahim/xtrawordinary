@@ -70,10 +70,11 @@ export function DuelHeader({
             size="icon"
             onClick={() => setDuelMuted((m) => !m)}
             title={duelMuted ? "Unmute duel sounds" : "Mute duel sounds"}
+            aria-label={duelMuted ? "Unmute duel sounds" : "Mute duel sounds"}
             data-testid="button-toggle-sound"
             className="h-8 w-8"
           >
-            {duelMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {duelMuted ? <VolumeX className="h-4 w-4" aria-hidden="true" /> : <Volume2 className="h-4 w-4" aria-hidden="true" />}
           </Button>
           {!duelMuted && (
             <input
@@ -85,6 +86,7 @@ export function DuelHeader({
               onChange={(e) => setVolume(parseFloat(e.target.value))}
               className="w-16 h-1.5 accent-primary cursor-pointer"
               title={`Volume: ${Math.round(volume * 100)}%`}
+              aria-label={`Volume: ${Math.round(volume * 100)}%`}
               data-testid="input-volume"
             />
           )}

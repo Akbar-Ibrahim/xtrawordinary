@@ -1,5 +1,6 @@
 import { PageSEO } from "@/components/page-seo";
 import { useState } from "react";
+import { useArrowKeyNav } from "@/hooks/use-arrow-key-nav";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCountdown } from "@/lib/use-countdown";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -507,6 +508,7 @@ export default function DuelLobby() {
   const [selectedDuelGameSlug, setSelectedDuelGameSlug] = useState<string | null>(null);
   const [lobbyTab, setLobbyTab] = useState<"challenges" | "my-duels">("challenges");
   const [gamePickerOpen, setGamePickerOpen] = useState(false);
+  const handleLobbyTabArrow = useArrowKeyNav();
 
   function handleDuelPlay(slug: string) {
     if (!isAuthenticated) {
@@ -759,9 +761,11 @@ export default function DuelLobby() {
           <section>
             <div className="flex items-center justify-between mb-4">
               {isAuthenticated ? (
-                <div className="flex items-center gap-1 bg-muted rounded-lg p-1" data-testid="toggle-lobby-tab">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1" role="tablist" aria-label="Lobby view" data-testid="toggle-lobby-tab" onKeyDown={handleLobbyTabArrow}>
                   <button
                     onClick={() => setLobbyTab("challenges")}
+                    role="tab"
+                    aria-selected={lobbyTab === "challenges"}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "challenges" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     data-testid="tab-open-challenges"
                   >
@@ -773,6 +777,8 @@ export default function DuelLobby() {
                   </button>
                   <button
                     onClick={() => setLobbyTab("my-duels")}
+                    role="tab"
+                    aria-selected={lobbyTab === "my-duels"}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${lobbyTab === "my-duels" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
                     data-testid="tab-my-duels"
                   >
@@ -790,7 +796,7 @@ export default function DuelLobby() {
                 </h2>
               )}
               {isAuthenticated && lobbyTab === "challenges" && (
-                <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} data-testid="button-refresh-lobby">
+                <Button variant="ghost" size="icon" onClick={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["/api/duels/open"] }); }} disabled={isFetching} aria-label="Refresh lobby" data-testid="button-refresh-lobby">
                   <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
                 </Button>
               )}

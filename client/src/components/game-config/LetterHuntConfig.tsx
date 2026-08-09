@@ -2,6 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { GameConfigProps } from "./types";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 export function LetterHuntConfig({ params, setParams, dialogType }: GameConfigProps) {
   return (
@@ -56,6 +57,14 @@ export function LetterHuntConfig({ params, setParams, dialogType }: GameConfigPr
           </div>
           <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
         </div>
+      )}
+      {typeof params.challenge === "number" && params.letters?.some(l => l && l !== "any") && (
+        <WordExamplesPanel
+          game="letter-hunt"
+          letters={params.letters ?? []}
+          limit={10}
+          buttonLabel="Preview example words"
+        />
       )}
       {!params.survival && (
         <>

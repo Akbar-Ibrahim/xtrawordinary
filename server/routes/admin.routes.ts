@@ -137,6 +137,36 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.patch("/api/admin/games/:slug/config", requireAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const game = await storage.getGameBySlug(slug);
+      if (!game) return res.status(404).json({ error: "Game not found" });
+      const { timeLimitSeconds, wordTarget, livesCount, survivalSecondsPerWord } = req.body;
+      const config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null } = {};
+      if ("timeLimitSeconds" in req.body) {
+        if (timeLimitSeconds !== null && (typeof timeLimitSeconds !== "number" || timeLimitSeconds <= 0)) return res.status(400).json({ error: "timeLimitSeconds must be a positive number or null" });
+        config.timeLimitSeconds = timeLimitSeconds ?? null;
+      }
+      if ("wordTarget" in req.body) {
+        if (wordTarget !== null && (typeof wordTarget !== "number" || wordTarget <= 0)) return res.status(400).json({ error: "wordTarget must be a positive number or null" });
+        config.wordTarget = wordTarget ?? null;
+      }
+      if ("livesCount" in req.body) {
+        if (livesCount !== null && (typeof livesCount !== "number" || livesCount <= 0)) return res.status(400).json({ error: "livesCount must be a positive number or null" });
+        config.livesCount = livesCount ?? null;
+      }
+      if ("survivalSecondsPerWord" in req.body) {
+        if (survivalSecondsPerWord !== null && (typeof survivalSecondsPerWord !== "number" || survivalSecondsPerWord <= 0)) return res.status(400).json({ error: "survivalSecondsPerWord must be a positive number or null" });
+        config.survivalSecondsPerWord = survivalSecondsPerWord ?? null;
+      }
+      await storage.updateGameConfig(slug, config);
+      res.json({ success: true, slug, ...config });
+    } catch {
+      res.status(500).json({ error: "Failed to update game config" });
+    }
+  });
+
   app.delete("/api/admin/leaderboard/:id", requireAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

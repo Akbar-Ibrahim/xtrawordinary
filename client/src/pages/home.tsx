@@ -1,5 +1,6 @@
 import { PageSEO } from "@/components/page-seo";
 import { useMemo, useState, useCallback } from "react";
+import { useArrowKeyNav } from "@/hooks/use-arrow-key-nav";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth-context";
@@ -107,6 +108,9 @@ export default function Home() {
     }
   });
 
+  const handleDifficultyArrow = useArrowKeyNav();
+  const handleViewModeArrow = useArrowKeyNav();
+
   const toggleViewMode = useCallback((mode: "grid" | "compact") => {
     try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch {}
     setViewMode(mode);
@@ -177,6 +181,8 @@ export default function Home() {
       <section className="py-12 sm:py-16 lg:py-20">
         <div className="container mx-auto px-4">
           <motion.div
+            role="region"
+            aria-label="Daily challenge"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -282,52 +288,50 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          {hasPlayed && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="mb-8"
-            >
-              <Link href="/stats">
-                <Card className="hover-elevate cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      <div className="flex items-center gap-6 flex-wrap">
-                        {streak.currentStreak > 0 && (
-                          <div className="flex items-center gap-2" data-testid="home-streak">
-                            <Flame className="h-5 w-5 text-chart-3" />
-                            <span className="font-semibold">{streak.currentStreak} day streak</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2" data-testid="home-games-played">
-                          <Gamepad2 className="h-5 w-5 text-primary" />
-                          <span className="text-sm text-muted-foreground">
-                            {stats.totalGamesPlayed} games played
-                          </span>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-8"
+          >
+            <Link href="/stats">
+              <Card className="hover-elevate cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-6 flex-wrap">
+                      {streak.currentStreak > 0 && (
+                        <div className="flex items-center gap-2" data-testid="home-streak">
+                          <Flame className="h-5 w-5 text-chart-3" />
+                          <span className="font-semibold">{streak.currentStreak} day streak</span>
                         </div>
-                        <div className="flex items-center gap-2" data-testid="home-wins">
-                          <Trophy className="h-5 w-5 text-chart-2" />
-                          <span className="text-sm text-muted-foreground">
-                            {stats.totalGamesWon} wins
-                          </span>
-                        </div>
-                        {streak.longestStreak > 1 && (
-                          <div className="flex items-center gap-2" data-testid="home-longest-streak">
-                            <Calendar className="h-5 w-5 text-chart-4" />
-                            <span className="text-sm text-muted-foreground">
-                              Best: {streak.longestStreak} days
-                            </span>
-                          </div>
-                        )}
+                      )}
+                      <div className="flex items-center gap-2" data-testid="home-games-played">
+                        <Gamepad2 className="h-5 w-5 text-primary" />
+                        <span className="text-sm text-muted-foreground">
+                          {stats.totalGamesPlayed} games played
+                        </span>
                       </div>
-                      <span className="text-sm text-muted-foreground">View Stats</span>
+                      <div className="flex items-center gap-2" data-testid="home-wins">
+                        <Trophy className="h-5 w-5 text-chart-2" />
+                        <span className="text-sm text-muted-foreground">
+                          {stats.totalGamesWon} wins
+                        </span>
+                      </div>
+                      {streak.longestStreak > 1 && (
+                        <div className="flex items-center gap-2" data-testid="home-longest-streak">
+                          <Calendar className="h-5 w-5 text-chart-4" />
+                          <span className="text-sm text-muted-foreground">
+                            Best: {streak.longestStreak} days
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          )}
+                    <span className="text-sm text-muted-foreground">View Stats</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </motion.div>
 
           <div className="flex overflow-x-auto gap-3 mb-8 scrollbar-none pb-1">
 
@@ -486,7 +490,7 @@ export default function Home() {
             transition={{ delay: 0.22 }}
             className="mb-4"
           >
-            <div className="flex flex-wrap items-center gap-2 mb-6">
+            <div role="search" className="flex flex-wrap items-center gap-2 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
@@ -507,13 +511,14 @@ export default function Home() {
                   </button>
                 )}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1" role="group" aria-label="Filter by difficulty" onKeyDown={handleDifficultyArrow}>
                 {DIFFICULTIES.map((d) => (
                   <Button
                     key={d}
                     variant={difficultyFilter === d ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setDifficultyFilter(d)}
+                    aria-pressed={difficultyFilter === d}
                     data-testid={`button-filter-${d}`}
                     className="px-2.5"
                   >
@@ -521,10 +526,12 @@ export default function Home() {
                   </Button>
                 ))}
               </div>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-md border bg-muted">
+              <div className="flex items-center gap-0.5 p-0.5 rounded-md border bg-muted" role="group" aria-label="View mode" onKeyDown={handleViewModeArrow}>
                 <button
                   onClick={() => toggleViewMode("grid")}
                   className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Grid view"
+                  aria-pressed={viewMode === "grid"}
                   title="Grid view"
                   data-testid="button-view-grid"
                 >
@@ -533,6 +540,8 @@ export default function Home() {
                 <button
                   onClick={() => toggleViewMode("compact")}
                   className={`p-1.5 rounded transition-colors ${viewMode === "compact" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Compact view"
+                  aria-pressed={viewMode === "compact"}
                   title="Compact view"
                   data-testid="button-view-compact"
                 >
@@ -542,6 +551,7 @@ export default function Home() {
             </div>
           </motion.div>
 
+          <section aria-label="Games">
           {isLoading ? (
             <div className={viewMode === "compact" ? "grid sm:grid-cols-2 gap-2" : "grid gap-6 sm:grid-cols-2 lg:grid-cols-3"}>
               {[1, 2, 3].map((i) => (
@@ -600,7 +610,7 @@ export default function Home() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <p className="font-semibold text-sm truncate">{game.name}</p>
+                                <h3 className="font-semibold text-sm truncate">{game.name}</h3>
                                 {(openCounts[game.slug] ?? 0) > 0 && (
                                   <span className="text-[10px] font-medium px-1.5 py-0 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 shrink-0 leading-4" data-testid={`badge-waiting-compact-${game.slug}`}>
                                     {openCounts[game.slug]} waiting
@@ -663,6 +673,7 @@ export default function Home() {
               )}
             </motion.div>
           )}
+          </section>
         </div>
       </section>
     </div>

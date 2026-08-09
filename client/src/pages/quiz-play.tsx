@@ -28,6 +28,7 @@ import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { LetterBalanceGame } from "@/components/games/letter-balance";
+import { NoRepeatsGame } from "@/components/games/no-repeats";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { LetterPoolGame } from "@/components/games/letter-pool";
@@ -126,7 +127,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       const customWords = Array.isArray(params?.words) && params.words.length > 0
         ? (params.words as DefinitionWord[])
         : undefined;
-      return <DefinitionMatchGame groupSeed={seed} locked quizMode customWords={customWords} />;
+      const dmTl = toNum(params?.timeLimitSeconds);
+      return <DefinitionMatchGame groupSeed={seed} locked quizMode customWords={customWords} timeLimitSeconds={dmTl} />;
     }
     case "letter-pool": {
       const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
@@ -159,6 +161,17 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "word-scramble": {
       const wsCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ScrambleWord[] : undefined;
       return <WordScrambleGame groupSeed={seed} locked quizMode customWords={wsCustomWords} />;
+    }
+    case "no-repeats": {
+      const nrOptions: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
+      const rawChallenge = params?.challenge;
+      const challengeNum = rawChallenge !== undefined ? Number(rawChallenge) : NaN;
+      const nrChallenge = (!isNaN(challengeNum) && challengeNum >= 3 && challengeNum <= 9)
+        ? (Math.round(challengeNum) as 3 | 4 | 5 | 6 | 7 | 8 | 9)
+        : nrOptions[seed % nrOptions.length];
+      const nrReqLetters = Array.isArray(params?.requiredLetters) ? params!.requiredLetters as string[] : undefined;
+      const nrTl = toNum(params?.timeLimit);
+      return <NoRepeatsGame initialChallenge={nrChallenge} initialRequiredLetters={nrReqLetters} initialTimeLimit={nrTl} groupSeed={seed} locked quizMode />;
     }
     default:
       return null;

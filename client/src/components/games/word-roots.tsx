@@ -28,7 +28,7 @@ import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
 const TOTAL_ROUNDS = 5;
-const TOTAL_TIME = 180;
+const DEFAULT_TIME = 180;
 const BASE_POINTS = 100;
 const BONUS_POINTS = 50;
 
@@ -47,24 +47,29 @@ function letterMultisetCheck(word: string, derivative: string): boolean {
 type GameStatus = "playing" | "won" | "lost";
 type RoundResult = { word: string; canonical: boolean; points: number };
 
-export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: number; locked?: boolean; quizMode?: boolean } = {}) {
+export function WordRootsGame({ groupSeed, locked, quizMode, isUntimed, timeLimitSeconds, wordTarget }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; isUntimed?: boolean; timeLimitSeconds?: number; wordTarget?: number } = {}) {
   const { user } = useAuth();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots", quizMode });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "word-roots", quizMode, isUntimed });
   const personalBest = usePersonalBest("word-roots");
   const [, navigate] = useLocation();
   const seeded = groupSeed !== undefined;
   const [authOpen, setAuthOpen] = useState(false);
 
+  const effectiveTotalRounds = wordTarget ?? TOTAL_ROUNDS;
+
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
+  const [timedOut, setTimedOut] = useState(false);
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
   const [userInput, setUserInput] = useState("");
   const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
   const [feedback, setFeedback] = useState<{ type: "bonus" | "correct" | "invalid"; message: string } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
+  const totalTime = timeLimitSeconds ?? DEFAULT_TIME;
+  const [timeLeft, setTimeLeft] = useState(totalTime);
   const [completionMessage, setCompletionMessage] = useState("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const endedManuallyRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: puzzles, isLoading, error, refetch } = useQuery<WordRootsPuzzle[]>({
@@ -75,11 +80,14 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
   });
 
   useEffect(() => {
-    if (!puzzles || gameStatus !== "playing") return;
+    if (!puzzles || gameStatus !== "playing" || isUntimed) return;
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
+          if (!endedManuallyRef.current) {
+            setTimedOut(true);
+          }
           setGameStatus("lost");
           return 0;
         }
@@ -129,7 +137,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
         setFeedback(null);
         setUserInput("");
         const next = round + 1;
-        if (next >= TOTAL_ROUNDS) {
+        if (next >= effectiveTotalRounds) {
           setGameStatus("won");
         } else {
           setRound(next);
@@ -149,14 +157,16 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
   };
 
   const handleRestart = () => {
+    endedManuallyRef.current = false;
     resetRecorded();
     setRound(0);
     setScore(0);
     setUserInput("");
     setRoundResults([]);
     setFeedback(null);
-    setTimeLeft(TOTAL_TIME);
+    setTimeLeft(totalTime);
     setCompletionMessage("");
+    setTimedOut(false);
     setGameStatus("playing");
   };
 
@@ -189,22 +199,22 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
           <CardContent className="p-6 space-y-6">
             <div className="text-center space-y-2">
               <div className={`text-4xl font-bold ${gameStatus === "won" ? "text-primary" : "text-muted-foreground"}`}>
-                {gameStatus === "won" ? "Well Done!" : "Time's Up!"}
+                {gameStatus === "won" ? "Well Done!" : timedOut ? "Time's Up!" : "Game Over"}
               </div>
               <div className="text-2xl font-semibold">{score} pts</div>
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="bg-muted/50 rounded-lg p-3">
-                <div className="text-2xl font-bold">{roundResults.length}</div>
+                <div className="text-2xl font-bold" data-testid="stat-rounds-won">{roundResults.length}</div>
                 <div className="text-xs text-muted-foreground">Rounds won</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
-                <div className="text-2xl font-bold text-yellow-500">{canonicalCount}</div>
+                <div className="text-2xl font-bold text-yellow-500" data-testid="stat-exact-matches">{canonicalCount}</div>
                 <div className="text-xs text-muted-foreground">Exact matches</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
-                <div className="text-2xl font-bold">{score}</div>
+                <div className="text-2xl font-bold" data-testid="stat-total-score">{score}</div>
                 <div className="text-xs text-muted-foreground">Total score</div>
               </div>
             </div>
@@ -275,14 +285,22 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
     <div className="space-y-4">
       <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-          >
-            {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
-          </span>
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
+            </Badge>
+          ) : (
+            <>
+              <Timer className={`h-4 w-4 ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`} />
+              <span
+                className={`font-mono font-bold text-lg ${timeLeft <= 30 ? "text-destructive animate-pulse" : ""}`}
+                data-testid="badge-timer"
+                role="timer"
+              >
+                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+              </span>
+            </>
+          )}
         </div>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
@@ -304,7 +322,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
             <CardContent className="p-6 space-y-6">
               <div className="flex items-center justify-center gap-3">
                 <Badge variant="secondary" data-testid="badge-round">
-                  Round {round + 1}/{TOTAL_ROUNDS}
+                  Round {round + 1}/{effectiveTotalRounds}
                 </Badge>
               </div>
               <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
@@ -318,7 +336,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
                 >
                   {round + 1}
                 </motion.span>
-                <span className="text-sm text-muted-foreground leading-none">/ {TOTAL_ROUNDS} rounds</span>
+                <span className="text-sm text-muted-foreground leading-none">/ {effectiveTotalRounds} rounds</span>
                 <span className="text-muted-foreground/40 leading-none">·</span>
                 <span className="text-sm text-muted-foreground leading-none">
                   PB: <span className="font-semibold text-foreground">{personalBest > 0 ? `${personalBest} pts` : "—"}</span>
@@ -425,7 +443,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode }: { groupSeed?: num
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => { clearInterval(timerRef.current!); setGameStatus("lost"); }}
+                    onClick={() => { endedManuallyRef.current = true; clearInterval(timerRef.current!); setGameStatus("lost"); }}
                     data-testid="button-end-game"
                   >
                     End Game

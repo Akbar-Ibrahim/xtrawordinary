@@ -38,6 +38,12 @@ Either way, the status makes for a natural CTA: instead of a generic "sign up / 
 - Shell Words / Deep Shell Words: hint that reveals the boundary letters
 - Word Bloom: show the full possible chain tree after the round ends
 - Cross-game combo bonuses (e.g. play 5 different games in one day)
+- **Puzzle freshness** — extend the `usePuzzleHistory` hook (already live on Word Ladder, Word Scramble, Anagram Solver, Definition Match) to the following games that also draw from a server-side word/puzzle pool and could present the same item in consecutive sessions: Word Stack, Word Reveal, Word Split, Shell Words / Deep Shell Words. Each would need an appropriate stable identifier (e.g. target word string) and a guard to skip history tracking in seeded / group-play modes.
+
+### Word Extension
+- **Daily challenge rotation** — include Word Extension in the daily challenge pool so all players compete on the same puzzle each day, with a shared leaderboard for that day's word pair
+- **Friend challenges** — let players send a Word Extension challenge so a friend plays the same shown word, comparing scores side-by-side
+- **Hint system** — when a player is stuck, reveal one valid answer from the derivative pair as a hint (at a point cost)
 
 ### Authentication
 - Apple Sign-In (important for iOS if a mobile app is added)
@@ -165,6 +171,12 @@ After a game ends, show a small "word spotlight" card with definitions (and opti
 ## 3. Deferred Tasks
 
 These were proposed as follow-up tasks but not yet started. Reference numbers are from the original task system.
+
+### MySQL Game Config Backfill — Verification Test
+The startup backfill (`backfillGameConfigFromSeed` in `server/mysql/games.ts`) already runs automatically when connecting to MySQL, using `COALESCE` to fill NULL config columns without overwriting admin edits. What's missing is an automated test confirming the backfill produces the correct values (e.g. anagram-solver → 180s, no-repeats → 120s) after a fresh schema push with all-NULL rows. Small effort — the implementation is done, only the test remains.
+
+### Quiz Lobby — Automatic Time Limit Labels for Future Timed Games
+`client/src/lib/variant-summary.ts` has a `case` block per game slug for formatting time limit labels (e.g. "3 min per round"). When a new timed game is added in the future, someone must manually add a case or the lobby shows a bare number. A small generic fallback could auto-format any `timeLimitSeconds` value so new games get readable labels without extra code.
 
 ### Word Wars — Notifications & Alerts
 - **#270** Send an email nudge to registered players when a tournament is at risk of not starting (email reminder when <24h to deadline and sign-up count is still below minPlayers)

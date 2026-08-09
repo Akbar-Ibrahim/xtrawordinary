@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Loader2 } from "lucide-react";
+import { Link } from "wouter";
 import type { LeaderboardEntry } from "@shared/schema/stats";
+import type { Game } from "@shared/schema";
 
 interface Props {
   gameFilter: string;
@@ -17,6 +19,8 @@ export function LeaderboardTab({ gameFilter, setGameFilter }: Props) {
   const queryClient = useQueryClient();
 
   const { data: entries, isLoading } = useQuery<LeaderboardEntry[]>({ queryKey: ["/api/admin/leaderboard"] });
+  const { data: games } = useQuery<Game[]>({ queryKey: ["/api/admin/games"] });
+  const nameMap = Object.fromEntries((games ?? []).map(g => [g.slug, g.name]));
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/leaderboard/${id}`),
@@ -35,13 +39,13 @@ export function LeaderboardTab({ gameFilter, setGameFilter }: Props) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle>Leaderboard Entries ({filtered.length})</CardTitle>
           <Select value={gameFilter} onValueChange={setGameFilter}>
-            <SelectTrigger className="w-48" data-testid="select-admin-game-filter">
+            <SelectTrigger className="w-52" data-testid="select-admin-game-filter">
               <SelectValue placeholder="Filter by game" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Games</SelectItem>
               {gameSlugs.map(slug => (
-                <SelectItem key={slug} value={slug}>{slug}</SelectItem>
+                <SelectItem key={slug} value={slug}>{nameMap[slug] ?? slug}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -65,8 +69,24 @@ export function LeaderboardTab({ gameFilter, setGameFilter }: Props) {
               <tbody>
                 {filtered.map((entry) => (
                   <tr key={entry.id} className="border-b hover:bg-muted/50" data-testid={`lb-row-${entry.id}`}>
-                    <td className="py-3 px-2 font-medium">{entry.playerName}</td>
-                    <td className="py-3 px-2 text-muted-foreground">{entry.gameSlug}</td>
+                    <td className="py-3 px-2 font-medium">
+                      <Link
+                        href={`/profile/${entry.userId}`}
+                        className="hover:text-primary hover:underline"
+                        data-testid={`link-player-${entry.id}`}
+                      >
+                        {entry.playerName}
+                      </Link>
+                    </td>
+                    <td className="py-3 px-2">
+                      <Link
+                        href={`/games/${entry.gameSlug}`}
+                        className="text-muted-foreground hover:text-primary hover:underline"
+                        data-testid={`link-game-lb-${entry.id}`}
+                      >
+                        {nameMap[entry.gameSlug] ?? entry.gameSlug}
+                      </Link>
+                    </td>
                     <td className="py-3 px-2 font-bold">{entry.score}</td>
                     <td className="py-3 px-2 text-muted-foreground">{new Date(entry.playedAt).toLocaleDateString()}</td>
                     <td className="py-3 px-2 text-right">

@@ -100,7 +100,7 @@ const DEFINITION_CATEGORIES: Record<string, Set<string>> = {
  * - letter-balance   → "NV" or "NC" (e.g. "3V" = exactly 3 vowels)
  * Race-only games:
  * - word-scramble    → 7-letter pool string (e.g. "PLANETS")
- * - no-repeats       → min-length string (e.g. "5")
+ * - no-repeats       → min-length + required letters (e.g. "5|A|R")
  * - anagram-solver   → seed word (e.g. "STONE")
  * - word-stack       → starting word length string (e.g. "4")
  * - letter-pool      → 11-letter pool string (e.g. "RSTLNEAIOUM")
@@ -137,9 +137,12 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
       const scrambleWord = RACE_SCRAMBLE_POOLS[seed % RACE_SCRAMBLE_POOLS.length];
       return seededShuffle(scrambleWord.toUpperCase().split(""), seed).join("");
     }
-    case "no-repeats":
-      // min length 4–7 driven by seed
-      return String(4 + (seed % 4));
+    case "no-repeats": {
+      // min length 4–7 driven by seed; required letters encoded as "minLen|L1|L2…"
+      const minLen = 4 + (seed % 4);
+      const reqLetters = noRepeatsGenerateLetters(minLen, seed);
+      return [String(minLen), ...reqLetters].join("|");
+    }
     case "anagram-solver":
       return RACE_ANAGRAM_WORDS[seed % RACE_ANAGRAM_WORDS.length].toUpperCase();
     case "word-stack":
@@ -156,6 +159,50 @@ function getDuelGameInit(gameSlug: string, seed: number): string {
     default:
       return DUEL_START_WORDS[seed % DUEL_START_WORDS.length];
   }
+}
+
+// ── No-Repeats: required letter generation (mirrors client no-repeats-helpers.ts) ──
+const NR_VOWELS        = ["A","E","I","O","U"];
+const NR_COMMON_CONS   = ["T","N","S","R","H","L","D","C","M","F","P"];
+const NR_UNCOMMON_CONS = ["G","W","B","Y","K"];
+const NR_WEIGHTED_POOL = [
+  ...NR_VOWELS, ...NR_VOWELS, ...NR_VOWELS,
+  ...NR_COMMON_CONS, ...NR_COMMON_CONS,
+  ...NR_UNCOMMON_CONS,
+];
+
+function noRepeatsGenerateLetters(minLen: number, seed: number): string[] {
+  const count = minLen <= 3 ? 1 : minLen <= 6 ? 2 : 3;
+  // Simple seeded PRNG (mulberry32-style)
+  let s = seed >>> 0;
+  const rng = (): number => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const pool = [...NR_WEIGHTED_POOL];
+  const selected: string[] = [];
+
+  // Always guarantee one vowel first
+  const vowelPool = [...NR_VOWELS];
+  const vowel = vowelPool[Math.floor(rng() * vowelPool.length)];
+  selected.push(vowel);
+  for (let i = pool.length - 1; i >= 0; i--) {
+    if (pool[i] === vowel) pool.splice(i, 1);
+  }
+
+  while (selected.length < count && pool.length > 0) {
+    const idx = Math.floor(rng() * pool.length);
+    const letter = pool[idx];
+    selected.push(letter);
+    for (let i = pool.length - 1; i >= 0; i--) {
+      if (pool[i] === letter) pool.splice(i, 1);
+    }
+  }
+
+  return selected;
 }
 
 /** Check whether two same-length words differ by exactly n letter positions (by frequency). */
@@ -1052,10 +1099,19 @@ export class DuelRoomRegistry {
         return `Word must match the next letters of "${room.startWord}" (position ${splitPos + 1}: "${remaining.slice(0, 6)}...")`;
       }
     } else if (slug === "no-repeats") {
-      const minLen = parseInt(room.startWord, 10);
+      const parts = room.startWord.split("|");
+      const minLen = parseInt(parts[0], 10);
+      const reqLetters = parts.slice(1);
       if (word.length < minLen) return `Word must be at least ${minLen} letters long`;
       const letterSet = new Set(word.split(""));
       if (letterSet.size !== word.length) return "Word must have no repeated letters";
+      for (const letter of reqLetters) {
+        if (!word.includes(letter)) {
+          return reqLetters.length === 1
+            ? `Word must contain the letter "${letter}"`
+            : `Word must contain all required letters — missing "${letter}"`;
+        }
+      }
     } else if (slug === "anagram-solver") {
       const seedSorted = room.startWord.split("").sort().join("");
       const wordSorted = word.split("").sort().join("");

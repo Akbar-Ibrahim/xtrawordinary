@@ -78,9 +78,10 @@ export function SpectatorPlayingView({
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 data-testid="button-spectator-mute"
                 title={duelMuted ? "Unmute sounds" : "Mute sounds"}
+                aria-label={duelMuted ? "Unmute sounds" : "Mute sounds"}
               >
-                {duelMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                {duelMuted ? "Unmute" : "Mute"}
+                {duelMuted ? <VolumeX className="h-3.5 w-3.5" aria-hidden="true" /> : <Volume2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                <span aria-hidden="true">{duelMuted ? "Unmute" : "Mute"}</span>
               </button>
             </div>
             <div className="flex justify-center gap-3">
@@ -91,8 +92,9 @@ export function SpectatorPlayingView({
                   className="text-2xl hover:scale-125 active:scale-95 transition-transform duration-150 focus:outline-none"
                   data-testid={`button-react-${emoji}`}
                   title={`React ${emoji}`}
+                  aria-label={`Send reaction ${emoji}`}
                 >
-                  {emoji}
+                  <span aria-hidden="true">{emoji}</span>
                 </button>
               ))}
             </div>

@@ -43,4 +43,5 @@ export const QUIZ_MASTER_GAME_SLUGS = new Set([
   "progressive-reveal",
   "anagram-solver",
   "word-scramble",
+  "no-repeats",
 ]);

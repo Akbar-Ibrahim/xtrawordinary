@@ -13,8 +13,10 @@ import {
   LogIn,
   Shell,
   ChevronRight,
+  ChevronLeft,
   Trophy,
   Zap,
+  SkipForward,
 } from "lucide-react";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { AnimatedNumber } from "@/components/animated-number";
@@ -62,7 +64,7 @@ const VARIATION_LABELS: Record<Variation, string> = {
 const MODE_DESCRIPTIONS: Record<string, string> = {
   "blitz-classic": "Find as many shell words as you can in 90 seconds. Score more for longer outer words.",
   "blitz-survival": "Enter a shell word every 8 seconds or it's game over. Each correct word resets the clock.",
-  "wrapper-classic": "Given an inner word, find all outer words that wrap around it. You have 2 minutes.",
+  "wrapper-classic": "Given an inner word, enter one word that wraps around it to advance to the next. You have 2 minutes.",
   "wrapper-survival": "Given an inner word, find one valid wrapper in 8 seconds. Each success brings a new word.",
   "crack-classic": "10 rounds: given two boundary letters, type a word that fits in the middle to form a valid shell word.",
   "crack-survival": "Given boundary letters, crack the shell before the 8 second timer runs out. Each success resets the clock.",
@@ -81,7 +83,9 @@ export function ShellWordsGame({
   groupSeed,
   locked,
   initialMode,
-}: { groupSeed?: number; locked?: boolean; initialMode?: "blitz" | "wrapper" } = {}) {
+  isUntimed,
+  timeLimitSeconds,
+}: { groupSeed?: number; locked?: boolean; initialMode?: "blitz" | "wrapper"; isUntimed?: boolean; timeLimitSeconds?: number } = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
@@ -99,12 +103,14 @@ export function ShellWordsGame({
   const [isValidating, setIsValidating] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
 
-  const [timeLeft, setTimeLeft] = useState(BLITZ_TIME);
+  const effectiveBlitzTime = timeLimitSeconds ?? BLITZ_TIME;
+  const [timeLeft, setTimeLeft] = useState(effectiveBlitzTime);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME);
 
   const [puzzleMiddle, setPuzzleMiddle] = useState<string | null>(null);
   const [puzzleCount, setPuzzleCount] = useState(0);
   const [wrapperSeed, setWrapperSeed] = useState(0);
+  const [wrapperSeedHistory, setWrapperSeedHistory] = useState<number[]>([]);
 
   const [crackPair, setCrackPair] = useState<{ first: string; last: string } | null>(null);
   const [crackRound, setCrackRound] = useState(0);
@@ -121,7 +127,7 @@ export function ShellWordsGame({
   const solvedCountRef = useRef(0);
   const variationRef = useRef<Variation>(variation);
   const subModeRef = useRef<SubMode>(subMode);
-  const timeLeftRef = useRef(BLITZ_TIME);
+  const timeLeftRef = useRef(effectiveBlitzTime);
   const survivalTurnRef = useRef(0);
 
   useEffect(() => { variationRef.current = variation; }, [variation]);
@@ -129,7 +135,7 @@ export function ShellWordsGame({
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
 
   const activeSlug = getSlug(variation, subMode);
-  const { reportResult, resetRecorded } = useGameResult({ slug: activeSlug });
+  const { reportResult, resetRecorded } = useGameResult({ slug: activeSlug, isUntimed });
   const personalBest = usePersonalBest(activeSlug);
 
   const clearAllTimers = useCallback(() => {
@@ -260,6 +266,7 @@ export function ShellWordsGame({
       const seed = overrideWrapperSeed ?? (groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000));
       lastWrapperSeedRef.current = seed;
       setWrapperSeed(seed);
+      setWrapperSeedHistory([seed]);
       try {
         const puzzle = await fetchWrapperPuzzle(seed);
         setPuzzleMiddle(puzzle.middle);
@@ -284,18 +291,20 @@ export function ShellWordsGame({
 
     setGameStatus("playing");
 
-    if (subMode === "classic") {
-      if (variation === "blitz") startClassicTimer(BLITZ_TIME);
-      else if (variation === "wrapper") startClassicTimer(WRAPPER_TIME);
-    } else {
-      startSurvivalTimer();
+    if (!isUntimed) {
+      if (subMode === "classic") {
+        if (variation === "blitz") startClassicTimer(effectiveBlitzTime);
+        else if (variation === "wrapper") startClassicTimer(WRAPPER_TIME);
+      } else {
+        startSurvivalTimer();
+      }
     }
 
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [
     variation, subMode, groupSeed,
     fetchWrapperPuzzle, fetchCrackPair,
-    resetRecorded, startClassicTimer, startSurvivalTimer,
+    resetRecorded, startClassicTimer, startSurvivalTimer, isUntimed,
   ]);
 
   const switchMode = useCallback(
@@ -316,6 +325,7 @@ export function ShellWordsGame({
       setCrackRound(0);
       setCrackAdvancing(false);
       setWrapperTransitioning(false);
+      setWrapperSeedHistory([]);
       foundSet.current = new Set();
       resetRecorded();
     },
@@ -334,10 +344,6 @@ export function ShellWordsGame({
           setFeedback({ type: "err", message: "Middle word must contain letters only" });
           clearFeedback();
           setInput("");
-          if (subMode === "classic") {
-            setCrackAdvancing(true);
-            setTimeout(() => { advanceCrackRound(crackRound + 1, crackSeedBase); }, 1500);
-          }
           return;
         }
         const outer = crackPair.first + word + crackPair.last;
@@ -353,12 +359,6 @@ export function ShellWordsGame({
           setFeedback({ type: "err", message: `"${outer}" is not a valid shell word` });
           clearFeedback();
           setInput("");
-          if (subMode === "classic") {
-            setCrackAdvancing(true);
-            setTimeout(() => {
-              advanceCrackRound(crackRound + 1, crackSeedBase);
-            }, 1500);
-          }
           return;
         }
 
@@ -383,7 +383,7 @@ export function ShellWordsGame({
           fetchCrackPair(newSeed).then(pair => {
             setCrackPair(pair);
             setCrackAdvancing(false);
-            startSurvivalTimer();
+            if (!isUntimed) startSurvivalTimer();
             setTimeout(() => inputRef.current?.focus(), 50);
           }).catch(() => {
             setFeedback({ type: "err", message: "Failed to load next puzzle" });
@@ -444,7 +444,7 @@ export function ShellWordsGame({
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
           setWrapperTransitioning(false);
-          startSurvivalTimer();
+          if (!isUntimed) startSurvivalTimer();
           setTimeout(() => inputRef.current?.focus(), 50);
         }).catch(() => {
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
@@ -453,12 +453,25 @@ export function ShellWordsGame({
         return;
       }
 
-      if (variation === "wrapper" && subMode === "classic" && foundSet.current.size >= puzzleCount && puzzleCount > 0) {
-        endGame(timeLeftRef.current);
+      if (variation === "wrapper" && subMode === "classic") {
+        setWrapperTransitioning(true);
+        const newSeed = wrapperSeed + 1;
+        setWrapperSeed(newSeed);
+        setWrapperSeedHistory(prev => [...prev, newSeed]);
+        foundSet.current = new Set();
+        fetchWrapperPuzzle(newSeed).then(puzzle => {
+          setPuzzleMiddle(puzzle.middle);
+          setPuzzleCount(puzzle.count);
+          setWrapperTransitioning(false);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }).catch(() => {
+          setFeedback({ type: "err", message: "Failed to load next puzzle" });
+          setWrapperTransitioning(false);
+        });
         return;
       }
 
-      if (variation === "blitz" && subMode === "survival") {
+      if (variation === "blitz" && subMode === "survival" && !isUntimed) {
         startSurvivalTimer();
       }
 
@@ -475,6 +488,68 @@ export function ShellWordsGame({
     puzzleMiddle, puzzleCount, wrapperSeed,
     clearFeedback, endGame, advanceCrackRound, startSurvivalTimer, stopSurvivalTimer,
     fetchWrapperPuzzle, fetchCrackPair,
+  ]);
+
+  const handleSkip = useCallback(() => {
+    if (gameStatus !== "playing" || crackAdvancing || isValidating || wrapperTransitioning) return;
+    setInput("");
+    if (variation === "crack") {
+      setCrackAdvancing(true);
+      advanceCrackRound(crackRound + 1, crackSeedBase);
+    } else if (variation === "wrapper") {
+      if (subMode === "survival") {
+        stopSurvivalTimer();
+        endGame(0);
+      } else {
+        setWrapperTransitioning(true);
+        const newSeed = wrapperSeed + 1;
+        setWrapperSeed(newSeed);
+        setWrapperSeedHistory(prev => [...prev, newSeed]);
+        foundSet.current = new Set();
+        fetchWrapperPuzzle(newSeed).then(puzzle => {
+          setPuzzleMiddle(puzzle.middle);
+          setPuzzleCount(puzzle.count);
+          setWrapperTransitioning(false);
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }).catch(() => {
+          setFeedback({ type: "err", message: "Failed to load next puzzle" });
+          setWrapperTransitioning(false);
+        });
+      }
+    }
+  }, [
+    gameStatus, crackAdvancing, isValidating, wrapperTransitioning,
+    variation, subMode, crackRound, crackSeedBase, wrapperSeed,
+    advanceCrackRound, stopSurvivalTimer, endGame, fetchWrapperPuzzle,
+  ]);
+
+  const handlePrevious = useCallback(() => {
+    if (gameStatus !== "playing" || crackAdvancing || isValidating || wrapperTransitioning || subMode !== "classic") return;
+    setInput("");
+    if (variation === "crack" && crackRound > 0) {
+      setCrackAdvancing(true);
+      advanceCrackRound(crackRound - 1, crackSeedBase);
+    } else if (variation === "wrapper" && wrapperSeedHistory.length > 1) {
+      const prevHistory = wrapperSeedHistory.slice(0, -1);
+      const prevSeed = prevHistory[prevHistory.length - 1];
+      setWrapperSeedHistory(prevHistory);
+      setWrapperSeed(prevSeed);
+      setWrapperTransitioning(true);
+      foundSet.current = new Set();
+      fetchWrapperPuzzle(prevSeed).then(puzzle => {
+        setPuzzleMiddle(puzzle.middle);
+        setPuzzleCount(puzzle.count);
+        setWrapperTransitioning(false);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }).catch(() => {
+        setFeedback({ type: "err", message: "Failed to load previous puzzle" });
+        setWrapperTransitioning(false);
+      });
+    }
+  }, [
+    gameStatus, crackAdvancing, isValidating, wrapperTransitioning, subMode,
+    variation, crackRound, crackSeedBase, wrapperSeedHistory,
+    advanceCrackRound, fetchWrapperPuzzle,
   ]);
 
   useEffect(() => {
@@ -533,7 +608,11 @@ export function ShellWordsGame({
           {/* Header: timer / survival countdown / round progress */}
           <div className="flex items-center justify-center gap-8">
             <div className="flex items-center gap-2 text-muted-foreground">
-              {isSurvival && gameStatus !== "idle" ? (
+              {isUntimed ? (
+                <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+                  ∞ Untimed
+                </Badge>
+              ) : isSurvival && gameStatus !== "idle" ? (
                 <>
                   <Timer className={`h-4 w-4 ${survivalWarning ? "text-destructive animate-pulse" : ""}`} />
                   <span
@@ -558,25 +637,15 @@ export function ShellWordsGame({
                     data-testid="text-timer"
                   >
                     {gameStatus === "idle"
-                      ? formatTime(variation === "wrapper" ? WRAPPER_TIME : BLITZ_TIME)
+                      ? formatTime(variation === "wrapper" ? WRAPPER_TIME : effectiveBlitzTime)
                       : formatTime(timeLeft)}
                   </span>
                 </>
               )}
             </div>
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                {variation === "wrapper" && subMode === "classic" && gameStatus !== "idle" ? "Found" : "Score"}
-              </p>
-              <div className="flex items-center justify-center gap-1.5">
-                {variation === "wrapper" && subMode === "classic" && gameStatus !== "idle" ? (
-                  <span className="text-2xl font-bold text-primary" data-testid="text-found">
-                    {foundWords.length}{puzzleCount > 0 && <span className="text-sm font-normal text-muted-foreground"> / {puzzleCount}</span>}
-                  </span>
-                ) : (
-                  <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground">Score</p>
+              <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
             </div>
           </div>
 
@@ -632,12 +701,36 @@ export function ShellWordsGame({
               {/* Wrapper: show middle word */}
               {variation === "wrapper" && puzzleMiddle && (
                 <div className="text-center p-4 rounded-lg bg-muted/50">
-                  <div className="text-xs text-muted-foreground mb-1">Find words that wrap:</div>
+                  <div className="text-xs text-muted-foreground mb-1">Enter a word that wraps:</div>
                   <div className="text-3xl font-bold tracking-widest" data-testid="text-middle-word">
                     {puzzleMiddle}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     e.g. __{puzzleMiddle}__ (add one letter on each end)
+                  </div>
+                  <div className="flex justify-center gap-2 mt-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handlePrevious}
+                      disabled={wrapperTransitioning || isValidating || wrapperSeedHistory.length <= 1 || subMode !== "classic"}
+                      className="text-muted-foreground gap-1.5"
+                      data-testid="button-previous"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSkip}
+                      disabled={wrapperTransitioning || isValidating}
+                      className="text-muted-foreground gap-1.5"
+                      data-testid="button-skip"
+                    >
+                      <SkipForward className="h-3.5 w-3.5" />
+                      Skip
+                    </Button>
                   </div>
                 </div>
               )}
@@ -688,6 +781,30 @@ export function ShellWordsGame({
                       </span>
                     </div>
                   )}
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handlePrevious}
+                      disabled={crackAdvancing || isValidating || crackRound === 0 || subMode !== "classic"}
+                      className="text-muted-foreground gap-1.5"
+                      data-testid="button-previous"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSkip}
+                      disabled={crackAdvancing || isValidating}
+                      className="text-muted-foreground gap-1.5"
+                      data-testid="button-skip"
+                    >
+                      <SkipForward className="h-3.5 w-3.5" />
+                      Skip
+                    </Button>
+                  </div>
                 </div>
               )}
 

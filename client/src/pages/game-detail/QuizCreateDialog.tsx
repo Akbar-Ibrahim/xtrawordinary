@@ -37,6 +37,7 @@ import {
   DefinitionMatchConfig,
   WordRootsConfig,
   LetterBalanceConfig,
+  NoRepeatsConfig,
   SurvivalModeToggle,
 } from "@/components/game-config";
 
@@ -160,7 +161,7 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
                   <div className="rounded-lg border bg-muted/20 p-3 space-y-0.5">
                     <p className="font-semibold text-sm">{quizTitle || "Untitled Quiz"}</p>
                     {quizDescription && <p className="text-xs text-muted-foreground">{quizDescription}</p>}
-                    <p className="text-xs text-muted-foreground">{dmReviewEntries.length} word{dmReviewEntries.length !== 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground">{dmReviewEntries.length} word{dmReviewEntries.length !== 1 ? "s" : ""} · {(() => { const tl = quizParams.timeLimitSeconds ?? 180; return tl < 60 ? `${tl}s` : `${tl / 60}min`; })()} per round</p>
                   </div>
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                     {dmReviewEntries.map((entry, idx) => (
@@ -274,6 +275,9 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             )}
             {slug === "word-roots" && (
               <WordRootsConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
+            )}
+            {slug === "no-repeats" && (
+              <NoRepeatsConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
             {(slug === "word-length" || slug === "letter-hunt" || slug === "letter-position" || slug === "letter-frequency" || slug === "letter-dodge" || slug === "letter-balance") && (
               <SurvivalModeToggle params={quizParams} setParams={setQuizParams} dialogType="quiz" />

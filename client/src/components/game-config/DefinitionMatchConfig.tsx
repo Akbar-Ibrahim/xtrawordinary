@@ -3,8 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, AlertTriangle, X, Pencil } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, X, Pencil, Timer } from "lucide-react";
 import type { GameConfigProps } from "./types";
+
+const DM_DEFAULT_TIME_LIMIT = 180;
+const DM_TIME_OPTIONS = [60, 90, 120, 180, 240, 300];
 
 type DmEntry = { word: string; partOfSpeech: string; definitions: [string, string, string] };
 
@@ -146,6 +149,27 @@ export function DefinitionMatchConfig({ params, setParams, dialogType, open }: G
       {dmEntries.length === 0 && (
         <p className="text-xs text-amber-600 dark:text-amber-400">Add at least 1 word entry to create this quiz.</p>
       )}
+
+      <div>
+        <label className="text-sm font-medium flex items-center gap-1.5">
+          <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+          Time limit per round
+        </label>
+        <div className="flex gap-1 mt-1 flex-wrap">
+          {DM_TIME_OPTIONS.map(t => (
+            <Button
+              key={t}
+              type="button"
+              size="sm"
+              variant={(params.timeLimitSeconds ?? DM_DEFAULT_TIME_LIMIT) === t ? "default" : "outline"}
+              onClick={() => setParams(p => ({ ...p, timeLimitSeconds: t }))}
+              data-testid={`button-${prefix}dm-time-${t}`}
+            >
+              {t < 60 ? `${t}s` : `${t / 60}min`}
+            </Button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

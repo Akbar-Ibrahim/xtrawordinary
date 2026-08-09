@@ -158,7 +158,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
         return (
           <div>
             <h3 className="text-lg font-semibold mb-3">More Games</h3>
-            <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory">
+            <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
               {otherGames.map(g => {
                 const GIcon = ((LucideIcons as any)[g.icon] ?? LucideIcons.Gamepad2) as React.ElementType;
                 return (

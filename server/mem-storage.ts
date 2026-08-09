@@ -1,8 +1,8 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
-import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet } from "./game-data";
+import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
 
 function generateShareCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -65,8 +65,14 @@ export class MemStorage implements IStorage {
   private notificationPrefsMap: Map<string, boolean> = new Map();
   private siteSettingsMap: Map<string, string> = new Map();
 
+  private partsOfSpeech: PartOfSpeech[] = [];
+  private wordDefinitions: WordDefinition[] = [];
+  private wordDefinitionIdCounter = 1;
+
   constructor() {
     this.games = gamesData;
+    const posNames = ["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "article", "determiner"];
+    this.partsOfSpeech = posNames.map((name, i) => ({ id: i + 1, name }));
   }
 
   async getGames(): Promise<Game[]> {
@@ -79,6 +85,16 @@ export class MemStorage implements IStorage {
 
   async setGameActive(_slug: string, _isActive: boolean): Promise<void> {
     // no-op for in-memory storage
+  }
+
+  async updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void> {
+    const game = this.games.find(g => g.slug === slug);
+    if (game) {
+      if ("timeLimitSeconds" in config) game.timeLimitSeconds = config.timeLimitSeconds ?? undefined;
+      if ("wordTarget" in config) game.wordTarget = config.wordTarget ?? undefined;
+      if ("livesCount" in config) game.livesCount = config.livesCount ?? undefined;
+      if ("survivalSecondsPerWord" in config) game.survivalSecondsPerWord = config.survivalSecondsPerWord ?? undefined;
+    }
   }
 
   async getGameBySlug(slug: string): Promise<Game | undefined> {
@@ -143,6 +159,15 @@ export class MemStorage implements IStorage {
     return wordDictionary.filter(w => w.length > idx && w[idx] === upper).length;
   }
 
+  async getLetterPositionExamples(letter: string, position: number, limit: number): Promise<{ words: string[]; total: number }> {
+    const upper = letter.toUpperCase();
+    const idx = position - 1;
+    const matches = wordDictionary.filter(w => w.length > idx && w[idx] === upper);
+    const total = matches.length;
+    const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
+    return { words: shuffled, total };
+  }
+
   async getWordExamples(game: "letter-hunt" | "letter-dodge", letters: string[], limit: number): Promise<{ words: string[]; total: number }> {
     if (letters.length === 0) return { words: [], total: 0 };
     const upper = letters.map(l => l.toUpperCase());
@@ -150,6 +175,18 @@ export class MemStorage implements IStorage {
       game === "letter-hunt"
         ? upper.every(l => w.includes(l))
         : upper.every(l => !w.includes(l))
+    );
+    const total = matches.length;
+    const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
+    return { words: shuffled, total };
+  }
+
+  async getNoRepeatsExamples(challenge: number, requiredLetters: string[], limit: number): Promise<{ words: string[]; total: number }> {
+    const upper = requiredLetters.map(l => l.toUpperCase());
+    const matches = wordDictionary.filter(w =>
+      w.length === challenge &&
+      new Set(w).size === w.length &&
+      upper.every(l => w.includes(l))
     );
     const total = matches.length;
     const shuffled = [...matches].sort(() => Math.random() - 0.5).slice(0, limit);
@@ -532,6 +569,53 @@ export class MemStorage implements IStorage {
       }
     }
     return { valid: false, isMiddle: false };
+  }
+
+  async getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
+    const rows = wordExtensionFallbackPuzzles[lettersToAdd] ?? wordExtensionFallbackPuzzles[1];
+    return rows.map(r => ({ shownWord: r.shownWord, lettersToAdd, validAnswers: r.validAnswers }));
+  }
+
+  async validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> {
+    const upper = submittedWord.toUpperCase().trim();
+    const shownUpper = shownWord.toUpperCase().trim();
+    // Exact length must match the requested difficulty.
+    if (upper.length !== shownUpper.length + lettersToAdd) return { valid: false };
+    // Check shownWord's letter multiset is a subset of submittedWord's letters
+    const submittedFreq: Record<string, number> = {};
+    for (const ch of upper) submittedFreq[ch] = (submittedFreq[ch] ?? 0) + 1;
+    for (const ch of shownUpper) {
+      if ((submittedFreq[ch] ?? 0) <= 0) return { valid: false };
+      submittedFreq[ch]--;
+    }
+    // Only declared fallback pairs are valid — no generic dictionary fallback.
+    const fallbackBucket = wordExtensionFallbackPuzzles[lettersToAdd] ?? [];
+    const puzzleRow = fallbackBucket.find(p => p.shownWord === shownUpper);
+    return { valid: puzzleRow?.validAnswers.includes(upper) ?? false };
+  }
+
+  async listPartsOfSpeech(): Promise<PartOfSpeech[]> {
+    return [...this.partsOfSpeech].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getPartOfSpeech(id: number): Promise<PartOfSpeech | undefined> {
+    return this.partsOfSpeech.find(p => p.id === id);
+  }
+
+  async getWordDefinitions(wordId: number): Promise<WordDefinition[]> {
+    return this.wordDefinitions
+      .filter(d => d.wordId === wordId)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  async addWordDefinition(def: InsertWordDefinition): Promise<WordDefinition> {
+    const entry: WordDefinition = { id: this.wordDefinitionIdCounter++, ...def };
+    this.wordDefinitions.push(entry);
+    return entry;
+  }
+
+  async deleteWordDefinition(id: number): Promise<void> {
+    this.wordDefinitions = this.wordDefinitions.filter(d => d.id !== id);
   }
 
   async generateWordSweepGrid(seed?: number): Promise<WordSweepGrid> {

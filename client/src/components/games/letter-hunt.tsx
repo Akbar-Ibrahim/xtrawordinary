@@ -160,6 +160,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
+  const [timedOut, setTimedOut] = useState(false);
   const [gameStatus, setGameStatus] = useState<"menu" | "mode-select" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
@@ -192,6 +193,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
           stopTimer();
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
+          setTimedOut(true);
           setGameStatus("lost");
           return 0;
         }
@@ -225,6 +227,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const startGame = useCallback((c: Challenge, isOrdered: boolean, seedOverride?: number) => {
     resetRecorded();
     stopTimer();
+    setTimedOut(false);
     isSurvivalRef.current = isSurvival;
     setChallenge(c);
     setOrdered(isOrdered);
@@ -854,7 +857,11 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                 >
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {timedOut ? (
+                  <h3 className="text-2xl font-bold" data-testid="heading-times-up">Time's Up!</h3>
+                ) : (
+                  <h3 className="text-2xl font-bold">Game Over</h3>
+                )}
                 {isSurvivalRef.current && (
                   <Badge variant="secondary" className="gap-1.5">
                     <Flame className="h-3 w-3" />

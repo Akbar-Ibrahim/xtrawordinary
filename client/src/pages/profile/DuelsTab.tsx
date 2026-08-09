@@ -79,9 +79,9 @@ export function DuelsTab({ duelHistoryLoading, duelHistory, formatGameName }: Pr
             <div className="flex items-center gap-1 shrink-0" data-testid={`text-duel-elo-delta-${duel.id}`}>
               {duel.eloDelta !== null ? (
                 <>
-                  {eloDeltaPositive && <TrendingUp className="h-4 w-4 text-green-500" />}
-                  {eloDeltaNegative && <TrendingDown className="h-4 w-4 text-red-500" />}
-                  {!eloDeltaPositive && !eloDeltaNegative && <Minus className="h-4 w-4 text-muted-foreground" />}
+                  {eloDeltaPositive && <TrendingUp className="h-4 w-4 text-green-500" aria-hidden="true" />}
+                  {eloDeltaNegative && <TrendingDown className="h-4 w-4 text-red-500" aria-hidden="true" />}
+                  {!eloDeltaPositive && !eloDeltaNegative && <Minus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
                   <span className={`text-sm font-semibold ${eloDeltaPositive ? "text-green-500" : eloDeltaNegative ? "text-red-500" : "text-muted-foreground"}`}>
                     {eloDeltaPositive ? "+" : ""}{duel.eloDelta}
                   </span>

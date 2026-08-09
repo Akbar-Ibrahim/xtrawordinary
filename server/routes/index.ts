@@ -19,6 +19,10 @@ import { registerAdminRoutes } from "./admin.routes";
 import { registerWordExamplesRoutes } from "./word-examples.routes";
 
 export function registerAllRoutes(httpServer: Server, app: Express): Server {
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   registerWordExamplesRoutes(app);
   registerGamesRoutes(app);
   registerAuthRoutes(app);

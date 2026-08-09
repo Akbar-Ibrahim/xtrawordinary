@@ -29,7 +29,7 @@ const SURVIVAL_TIME_OPTIONS = [
 type Variation = 1 | 2;
 type Level = 1 | 2;
 
-export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed, isUntimed }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number; isUntimed?: boolean } = {}) {
+export function WordChainGame({ initialChallenge = {} as { variation?: Variation; level?: Level }, locked, groupSeed, isUntimed, wordTarget }: { initialChallenge?: { variation?: Variation; level?: Level }; locked?: boolean; groupSeed?: number; isUntimed?: boolean; wordTarget?: number } = {}) {
   const [, navigate] = useLocation();
   const { playSound } = useSound();
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -68,6 +68,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(SURVIVAL_TIME_PER_WORD);
+  const [timedOut, setTimedOut] = useState(false);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost" | "levelComplete">("menu");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
@@ -76,7 +77,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
-  const wordsPerLevel = 100;
+  const wordsPerLevel = wordTarget ?? 100;
   
   const [timerRunning, setTimerRunning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +114,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           setTimerRunning(false);
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
+          setTimedOut(true);
           setGameStatus("lost");
           return 0;
         }
@@ -155,6 +157,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   const startGame = useCallback(async (v: Variation, l: Level, seed?: number) => {
     resetRecorded();
     stopTimer();
+    setTimedOut(false);
 
     setVariation(v);
     setLevel(l);
@@ -619,8 +622,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     <XCircle className="h-16 w-16 mx-auto text-destructive" />
                   )}
                 </motion.div>
-                <h3 className="text-2xl font-bold">
-                  {gameStatus === "won" ? "Chain Master!" : "Time's Up!"}
+                <h3 className="text-2xl font-bold" data-testid={gameStatus === "lost" ? (timedOut ? "heading-times-up" : "heading-game-over") : undefined}>
+                  {gameStatus === "won" ? "Chain Master!" : timedOut ? "Time's Up!" : "Game Over"}
                 </h3>
                 <Badge variant="secondary" className="gap-1.5">
                   <Flame className="h-3 w-3" />

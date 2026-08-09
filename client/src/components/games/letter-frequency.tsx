@@ -172,13 +172,14 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return null;
 }
 
-export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLetters, initialLetterCounts, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; initialLetterCounts?: number[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void } = {}) {
+export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLetters, initialLetterCounts, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain, isUntimed }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; initialLetterCounts?: number[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const { reportResult, resetRecorded } = useGameResult({
     slug: isSurvival ? "letter-frequency-survival" : "letter-frequency",
     quizMode,
+    isUntimed,
   });
   const personalBest = usePersonalBest(isSurvival ? "letter-frequency-survival" : "letter-frequency");
   const seedRngRef = useRef<(() => number) | undefined>(
@@ -215,6 +216,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
+  const [timedOut, setTimedOut] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -244,6 +246,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
           stopTimer();
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
+          setTimedOut(true);
           setGameStatus("lost");
           return 0;
         }
@@ -258,6 +261,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const startGame = useCallback((c: Challenge, survival: boolean, overrideConstraint?: FrequencyConstraint, overrideMultiConstraint?: MultiLetterConstraint) => {
     resetRecorded();
     stopTimer();
+    setTimedOut(false);
     isSurvivalRef.current = survival;
     setIsSurvival(survival);
     setChallenge(c);
@@ -287,13 +291,13 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
       setConstraint(fc);
     }
     setGameStatus("playing");
-    startTimer(survival);
+    if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, resetRecorded]);
+  }, [startTimer, stopTimer, resetRecorded, isUntimed]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
-      startTimer(initialSurvival ?? false);
+      if (!isUntimed) startTimer(initialSurvival ?? false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, []);
@@ -385,7 +389,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
             setMultiConstraint(generateMultiLetterConstraint(rng));
           }
         }
-        if (isSurvivalRef.current) {
+        if (isSurvivalRef.current && !isUntimed) {
           startTimer(true);
         }
       }
@@ -523,15 +527,23 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-8">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
-                  <span
-                    className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
-                    role="timer"
-                    aria-label={`Time remaining: ${formatTime(timeLeft)}`}
-                    data-testid="badge-timer"
-                  >
-                    {formatTime(timeLeft)}
-                  </span>
+                  {isUntimed ? (
+                    <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+                      ∞ Untimed
+                    </Badge>
+                  ) : (
+                    <>
+                      <Timer className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
+                      <span
+                        className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+                        role="timer"
+                        aria-label={`Time remaining: ${formatTime(timeLeft)}`}
+                        data-testid="badge-timer"
+                      >
+                        {formatTime(timeLeft)}
+                      </span>
+                    </>
+                  )}
                   {isSurvival && (
                     <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs py-0" data-testid="badge-survival">
                       <Flame className="h-3 w-3" />
@@ -817,7 +829,11 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                 >
                   <XCircle className="h-16 w-16 mx-auto text-destructive" />
                 </motion.div>
-                <h3 className="text-2xl font-bold">Time's Up!</h3>
+                {timedOut ? (
+                  <h3 className="text-2xl font-bold" data-testid="heading-times-up">Time's Up!</h3>
+                ) : (
+                  <h3 className="text-2xl font-bold">Game Over</h3>
+                )}
                 {isSurvival && (
                   <Badge variant="secondary" className="gap-1.5">
                     <Flame className="h-3 w-3" />

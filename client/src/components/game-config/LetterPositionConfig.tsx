@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 import type { GameConfigProps } from "./types";
 
 const LP_QUIZ_MIN_WORDS = 10;
@@ -67,6 +68,15 @@ export function LetterPositionConfig({ params, setParams, dialogType, open }: Ga
                 ? `Only ${lpCountData.count} word${lpCountData.count !== 1 ? "s" : ""} match — need at least ${LP_QUIZ_MIN_WORDS}. Try a different letter or position.`
                 : `${lpCountData.count} words match`}
         </p>
+      )}
+      {lpLetter && lpPosition && (
+        <WordExamplesPanel
+          game="letter-position"
+          letters={[lpLetter]}
+          position={lpPosition}
+          limit={10}
+          buttonLabel="Preview example words"
+        />
       )}
       {!params.survival && (
         <>

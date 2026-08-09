@@ -59,8 +59,11 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
   const userInList = user ? entries.some(e => e.userId === user.id) : false;
   const myEntry = user ? entries.find(e => e.userId === user.id) : undefined;
 
+  const statusLabel = `Showing streak leaderboard, ${entries.length} ${entries.length === 1 ? "entry" : "entries"}`;
+
   return (
-    <div className="space-y-2">
+    <div aria-live="polite" aria-atomic="true" className="space-y-2" data-testid="streak-leaderboard-results">
+      <span className="sr-only" data-testid="streak-leaderboard-status">{statusLabel}</span>
       {entries.map((entry, index) => {
         const isCurrentUser = user && entry.userId === user.id;
         const RankIcon = index < 3 ? RANK_ICONS[index] : null;
@@ -86,7 +89,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
             {user && !isCurrentUser ? (
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className="focus:outline-none" data-testid={`button-streak-avatar-${index}`}>
+                  <button className="focus:outline-none" aria-label={`${entry.name}'s profile options`} data-testid={`button-streak-avatar-${index}`}>
                     <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
                   </button>
                 </PopoverTrigger>
@@ -117,7 +120,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                 {user && !isCurrentUser ? (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="font-medium truncate hover:underline cursor-pointer focus:outline-none" data-testid={`text-streak-player-${index}`}>
+                      <button className="font-medium truncate hover:underline cursor-pointer focus:outline-none" aria-label={`${entry.name}'s profile options`} data-testid={`text-streak-player-${index}`}>
                         {entry.name}
                       </button>
                     </PopoverTrigger>
@@ -162,6 +165,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                   size="icon"
                   variant="ghost"
                   className="h-7 w-7 text-violet-500 hover:text-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/30 shrink-0"
+                  aria-label={`Challenge ${entry.name}`}
                   title={`Challenge ${entry.name}`}
                   onClick={() => setChallengeTarget({ id: entry.userId, name: entry.name, avatarUrl: entry.avatarUrl })}
                   data-testid={`button-challenge-streak-${index}`}
@@ -235,11 +239,12 @@ function TimeFilterBar({
   onChange: (v: TimeFilter) => void;
 }) {
   return (
-    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="filter-time">
+    <div role="group" aria-label="Time filter" className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="filter-time">
       {TIME_FILTER_OPTIONS.map(({ value: v, label, icon: Icon }) => (
         <button
           key={v}
           onClick={() => onChange(v)}
+          aria-pressed={value === v}
           data-testid={`filter-time-${v}`}
           className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
             value === v
@@ -263,9 +268,10 @@ function ViewToggle({
   onChange: (v: LeaderboardView) => void;
 }) {
   return (
-    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-view">
+    <div role="group" aria-label="View" className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-view">
       <button
         onClick={() => onChange("global")}
+        aria-pressed={view === "global"}
         data-testid="toggle-view-global"
         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
           view === "global"
@@ -278,6 +284,7 @@ function ViewToggle({
       </button>
       <button
         onClick={() => onChange("friends")}
+        aria-pressed={view === "friends"}
         data-testid="toggle-view-friends"
         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
           view === "friends"
@@ -352,6 +359,12 @@ function MyRankBanner({
   );
 }
 
+const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
+  today: "today",
+  week: "this week",
+  all: "all time",
+};
+
 function LeaderboardEntries({
   slug,
   user,
@@ -409,45 +422,56 @@ function LeaderboardEntries({
     staleTime: 60_000,
   });
 
+  const statusLabel = `Showing ${view === "friends" ? "friends" : "global"} leaderboard, ${TIME_FILTER_LABELS[timeFilter]}`;
+
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
-        ))}
+      <div aria-live="polite" aria-atomic="true" data-testid="leaderboard-results">
+        <span className="sr-only">{statusLabel}, loading results</span>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (view === "friends" && !user) {
     return (
-      <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-friends-signin">
-        <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        <p>Sign in to see how you rank against your friends!</p>
-        <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-friends">
-          <LogIn className="h-4 w-4" /> Sign In
-        </Button>
+      <div aria-live="polite" aria-atomic="true" data-testid="leaderboard-results">
+        <span className="sr-only">{statusLabel}</span>
+        <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-friends-signin">
+          <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          <p>Sign in to see how you rank against your friends!</p>
+          <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-friends">
+            <LogIn className="h-4 w-4" /> Sign In
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (entries.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-no-entries">
-        <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
-        {view === "friends" ? (
-          <p>None of your friends have played this yet. Challenge them!</p>
-        ) : (
-          <p>No scores yet. Be the first to play!</p>
-        )}
-        {!user && view === "global" && (
-          <div className="space-y-2">
-            <p className="text-sm">Sign in to track your scores and appear here.</p>
-            <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard">
-              <LogIn className="h-4 w-4" /> Sign In
-            </Button>
-          </div>
-        )}
+      <div aria-live="polite" aria-atomic="true" data-testid="leaderboard-results">
+        <span className="sr-only">{statusLabel}, no entries found</span>
+        <div className="text-center py-12 text-muted-foreground space-y-4" data-testid="text-no-entries">
+          <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
+          {view === "friends" ? (
+            <p>None of your friends have played this yet. Challenge them!</p>
+          ) : (
+            <p>No scores yet. Be the first to play!</p>
+          )}
+          {!user && view === "global" && (
+            <div className="space-y-2">
+              <p className="text-sm">Sign in to track your scores and appear here.</p>
+              <Button onClick={onSignIn} variant="outline" size="sm" className="gap-2" data-testid="button-signin-leaderboard">
+                <LogIn className="h-4 w-4" /> Sign In
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -455,7 +479,8 @@ function LeaderboardEntries({
   const visibleUserIds = new Set(entries.map(e => e.userId));
 
   return (
-    <>
+    <div aria-live="polite" aria-atomic="true" data-testid="leaderboard-results">
+      <span className="sr-only" data-testid="leaderboard-status">{statusLabel}, {entries.length} {entries.length === 1 ? "entry" : "entries"}</span>
       <div className="space-y-2">
         {entries.map((entry, index) => {
           const isCurrentUser = user && entry.userId === user.id;
@@ -498,6 +523,7 @@ function LeaderboardEntries({
                   {user && !isCurrentUser && (
                     <button
                       className="text-sm leading-none opacity-50 hover:opacity-100 transition-opacity"
+                      aria-label={`Challenge ${entry.playerName}`}
                       title={`Challenge ${entry.playerName}`}
                       onClick={() => setChallengeTarget({ id: entry.userId, name: entry.playerName, avatarUrl: entry.playerAvatarUrl ?? null })}
                       data-testid={`button-challenge-${index}`}
@@ -554,7 +580,7 @@ function LeaderboardEntries({
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -566,9 +592,10 @@ function SurvivalToggle({
   onChange: (val: boolean) => void;
 }) {
   return (
-    <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-survival">
+    <div role="group" aria-label="Game mode" className="flex gap-1 p-1 bg-muted rounded-lg w-fit" data-testid="toggle-survival">
       <button
         onClick={() => onChange(false)}
+        aria-pressed={!isSurvival}
         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
           !isSurvival
             ? "bg-background shadow-sm text-foreground"
@@ -581,6 +608,7 @@ function SurvivalToggle({
       </button>
       <button
         onClick={() => onChange(true)}
+        aria-pressed={isSurvival}
         className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
           isSurvival
             ? "bg-background shadow-sm text-foreground"
@@ -615,10 +643,12 @@ function ModeTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 p-1 bg-muted rounded-lg overflow-x-auto" data-testid="tabs-mode">
+      <div role="tablist" aria-label="Game modes" className="flex gap-1 p-1 bg-muted rounded-lg overflow-x-auto" data-testid="tabs-mode">
         {modes.map((mode) => (
           <button
             key={mode.slug}
+            role="tab"
+            aria-selected={activeMode === mode.slug}
             onClick={() => setActiveMode(mode.slug)}
             className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
               activeMode === mode.slug
@@ -830,7 +860,7 @@ export default function Leaderboard() {
         <div className="flex gap-6 items-start">
 
           {/* Sidebar — desktop only */}
-          <aside className="hidden md:flex flex-col w-52 shrink-0 sticky top-4">
+          <aside aria-label="Games" className="hidden md:flex flex-col w-52 shrink-0 sticky top-4">
             <div className="bg-card border rounded-xl p-2 space-y-0.5 max-h-[calc(100vh-12rem)] overflow-y-auto">
               <p className="px-3 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 Games
@@ -880,7 +910,7 @@ export default function Leaderboard() {
           </aside>
 
           {/* Main content */}
-          <div className="flex-1 min-w-0 space-y-4">
+          <div role="region" aria-label="Leaderboard" className="flex-1 min-w-0 space-y-4">
             {showSurvivalToggle && !isStreaks && (
               <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
             )}

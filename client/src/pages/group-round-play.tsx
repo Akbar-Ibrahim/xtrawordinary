@@ -105,7 +105,7 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfi
     }
     case "no-repeats": {
       const options: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
-      return <NoRepeatsGame initialChallenge={options[seed % options.length]} locked />;
+      return <NoRepeatsGame initialChallenge={options[seed % options.length]} groupSeed={seed} locked />;
     }
     case "word-ladder": return <WordLadderGame initialChallenge groupSeed={seed} locked />;
     case "anagram-solver": return <AnagramSolverGame groupSeed={seed} locked />;

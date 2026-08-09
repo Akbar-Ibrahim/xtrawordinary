@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Play, Sparkles } from "lucide-react";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
 import { getLettersForCount, LETTER_FREQUENCY_CHALLENGE_COUNTS } from "@/components/games/letter-frequency";
+import { NoRepeatsConfig } from "@/components/game-config";
 import type { Game } from "@shared/schema";
 
 const LP_QUIZ_MIN_WORDS = 10;
@@ -815,6 +816,10 @@ export function CustomPlayDialog({ open, onOpenChange, slug, game, onPlay }: Pro
                 </>
               )}
             </div>
+          )}
+
+          {slug === "no-repeats" && (
+            <NoRepeatsConfig params={customPlayParams} setParams={setCustomPlayParams} dialogType="custom" open={open} />
           )}
 
           {(

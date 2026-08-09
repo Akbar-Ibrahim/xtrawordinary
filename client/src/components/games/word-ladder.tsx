@@ -16,6 +16,7 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
@@ -48,6 +49,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-ladder", isUntimed });
   const personalBest = usePersonalBest("word-ladder");
   const seeded = groupSeed !== undefined;
+  const { markSeen, filterUnseen } = usePuzzleHistory("word-ladder");
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
@@ -84,8 +86,10 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
 
   const initGame = useCallback((overridePuzzle?: WordLadderPuzzle) => {
     resetRecorded();
-    const selected = overridePuzzle ?? selectPuzzle(allPuzzles);
+    const puzzlePool = seeded ? allPuzzles : filterUnseen(allPuzzles, (p) => `${p.start}-${p.target}`);
+    const selected = overridePuzzle ?? selectPuzzle(puzzlePool);
     if (!selected) return;
+    if (!seeded) markSeen(`${selected.start}-${selected.target}`);
     lastPuzzleRef.current = selected;
     setPuzzle(selected);
     setLadder([selected.start]);
@@ -97,7 +101,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
     setScore(0);
     setCompletionMessage("");
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [allPuzzles, selectPuzzle, resetRecorded]);
+  }, [allPuzzles, selectPuzzle, resetRecorded, seeded, filterUnseen, markSeen]);
 
   useEffect(() => {
     if (allPuzzles.length > 0 && !puzzle) {

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { SiX, SiFacebook, SiLinkedin, SiWhatsapp, SiReddit } from "react-icons/si";
-import { Copy, Check, Share2 } from "lucide-react";
+import { SiX, SiFacebook, SiWhatsapp, SiReddit } from "react-icons/si";
+import { Copy, Check, Share2, Linkedin } from "lucide-react";
 
 interface ShareResultsProps {
   gameName: string;
@@ -135,7 +135,7 @@ export function ShareResults({
           className="gap-2 bg-[#0A66C2] text-white hover:bg-[#0A66C2]/80 border-0"
           data-testid="button-share-linkedin"
         >
-          <SiLinkedin className="w-4 h-4" />
+          <Linkedin className="w-4 h-4" />
           <span className="hidden sm:inline">LinkedIn</span>
         </Button>
         <Button

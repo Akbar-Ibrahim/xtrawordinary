@@ -1,11 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { Link } from "wouter";
+import type { Game } from "@shared/schema";
 
 export function OverviewTab() {
   const { data: stats, isLoading } = useQuery<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>({
     queryKey: ["/api/admin/stats"],
   });
+
+  const { data: games } = useQuery<Game[]>({ queryKey: ["/api/admin/games"] });
+  const nameMap = Object.fromEntries((games ?? []).map(g => [g.slug, g.name]));
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
@@ -37,9 +42,16 @@ export function OverviewTab() {
               {sortedGames.map(([slug, count]) => {
                 const maxCount = sortedGames[0][1];
                 const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                const displayName = nameMap[slug] ?? slug;
                 return (
                   <div key={slug} className="flex items-center gap-3" data-testid={`game-stat-${slug}`}>
-                    <span className="text-sm w-40 truncate font-medium">{slug}</span>
+                    <Link
+                      href={`/games/${slug}`}
+                      className="text-sm w-44 truncate font-medium hover:text-primary hover:underline shrink-0"
+                      title={displayName}
+                    >
+                      {displayName}
+                    </Link>
                     <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
                       <div className="bg-primary h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>

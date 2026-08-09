@@ -16,16 +16,18 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
-export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isUntimed }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[]; isUntimed?: boolean } = {}) {
+export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isUntimed, livesCount }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[]; isUntimed?: boolean; livesCount?: number } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-scramble", quizMode, isUntimed });
   const personalBest = usePersonalBest("word-scramble");
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;
+  const { markSeen, filterUnseen } = usePuzzleHistory("word-scramble");
   const seedRngRef = useRef<(() => number) | undefined>(
     seeded ? makeSeededRng(groupSeed!) : undefined
   );
@@ -45,7 +47,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [level, setLevel] = useState(1);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(livesCount ?? 3);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [wordsCompleted, setWordsCompleted] = useState(0);
@@ -81,31 +83,34 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
     setScrambledWord(scrambleWord(randomWord.word, rng));
     setUserInput("");
     setUsedWords((prev) => new Set(Array.from(prev).concat(randomWord.word)));
+    if (!seeded && !hasCustomWords) markSeen(randomWord.word);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedWords, activeWords]);
+  }, [usedWords, activeWords, seeded, hasCustomWords, markSeen]);
 
   const lastWordRef = useRef<(typeof words)[0] | null>(null);
 
   const initGame = useCallback((overrideWord?: (typeof words)[0]) => {
     if (words.length === 0) return;
     resetRecorded();
-    setActiveWords(words);
+    const wordPool = seeded || hasCustomWords || overrideWord ? words : filterUnseen(words, (w) => w.word);
+    setActiveWords(wordPool);
     setScore(0);
     setStreak(0);
     setLevel(1);
-    setLives(3);
+    setLives(livesCount ?? 3);
     setGameStatus("playing");
     setWordsCompleted(0);
     setUsedWords(new Set());
     const rng = seedRngRef.current ?? Math.random;
-    const randomWord = overrideWord ?? words[Math.floor(rng() * words.length)];
+    const randomWord = overrideWord ?? wordPool[Math.floor(rng() * wordPool.length)];
     lastWordRef.current = randomWord;
     setCurrentWord(randomWord);
     setScrambledWord(scrambleWord(randomWord.word, rng));
     setUserInput("");
     setUsedWords(new Set([randomWord.word]));
+    if (!seeded && !hasCustomWords) markSeen(randomWord.word);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words, resetRecorded]);
+  }, [words, resetRecorded, seeded, hasCustomWords, filterUnseen, markSeen]);
 
   useEffect(() => {
     if (words.length > 0 && !currentWord) {

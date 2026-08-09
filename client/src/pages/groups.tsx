@@ -356,6 +356,7 @@ export default function Groups() {
                 id="group-public"
                 checked={createPublic}
                 onCheckedChange={setCreatePublic}
+                aria-pressed={createPublic}
                 data-testid="switch-group-public"
               />
               <Label htmlFor="group-public" className="cursor-pointer">
@@ -365,12 +366,13 @@ export default function Groups() {
             {createPublic && (
               <div className="space-y-2">
                 <Label>Tags <span className="text-muted-foreground font-normal text-xs">(optional, up to 3)</span></Label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tags">
                   {ALL_TAGS.map(tag => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => toggleCreateTag(tag)}
+                      aria-pressed={createTags.includes(tag)}
                       className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${createTags.includes(tag) ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border hover:bg-muted/70"}`}
                       data-testid={`create-tag-${tag}`}
                     >

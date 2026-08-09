@@ -29,7 +29,7 @@ export function DuelRatingCard({ duelRating, hasDuelActivity, duelRank, totalDue
       <CardContent className="py-4 px-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            <Swords className="h-5 w-5 text-violet-500" />
+            <Swords className="h-5 w-5 text-violet-500" aria-hidden="true" />
             <div>
               <p className="font-semibold text-sm">Duel Rating</p>
               <p className="text-xs text-muted-foreground">Rated ELO · {totalMatches} matches</p>

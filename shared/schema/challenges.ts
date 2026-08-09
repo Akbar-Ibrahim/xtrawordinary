@@ -10,6 +10,7 @@ export const SEEDED_GAME_SLUGS = new Set([
   "letter-pool",
   "letter-position",
   "no-repeats",
+  "progressive-reveal",
   "shell-words",
   "word-bloom",
   "word-chain",

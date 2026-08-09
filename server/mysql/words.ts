@@ -1,34 +1,49 @@
-import { eq, and, sql, between, isNotNull, inArray, gte, like, notLike, aliasedTable } from "drizzle-orm";
+import { eq, and, sql, between, inArray, gte, like, notLike, aliasedTable, isNotNull } from "drizzle-orm";
 import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
 
 export async function getDefinitionWords(db: any, gameData: any): Promise<DefinitionWord[]> {
   try {
-    const pool = await db.select().from(schema.wordCategories).orderBy(sql`RAND()`).limit(50);
+    const pool = await db
+      .select({
+        word: schema.wordCategories.word,
+        definitions: schema.wordCategories.definitions,
+        posName: schema.partsOfSpeech.name,
+      })
+      .from(schema.wordCategories)
+      .leftJoin(schema.partsOfSpeech, eq(schema.wordCategories.partOfSpeechId, schema.partsOfSpeech.id))
+      .orderBy(sql`RAND()`)
+      .limit(200);
     const words: DefinitionWord[] = pool
       .filter((w: any) => Array.isArray(w.definitions) && w.definitions.length > 0)
-      .map((w: any) => ({ word: w.word, partOfSpeech: w.partOfSpeech ?? "", definitions: w.definitions as string[] }));
+      .map((w: any) => ({ word: w.word, partOfSpeech: w.posName ?? "", definitions: w.definitions as string[] }));
     if (words.length > 0) return words;
   } catch {}
   return gameData.getDefinitionWords();
 }
 
+type FrequencyLevel = "very_low" | "low" | "medium_low" | "medium" | "medium_high" | "high" | "very_high";
+const COMMON_FREQUENCY_LEVELS: FrequencyLevel[] = ["medium_low", "medium", "medium_high", "high", "very_high"];
+const HINT_GAME_FREQUENCY_LEVELS: FrequencyLevel[] = ["medium_high", "high", "very_high"];
+
 export async function getLetterPoolWords(db: any, gameData: any): Promise<LetterPoolWord[]> {
   try {
-    const catPool = await db.select().from(schema.wordCategories).orderBy(sql`RAND()`).limit(50);
-    if (catPool.length > 0) {
-      return catPool.map((w: any) => ({
-        word: w.word,
-        hint: Array.isArray(w.definitions) && w.definitions.length > 0 ? w.definitions[0] : "",
-        category: w.partOfSpeech ?? "",
-        letterPool: generateLetterPool(w.word),
-      }));
-    }
-    const wordPool = await db.select().from(schema.words).where(isNotNull(schema.words.category)).orderBy(sql`RAND()`).limit(50);
+    const wordPool = await db
+      .select()
+      .from(schema.words)
+      .where(and(
+        isNotNull(schema.words.hint),
+        inArray(schema.words.frequencyLevel, HINT_GAME_FREQUENCY_LEVELS),
+      ))
+      .orderBy(sql`RAND()`)
+      .limit(50);
     if (wordPool.length > 0) {
       return wordPool.map((w: any) => ({
-        word: w.word, hint: w.hint ?? "", category: w.category!, letterPool: generateLetterPool(w.word),
+        word: w.word,
+        hint: Array.isArray(w.hint) ? (w.hint[0] ?? "") : (w.hint ?? ""),
+        category: w.category!,
+        letterPool: generateLetterPool(w.word),
       }));
     }
   } catch {}
@@ -37,25 +52,25 @@ export async function getLetterPoolWords(db: any, gameData: any): Promise<Letter
 
 export async function getProgressiveRevealWords(db: any, gameData: any): Promise<ProgressiveRevealWord[]> {
   try {
-    const catPool = await db.select().from(schema.wordCategories).orderBy(sql`RAND()`).limit(50);
-    if (catPool.length > 0) {
-      return catPool.map((w: any) => ({
-        word: w.word,
-        subcategory: w.partOfSpeech ?? "",
-      }));
-    }
-    const wordPool = await db.select().from(schema.words).where(isNotNull(schema.words.category)).orderBy(sql`RAND()`).limit(50);
+    const wordPool = await db
+      .select()
+      .from(schema.words)
+      .where(and(
+        isNotNull(schema.words.hint),
+        inArray(schema.words.frequencyLevel, HINT_GAME_FREQUENCY_LEVELS),
+      ))
+      .orderBy(sql`RAND()`)
+      .limit(50);
     if (wordPool.length > 0) {
       return wordPool.map((w: any) => ({
         word: w.word,
         subcategory: w.category ?? "",
+        hint: Array.isArray(w.hint) ? (w.hint[0] ?? undefined) : (w.hint ?? undefined),
       }));
     }
   } catch {}
   return gameData.getProgressiveRevealWords();
 }
-
-const COMMON_FREQUENCY_LEVELS = ["medium_low", "medium", "medium_high", "high", "very_high"] as const;
 
 export async function getScrambleWords(db: any, gameData: any): Promise<ScrambleWord[]> {
   try {
@@ -66,7 +81,7 @@ export async function getScrambleWords(db: any, gameData: any): Promise<Scramble
       .where(inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS))
       .groupBy(schema.words.id, schema.words.word, schema.words.category)
       .orderBy(sql`RAND()`)
-      .limit(100);
+      .limit(200);
     if (rows.length === 0) return gameData.getScrambleWords();
     const wordIds = rows.map((r: any) => r.id);
     const anagramWords = schema.words;
@@ -99,7 +114,7 @@ export async function getAnagramWordSets(db: any, gameData: any): Promise<Anagra
       .where(inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS))
       .groupBy(schema.words.id, schema.words.word)
       .orderBy(sql`RAND()`)
-      .limit(30);
+      .limit(200);
     if (originals.length === 0) return gameData.getAnagramWordSets();
     const originalIds = originals.map((o: any) => o.id);
     const anagramWords = schema.words;
@@ -214,7 +229,7 @@ export async function getWordStackPuzzles(db: any, gameData: any): Promise<WordS
       sql`${schema.words.isWordStack} = 1`,
       inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
     )).orderBy(sql`RAND()`).limit(50);
-    const puzzles: WordStackPuzzle[] = pool.map((w: any) => ({ targetWord: w.word, startWord: "", hint: w.hint ?? "" }));
+    const puzzles: WordStackPuzzle[] = pool.map((w: any) => ({ targetWord: w.word, startWord: "" }));
     if (puzzles.length > 0) return puzzles;
   } catch {}
   return gameData.getWordStackPuzzles();
@@ -226,7 +241,7 @@ export async function getWordSplitPuzzles(db: any, gameData: any): Promise<WordS
       sql`${schema.words.isWordSplit} = 1`,
       inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
     )).orderBy(sql`RAND()`).limit(50);
-    const puzzles: WordSplitPuzzle[] = pool.map((w: any) => ({ targetWord: w.word, hint: w.hint ?? "" }));
+    const puzzles: WordSplitPuzzle[] = pool.map((w: any) => ({ targetWord: w.word }));
     if (puzzles.length > 0) return puzzles;
   } catch {}
   return gameData.getWordSplitPuzzles();
@@ -264,7 +279,7 @@ export async function getWordChainComputerWord(db: any, gameData: any, playerWor
 
 export function validateShellWord(wordSet: Set<string>, word: string): { valid: boolean; innerWord: string | null } {
   const upper = word.toUpperCase().trim();
-  if (upper.length < 4) return { valid: false, innerWord: null };
+  if (upper.length < 5) return { valid: false, innerWord: null };
   const inner = upper.slice(1, -1);
   if (wordSet.size > 0) {
     return wordSet.has(upper) && wordSet.has(inner)
@@ -292,7 +307,7 @@ export async function getShellWordPuzzle(db: any, gameData: any, seed: number): 
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
-      .where(and(eq(schema.shellWords.depth, 1), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
+      .where(and(eq(schema.shellWords.depth, 1), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS), gte(innerWords.wordLength, 3)))
       .groupBy(schema.shellWords.innerWordId)
       .having(sql`COUNT(*) >= 3`)
       .orderBy(innerWords.word);
@@ -331,7 +346,7 @@ export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: numbe
     const groups = await db.select({ innerWord: innerWords.word, cnt: sql<number>`COUNT(*)` })
       .from(schema.shellWords)
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
-      .where(and(eq(schema.shellWords.depth, 2), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
+      .where(and(eq(schema.shellWords.depth, 2), inArray(innerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS), gte(innerWords.wordLength, 3)))
       .groupBy(schema.shellWords.innerWordId)
       .having(sql`COUNT(*) >= 3`)
       .orderBy(innerWords.word);
@@ -421,6 +436,74 @@ export async function getWordExamples(
   } catch {
     return { words: [], total: 0 };
   }
+}
+
+export async function getWordExtensionPuzzles(db: any, gameData: any, lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
+  try {
+    // word_derivatives: derivativeId = shorter shown word, wordId = longer parent word (answer).
+    // Base word length is 4–6 letters (random per puzzle); answer is base + lettersToAdd.
+    const shortWords = aliasedTable(schema.words, "short_words");
+    const longWords = aliasedTable(schema.words, "long_words");
+
+    const rows = await db
+      .select({ shownWord: shortWords.word, targetWord: longWords.word })
+      .from(schema.wordDerivatives)
+      .innerJoin(shortWords, eq(schema.wordDerivatives.derivativeId, shortWords.id))
+      .innerJoin(longWords, eq(schema.wordDerivatives.wordId, longWords.id))
+      .where(and(
+        between(shortWords.wordLength, 4, 6),
+        sql`${longWords.wordLength} = ${shortWords.wordLength} + ${lettersToAdd}`,
+        inArray(shortWords.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+      ))
+      .orderBy(sql`RAND()`)
+      .limit(200);
+
+    if (rows.length === 0) return gameData.getWordExtensionPuzzles(lettersToAdd);
+
+    // Group by shownWord → collect validAnswers
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+      const arr = map.get(row.shownWord) ?? [];
+      arr.push(row.targetWord);
+      map.set(row.shownWord, arr);
+    }
+
+    const puzzles: import("@shared/schema").WordExtensionPuzzle[] = [];
+    for (const [shownWord, validAnswers] of map) {
+      if (puzzles.length >= 30) break;
+      puzzles.push({ shownWord, lettersToAdd, validAnswers });
+    }
+    if (puzzles.length > 0) return puzzles;
+  } catch {}
+  return gameData.getWordExtensionPuzzles(lettersToAdd);
+}
+
+export async function validateWordExtension(db: any, gameData: any, shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> {
+  try {
+    // Enforce exact length — also checked by the route but verified here as defence-in-depth.
+    if (submittedWord.length !== shownWord.length + lettersToAdd) return { valid: false };
+
+    // word_derivatives: derivativeId = shorter shown word, wordId = longer parent word (answer).
+    const shortWords = aliasedTable(schema.words, "short_words");
+    const longWords = aliasedTable(schema.words, "long_words");
+
+    const rows = await db
+      .select({ cnt: sql<number>`count(*)` })
+      .from(schema.wordDerivatives)
+      .innerJoin(shortWords, and(
+        eq(schema.wordDerivatives.derivativeId, shortWords.id),
+        eq(shortWords.word, shownWord.toUpperCase()),
+      ))
+      .innerJoin(longWords, and(
+        eq(schema.wordDerivatives.wordId, longWords.id),
+        eq(longWords.word, submittedWord.toUpperCase()),
+      ));
+
+    // Authoritative: DB result is final — no fallback to dictionary.
+    return { valid: Number(rows[0]?.cnt ?? 0) > 0 };
+  } catch {}
+  // Only reach here on DB error — delegate to fallback pairs for resilience.
+  return gameData.validateWordExtension(shownWord, submittedWord, lettersToAdd);
 }
 
 /**

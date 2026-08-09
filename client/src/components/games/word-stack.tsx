@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, CheckCircle, XCircle, Lightbulb, Loader2, Layers, Pencil, ArrowUp, ArrowDown, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, CheckCircle, XCircle, Loader2, Layers, Pencil, ArrowUp, ArrowDown, LogIn } from "lucide-react";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
@@ -65,7 +65,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   const [gameStatus, setGameStatus] = useState<"selecting" | "playing" | "complete">("selecting");
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedPuzzles, setUsedPuzzles] = useState<Set<string>>(new Set());
-  const [showHint, setShowHint] = useState(false);
   const [completionMessage, setCompletionMessage] = useState("");
   const [wordHistory, setWordHistory] = useState<string[]>([]);
   const { user } = useAuth();
@@ -133,7 +132,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
       setStack([nextPuzzle.targetWord.toUpperCase()]);
     }
     setUserInput("");
-    setShowHint(false);
     setUsedPuzzles((prev) => new Set(Array.from(prev).concat(nextPuzzle!.targetWord)));
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [usedPuzzles, activePuzzles, isBuildUp]);
@@ -150,7 +148,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     setWordHistory([]);
     setGameStatus("playing");
     setUsedPuzzles(new Set());
-    setShowHint(false);
     const randomPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
     setCurrentPuzzle(randomPuzzle);
     if (challenge === "build-up") {
@@ -186,7 +183,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
       setWordHistory([]);
       setGameStatus("playing");
       setUsedPuzzles(new Set([seededPuzzle.targetWord]));
-      setShowHint(false);
       setCurrentPuzzle(seededPuzzle);
       if (challengeType === "build-up") {
         setStack([]);
@@ -284,8 +280,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
       setUserInput("");
       setStreak(prev => prev + 1);
       
-      const points = showHint ? 25 : 50;
-      setScore((prev) => prev + points);
+      setScore((prev) => prev + 50);
 
       const isComplete = isBuildUp 
         ? upperInput.length === targetLength
@@ -295,8 +290,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
         playSound("win");
         setFeedback({ type: "correct", message: "Stack Complete!" });
         setPuzzlesCompleted((prev) => prev + 1);
-        const bonusPoints = showHint ? 50 : 100;
-        setScore((prev) => prev + bonusPoints);
+        setScore((prev) => prev + 100);
         setTimeout(() => {
           setFeedback(null);
           selectNewPuzzle();
@@ -515,11 +509,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
                 {isBuildUp ? "Build Up" : "Break Down"}: <span className="font-bold text-primary">{targetWord}</span> • {levelsRemaining} level{levelsRemaining !== 1 ? "s" : ""} remaining
               </span>
             </div>
-            {showHint && (
-              <p className="text-sm text-muted-foreground italic" data-testid="text-hint">
-                Hint: {currentPuzzle.hint}
-              </p>
-            )}
           </div>
 
           {isBuildUp ? (
@@ -606,20 +595,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
                 </Button>
               </div>
 
-              {!showHint && (
-                <div className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowHint(true)}
-                    className="text-muted-foreground"
-                    data-testid="button-hint"
-                  >
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    Show Hint (reduced points)
-                  </Button>
-                </div>
-              )}
             </div>
           )}
         </CardContent>

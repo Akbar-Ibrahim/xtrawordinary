@@ -65,7 +65,7 @@ export default function DuelLeaderboard() {
       <PageSEO title="Duel Rankings" description="See the top-ranked players in xtraWordinary 1-on-1 word game duels." path="/duels/leaderboard" />
       <div className="flex items-center gap-3">
         <Link href="/duels">
-          <Button variant="ghost" size="icon" className="shrink-0" data-testid="button-back-duels">
+          <Button variant="ghost" size="icon" className="shrink-0" aria-label="Back to Duels" data-testid="button-back-duels">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
@@ -228,6 +228,7 @@ export default function DuelLeaderboard() {
                         onClick={() => setChallengeTarget({ id: entry.userId, name: entry.displayName, avatarUrl: entry.avatarUrl })}
                         data-testid={`button-challenge-${entry.userId}`}
                         title={`Challenge ${entry.displayName}`}
+                        aria-label={`Challenge ${entry.displayName}`}
                       >
                         <Swords className="h-4 w-4" />
                       </Button>

@@ -36,7 +36,7 @@ export function ReactionStrip({ groupId, roundId, scoreId, currentUserId }: { gr
   }
 
   return (
-    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+    <div className="flex items-center gap-1 mt-1.5 flex-wrap" role="group" aria-label="Reactions">
       {ALLOWED_EMOJIS.map(emoji => {
         const count = scoreReactions.filter(r => r.emoji === emoji).length;
         const isMine = scoreReactions.some(r => r.userId === currentUserId && r.emoji === emoji);
@@ -45,11 +45,13 @@ export function ReactionStrip({ groupId, roundId, scoreId, currentUserId }: { gr
             key={emoji}
             onClick={() => handleEmoji(emoji)}
             disabled={!currentUserId}
+            aria-pressed={isMine}
+            aria-label={`React with ${emoji}${count > 0 ? `, ${count} reaction${count !== 1 ? "s" : ""}` : ""}`}
             className={`inline-flex items-center gap-0.5 text-sm px-1.5 py-0.5 rounded-full border transition-colors ${isMine ? "bg-primary/15 border-primary/40 text-primary" : "bg-muted/40 border-transparent text-muted-foreground hover:bg-muted/70"} disabled:cursor-default`}
             title={emoji}
             data-testid={`reaction-${scoreId}-${emoji}`}
           >
-            <span>{emoji}</span>
+            <span aria-hidden="true">{emoji}</span>
             {count > 0 && <span className="text-xs font-medium">{count}</span>}
           </button>
         );

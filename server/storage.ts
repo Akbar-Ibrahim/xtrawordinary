@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -20,6 +20,7 @@ export interface IStorage {
   getGames(): Promise<Game[]>;
   getAllGames(): Promise<Game[]>;
   setGameActive(slug: string, isActive: boolean): Promise<void>;
+  updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
   getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]>;
@@ -34,7 +35,9 @@ export interface IStorage {
   getWordDictionary(): Promise<string[]>;
   validateWord(word: string): Promise<boolean>;
   countLetterPositionWords(letter: string, position: number): Promise<number>;
+  getLetterPositionExamples(letter: string, position: number, limit: number): Promise<{ words: string[]; total: number }>;
   getWordExamples(game: "letter-hunt" | "letter-dodge", letters: string[], limit: number): Promise<{ words: string[]; total: number }>;
+  getNoRepeatsExamples(challenge: number, requiredLetters: string[], limit: number): Promise<{ words: string[]; total: number }>;
   countWordLengthWords(length: number, startsWith?: string, endsWith?: string, contains?: string): Promise<number>;
   getWordLengthConfig(): Promise<WordLengthConfig>;
   getLetterPositionConfig(): Promise<LetterPositionConfig>;
@@ -61,6 +64,15 @@ export interface IStorage {
   getWordStretchSolutions(seed: number): Promise<string[]>;
   getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }>;
   validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
+
+  getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]>;
+  validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }>;
+
+  listPartsOfSpeech(): Promise<PartOfSpeech[]>;
+  getPartOfSpeech(id: number): Promise<PartOfSpeech | undefined>;
+  getWordDefinitions(wordId: number): Promise<WordDefinition[]>;
+  addWordDefinition(def: InsertWordDefinition): Promise<WordDefinition>;
+  deleteWordDefinition(id: number): Promise<void>;
 
   createUser(user: InsertUser): Promise<User>;
   getUserById(id: number): Promise<User | undefined>;
@@ -348,6 +360,14 @@ export async function initStorage(): Promise<IStorage> {
     console.log("[Storage] Using MySQL storage");
     const { MySQLStorage } = await import("./mysql-storage");
     _storage = new MySQLStorage();
+    try {
+      const { db } = await import("./db");
+      const { backfillGameConfigFromSeed } = await import("./mysql/games");
+      await backfillGameConfigFromSeed(db);
+      console.log("[Storage] Game config backfill complete");
+    } catch (e) {
+      console.warn("[Storage] Game config backfill skipped:", e);
+    }
   } else {
     console.log("[Storage] Using in-memory storage");
     const { MemStorage } = await import("./mem-storage");

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal, Flame, Timer, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, Loader2, Zap, Clock, ChevronRight, Star, Medal, Flame, Timer, LogIn, Lightbulb } from "lucide-react";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -20,6 +20,8 @@ import { AnimatedNumber } from "@/components/animated-number";
 
 const GAME_DURATION = 90;
 const SURVIVAL_TIME_PER_WORD = 8;
+const DEFAULT_MAX_HINTS = 3;
+const DEFAULT_HINT_PENALTY = 2;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 15 },
   { label: "Normal", seconds: 8  },
@@ -47,8 +49,8 @@ function isNLetterDiff(a: string, b: string, n: number): boolean {
   return added === n && removed === n;
 }
 
-function calcScore(wordsChained: number): number {
-  return wordsChained;
+function calcScore(wordsChained: number, hintDeductions: number = 0): number {
+  return Math.max(0, wordsChained - hintDeductions);
 }
 
 interface LadderRushPlayProps {
@@ -56,26 +58,31 @@ interface LadderRushPlayProps {
   puzzles: LadderRushPuzzle[];
   isSurvival: boolean;
   survivalTime?: number;
+  timeLimitSeconds?: number;
   doubleSwap?: boolean;
   onExit: () => void;
   onPlayAgain: () => void;
   onReplay: (startWord: string) => void;
   initialStartWord?: string;
   locked?: boolean;
+  isUntimed?: boolean;
+  maxHints?: number;
+  hintPenalty?: number;
 }
 
-function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleSwap, onExit, onPlayAgain, onReplay, initialStartWord, locked }: LadderRushPlayProps) {
+function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLimitSeconds, doubleSwap, onExit, onPlayAgain, onReplay, initialStartWord, locked, isUntimed, maxHints = DEFAULT_MAX_HINTS, hintPenalty = DEFAULT_HINT_PENALTY }: LadderRushPlayProps) {
   const { playSound } = useSound();
   const swapCount = doubleSwap ? 2 : 1;
   const baseSlug = doubleSwap ? `ladder-rush-double-${wordLength}` : `ladder-rush-${wordLength}`;
   const slug = isSurvival ? `${baseSlug}-survival` : baseSlug;
-  const { reportResult } = useGameResult({ slug });
+  const { reportResult } = useGameResult({ slug, isUntimed });
   const effectiveSurvivalTime = survivalTime ?? SURVIVAL_TIME_PER_WORD;
 
   const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
   const [chain, setChain] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState("");
-  const [timeLeft, setTimeLeft] = useState(isSurvival ? effectiveSurvivalTime : GAME_DURATION);
+  const effectiveGameDuration = timeLimitSeconds ?? GAME_DURATION;
+  const [timeLeft, setTimeLeft] = useState(isSurvival ? effectiveSurvivalTime : effectiveGameDuration);
   const [shake, setShake] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [validating, setValidating] = useState(false);
@@ -89,6 +96,9 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
   const recordedRef = useRef(false);
   const chainRef = useRef<string[]>([]);
   const isSurvivalRef = useRef(isSurvival);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const hintsUsedRef = useRef(0);
+  const [hintLoading, setHintLoading] = useState(false);
 
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
@@ -108,7 +118,9 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
   const endGame = useCallback((finalChain: string[]) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const wordsChained = finalChain.length - 1;
-    const score = calcScore(wordsChained);
+    const wordsChainedByPlayer = wordsChained - hintsUsedRef.current;
+    const deductions = hintsUsedRef.current * hintPenalty;
+    const score = calcScore(wordsChainedByPlayer, deductions);
     setFinalScore(score);
     setGameStatus("ended");
     setCompletionMessage(getCompletionMessage(wordsChained > 3));
@@ -118,7 +130,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
       recordedRef.current = true;
       reportResult(score, wordsChained > 0, wordsChained);
     }
-  }, [playSound, reportResult, effectiveSurvivalTime]);
+  }, [playSound, reportResult, effectiveSurvivalTime, hintPenalty]);
 
   const startSurvivalTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -146,12 +158,13 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
     chainRef.current = initialChain;
     setChain(initialChain);
     setCurrentInput("");
-    setTimeLeft(isSurvivalRef.current ? effectiveSurvivalTime : GAME_DURATION);
+    setTimeLeft(isSurvivalRef.current ? effectiveSurvivalTime : effectiveGameDuration);
     setErrorMsg("");
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
   useEffect(() => {
+    if (isUntimed) return;
     if (isSurvivalRef.current) {
       // Survival timer started in startSurvivalTimer after each word
       // but we need to start the initial timer too
@@ -180,7 +193,7 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [endGame]);
+  }, [endGame, isUntimed]);
 
   useEffect(() => {
     if (chain.length > 1) {
@@ -262,9 +275,41 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
     if (e.key === "Enter") { e.preventDefault(); submitWord(); }
   }, [submitWord]);
 
+  const useHint = useCallback(async () => {
+    if (hintsUsedRef.current >= maxHints || gameStatus !== "playing" || hintLoading) return;
+    setHintLoading(true);
+    try {
+      const response = await apiRequest("POST", "/api/games/ladder-rush/hint", {
+        currentWord: chainRef.current[chainRef.current.length - 1],
+        usedWords: chainRef.current,
+        doubleSwap: doubleSwap ?? false,
+      });
+      const data = await response.json();
+      if (data.word) {
+        const newChain = [...chainRef.current, data.word];
+        chainRef.current = newChain;
+        hintsUsedRef.current += 1;
+        setChain(newChain);
+        setHintsUsed(hintsUsedRef.current);
+        setCurrentInput("");
+        playSound("correct");
+        if (isSurvivalRef.current) startSurvivalTimer();
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    } catch {
+      // silently ignore — player can try again
+    } finally {
+      setHintLoading(false);
+    }
+  }, [gameStatus, hintLoading, maxHints, doubleSwap, playSound, startSurvivalTimer]);
+
   const wordsChained = chain.length - 1;
-  const liveScore = calcScore(wordsChained);
-  const maxTime = isSurvivalRef.current ? effectiveSurvivalTime : GAME_DURATION;
+  // Hint words don't count toward score; penalty applied separately
+  const wordsChainedByPlayer = wordsChained - hintsUsed;
+  const hintDeductions = hintsUsed * hintPenalty;
+  const liveScore = calcScore(wordsChainedByPlayer, hintDeductions);
+  const hintsRemaining = maxHints - hintsUsed;
+  const maxTime = isSurvivalRef.current ? effectiveSurvivalTime : effectiveGameDuration;
   const timerPercent = (timeLeft / maxTime) * 100;
   const timerColor = timeLeft > (maxTime * 0.33) ? "bg-accent" : timeLeft > (maxTime * 0.11) ? "bg-chart-3" : "bg-destructive";
 
@@ -310,6 +355,12 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
                 <div className="text-xs text-muted-foreground">word length</div>
               </div>
             </div>
+            {maxHints > 0 && hintsUsed > 0 && (
+              <p className="text-xs text-muted-foreground text-center" data-testid="text-hints-used">
+                <Lightbulb className="inline h-3 w-3 mr-1 opacity-60" />
+                {hintsUsed} hint{hintsUsed !== 1 ? "s" : ""} used (−{hintsUsed * hintPenalty} pts)
+              </p>
+            )}
 
             {chain.length > 0 && (
               <div className="text-left space-y-1">
@@ -405,20 +456,28 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
     <div className="space-y-4">
       <div className="flex items-center justify-center gap-8">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-            aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
-          >
-            {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </span>
-          {isSurvivalRef.current && (
-            <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
-              <Flame className="h-3 w-3" />
-              Survival
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
             </Badge>
+          ) : (
+            <>
+              <Clock className={`h-4 w-4 ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`} />
+              <span
+                className={`font-mono font-bold text-lg ${timeLeft <= (isSurvivalRef.current ? 3 : 10) ? "text-destructive animate-pulse" : ""}`}
+                data-testid="badge-timer"
+                role="timer"
+                aria-label={`Time remaining: ${isSurvivalRef.current ? timeLeft + "s" : Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0")}`}
+              >
+                {isSurvivalRef.current ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+              </span>
+              {isSurvivalRef.current && (
+                <Badge variant="outline" className="gap-1 text-destructive border-destructive/50 text-xs" data-testid="badge-survival">
+                  <Flame className="h-3 w-3" />
+                  Survival
+                </Badge>
+              )}
+            </>
           )}
         </div>
         <div className="text-center">
@@ -566,6 +625,21 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, doubleS
               >
                 Menu
               </Button>
+              {maxHints > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={useHint}
+                  disabled={hintsRemaining <= 0 || hintLoading || gameStatus !== "playing"}
+                  className="gap-1.5"
+                  data-testid="button-hint"
+                >
+                  {hintLoading
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Lightbulb className="h-3.5 w-3.5" />}
+                  Hint ({hintsRemaining})
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -601,9 +675,11 @@ interface LadderRushGameProps {
   groupSeed?: number;
   locked?: boolean;
   doubleSwap?: boolean;
+  isUntimed?: boolean;
+  timeLimitSeconds?: number;
 }
 
-export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGameProps) {
+export function LadderRushGame({ groupSeed, locked, doubleSwap, isUntimed, timeLimitSeconds }: LadderRushGameProps) {
   const [selectedLength, setSelectedLength] = useState<number | null>(null);
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
@@ -631,6 +707,7 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGame
         puzzles={puzzles}
         isSurvival={isSurvival}
         survivalTime={survivalTime}
+        timeLimitSeconds={!isUntimed ? timeLimitSeconds : undefined}
         doubleSwap={doubleSwap}
         initialStartWord={replayStartWord}
         onExit={() => {
@@ -641,6 +718,7 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap }: LadderRushGame
         onPlayAgain={() => { setReplayStartWord(undefined); setPlayKey(k => k + 1); }}
         onReplay={(startWord) => { setReplayStartWord(startWord); setPlayKey(k => k + 1); }}
         locked={locked}
+        isUntimed={isUntimed}
       />
     );
   }

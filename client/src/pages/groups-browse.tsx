@@ -1,5 +1,6 @@
 import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
+import { useArrowKeyNav } from "@/hooks/use-arrow-key-nav";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export default function GroupsBrowse() {
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const handleTagArrow = useArrowKeyNav();
   const [textSearch, setTextSearch] = useState("");
   const [textFilter, setTextFilter] = useState("");
 
@@ -102,9 +104,10 @@ export default function GroupsBrowse() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap mb-6">
+        <div className="flex items-center gap-2 flex-wrap mb-6" role="group" aria-label="Filter by tag" onKeyDown={handleTagArrow}>
           <button
             onClick={() => setActiveTag(null)}
+            aria-pressed={!activeTag}
             className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${!activeTag ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border hover:bg-muted/70"}`}
             data-testid="tag-filter-all"
           >
@@ -114,6 +117,7 @@ export default function GroupsBrowse() {
             <button
               key={tag}
               onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              aria-pressed={activeTag === tag}
               className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${activeTag === tag ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 border-border hover:bg-muted/70"}`}
               data-testid={`tag-filter-${tag}`}
             >

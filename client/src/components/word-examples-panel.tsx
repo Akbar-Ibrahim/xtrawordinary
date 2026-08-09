@@ -10,6 +10,8 @@ interface WordExamplesPanelProps {
   limit?: number;
   buttonLabel?: string;
   className?: string;
+  position?: number;
+  challenge?: number;
 }
 
 export function WordExamplesPanel({
@@ -18,11 +20,17 @@ export function WordExamplesPanel({
   limit = 10,
   buttonLabel,
   className,
+  position,
+  challenge,
 }: WordExamplesPanelProps) {
   const { data, isLoading, isFetched, trigger, isTriggered, resolvedLetters, refetch } =
-    useWordExamples(game, letters, limit);
+    useWordExamples(game, letters, limit, position, challenge);
 
-  if (resolvedLetters.length === 0) return null;
+  if (game === "no-repeats") {
+    if (challenge === undefined) return null;
+  } else {
+    if (resolvedLetters.length === 0) return null;
+  }
 
   const defaultLabel =
     game === "letter-dodge"

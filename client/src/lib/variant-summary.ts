@@ -25,7 +25,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
         if (p.contains) parts.push(`contains '${p.contains}'`);
         if (!p.survival) {
           const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
-          const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+          const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min per round` : `${p.timeLimit}s per round`) : "2 min per round";
           parts.push(wc, tl);
         }
         return `Length Challenge: ${parts.join(" · ")}${survival}`;
@@ -43,7 +43,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       else parts.push("Letter Position");
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
-        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min per round` : `${p.timeLimit}s per round`) : "2 min per round";
         parts.push(wc, tl);
       }
       return parts.join(" · ") + survival;
@@ -56,7 +56,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       const huntBase = `Hunt for: ${countMap[challenge] ?? `Challenge ${challenge}`}${letterInfo}`;
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
-        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min per round` : `${p.timeLimit}s per round`) : "2 min per round";
         return `${huntBase} · ${wc} · ${tl}${survival}`;
       }
       return `${huntBase}${survival}`;
@@ -71,7 +71,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       const freqBase = `Frequency: ${freqMap[challenge] ?? `Challenge ${challenge}`}${letter}${pinnedMulti}`;
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
-        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "2 min";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min per round` : `${p.timeLimit}s per round`) : "2 min per round";
         return `${freqBase} · ${wc} · ${tl}${survival}`;
       }
       return `${freqBase}${survival}`;
@@ -101,7 +101,11 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
     }
     case "definition-match": {
       const wordCount = Array.isArray(params?.words) ? (params.words as any[]).length : null;
-      return wordCount ? `${wordCount} custom word${wordCount !== 1 ? "s" : ""}` : "Random definitions";
+      const tl = params?.timeLimitSeconds as number | undefined;
+      const tlLabel = tl !== undefined
+        ? (tl < 60 ? ` · ${tl}s per round` : ` · ${tl / 60} min per round`)
+        : "";
+      return wordCount ? `${wordCount} custom word${wordCount !== 1 ? "s" : ""}${tlLabel}` : `Random definitions${tlLabel}`;
     }
     case "letter-dodge": {
       const diffLabels: Record<string | number, string> = {
@@ -119,7 +123,7 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       const dodgeBase = `Dodge: ${diffLabels[diff] ?? `Difficulty ${diff}`}${letterInfo}`;
       if (!p.survival) {
         const wc = p.wordCount ? `${p.wordCount} words` : "20 words";
-        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min` : `${p.timeLimit}s`) : "90s";
+        const tl = p.timeLimit ? (p.timeLimit >= 60 ? `${Math.round(p.timeLimit / 60)} min per round` : `${p.timeLimit}s per round`) : "90s per round";
         return `${dodgeBase} · ${wc} · ${tl}${survival}`;
       }
       return `${dodgeBase}${survival}`;

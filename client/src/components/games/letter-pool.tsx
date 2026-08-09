@@ -24,9 +24,10 @@ interface LetterPoolGameProps {
   locked?: boolean;
   quizMode?: boolean;
   customWords?: LetterPoolWord[];
+  livesCount?: number;
 }
 
-export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, customWords }: LetterPoolGameProps) {
+export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, customWords, livesCount }: LetterPoolGameProps) {
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool", quizMode });
   const personalBest = usePersonalBest("letter-pool");
@@ -48,7 +49,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
   const [poolLetters, setPoolLetters] = useState<{ letter: string; used: boolean; id: number }[]>([]);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(livesCount ?? 3);
   const [wordsCompleted, setWordsCompleted] = useState(0);
   const [wrongGuesses, setWrongGuesses] = useState(0);
   const [fillOrder, setFillOrder] = useState<number[]>([]);
@@ -119,7 +120,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     setVariation(v);
     setScore(0);
     setStreak(0);
-    setLives(3);
+    setLives(livesCount ?? 3);
     setWordsCompleted(0);
     setGameStatus("playing");
     setFeedback(null);
@@ -462,7 +463,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                   >
                     <p className="text-sm text-primary font-medium flex items-center justify-center gap-2">
                       <Lightbulb className="h-4 w-4" />
-                      Category: {currentWord.category}
+                      Hint: {currentWord.hint}
                     </p>
                   </motion.div>
                 )}

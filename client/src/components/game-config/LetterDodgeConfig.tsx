@@ -2,6 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { GameConfigProps } from "./types";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 export function LetterDodgeConfig({ params, setParams, dialogType }: GameConfigProps) {
   return (
@@ -64,6 +65,14 @@ export function LetterDodgeConfig({ params, setParams, dialogType }: GameConfigP
           </div>
           <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a letter all players must avoid.</p>
         </div>
+      )}
+      {typeof params.difficulty === "number" && params.letters?.some(l => l && l !== "any") && (
+        <WordExamplesPanel
+          game="letter-dodge"
+          letters={params.letters ?? []}
+          limit={10}
+          buttonLabel="Preview example words"
+        />
       )}
       {!params.survival && (
         <>

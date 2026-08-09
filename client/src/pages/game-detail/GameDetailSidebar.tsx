@@ -45,7 +45,7 @@ export function GameDetailSidebar({
   const [, navigate] = useLocation();
 
   return (
-    <div className="lg:sticky lg:top-24 h-fit space-y-4">
+    <aside aria-label="Play" className="lg:sticky lg:top-24 h-fit space-y-4">
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="text-center">
@@ -166,6 +166,6 @@ export function GameDetailSidebar({
       </Card>
       <PremiumBanner variant="card" />
       <MiniLeaderboard game={game} />
-    </div>
+    </aside>
   );
 }

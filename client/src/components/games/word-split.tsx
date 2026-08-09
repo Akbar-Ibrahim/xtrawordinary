@@ -14,7 +14,6 @@ import {
   Scissors,
   Loader2,
   Sparkles,
-  Lightbulb,
   ArrowRight,
   RotateCcw,
   LogIn,
@@ -686,10 +685,6 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
                 <p className="text-sm text-muted-foreground">
                   Split this word into smaller words:
                 </p>
-                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-                  <Lightbulb className="h-4 w-4" />
-                  <span data-testid="text-hint">{currentPuzzle.hint}</span>
-                </div>
               </div>
 
               <motion.div
