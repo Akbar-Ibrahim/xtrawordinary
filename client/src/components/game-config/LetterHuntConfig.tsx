@@ -58,7 +58,7 @@ export function LetterHuntConfig({ params, setParams, dialogType }: GameConfigPr
           <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a specific letter.</p>
         </div>
       )}
-      {typeof params.challenge === "number" && params.letters?.some(l => l && l !== "any") && (
+      {typeof params.challenge === "number" && params.letters?.some((l: string) => l && l !== "any") && (
         <WordExamplesPanel
           game="letter-hunt"
           letters={params.letters ?? []}

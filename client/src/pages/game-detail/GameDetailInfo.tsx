@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useRef } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, TrendingUp, CheckCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
@@ -43,10 +44,10 @@ function FriendsWhoPlay({ slug }: { slug: string }) {
   if (!user || isLoading || friends.length === 0) return null;
 
   return (
-    <div className="mb-6" data-testid="section-friends-who-play">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+    <section className="mb-6" aria-labelledby="friends-playing-heading" data-testid="section-friends-who-play">
+      <h2 id="friends-playing-heading" className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
         <LucideIcons.Users className="h-3.5 w-3.5" /> Friends playing this game
-      </h3>
+      </h2>
       <div className="flex flex-wrap gap-2">
         {friends.map(f => (
           <Link key={f.id} href={`/profile/${f.id}`}>
@@ -58,15 +59,20 @@ function FriendsWhoPlay({ slug }: { slug: string }) {
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, lastPercentile, likeData }: Props) {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
+  const pageTitleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    pageTitleRef.current?.focus();
+  }, [game.slug]);
 
   return (
-    <div className="lg:col-span-2 space-y-6">
+    <div className="min-w-0 lg:col-span-2 space-y-6">
       <div className="flex items-center gap-4">
         <div
           className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
@@ -76,7 +82,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl sm:text-4xl font-bold">{game.name}</h1>
+            <h1 ref={pageTitleRef} tabIndex={-1} className="text-3xl sm:text-4xl font-bold">{game.name}</h1>
             <Badge
               className={`text-sm ${difficultyColors[game.difficulty]}`}
               data-testid="badge-difficulty"
@@ -133,7 +139,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">How to Play</CardTitle>
+          <h2 className="text-lg font-semibold leading-none tracking-tight">How to Play</h2>
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
@@ -156,9 +162,12 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
       {allGames.length > 1 && (() => {
         const otherGames = allGames.filter(g => g.slug !== game.slug);
         return (
-          <div>
-            <h3 className="text-lg font-semibold mb-3">More Games</h3>
-            <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-none">
+          <section className="min-w-0" aria-labelledby="more-games-heading">
+            <h2 id="more-games-heading" className="text-lg font-semibold mb-3">More Games</h2>
+            <div
+              className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory scrollbar-none"
+              data-testid="related-games-carousel"
+            >
               {otherGames.map(g => {
                 const GIcon = ((LucideIcons as any)[g.icon] ?? LucideIcons.Gamepad2) as React.ElementType;
                 return (
@@ -172,7 +181,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
                           <GIcon className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate mb-0.5">{g.name}</p>
+                          <h3 className="font-semibold text-sm truncate mb-0.5">{g.name}</h3>
                           <p className="text-xs text-muted-foreground line-clamp-1">{g.description}</p>
                         </div>
                         <LucideIcons.ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -182,12 +191,12 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
                 );
               })}
             </div>
-          </div>
+          </section>
         );
       })()}
 
       <FriendsWhoPlay slug={game.slug} />
-      <CommentSection targetType="game" targetId={game.slug} />
+      <CommentSection targetType="game" targetId={game.slug} headingLevel={2} />
     </div>
   );
 }

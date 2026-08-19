@@ -43,9 +43,12 @@ export function NoRepeatsGame({
   isUntimed,
   initialRequiredLetters,
   initialTimeLimit,
+  initialSurvival,
   wordTarget,
   customPlay,
   quizMode,
+  onGameEnd,
+  onPlayAgain,
 }: {
   initialChallenge?: Challenge;
   locked?: boolean;
@@ -57,13 +60,15 @@ export function NoRepeatsGame({
   initialSurvival?: boolean;
   customPlay?: boolean;
   quizMode?: boolean;
+  onGameEnd?: () => void;
+  onPlayAgain?: () => void;
 } = {}) {
   const { playSound }                       = useSound();
   const { user }                            = useAuth();
   const [, navigate]                        = useLocation();
   const [authOpen, setAuthOpen]             = useState(false);
 
-  const [isSurvival, setIsSurvival]         = useState(false);
+  const [isSurvival, setIsSurvival]         = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime]     = useState(SURVIVAL_TIME_PER_WORD);
   const isSurvivalRef                       = useRef(false);
 
@@ -214,8 +219,9 @@ export function NoRepeatsGame({
     if (gameStatus === "won" || gameStatus === "lost") {
       const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
       if (isCompetitive) reportResult(score, gameStatus === "won", wordsCompleted);
+      onGameEnd?.();
     }
-  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
+  }, [gameStatus, score, reportResult, wordsCompleted, survivalTime, onGameEnd]);
 
   useEffect(() => () => stopTimer(), [stopTimer]);
 
@@ -346,7 +352,7 @@ export function NoRepeatsGame({
           requiredLetters={requiredLetters}
           locked={locked}
           isSignedIn={!!user}
-          onPlayAgain={() => startGame(challenge, isSurvival)}
+          onPlayAgain={customPlay ? () => onPlayAgain?.() : () => startGame(challenge, isSurvival)}
           onMenu={returnToMenu}
           onNextChallenge={() => next && startGame(next, isSurvival)}
           onSignIn={() => setAuthOpen(true)}

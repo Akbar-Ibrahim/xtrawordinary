@@ -66,7 +66,7 @@ export function LetterDodgeConfig({ params, setParams, dialogType }: GameConfigP
           <p className="text-xs text-muted-foreground mt-1">Each slot can be "Any" or a letter all players must avoid.</p>
         </div>
       )}
-      {typeof params.difficulty === "number" && params.letters?.some(l => l && l !== "any") && (
+      {typeof params.difficulty === "number" && params.letters?.some((l: string) => l && l !== "any") && (
         <WordExamplesPanel
           game="letter-dodge"
           letters={params.letters ?? []}

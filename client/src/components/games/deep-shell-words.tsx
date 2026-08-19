@@ -12,6 +12,7 @@ import {
   XCircle,
   LogIn,
   Shell,
+  ChevronLeft,
   ChevronRight,
   Trophy,
   Zap,

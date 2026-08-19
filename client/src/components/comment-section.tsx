@@ -24,9 +24,10 @@ import { Link } from "wouter";
 interface CommentSectionProps {
   targetType: CommentTargetType;
   targetId: string;
+  headingLevel?: 2 | 3;
 }
 
-export function CommentSection({ targetType, targetId }: CommentSectionProps) {
+export function CommentSection({ targetType, targetId, headingLevel }: CommentSectionProps) {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(true);
@@ -139,18 +140,22 @@ export function CommentSection({ targetType, targetId }: CommentSectionProps) {
     return copy;
   }, [comments, sortOrder]);
 
+  const commentsToggle = (
+    <button
+      className="flex items-center gap-2 font-semibold text-base hover:text-primary transition-colors"
+      onClick={() => setExpanded(v => !v)}
+      data-testid="button-toggle-comments"
+    >
+      <MessageSquare className="h-5 w-5" />
+      Comments {totalCount > 0 && `(${totalCount})`}
+      {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+    </button>
+  );
+
   return (
     <div className="mt-8 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <button
-          className="flex items-center gap-2 font-semibold text-base hover:text-primary transition-colors"
-          onClick={() => setExpanded(v => !v)}
-          data-testid="button-toggle-comments"
-        >
-          <MessageSquare className="h-5 w-5" />
-          Comments {totalCount > 0 && `(${totalCount})`}
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
+        {headingLevel === 2 ? <h2>{commentsToggle}</h2> : headingLevel === 3 ? <h3>{commentsToggle}</h3> : commentsToggle}
         {expanded && totalCount > 1 && (
           <div className="flex items-center gap-1" data-testid="comment-sort-controls">
             {(["newest", "oldest", "most-liked"] as SortOrder[]).map((s) => (

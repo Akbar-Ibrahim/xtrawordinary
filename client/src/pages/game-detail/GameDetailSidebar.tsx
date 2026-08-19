@@ -45,11 +45,11 @@ export function GameDetailSidebar({
   const [, navigate] = useLocation();
 
   return (
-    <aside aria-label="Play" className="lg:sticky lg:top-24 h-fit space-y-4">
+    <aside aria-label="Play" className="min-w-0 max-w-full lg:sticky lg:top-24 h-fit space-y-4">
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="text-center">
-            <h3 className="font-semibold mb-2">Ready to play?</h3>
+            <h2 className="font-semibold mb-2">Ready to play?</h2>
             <p className="text-sm text-muted-foreground mb-4">
               Test your word skills and have fun!
             </p>
@@ -88,10 +88,10 @@ export function GameDetailSidebar({
           {isAuthenticated && DUEL_GAME_SLUGS.has(slug) && openDuels.length > 0 && (
             <div className="border border-violet-200 dark:border-violet-800 rounded-lg overflow-hidden">
               <div className="px-3 py-2 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800 flex items-center justify-between">
-                <span className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Swords className="h-3 w-3" />
                   Players Waiting
-                </span>
+                </h3>
                 <span className="text-xs text-violet-500" data-testid="text-open-duels-count">{openDuels.length}</span>
               </div>
               <div className="divide-y divide-border">

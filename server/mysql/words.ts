@@ -240,6 +240,7 @@ export async function getWordSplitPuzzles(db: any, gameData: any): Promise<WordS
     const pool = await db.select().from(schema.words).where(and(
       sql`${schema.words.isWordSplit} = 1`,
       inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+      gte(schema.words.wordLength, 6),
     )).orderBy(sql`RAND()`).limit(50);
     const puzzles: WordSplitPuzzle[] = pool.map((w: any) => ({ targetWord: w.word }));
     if (puzzles.length > 0) return puzzles;

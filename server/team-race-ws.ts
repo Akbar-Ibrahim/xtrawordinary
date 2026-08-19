@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server, IncomingMessage } from "http";
 import { getSessionMiddleware } from "./auth";
-import { log } from "./index";
+import { log } from "./logger";
 import { storage } from "./storage";
 import { wordDictSet, makerWords } from "./game-data";
 import type { TeamRaceClientMessage, TeamRaceServerMessage, TeamRacePlayerInfo, TeamRaceContribution } from "@shared/team-race-protocol";

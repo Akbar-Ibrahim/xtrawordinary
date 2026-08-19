@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Crown, Medal, Award, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
@@ -147,10 +147,10 @@ export function MiniLeaderboard({ game }: MiniLeaderboardProps) {
   return (
     <Card data-testid="mini-leaderboard-card">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm flex items-center gap-1.5">
+          <h2 className="text-sm font-semibold leading-none tracking-tight flex items-center gap-1.5">
           <Trophy className="h-4 w-4 text-yellow-500" />
           Top Players
-        </CardTitle>
+          </h2>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">
         {hasModes && (

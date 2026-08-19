@@ -333,7 +333,10 @@ export default function Home() {
             </Link>
           </motion.div>
 
-          <div className="flex overflow-x-auto gap-3 mb-8 scrollbar-none pb-1">
+          <div
+            className="flex min-w-0 max-w-full overflow-x-auto overscroll-x-contain gap-3 mb-8 scrollbar-none pb-1"
+            data-testid="home-shortcut-strip"
+          >
 
             {!isLoading && games && games.length > 0 && (
               <motion.div

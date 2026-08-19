@@ -108,7 +108,7 @@ function App() {
             <DuelNotificationsProvider>
             <TooltipProvider>
             <MotionConfig reducedMotion="user">
-            <div className="min-h-screen bg-background flex flex-col">
+            <div className="min-h-screen min-w-0 overflow-x-hidden bg-background flex flex-col">
               <Navigation />
               <main className="flex-1">
                 <ErrorBoundary>

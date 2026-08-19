@@ -302,7 +302,7 @@ export default function GameDetail() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto min-w-0 px-4 py-8">
       <PageSEO
         title={game?.name ?? "Word Game"}
         description={game ? `Play ${game.name} — ${game.description ?? "a fun vocabulary challenge on xtraWordinary."}` : "Play word games on xtraWordinary."}
@@ -323,7 +323,7 @@ export default function GameDetail() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="grid lg:grid-cols-3 gap-8"
+            className="grid min-w-0 lg:grid-cols-3 gap-8"
           >
             <GameDetailInfo
               game={game}

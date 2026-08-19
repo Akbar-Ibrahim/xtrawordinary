@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import type { Server, IncomingMessage } from "http";
 import type { Request, Response } from "express";
 import { getSessionMiddleware } from "./auth";
-import { log } from "./index";
+import { log } from "./logger";
 import { storage } from "./storage";
 import { wordDictSet, ladderRushStartWords } from "./game-data";
 import type { DuelClientMessage, DuelServerMessage } from "@shared/duel-protocol";
