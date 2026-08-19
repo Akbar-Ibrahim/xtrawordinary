@@ -7,6 +7,7 @@ import MySQLStoreFactory from "express-mysql-session";
 import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
+import { isMySQLStorageEnabled } from "./storage-config";
 
 let _sessionMiddleware: RequestHandler | null = null;
 
@@ -59,8 +60,11 @@ export function setupAuth(app: Express) {
   };
 
   const mysqlUrl = process.env.MYSQL_DATABASE_URL;
-  if (mysqlUrl) {
+  if (isMySQLStorageEnabled()) {
     try {
+      if (!mysqlUrl) {
+        throw new Error("MYSQL_DATABASE_URL is required when STORAGE_MODE=mysql");
+      }
       const MySQLStore = MySQLStoreFactory(session as any);
       const url = new URL(mysqlUrl);
       const store = new MySQLStore({

@@ -1,5 +1,7 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition } from "@shared/schema";
 
+import { isMySQLStorageEnabled } from "./storage-config";
+
 export type LengthConstraint = {
   length: number;
   startsWith?: string;
@@ -356,7 +358,7 @@ export function getStorage(): IStorage {
 export async function initStorage(): Promise<IStorage> {
   if (_storage) return _storage;
   
-  if (process.env.MYSQL_DATABASE_URL) {
+  if (isMySQLStorageEnabled()) {
     console.log("[Storage] Using MySQL storage");
     const { MySQLStorage } = await import("./mysql-storage");
     _storage = new MySQLStorage();
