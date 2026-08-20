@@ -8,7 +8,11 @@ vite.config.ts.*
 data
 .local
 .agents
-monetization
-IDEAS
-GAME_CONCEPTS
+monetization.txt
+seed-games.sql
+quizzes.txt
+IDEAS.md
+GAME_CONCEPTS.md
+bugs.txt
 scripts
+.replit
