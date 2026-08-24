@@ -5,6 +5,8 @@ export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
+  username: varchar("username", { length: 20 }).notNull(),
+  usernameNormalized: varchar("username_normalized", { length: 20 }).notNull(),
   passwordHash: text("password_hash"),
   googleId: varchar("google_id", { length: 255 }).unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
@@ -14,7 +16,9 @@ export const users = mysqlTable("users", {
   isPremium: boolean("is_premium").notNull().default(false),
   bio: text("bio"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("users_username_normalized_idx").on(table.usernameNormalized),
+]);
 
 export const emailVerificationTokens = mysqlTable("email_verification_tokens", {
   id: int("id").primaryKey().autoincrement(),

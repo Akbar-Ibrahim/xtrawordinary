@@ -66,6 +66,7 @@ export function ProfileHeader({
                 </button>
               )}
             </div>
+            <p className="text-sm text-muted-foreground" data-testid="text-profile-username">@{profile.user.username}</p>
             {isOwnProfile && profile.user.isPremium && (
               <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={onDowngradePremium} disabled={downgradePremiumPending} data-testid="button-downgrade-premium">
                 Remove Premium (testing)

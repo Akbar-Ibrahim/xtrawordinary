@@ -7,6 +7,8 @@ export function toUser(row: any): User {
     id: row.id,
     email: row.email,
     name: row.name,
+    username: row.username,
+    usernameNormalized: row.usernameNormalized,
     passwordHash: row.passwordHash || null,
     googleId: row.googleId || null,
     emailVerified: !!row.emailVerified,
@@ -23,6 +25,8 @@ export async function createUser(db: any, user: InsertUser): Promise<User> {
   const result = await db.insert(schema.users).values({
     email: user.email,
     name: user.name,
+    username: user.username,
+    usernameNormalized: user.usernameNormalized,
     passwordHash: user.passwordHash,
     googleId: user.googleId,
     emailVerified: user.emailVerified,
@@ -49,10 +53,19 @@ export async function getUserByGoogleId(db: any, googleId: string): Promise<User
   return rows[0] ? toUser(rows[0]) : undefined;
 }
 
+export async function getUserByUsername(db: any, username: string): Promise<User | undefined> {
+  const rows = await db.select().from(schema.users)
+    .where(eq(schema.users.usernameNormalized, username.trim().toLowerCase()))
+    .limit(1);
+  return rows[0] ? toUser(rows[0]) : undefined;
+}
+
 export async function updateUser(db: any, id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
   const dbUpdates: any = {};
   if (updates.email !== undefined) dbUpdates.email = updates.email;
   if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.username !== undefined) dbUpdates.username = updates.username;
+  if (updates.usernameNormalized !== undefined) dbUpdates.usernameNormalized = updates.usernameNormalized;
   if (updates.passwordHash !== undefined) dbUpdates.passwordHash = updates.passwordHash;
   if (updates.googleId !== undefined) dbUpdates.googleId = updates.googleId;
   if (updates.emailVerified !== undefined) dbUpdates.emailVerified = updates.emailVerified;

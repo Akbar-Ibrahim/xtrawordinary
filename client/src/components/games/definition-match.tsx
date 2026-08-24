@@ -27,7 +27,7 @@ const DEFAULT_TIME_LIMIT = 180;
 export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: customWordsProp, wordTarget, timeLimitSeconds, isUntimed }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: DefinitionWord[]; wordTarget?: number; timeLimitSeconds?: number; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match", quizMode });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "definition-match", quizMode, isUntimed });
   const personalBest = usePersonalBest("definition-match");
   const seeded = groupSeed !== undefined;
   const { markSeen, filterUnseen } = usePuzzleHistory("definition-match");
@@ -229,7 +229,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
             <AnimatedNumber value={score} /> pts
           </Badge>
           <StreakIndicator streak={streak} />
-          {gameStatus === "playing" && (
+          {gameStatus === "playing" && !isUntimed && (
             <Badge
               variant="outline"
               className={`gap-1.5 tabular-nums ${timerWarning ? "border-destructive text-destructive animate-pulse" : ""}`}
@@ -512,7 +512,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                     <LogIn className="h-4 w-4 shrink-0" />
                     <span>
                       <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
-                      to save your score to the leaderboard!
+                      {isUntimed ? "Sign in to keep your stats across devices." : "to save your score to the leaderboard!"}
                     </span>
                   </div>
                 )}

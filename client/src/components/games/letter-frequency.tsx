@@ -19,6 +19,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -225,6 +226,19 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const initialLetterRef = useRef<string | undefined>(initialLetter);
   const initialLettersRef = useRef<string[] | undefined>(initialLetters);
   const initialLetterCountsRef = useRef<number[] | undefined>(initialLetterCounts);
+  const wordExamplesRequest = challenge === "multi" && multiConstraint
+    ? {
+        game: "letter-frequency" as const,
+        mode: "minimum" as const,
+        constraints: multiConstraint.letters,
+      }
+    : constraint
+      ? {
+          game: "letter-frequency" as const,
+          mode: "exact" as const,
+          constraints: [constraint],
+        }
+      : undefined;
 
   const wordsPerChallenge = initialWordCount ?? 100;
   const timePerChallenge = initialTimeLimit ?? 600;
@@ -759,6 +773,13 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   isWin={true}
                   customPlay={customPlay}
                 />
+                {wordExamplesRequest && (
+                  <WordExamplesPanel
+                    game="letter-frequency"
+                    letters={[]}
+                    databaseRequest={wordExamplesRequest}
+                  />
+                )}
                 {usedWords.size > 0 && (
                   <div className="text-left">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
@@ -861,6 +882,13 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   isWin={false}
                   customPlay={customPlay}
                 />
+                {wordExamplesRequest && (
+                  <WordExamplesPanel
+                    game="letter-frequency"
+                    letters={[]}
+                    databaseRequest={wordExamplesRequest}
+                  />
+                )}
                 {usedWords.size > 0 && (
                   <div className="text-left">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>

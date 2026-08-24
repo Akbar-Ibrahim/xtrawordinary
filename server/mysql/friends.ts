@@ -34,25 +34,25 @@ export async function removeFriend(db: any, id: number): Promise<void> {
   await db.delete(schema.friendships).where(eq(schema.friendships.id, id));
 }
 
-export async function getFriends(db: any, userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> {
+export async function getFriends(db: any, userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
   const rows = await db.select().from(schema.friendships).where(and(eq(schema.friendships.status, "accepted"), or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))));
   if (rows.length === 0) return [];
   const friendIds = rows.map((r: any) => r.requesterId === userId ? r.addresseeId : r.requesterId);
-  const friendUsers = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, friendIds));
-  const userMap = new Map(friendUsers.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  const friendUsers = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, friendIds));
+  const userMap = new Map(friendUsers.map((u: any) => [u.id, { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl || null }]));
   return rows.map((row: any) => {
     const friendId = row.requesterId === userId ? row.addresseeId : row.requesterId;
-    return { ...toFriendship(row), friendUser: userMap.get(friendId) || { id: friendId, name: "Unknown", avatarUrl: null } };
+    return { ...toFriendship(row), friendUser: userMap.get(friendId) || { id: friendId, username: "unknown", name: "Unknown", avatarUrl: null } };
   });
 }
 
-export async function getPendingFriendRequests(db: any, userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> {
+export async function getPendingFriendRequests(db: any, userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
   const rows = await db.select().from(schema.friendships).where(and(eq(schema.friendships.status, "pending"), eq(schema.friendships.addresseeId, userId)));
   if (rows.length === 0) return [];
   const requesterIds = rows.map((r: any) => r.requesterId);
-  const requesterUsers = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, requesterIds));
-  const userMap = new Map(requesterUsers.map((u: any) => [u.id, { id: u.id, name: u.name, avatarUrl: u.avatarUrl || null }]));
-  return rows.map((row: any) => ({ ...toFriendship(row), requesterUser: userMap.get(row.requesterId) || { id: row.requesterId, name: "Unknown", avatarUrl: null } }));
+  const requesterUsers = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, requesterIds));
+  const userMap = new Map(requesterUsers.map((u: any) => [u.id, { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  return rows.map((row: any) => ({ ...toFriendship(row), requesterUser: userMap.get(row.requesterId) || { id: row.requesterId, username: "unknown", name: "Unknown", avatarUrl: null } }));
 }
 
 export async function getFriendship(db: any, userId1: number, userId2: number): Promise<Friendship | undefined> {
@@ -82,10 +82,10 @@ export async function getFriendChallenges(db: any, userId: number): Promise<Frie
   const userIds = new Set<number>();
   for (const c of challenges) { userIds.add(c.senderId); userIds.add(c.receiverId); }
   if (userIds.size === 0) return challenges;
-  const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, Array.from(userIds)));
-  const userMap = new Map<number, { name: string; avatarUrl: string | null }>();
-  for (const u of userRows) userMap.set(u.id, { name: u.name, avatarUrl: u.avatarUrl });
-  return challenges.map((c: any) => ({ ...c, senderName: userMap.get(c.senderId)?.name, receiverName: userMap.get(c.receiverId)?.name, senderAvatarUrl: userMap.get(c.senderId)?.avatarUrl ?? null, receiverAvatarUrl: userMap.get(c.receiverId)?.avatarUrl ?? null }));
+  const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, Array.from(userIds)));
+  const userMap = new Map<number, { username: string; name: string; avatarUrl: string | null }>();
+  for (const u of userRows) userMap.set(u.id, { username: u.username, name: u.name, avatarUrl: u.avatarUrl });
+  return challenges.map((c: any) => ({ ...c, senderName: userMap.get(c.senderId)?.name, receiverName: userMap.get(c.receiverId)?.name, senderUsername: userMap.get(c.senderId)?.username, receiverUsername: userMap.get(c.receiverId)?.username, senderAvatarUrl: userMap.get(c.senderId)?.avatarUrl ?? null, receiverAvatarUrl: userMap.get(c.receiverId)?.avatarUrl ?? null }));
 }
 
 export async function getPendingFriendChallenge(db: any, senderId: number, receiverId: number, gameSlug: string): Promise<FriendChallenge | undefined> {

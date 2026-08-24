@@ -208,14 +208,14 @@ export async function removeGroupMember(db: any, groupId: number, userId: number
   await db.delete(schema.groupMembers).where(and(eq(schema.groupMembers.groupId, groupId), eq(schema.groupMembers.userId, userId)));
 }
 
-export async function getGroupMembers(db: any, groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+export async function getGroupMembers(db: any, groupId: number): Promise<Array<GroupMember & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
   const rows = await db
-    .select({ member: schema.groupMembers, user: { id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl } })
+    .select({ member: schema.groupMembers, user: { id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl } })
     .from(schema.groupMembers)
     .innerJoin(schema.users, eq(schema.groupMembers.userId, schema.users.id))
     .where(eq(schema.groupMembers.groupId, groupId))
     .orderBy(asc(schema.groupMembers.joinedAt));
-  return rows.map((r: any) => ({ ...toGroupMember(r.member), user: { id: r.user.id, name: r.user.name, avatarUrl: r.user.avatarUrl ?? null } }));
+  return rows.map((r: any) => ({ ...toGroupMember(r.member), user: { id: r.user.id, username: r.user.username, name: r.user.name, avatarUrl: r.user.avatarUrl ?? null } }));
 }
 
 export async function getGroupMember(db: any, groupId: number, userId: number): Promise<GroupMember | undefined> {
@@ -275,14 +275,14 @@ export async function submitGroupRoundScore(db: any, roundId: number, userId: nu
   return toGroupRoundScore(rows[0]);
 }
 
-export async function getGroupRoundScores(db: any, roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+export async function getGroupRoundScores(db: any, roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
   const rows = await db
-    .select({ score: schema.groupRoundScores, user: { id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl } })
+    .select({ score: schema.groupRoundScores, user: { id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl } })
     .from(schema.groupRoundScores)
     .innerJoin(schema.users, eq(schema.groupRoundScores.userId, schema.users.id))
     .where(eq(schema.groupRoundScores.roundId, roundId))
     .orderBy(desc(schema.groupRoundScores.score), sql`COALESCE(${schema.groupRoundScores.durationMs}, 2147483647) ASC`);
-  return rows.map((r: any) => ({ ...toGroupRoundScore(r.score), user: { id: r.user.id, name: r.user.name, avatarUrl: r.user.avatarUrl ?? null } }));
+  return rows.map((r: any) => ({ ...toGroupRoundScore(r.score), user: { id: r.user.id, username: r.user.username, name: r.user.name, avatarUrl: r.user.avatarUrl ?? null } }));
 }
 
 export async function getUserGroupRoundScore(db: any, roundId: number, userId: number): Promise<GroupRoundScore | undefined> {
@@ -290,12 +290,12 @@ export async function getUserGroupRoundScore(db: any, roundId: number, userId: n
   return rows[0] ? toGroupRoundScore(rows[0]) : undefined;
 }
 
-export async function getGroupLeaderboard(db: any, groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+export async function getGroupLeaderboard(db: any, groupId: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
   const members = await getGroupMembers(db, groupId);
   if (members.length === 0) return [];
   const memberIds = members.map((m) => m.userId);
   const roundIds = await db.select({ id: schema.groupRounds.id }).from(schema.groupRounds).where(eq(schema.groupRounds.groupId, groupId));
-  if (roundIds.length === 0) return members.map((m) => ({ userId: m.userId, name: m.user.name, avatarUrl: m.user.avatarUrl, totalScore: 0, roundsPlayed: 0 }));
+  if (roundIds.length === 0) return members.map((m) => ({ userId: m.userId, username: m.user.username, name: m.user.name, avatarUrl: m.user.avatarUrl, totalScore: 0, roundsPlayed: 0 }));
   const rids = roundIds.map((r: any) => r.id);
   const scoreRows = await db
     .select({ userId: schema.groupRoundScores.userId, totalScore: sql<number>`SUM(${schema.groupRoundScores.score})`, roundsPlayed: sql<number>`COUNT(*)` })
@@ -305,7 +305,7 @@ export async function getGroupLeaderboard(db: any, groupId: number): Promise<Arr
   const scoreMap = new Map<number, { totalScore: number; roundsPlayed: number }>(scoreRows.map((r: any) => [r.userId as number, { totalScore: Number(r.totalScore), roundsPlayed: Number(r.roundsPlayed) }]));
   return members.map((m) => {
     const s = scoreMap.get(m.userId) ?? { totalScore: 0, roundsPlayed: 0 };
-    return { userId: m.userId, name: m.user.name, avatarUrl: m.user.avatarUrl, totalScore: s.totalScore, roundsPlayed: s.roundsPlayed };
+    return { userId: m.userId, username: m.user.username, name: m.user.name, avatarUrl: m.user.avatarUrl, totalScore: s.totalScore, roundsPlayed: s.roundsPlayed };
   }).sort((a, b) => b.totalScore - a.totalScore);
 }
 
@@ -411,7 +411,7 @@ export async function endGroupSeason(db: any, id: number, winnerId: number | nul
   return getGroupSeason(db, id);
 }
 
-export async function getGroupSeasonLeaderboard(db: any, season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+export async function getGroupSeasonLeaderboard(db: any, season: GroupSeason): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
   if (season.eligibleMemberIds.length === 0) return [];
   const roundRows = await db.select({ id: schema.groupRounds.id }).from(schema.groupRounds).where(eq(schema.groupRounds.seasonId, season.id));
   if (roundRows.length === 0) return [];
@@ -427,12 +427,12 @@ export async function getGroupSeasonLeaderboard(db: any, season: GroupSeason): P
     .groupBy(schema.groupRoundScores.userId);
   const userIds = scoreRows.map((r: any) => r.userId as number);
   if (userIds.length === 0) return [];
-  const users = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
-  const userMap = new Map<number, { name: string; avatarUrl: string | null }>(users.map((u: any) => [u.id, { name: u.name, avatarUrl: u.avatarUrl ?? null }]));
+  const users = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+  const userMap = new Map<number, { username: string; name: string; avatarUrl: string | null }>(users.map((u: any) => [u.id, { username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null }]));
   return scoreRows
     .map((r: any) => {
       const u = userMap.get(r.userId as number);
-      return { userId: r.userId as number, name: u?.name ?? "Unknown", avatarUrl: u?.avatarUrl ?? null, totalScore: Number(r.totalScore), roundsPlayed: Number(r.roundsPlayed) };
+      return { userId: r.userId as number, username: u?.username ?? "unknown", name: u?.name ?? "Unknown", avatarUrl: u?.avatarUrl ?? null, totalScore: Number(r.totalScore), roundsPlayed: Number(r.roundsPlayed) };
     })
     .sort((a: any, b: any) => b.totalScore - a.totalScore);
 }

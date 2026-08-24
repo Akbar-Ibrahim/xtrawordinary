@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import type { DuelChallengeStatus } from "@shared/schema";
 import { createNotificationIfEnabled } from "./helpers";
+import { getOpenChallengeExpiresAt, isOpenChallengeExpired } from "../challenge-expiry";
 
 function formatDuelVariationServer(gameSlug: string, startWord: string | null | undefined): string | null {
   if (!startWord) return null;
@@ -130,7 +131,7 @@ export function registerDuelsRoutes(app: Express): void {
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
         gameSlug, challengerId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit, overrideStartWord,
       );
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = getOpenChallengeExpiresAt().toISOString();
       const challenge = await storage.createDuelChallenge({
         challengerId,
         challengeeId: targetId,
@@ -254,7 +255,7 @@ export function registerDuelsRoutes(app: Express): void {
       if (!isOpen && challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
       if (isOpen && challenge.challengerId === userId) return res.status(400).json({ error: "Cannot accept your own open challenge" });
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
-      if (challenge.expiresAt && new Date(challenge.expiresAt) < new Date()) {
+      if (isOpenChallengeExpired(challenge.createdAt, challenge.expiresAt)) {
         await storage.updateDuelChallengeStatus(id, "expired");
         if (challenge.roomCode) {
           const { duelRegistry } = await import("../duel-ws");

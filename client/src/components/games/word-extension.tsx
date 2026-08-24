@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { WordExtensionPuzzle } from "@shared/schema";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useSound } from "@/lib/sound-provider";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_TIME = 90;
@@ -135,6 +136,7 @@ function WordExtensionPlay({
   const slug = "word-extension";
   const { reportResult, resetRecorded } = useGameResult({ slug, isUntimed });
   const personalBest = usePersonalBest(slug);
+  const { markSeen, filterUnseen } = usePuzzleHistory("word-extension");
 
   const totalTime = timeLimitSeconds ?? DEFAULT_TIME;
 
@@ -194,8 +196,24 @@ function WordExtensionPlay({
     }
   }, [gameStatus]);
 
-  const currentPuzzle = puzzles?.[round];
+  const playablePuzzles = useMemo(
+    () => puzzles
+      ? filterUnseen(
+          puzzles,
+          (puzzle) => `${puzzle.shownWord}:${lettersToAdd}`,
+          String(lettersToAdd),
+        )
+      : [],
+    [puzzles, filterUnseen, lettersToAdd],
+  );
+  const currentPuzzle = playablePuzzles[round];
   const variation = VARIATIONS.find(v => v.lettersToAdd === lettersToAdd)!;
+
+  useEffect(() => {
+    if (currentPuzzle) {
+      markSeen(`${currentPuzzle.shownWord}:${lettersToAdd}`, String(lettersToAdd));
+    }
+  }, [currentPuzzle, lettersToAdd, markSeen]);
 
   const handleSubmit = useCallback(async () => {
     if (!currentPuzzle || isValidating || feedback || gameStatus !== "playing") return;
@@ -234,7 +252,7 @@ function WordExtensionPlay({
           setFeedback(null);
           setUserInput("");
           const next = round + 1;
-          if (next >= (puzzles?.length ?? 0)) {
+          if (next >= playablePuzzles.length) {
             // No more puzzles — end game
             if (!endedRef.current) {
               endedRef.current = true;
@@ -253,14 +271,14 @@ function WordExtensionPlay({
     } finally {
       setIsValidating(false);
     }
-  }, [currentPuzzle, isValidating, feedback, gameStatus, userInput, lettersToAdd, round, puzzles, playSound]);
+  }, [currentPuzzle, isValidating, feedback, gameStatus, userInput, lettersToAdd, round, playablePuzzles.length, playSound]);
 
   const handleSkip = useCallback(() => {
     if (gameStatus !== "playing" || !puzzles) return;
     const next = round + 1;
     setUserInput("");
     setFeedback(null);
-    if (next >= puzzles.length) {
+    if (next >= playablePuzzles.length) {
       if (!endedRef.current) {
         endedRef.current = true;
         clearInterval(timerRef.current!);
@@ -270,7 +288,7 @@ function WordExtensionPlay({
       setRound(next);
     }
     setTimeout(() => inputRef.current?.focus(), 50);
-  }, [gameStatus, round, puzzles]);
+  }, [gameStatus, round, playablePuzzles.length]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSubmit();

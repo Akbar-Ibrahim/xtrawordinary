@@ -10,7 +10,7 @@ import type { Game } from "@shared/schema";
 
 interface Friend {
   id: number;
-  friendUser: { id: number; name: string; avatarUrl: string | null };
+  friendUser: { id: number; username: string; name: string; avatarUrl: string | null };
 }
 
 interface Props {
@@ -43,7 +43,7 @@ export function ChallengeDialog({ open, onOpenChange, slug, game, friends, navig
     return () => clearTimeout(timer);
   }, [challengeSearchInput]);
 
-  const { data: challengeUserResults = [], isFetching: challengeSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
+  const { data: challengeUserResults = [], isFetching: challengeSearchFetching } = useQuery<{ id: number; username: string; name: string; avatarUrl: string | null }[]>({
     queryKey: ["/api/users/search", challengeSearch],
     queryFn: async () => {
       if (!challengeSearch.trim()) return [];
@@ -137,11 +137,11 @@ export function ChallengeDialog({ open, onOpenChange, slug, game, friends, navig
                           key={u.id}
                           type="button"
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
-                          onClick={() => { setSelectedFriendId(String(u.id)); setSelectedFriendName(u.name); setChallengeSearchInput(""); setChallengeSearch(""); }}
+                          onClick={() => { setSelectedFriendId(String(u.id)); setSelectedFriendName(`${u.name} (@${u.username})`); setChallengeSearchInput(""); setChallengeSearch(""); }}
                           data-testid={`button-select-challenge-user-${u.id}`}
                         >
                           <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6" />
-                          {u.name}
+                          <span>{u.name}<span className="block text-xs text-muted-foreground">@{u.username}</span></span>
                         </button>
                       ))
                     )
@@ -153,11 +153,11 @@ export function ChallengeDialog({ open, onOpenChange, slug, game, friends, navig
                           key={f.friendUser.id}
                           type="button"
                           className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 transition-colors text-left"
-                          onClick={() => { setSelectedFriendId(String(f.friendUser.id)); setSelectedFriendName(f.friendUser.name); }}
+                          onClick={() => { setSelectedFriendId(String(f.friendUser.id)); setSelectedFriendName(`${f.friendUser.name} (@${f.friendUser.username})`); }}
                           data-testid={`button-select-challenge-friend-${f.friendUser.id}`}
                         >
                           <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-6 w-6" />
-                          {f.friendUser.name}
+                          <span>{f.friendUser.name}<span className="block text-xs text-muted-foreground">@{f.friendUser.username}</span></span>
                         </button>
                       ))}
                     </>

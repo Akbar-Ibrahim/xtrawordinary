@@ -80,7 +80,7 @@ export function useProfileData(userId: number) {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (data: { name?: string; avatarUrl?: string | null; bio?: string | null }) =>
+    mutationFn: (data: { username?: string; name?: string; avatarUrl?: string | null; bio?: string | null }) =>
       apiRequest("PATCH", "/api/users/me", data),
     onSuccess: async () => {
       toast({ title: "Profile updated!" });

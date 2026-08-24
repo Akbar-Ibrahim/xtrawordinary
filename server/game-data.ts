@@ -770,7 +770,8 @@ export const gamesData: Game[] = [
     estimatedTime: "3-5 min",
     icon: "GitBranch",
     color: "hsl(262, 83%, 58%)",
-    playCount: 15420
+    playCount: 15420,
+    ogImage: "/og/word-ladder.png",
   },
   {
     id: 2,
@@ -791,6 +792,7 @@ export const gamesData: Game[] = [
     color: "hsl(158, 64%, 40%)",
     playCount: 12850,
     timeLimitSeconds: 180,
+    ogImage: "/og/anagram-solver.png",
   },
   {
     id: 3,
@@ -811,6 +813,7 @@ export const gamesData: Game[] = [
     color: "hsl(35, 92%, 50%)",
     playCount: 8930,
     livesCount: 3,
+    ogImage: "/og/word-scramble.png",
   },
   {
     id: 4,
@@ -833,6 +836,7 @@ export const gamesData: Game[] = [
     playCount: 7650,
     wordTarget: 5,
     timeLimitSeconds: 180,
+    ogImage: "/og/definition-match.png",
   },
   {
     id: 5,
@@ -854,6 +858,7 @@ export const gamesData: Game[] = [
     color: "hsl(340, 75%, 55%)",
     playCount: 6420,
     livesCount: 3,
+    ogImage: "/og/letter-pool.png",
   },
   {
     id: 6,
@@ -872,7 +877,8 @@ export const gamesData: Game[] = [
     estimatedTime: "5-8 min",
     icon: "Sparkles",
     color: "hsl(280, 65%, 55%)",
-    playCount: 5890
+    playCount: 5890,
+    ogImage: "/og/word-maker.png",
   },
   {
     id: 7,
@@ -896,6 +902,7 @@ export const gamesData: Game[] = [
     playCount: 4250,
     hasSurvival: true,
     timeLimitSeconds: 600,
+    ogImage: "/og/word-length.png",
   },
   {
     id: 8,
@@ -917,6 +924,7 @@ export const gamesData: Game[] = [
     playCount: 3890,
     hasSurvival: true,
     timeLimitSeconds: 600,
+    ogImage: "/og/letter-position.png",
   },
   {
     id: 9,
@@ -939,6 +947,7 @@ export const gamesData: Game[] = [
     playCount: 4120,
     hasSurvival: true,
     timeLimitSeconds: 600,
+    ogImage: "/og/letter-hunt.png",
   },
   {
     id: 10,
@@ -959,6 +968,7 @@ export const gamesData: Game[] = [
     playCount: 3560,
     hasSurvival: true,
     wordTarget: 100,
+    ogImage: "/og/word-chain.png",
   },
   {
     id: 11,
@@ -981,6 +991,7 @@ export const gamesData: Game[] = [
     color: "hsl(250, 65%, 55%)",
     playCount: 3240,
     timeLimitSeconds: 600,
+    ogImage: "/og/letter-balance.png",
   },
   {
     id: 12,
@@ -1004,6 +1015,7 @@ export const gamesData: Game[] = [
     playCount: 0,
     hasSurvival: true,
     timeLimitSeconds: 600,
+    ogImage: "/og/letter-frequency.png",
   },
   {
     id: 13,
@@ -1022,7 +1034,8 @@ export const gamesData: Game[] = [
     estimatedTime: "5-8 min",
     icon: "Layers",
     color: "hsl(25, 85%, 55%)",
-    playCount: 0
+    playCount: 0,
+    ogImage: "/og/word-stack.png",
   },
   {
     id: 14,
@@ -1046,6 +1059,7 @@ export const gamesData: Game[] = [
     hasSurvival: true,
     timeLimitSeconds: 120,
     wordTarget: 15,
+    ogImage: "/og/no-repeats.png",
   },
   {
     id: 15,
@@ -1065,7 +1079,8 @@ export const gamesData: Game[] = [
     estimatedTime: "5-10 min",
     icon: "Scissors",
     color: "hsl(15, 80%, 50%)",
-    playCount: 0
+    playCount: 0,
+    ogImage: "/og/word-split.png",
   },
   {
     id: 16,
@@ -1088,6 +1103,7 @@ export const gamesData: Game[] = [
     color: "hsl(270, 65%, 55%)",
     playCount: 0,
     livesCount: 3,
+    ogImage: "/og/progressive-reveal.png",
   },
   {
     id: 17,
@@ -1114,6 +1130,7 @@ export const gamesData: Game[] = [
       { label: "Classic", slug: "word-sweep" },
       { label: "Guided", slug: "word-unpack" },
     ],
+    ogImage: "/og/word-sweep.png",
   },
   {
     id: 18,
@@ -1136,6 +1153,7 @@ export const gamesData: Game[] = [
     playCount: 0,
     timeLimitSeconds: 180,
     wordTarget: 5,
+    ogImage: "/og/word-roots.png",
   },
   {
     id: 19,
@@ -1165,6 +1183,7 @@ export const gamesData: Game[] = [
       { label: "Medium (5L)", slug: "ladder-rush-5" },
       { label: "Hard (6L)", slug: "ladder-rush-6" },
     ],
+    ogImage: "/og/ladder-rush.png",
   },
   {
     id: 20,
@@ -1193,6 +1212,7 @@ export const gamesData: Game[] = [
       { label: "Medium (5L)", slug: "ladder-rush-double-5" },
       { label: "Hard (6L)", slug: "ladder-rush-double-6" },
     ],
+    ogImage: "/og/ladder-rush-double.png",
   },
   {
     id: 21,
@@ -1223,6 +1243,7 @@ export const gamesData: Game[] = [
       { label: "Crack", slug: "shell-words-crack" },
       { label: "Crack Survival", slug: "shell-words-crack-survival" },
     ],
+    ogImage: "/og/shell-words.png",
   },
   {
     id: 22,
@@ -1254,6 +1275,7 @@ export const gamesData: Game[] = [
       { label: "Crack", slug: "deep-shell-words-crack" },
       { label: "Crack Survival", slug: "deep-shell-words-crack-survival" },
     ],
+    ogImage: "/og/deep-shell-words.png",
   },
   {
     id: 24,
@@ -1281,6 +1303,7 @@ export const gamesData: Game[] = [
       { label: "Classic", slug: "word-bloom" },
       { label: "Survival", slug: "word-bloom-survival" },
     ],
+    ogImage: "/og/word-bloom.png",
   },
   {
     id: 25,
@@ -1309,6 +1332,7 @@ export const gamesData: Game[] = [
       { label: "Classic",  slug: "letter-dodge" },
       { label: "Survival", slug: "letter-dodge-survival" },
     ],
+    ogImage: "/og/letter-dodge.png",
   },
   {
     id: 26,
@@ -1330,6 +1354,7 @@ export const gamesData: Game[] = [
     color: "hsl(210, 70%, 52%)",
     playCount: 0,
     timeLimitSeconds: 90,
+    ogImage: "/og/word-extension.png",
   },
   {
     id: 23,
@@ -1358,5 +1383,6 @@ export const gamesData: Game[] = [
       { label: "Classic", slug: "word-stretch" },
       { label: "Survival", slug: "word-stretch-survival" },
     ],
+    ogImage: "/og/word-stretch.png",
   }
 ];

@@ -41,13 +41,14 @@ function SeasonLeaderboard({ groupId, seasonId, isAdmin, onEnd }: { groupId: num
             <span className={`text-xl font-bold w-8 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
               {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
             </span>
-            <Link href={`/profile/${entry.userId}`}>
+            <Link href={`/u/${entry.username}`}>
               <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="h-9 w-9 cursor-pointer" />
             </Link>
             <div className="flex-1 min-w-0">
-              <Link href={`/profile/${entry.userId}`}>
+              <Link href={`/u/${entry.username}`}>
                 <p className="font-semibold truncate hover:underline cursor-pointer">{entry.name}</p>
               </Link>
+              <p className="text-xs text-muted-foreground">@{entry.username}</p>
               <p className="text-xs text-muted-foreground">{entry.roundsPlayed} round{entry.roundsPlayed !== 1 ? "s" : ""}</p>
             </div>
             <p className="font-bold text-lg">{entry.totalScore.toLocaleString()}</p>

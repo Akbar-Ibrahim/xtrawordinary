@@ -65,7 +65,7 @@ function EntryRow({ entry, index }: { entry: LeaderboardEntry; index: number }) 
         className="w-6 h-6 text-[10px]"
         data-testid={`mini-avatar-${index}`}
       />
-      <Link href={`/profile/${entry.userId}`}>
+      <Link href={`/u/${entry.username}`}>
         <span
           className="flex-1 text-xs font-medium truncate hover:underline cursor-pointer max-w-[100px]"
           data-testid={`mini-player-${index}`}

@@ -61,11 +61,12 @@ interface WordBloomPlayProps {
   initialSeed: number;
   onExit: () => void;
   locked?: boolean;
+  isUntimed?: boolean;
 }
 
-function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps) {
+function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBloomPlayProps) {
   const slug = mode === "classic" ? "word-bloom" : "word-bloom-survival";
-  const { reportResult } = useGameResult({ slug });
+  const { reportResult } = useGameResult({ slug, isUntimed });
   const personalBest = usePersonalBest(slug);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
@@ -95,7 +96,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
   const { data: leaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
     queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
-    enabled: gameStatus === "ended",
+    enabled: gameStatus === "ended" && !isUntimed,
     staleTime: 10_000,
   });
 
@@ -139,7 +140,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
         setCurrentWord(p.seed);
         currentWordRef.current = p.seed;
         seedLenRef.current = p.seed.length;
-        startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+        if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
         setTimeout(() => inputRef.current?.focus(), 100);
       } catch { /* silent */ }
     })();
@@ -196,7 +197,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
       setInput("");
       setValidating(false);
 
-      if (mode === "survival") {
+      if (mode === "survival" && !isUntimed) {
         startTimer(SURVIVAL_TIME);
       }
 
@@ -235,8 +236,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
               <p className="text-muted-foreground mt-1">{completionMessage}</p>
             </div>
             <Badge variant="secondary" className="gap-1.5">
-              {mode === "survival" ? <Flame className="h-3 w-3 text-destructive" /> : <Timer className="h-3 w-3" />}
-              {mode === "survival" ? "Survival Mode" : "Classic Mode"}
+              {isUntimed ? "∞ Untimed" : mode === "survival" ? "Survival Mode" : "Classic Mode"}
             </Badge>
 
             <div className="grid grid-cols-3 gap-3">
@@ -337,7 +337,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                       setCurrentWord(p.seed);
                       currentWordRef.current = p.seed;
                       seedLenRef.current = p.seed.length;
-                      startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+                      if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     })();
                   }}
@@ -371,7 +371,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                       setCurrentWord(p.seed);
                       currentWordRef.current = p.seed;
                       seedLenRef.current = p.seed.length;
-                      startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
+                      if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     })();
                   }}
@@ -398,30 +398,36 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-center gap-8">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
-            data-testid="text-timer"
-          >
-            {mode === "survival" ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </span>
-        </div>
+        <div className="flex items-center justify-center gap-8">
+        {isUntimed ? (
+          <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+            ∞ Untimed
+          </Badge>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
+            <span
+              className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
+              data-testid="text-timer"
+            >
+              {mode === "survival" ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+            </span>
+          </div>
+        )}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
           <AnimatedNumber value={score} className="text-2xl font-bold text-primary" data-testid="text-score" />
         </div>
       </div>
 
-      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+      {!isUntimed && <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
           className={`h-full rounded-full transition-colors ${timerColor}`}
           animate={{ width: `${timerPercent}%` }}
           transition={{ duration: 0.5 }}
           data-testid="timer-bar"
         />
-      </div>
+      </div>}
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
@@ -532,7 +538,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked }: WordBloomPlayProps
                 </AnimatePresence>
               </div>
 
-              {mode === "survival" && (
+              {mode === "survival" && !isUntimed && (
                 <p className="text-xs text-center text-muted-foreground">
                   Find a valid next word to reset the {SURVIVAL_TIME}s timer and keep the chain growing!
                 </p>
@@ -590,9 +596,10 @@ interface WordBloomGameProps {
   groupSeed?: number;
   locked?: boolean;
   initialMode?: Mode;
+  isUntimed?: boolean;
 }
 
-export function WordBloomGame({ groupSeed, locked, initialMode }: WordBloomGameProps) {
+export function WordBloomGame({ groupSeed, locked, initialMode, isUntimed }: WordBloomGameProps) {
   const [mode, setMode] = useState<Mode | null>(initialMode ?? null);
   const [playKey, setPlayKey] = useState(0);
   const initialSeed = groupSeed ?? Math.floor(Math.random() * 100000);
@@ -608,6 +615,7 @@ export function WordBloomGame({ groupSeed, locked, initialMode }: WordBloomGameP
           setPlayKey(k => k + 1);
         }}
         locked={locked}
+          isUntimed={isUntimed}
       />
     );
   }
@@ -636,10 +644,12 @@ export function WordBloomGame({ groupSeed, locked, initialMode }: WordBloomGameP
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <div className="font-semibold flex items-center gap-2">
-                <Timer className="h-4 w-4 text-[hsl(142,60%,40%)]" />
+                {isUntimed ? <span className="text-lg leading-none text-blue-600">∞</span> : <Timer className="h-4 w-4 text-[hsl(142,60%,40%)]" />}
                 Classic
               </div>
-              <div className="text-sm text-muted-foreground">2 minutes — grow the chain as deep as possible</div>
+              <div className="text-sm text-muted-foreground">
+                {isUntimed ? "No timer — grow the chain as deep as possible" : "2 minutes — grow the chain as deep as possible"}
+              </div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </CardContent>
@@ -653,10 +663,12 @@ export function WordBloomGame({ groupSeed, locked, initialMode }: WordBloomGameP
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <div className="font-semibold flex items-center gap-2">
-                <Flame className="h-4 w-4 text-destructive" />
+                {isUntimed ? <span className="text-lg leading-none text-blue-600">∞</span> : <Flame className="h-4 w-4 text-destructive" />}
                 Survival
               </div>
-              <div className="text-sm text-muted-foreground">8 seconds per step — keep the chain alive</div>
+              <div className="text-sm text-muted-foreground">
+                {isUntimed ? "No timer — keep the chain growing at your own pace" : "8 seconds per step — keep the chain alive"}
+              </div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </CardContent>

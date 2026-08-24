@@ -8,8 +8,32 @@ import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
 import { isMySQLStorageEnabled } from "./storage-config";
+import { getMySQLConnectionConfig } from "./mysql-config";
 
 let _sessionMiddleware: RequestHandler | null = null;
+
+export const PENDING_GOOGLE_SIGNUP_SESSION_KEY = "pendingGoogleSignup";
+
+export type PendingGoogleSignup = {
+  kind: "pending-google-signup";
+  googleId: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  existingUserId?: number;
+};
+
+export function isPendingGoogleSignup(value: unknown): value is PendingGoogleSignup {
+  return !!value
+    && typeof value === "object"
+    && (value as PendingGoogleSignup).kind === "pending-google-signup"
+    && typeof (value as PendingGoogleSignup).googleId === "string"
+    && typeof (value as PendingGoogleSignup).email === "string";
+}
+
+function isTemporaryGoogleUsername(username: string): boolean {
+  return /^google_[a-z0-9]+(?:_\d+)?$/.test(username);
+}
 
 export function getSessionMiddleware(): RequestHandler {
   if (!_sessionMiddleware) throw new Error("Session middleware not yet initialised — call setupAuth first");
@@ -22,6 +46,8 @@ declare global {
       id: number;
       email: string;
       name: string;
+      username: string;
+      usernameNormalized: string;
       passwordHash: string | null;
       googleId: string | null;
       emailVerified: boolean;
@@ -59,20 +85,16 @@ export function setupAuth(app: Express) {
     },
   };
 
-  const mysqlUrl = process.env.MYSQL_DATABASE_URL;
   if (isMySQLStorageEnabled()) {
     try {
-      if (!mysqlUrl) {
-        throw new Error("MYSQL_DATABASE_URL is required when STORAGE_MODE=mysql");
-      }
       const MySQLStore = MySQLStoreFactory(session as any);
-      const url = new URL(mysqlUrl);
+      const mysqlConfig = getMySQLConnectionConfig();
       const store = new MySQLStore({
-        host: url.hostname,
-        port: parseInt(url.port) || 3306,
-        user: url.username,
-        password: url.password,
-        database: url.pathname.replace("/", ""),
+        host: mysqlConfig.host,
+        port: mysqlConfig.port,
+        user: mysqlConfig.user,
+        password: mysqlConfig.password,
+        database: mysqlConfig.database,
         createDatabaseTable: true,
         checkExpirationInterval: 15 * 60 * 1000,
         expiration: 30 * 24 * 60 * 60 * 1000,
@@ -163,6 +185,16 @@ export function setupAuth(app: Express) {
               if (user.isBanned) {
                 return done(null, false, { message: "Your account has been suspended" } as any);
               }
+              if (isTemporaryGoogleUsername(user.username)) {
+                return done(null, {
+                  kind: "pending-google-signup",
+                  googleId: profile.id,
+                  email: user.email,
+                  name: user.name,
+                  avatarUrl: user.avatarUrl ?? null,
+                  existingUserId: user.id,
+                } satisfies PendingGoogleSignup);
+              }
               return done(null, await maybePromoteToAdmin(user));
             }
 
@@ -175,24 +207,28 @@ export function setupAuth(app: Express) {
                 }
                 await storage.updateUser(user.id, { googleId: profile.id, emailVerified: true });
                 const updated = await storage.getUserById(user.id);
-                return done(null, await maybePromoteToAdmin(updated || user));
+                user = updated || user;
+                if (isTemporaryGoogleUsername(user.username)) {
+                  return done(null, {
+                    kind: "pending-google-signup",
+                    googleId: profile.id,
+                    email: user.email,
+                    name: user.name,
+                    avatarUrl: user.avatarUrl ?? null,
+                    existingUserId: user.id,
+                  } satisfies PendingGoogleSignup);
+                }
+                return done(null, await maybePromoteToAdmin(user));
               }
             }
 
-            const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-            user = await storage.createUser({
+            return done(null, {
+              kind: "pending-google-signup",
+              googleId: profile.id,
               email: email || `${profile.id}@google.oauth`,
               name: profile.displayName || "Google User",
-              passwordHash: null,
-              googleId: profile.id,
-              emailVerified: true,
               avatarUrl: profile.photos?.[0]?.value || null,
-              isAdmin: !!(adminEmail && email && email.toLowerCase() === adminEmail),
-              isBanned: false,
-              isPremium: false,
-            });
-            req.session.isNewGoogleUser = true;
-            return done(null, user);
+            } satisfies PendingGoogleSignup);
           } catch (err) {
             return done(err);
           }

@@ -470,10 +470,10 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   );
 }
 
-function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: number; locked?: boolean; overrideSlug?: string }) {
+function WordSweepGuided({ groupSeed, locked, overrideSlug, isUntimed }: { groupSeed?: number; locked?: boolean; overrideSlug?: string; isUntimed?: boolean }) {
   const { playSound } = useSound();
   const [, navigateSweep] = useLocation();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-unpack" });
+  const { reportResult, resetRecorded } = useGameResult({ slug: overrideSlug ?? "word-unpack", isUntimed });
   const personalBest = usePersonalBest("word-unpack");
   const seeded = groupSeed !== undefined;
 
@@ -511,13 +511,14 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
   const GRID_SIZE = puzzleData?.size ?? 6;
 
   const startTimer = useCallback(() => {
+    if (isUntimed) return;
     if (timerRef.current) clearInterval(timerRef.current);
     elapsedRef.current = 0;
     timerRef.current = setInterval(() => {
       elapsedRef.current += 1;
       setElapsedSeconds(s => s + 1);
     }, 1000);
-  }, []);
+  }, [isUntimed]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -747,7 +748,7 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
                 <div className="text-3xl font-bold" data-testid="text-words-found">{wordsFound.length}/{puzzleWords.length}</div>
                 <div className="text-sm text-muted-foreground">words</div>
               </div>
-              {!gaveUp && (
+              {!gaveUp && !isUntimed && (
                 <div className="text-center">
                   <div className="text-3xl font-bold text-muted-foreground">{formatTime(elapsedSeconds)}</div>
                   <div className="text-sm text-muted-foreground">time</div>
@@ -810,23 +811,29 @@ function WordSweepGuided({ groupSeed, locked, overrideSlug }: { groupSeed?: numb
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1.5 relative" data-testid="badge-timer">
-            <Timer className="h-3.5 w-3.5" />
-            {formatTime(elapsedSeconds)}
-            <AnimatePresence>
-              {penaltyFlash && (
-                <motion.span
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: -10 }}
-                  exit={{ opacity: 0, y: -16 }}
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-destructive whitespace-nowrap pointer-events-none"
-                  data-testid="text-penalty-flash"
-                >
-                  +10s
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Badge>
+          {isUntimed ? (
+            <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+              ∞ Untimed
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1.5 relative" data-testid="badge-timer">
+              <Timer className="h-3.5 w-3.5" />
+              {formatTime(elapsedSeconds)}
+              <AnimatePresence>
+                {penaltyFlash && (
+                  <motion.span
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: -10 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-destructive whitespace-nowrap pointer-events-none"
+                    data-testid="text-penalty-flash"
+                  >
+                    +10s
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Badge>
+          )}
           <Badge variant="secondary" data-testid="badge-words-remaining">
             {wordsFound.length}/{puzzleWords.length} words
           </Badge>
@@ -1011,19 +1018,21 @@ export function WordSweepGame({
   groupSeed,
   locked,
   mode: modeProp,
+  isUntimed,
 }: {
   groupSeed?: number;
   locked?: boolean;
   mode?: "classic" | "guided";
+  isUntimed?: boolean;
 } = {}) {
-  const [selectedMode, setSelectedMode] = useState<"classic" | "guided" | null>(modeProp ?? null);
+  const [selectedMode, setSelectedMode] = useState<"classic" | "guided" | null>(modeProp ?? (isUntimed ? "guided" : null));
 
   if (selectedMode === null) {
     return <ModeSelector onSelect={setSelectedMode} />;
   }
 
   if (selectedMode === "guided") {
-    return <WordSweepGuided groupSeed={groupSeed} locked={locked} overrideSlug={locked ? "word-sweep" : undefined} />;
+    return <WordSweepGuided groupSeed={groupSeed} locked={locked} overrideSlug={locked ? "word-sweep" : undefined} isUntimed={isUntimed} />;
   }
 
   return <WordSweepClassic groupSeed={groupSeed} locked={locked} />;

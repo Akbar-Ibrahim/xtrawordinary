@@ -25,8 +25,12 @@ function getProfileTabFromSearch(): ProfileTab {
 }
 
 export default function Profile() {
-  const [, params] = useRoute("/profile/:id");
-  const userId = parseInt(params?.id || "0");
+  const [, numericParams] = useRoute("/profile/:id");
+  const [, usernameParams] = useRoute("/u/:username");
+  const username = usernameParams?.username;
+  const [resolvedUserId, setResolvedUserId] = useState<number | null>(null);
+  const [resolvingUsername, setResolvingUsername] = useState(Boolean(username));
+  const userId = username ? (resolvedUserId ?? 0) : parseInt(numericParams?.id || "0");
   const [location] = useLocation();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>(getProfileTabFromSearch);
@@ -34,6 +38,28 @@ export default function Profile() {
   useEffect(() => {
     setActiveTab(getProfileTabFromSearch());
   }, [location]);
+
+  useEffect(() => {
+    if (!username) {
+      setResolvedUserId(null);
+      setResolvingUsername(false);
+      return;
+    }
+    let cancelled = false;
+    setResolvingUsername(true);
+    fetch(`/api/usernames/${encodeURIComponent(username)}/profile`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!cancelled) setResolvedUserId(data?.user?.id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedUserId(null);
+      })
+      .finally(() => {
+        if (!cancelled) setResolvingUsername(false);
+      });
+    return () => { cancelled = true; };
+  }, [username]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -61,7 +87,7 @@ export default function Profile() {
     setTimeout(() => setCopiedCode(null), 2000);
   }
 
-  if (isLoading) {
+  if (resolvingUsername || isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
         <Skeleton className="h-32 w-full rounded-lg" />
@@ -88,7 +114,7 @@ export default function Profile() {
       <PageSEO
         title={`${profile.user.name}'s Profile`}
         description={`View ${profile.user.name}'s word game stats, achievements, and leaderboard rankings on xtraWordinary.`}
-        path={`/profile/${params?.id}`}
+        path={username ? `/u/${profile.user.username}` : `/profile/${numericParams?.id}`}
       />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <ProfileHeader
@@ -153,7 +179,7 @@ export default function Profile() {
       <EditProfileDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        profileUser={{ name: profile.user.name, avatarUrl: profile.user.avatarUrl, bio: (profile.user as any).bio ?? null }}
+        profileUser={{ username: profile.user.username, name: profile.user.name, avatarUrl: profile.user.avatarUrl, bio: (profile.user as any).bio ?? null }}
         onSave={(data) => updateProfile.mutate(data, { onSuccess: () => setEditOpen(false) })}
         isPending={updateProfile.isPending}
       />

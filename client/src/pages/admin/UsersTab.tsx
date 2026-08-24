@@ -8,14 +8,14 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Ban, ShieldCheck, Loader2, Star, Search } from "lucide-react";
 import { Link } from "wouter";
-import type { PublicUser } from "@shared/schema/users";
+import type { User } from "@shared/schema/users";
 
 export function UsersTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
 
-  const { data: users, isLoading } = useQuery<PublicUser[]>({ queryKey: ["/api/admin/users"] });
+  const { data: users, isLoading } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
 
   const banMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/admin/users/${id}/ban`),

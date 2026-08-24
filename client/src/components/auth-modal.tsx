@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2, Mail, Chrome } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUsernameAvailability } from "@/hooks/use-username-availability";
 
 interface AuthModalProps {
   open: boolean;
@@ -30,10 +31,11 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
   const [loginRememberMe, setLoginRememberMe] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
-  const [regName, setRegName] = useState("");
+  const [regUsername, setRegUsername] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regLoading, setRegLoading] = useState(false);
+  const usernameAvailability = useUsernameAvailability(regUsername);
 
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -60,14 +62,18 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
       return;
     }
     setRegLoading(true);
-    const result = await register(regName, regEmail, regPassword);
+    if (usernameAvailability.available !== true) {
+      toast({ title: "Choose a username", description: usernameAvailability.message || "Pick an available username to continue.", variant: "destructive" });
+      return;
+    }
+    const result = await register(regUsername, regEmail, regPassword);
     setRegLoading(false);
     if (result.error) {
       toast({ title: "Registration failed", description: result.error, variant: "destructive" });
     } else {
       toast({ title: "Account created!", description: result.message || "Check your email to verify your account." });
       onOpenChange(false);
-      setRegName("");
+      setRegUsername("");
       setRegEmail("");
       setRegPassword("");
     }
@@ -187,16 +193,23 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
           <TabsContent value="signup">
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="reg-name">Name</Label>
+                <Label htmlFor="reg-username">Username</Label>
                 <Input
-                  id="reg-name"
+                  id="reg-username"
                   type="text"
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  placeholder="Your name"
+                  value={regUsername}
+                  onChange={(e) => setRegUsername(e.target.value)}
+                  placeholder="word_player"
                   required
-                  data-testid="input-reg-name"
+                  minLength={3}
+                  maxLength={20}
+                  autoCapitalize="none"
+                  autoComplete="username"
+                  data-testid="input-reg-username"
                 />
+                <p className={`text-xs ${usernameAvailability.available === false ? "text-destructive" : "text-muted-foreground"}`}>
+                  {usernameAvailability.checking ? "Checking availability…" : usernameAvailability.message || "3–20 lowercase letters, numbers, or underscores."}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="reg-email">Email</Label>
@@ -223,7 +236,7 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
                   data-testid="input-reg-password"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={regLoading} data-testid="button-signup">
+              <Button type="submit" className="w-full" disabled={regLoading || usernameAvailability.checking || usernameAvailability.available === false} data-testid="button-signup">
                 {regLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Create Account
               </Button>

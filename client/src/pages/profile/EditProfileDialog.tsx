@@ -4,31 +4,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { UserAvatar } from "@/components/user-avatar";
+import { useUsernameAvailability } from "@/hooks/use-username-availability";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  profileUser: { name: string; avatarUrl: string | null; bio?: string | null };
+  profileUser: { username: string; name: string; avatarUrl: string | null; bio?: string | null };
   onSave: (data: { name?: string; avatarUrl?: string | null; bio?: string | null }) => void;
   isPending: boolean;
 }
 
 export function EditProfileDialog({ open, onOpenChange, profileUser, onSave, isPending }: Props) {
   const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
   const [editBio, setEditBio] = useState("");
 
   useEffect(() => {
     if (open) {
       setEditName(profileUser.name);
+      setEditUsername(profileUser.username);
       setEditAvatarUrl(profileUser.avatarUrl ?? "");
       setEditBio(profileUser.bio ?? "");
     }
   }, [open, profileUser]);
 
+  const usernameAvailability = useUsernameAvailability(editUsername);
+
   function handleSave() {
-    const data: { name?: string; avatarUrl?: string | null; bio?: string | null } = {};
+    const data: { username?: string; name?: string; avatarUrl?: string | null; bio?: string | null } = {};
     if (editName.trim() && editName.trim() !== profileUser.name) data.name = editName.trim();
+    if (editUsername.trim() && editUsername.trim() !== profileUser.username) data.username = editUsername.trim();
     const url = editAvatarUrl.trim() || null;
     if (url !== (profileUser.avatarUrl ?? null)) data.avatarUrl = url;
     const bioVal = editBio.trim() || null;
@@ -55,6 +61,13 @@ export function EditProfileDialog({ open, onOpenChange, profileUser, onSave, isP
             <Input id="edit-name" value={editName} onChange={e => setEditName(e.target.value)} maxLength={50} placeholder="Your name" data-testid="input-edit-name" />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="edit-username">Username</Label>
+            <Input id="edit-username" value={editUsername} onChange={e => setEditUsername(e.target.value)} minLength={3} maxLength={20} autoCapitalize="none" placeholder="word_player" data-testid="input-edit-username" />
+            <p className={`text-xs ${usernameAvailability.available === false ? "text-destructive" : "text-muted-foreground"}`}>
+              {usernameAvailability.checking ? "Checking availability…" : usernameAvailability.message || "3–20 lowercase letters, numbers, or underscores."}
+            </p>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="edit-avatar">Avatar URL <span className="text-muted-foreground text-xs">(optional)</span></Label>
             <Input id="edit-avatar" value={editAvatarUrl} onChange={e => setEditAvatarUrl(e.target.value)} placeholder="https://example.com/photo.jpg" data-testid="input-edit-avatar-url" />
             <p className="text-xs text-muted-foreground">Paste a link to your photo. Leave blank to use your initials.</p>
@@ -76,7 +89,7 @@ export function EditProfileDialog({ open, onOpenChange, profileUser, onSave, isP
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-edit">Cancel</Button>
-          <Button onClick={handleSave} disabled={isPending} data-testid="button-save-profile">
+          <Button onClick={handleSave} disabled={isPending || usernameAvailability.checking || usernameAvailability.available === false} data-testid="button-save-profile">
             {isPending ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

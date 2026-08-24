@@ -108,7 +108,7 @@ export function registerCommentsRoutes(app: Express): void {
           const flat = [...allComments, ...allComments.flatMap(c => c.replies ?? [])];
           const parent = flat.find(c => c.id === resolvedParentId);
           if (parent && parent.userId !== userId) {
-            const commenterName = (req.user as any).name as string;
+            const commenterName = `@${(req.user as any).username as string}`;
             let replyLinkUrl: string | null = null;
             if (targetType === "game") {
               replyLinkUrl = `/game/${targetId}`;
@@ -217,7 +217,7 @@ export function registerCommentsRoutes(app: Express): void {
           userId: commentAuthorId,
           type: "comment_liked",
           title: "Someone liked your comment",
-          body: `${req.user!.name} liked your comment`,
+          body: `@${req.user!.username} liked your comment`,
           linkUrl: null,
         });
       }

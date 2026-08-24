@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { apiRequest } from "@/lib/queryClient";
-import type { PublicUser } from "@shared/schema";
+import type { AuthenticatedUser } from "@shared/schema";
 
 interface AuthContextType {
-  user: PublicUser | null;
+  user: AuthenticatedUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<{ error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ error?: string; message?: string }>;
+  register: (username: string, email: string, password: string) => Promise<{ error?: string; message?: string }>;
   logout: () => Promise<void>;
   loginWithGoogle: () => void;
   refreshUser: () => Promise<void>;
@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<PublicUser | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
@@ -53,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
+  const register = useCallback(async (username: string, email: string, password: string) => {
     try {
-      const res = await apiRequest("POST", "/api/auth/register", { name, email, password });
+      const res = await apiRequest("POST", "/api/auth/register", { username, email, password });
       const data = await res.json();
       return { message: data.message };
     } catch (err: any) {

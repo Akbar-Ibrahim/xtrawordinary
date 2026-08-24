@@ -64,11 +64,12 @@ interface WordStretchPlayProps {
   initialSeed: number;
   onExit: () => void;
   locked?: boolean;
+  isUntimed?: boolean;
 }
 
-function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayProps) {
+function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordStretchPlayProps) {
   const slug = mode === "classic" ? "word-stretch" : "word-stretch-survival";
-  const { reportResult } = useGameResult({ slug });
+  const { reportResult } = useGameResult({ slug, isUntimed });
   const personalBest = usePersonalBest(slug);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
@@ -112,7 +113,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
     queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
-    enabled: gameStatus === "ended",
+    enabled: gameStatus === "ended" && !isUntimed,
     staleTime: 10_000,
   });
 
@@ -172,7 +173,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
       if (!p) return;
       setPuzzle(p);
       puzzleRef.current = p;
-      startTimer(initialSeed);
+      if (!isUntimed) startTimer(initialSeed);
       setTimeout(() => inputRef.current?.focus(), 100);
     })();
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
@@ -243,7 +244,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
         if (nextPuzzle && gameStatusRef.current === "playing") {
           setPuzzle(nextPuzzle);
           puzzleRef.current = nextPuzzle;
-          startTimer(nextSeed);
+          if (!isUntimed) startTimer(nextSeed);
         }
       } else {
         if (newFound.length >= puzzle.totalSolutions) {
@@ -283,13 +284,14 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
             <Trophy className="h-14 w-14 mx-auto text-[hsl(262,70%,55%)]" />
             <div>
               <h3 className="text-2xl font-bold">
-                {mode === "classic" && found.length >= total ? "All Found!" : "Time's Up!"}
+              {isUntimed
+                ? mode === "classic" && found.length >= total ? "All Found!" : "Session Complete"
+                : mode === "classic" && found.length >= total ? "All Found!" : "Time's Up!"}
               </h3>
               <p className="text-muted-foreground mt-1">{completionMessage}</p>
             </div>
             <Badge variant="secondary" className="gap-1.5">
-              {mode === "survival" ? <Flame className="h-3 w-3" /> : <Timer className="h-3 w-3" />}
-              {mode === "survival" ? "Survival Mode" : "Classic Mode"}
+              {isUntimed ? "∞ Untimed" : mode === "survival" ? "Survival Mode" : "Classic Mode"}
             </Badge>
 
             <div className="grid grid-cols-3 gap-3">
@@ -404,7 +406,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                     setSeed(replaySeed);
                     fetchPuzzle(replaySeed).then(p => {
                       if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      startTimer(replaySeed);
+                      if (!isUntimed) startTimer(replaySeed);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     });
                   }}
@@ -432,7 +434,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                     setSeed(newSeed);
                     fetchPuzzle(newSeed).then(p => {
                       if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      startTimer(newSeed);
+                      if (!isUntimed) startTimer(newSeed);
                       setTimeout(() => inputRef.current?.focus(), 100);
                     });
                   }}
@@ -460,30 +462,36 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-center gap-8">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
-            data-testid="text-timer"
-          >
-            {mode === "survival" ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
-          </span>
-        </div>
+        <div className="flex items-center justify-center gap-8">
+        {isUntimed ? (
+          <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+            ∞ Untimed
+          </Badge>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Timer className={`h-4 w-4 ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`} />
+            <span
+              className={`font-mono font-bold text-lg ${timeLeft <= (mode === "survival" ? 3 : 15) ? "text-destructive animate-pulse" : ""}`}
+              data-testid="text-timer"
+            >
+              {mode === "survival" ? `${timeLeft}s` : `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`}
+            </span>
+          </div>
+        )}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
           <AnimatedNumber value={liveScore} className="text-2xl font-bold text-primary" data-testid="text-score" />
         </div>
       </div>
 
-      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+      {!isUntimed && <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
           className={`h-full rounded-full transition-colors ${timerColor}`}
           animate={{ width: `${timerPercent}%` }}
           transition={{ duration: 0.5 }}
           data-testid="timer-bar"
         />
-      </div>
+      </div>}
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
@@ -595,13 +603,29 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked }: WordStretchPlayP
                 </div>
               )}
 
-              {mode === "survival" && (
+              {mode === "survival" && !isUntimed && (
                 <p className="text-xs text-center text-muted-foreground">
                   Find any valid stretched word to reset the {SURVIVAL_TIME}s timer!
                 </p>
               )}
               {!locked && (
                 <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
+                  {mode === "survival" && isUntimed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => endGame(
+                        foundRef.current,
+                        puzzleRef.current?.totalSolutions ?? 0,
+                        accumulatedScoreRef.current,
+                        survivalSolvedCountRef.current,
+                        seed,
+                      )}
+                      data-testid="button-finish-session"
+                    >
+                      Finish Session
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -659,9 +683,10 @@ interface WordStretchGameProps {
   groupSeed?: number;
   locked?: boolean;
   initialMode?: Mode;
+  isUntimed?: boolean;
 }
 
-export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchGameProps) {
+export function WordStretchGame({ groupSeed, locked, initialMode, isUntimed }: WordStretchGameProps) {
   const [mode, setMode] = useState<Mode | null>(initialMode ?? null);
   const [playKey, setPlayKey] = useState(0);
   const initialSeed = groupSeed ?? Math.floor(Math.random() * 100000);
@@ -677,6 +702,7 @@ export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchG
           setPlayKey(k => k + 1);
         }}
         locked={locked}
+          isUntimed={isUntimed}
       />
     );
   }
@@ -702,10 +728,12 @@ export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchG
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <div className="font-semibold flex items-center gap-2">
-                <Timer className="h-4 w-4 text-[hsl(262,70%,55%)]" />
+                {isUntimed ? <span className="text-lg leading-none text-blue-600">∞</span> : <Timer className="h-4 w-4 text-[hsl(262,70%,55%)]" />}
                 Classic
               </div>
-              <div className="text-sm text-muted-foreground">2 minutes — find all valid insertions</div>
+              <div className="text-sm text-muted-foreground">
+                {isUntimed ? "No timer — find all valid insertions" : "2 minutes — find all valid insertions"}
+              </div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </CardContent>
@@ -719,10 +747,12 @@ export function WordStretchGame({ groupSeed, locked, initialMode }: WordStretchG
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <div className="font-semibold flex items-center gap-2">
-                <Flame className="h-4 w-4 text-destructive" />
+                {isUntimed ? <span className="text-lg leading-none text-blue-600">∞</span> : <Flame className="h-4 w-4 text-destructive" />}
                 Survival
               </div>
-              <div className="text-sm text-muted-foreground">8 seconds — find one, move on</div>
+              <div className="text-sm text-muted-foreground">
+                {isUntimed ? "No timer — find one, then move on" : "8 seconds — find one, move on"}
+              </div>
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </CardContent>

@@ -3,6 +3,7 @@ import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
+import { isOpenChallengeExpired } from "./challenge-expiry";
 
 function generateShareCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -782,6 +783,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.googleId === googleId);
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.usernameNormalized === username.trim().toLowerCase());
+  }
+
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
@@ -851,7 +856,8 @@ export class MemStorage implements IStorage {
       }
       return { ...existing };
     }
-    const newEntry: LeaderboardEntry = { ...entry, id: this.lbIdCounter++ };
+    const user = this.users.get(entry.userId);
+    const newEntry: LeaderboardEntry = { ...entry, username: user?.username ?? "unknown", id: this.lbIdCounter++ };
     this.leaderboardEntries.push(newEntry);
     return newEntry;
   }
@@ -891,6 +897,7 @@ export class MemStorage implements IStorage {
         return {
           ...e,
           playerName: user?.name ?? e.playerName,
+          username: user?.username ?? e.username,
           playerAvatarUrl: user?.avatarUrl ?? null,
           gamesPlayed: stats?.gamesPlayed ?? undefined,
         };
@@ -919,7 +926,7 @@ export class MemStorage implements IStorage {
       .slice(0, limit)
       .map((p, i) => {
         const user = this.users.get(p.userId);
-        return { id: i + 1, ...p, gameSlug: "overall", playerName: user?.name ?? p.playerName, playerAvatarUrl: user?.avatarUrl ?? null };
+        return { id: i + 1, ...p, gameSlug: "overall", playerName: user?.name ?? p.playerName, username: user?.username ?? "unknown", playerAvatarUrl: user?.avatarUrl ?? null };
       });
   }
 
@@ -969,7 +976,7 @@ export class MemStorage implements IStorage {
         .sort((a, b) => b[1].score - a[1].score)
         .map(([uid, data], i) => {
           const user = this.users.get(uid);
-          return { id: i + 1, userId: uid, gameSlug: "overall", score: data.score, playedAt: data.playedAt, playerName: user?.name ?? "Unknown", playerAvatarUrl: user?.avatarUrl ?? null };
+          return { id: i + 1, userId: uid, gameSlug: "overall", score: data.score, playedAt: data.playedAt, playerName: user?.name ?? "Unknown", username: user?.username ?? "unknown", playerAvatarUrl: user?.avatarUrl ?? null };
         });
     }
 
@@ -984,7 +991,7 @@ export class MemStorage implements IStorage {
       .map(e => {
         const user = this.users.get(e.userId);
         const stats = Array.from(this.userGameStatsMap.values()).find(s => s.userId === e.userId && s.gameSlug === gameSlug);
-        return { ...e, playerName: user?.name ?? e.playerName, playerAvatarUrl: user?.avatarUrl ?? null, gamesPlayed: stats?.gamesPlayed ?? undefined };
+        return { ...e, playerName: user?.name ?? e.playerName, username: user?.username ?? e.username, playerAvatarUrl: user?.avatarUrl ?? null, gamesPlayed: stats?.gamesPlayed ?? undefined };
       });
   }
 
@@ -1040,12 +1047,12 @@ export class MemStorage implements IStorage {
     return { streak: newStreak, longest: newLongest, alreadyDone: false };
   }
 
-  async getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
-    const results: Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }> = [];
+  async getTopStreaks(limit: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
+    const results: Array<{ userId: number; username: string; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }> = [];
     for (const [uid, streak] of this.userStreaks.entries()) {
       if (streak.currentStreak > 0) {
         const u = this.users.get(uid);
-        if (u) results.push({ userId: uid, name: u.name, avatarUrl: u.avatarUrl ?? null, currentStreak: streak.currentStreak, longestStreak: streak.longestStreak });
+        if (u) results.push({ userId: uid, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, currentStreak: streak.currentStreak, longestStreak: streak.longestStreak });
       }
     }
     return results.sort((a, b) => b.currentStreak - a.currentStreak).slice(0, limit);
@@ -1109,15 +1116,20 @@ export class MemStorage implements IStorage {
     return [...this.leaderboardEntries].sort((a, b) => b.playedAt.localeCompare(a.playedAt));
   }
 
-  async searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> {
+  async searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> {
     const q = query.toLowerCase();
     return Array.from(this.users.values())
-      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      .filter(u => u.usernameNormalized.startsWith(q) || u.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aRank = a.usernameNormalized === q ? 0 : a.usernameNormalized.startsWith(q) ? 1 : 2;
+        const bRank = b.usernameNormalized === q ? 0 : b.usernameNormalized.startsWith(q) ? 1 : 2;
+        return aRank - bRank || a.username.localeCompare(b.username);
+      })
       .slice(0, 20)
-      .map(u => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl }));
+      .map(u => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl }));
   }
 
-  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
     const user = this.users.get(userId);
     if (!user) return null;
     const stats = Array.from(this.userGameStatsMap.values()).filter(s => s.userId === userId);
@@ -1138,7 +1150,7 @@ export class MemStorage implements IStorage {
       const rank = sorted.findIndex(([uid]) => uid === userId) + 1;
       leaderboardRankings.push({ gameSlug: slug, rank, score });
     }
-    return { user: { id: user.id, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt, isPremium: user.isPremium ?? false, bio: user.bio || null }, stats, achievements, leaderboardRankings };
+    return { user: { id: user.id, username: user.username, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt, isPremium: user.isPremium ?? false, bio: user.bio || null }, stats, achievements, leaderboardRankings };
   }
 
   async getFriendshipById(id: number): Promise<Friendship | undefined> {
@@ -1167,22 +1179,22 @@ export class MemStorage implements IStorage {
     this.friendshipsStore = this.friendshipsStore.filter(f => f.id !== id);
   }
 
-  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> {
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
     return this.friendshipsStore
       .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
       .map(f => {
         const friendId = f.requesterId === userId ? f.addresseeId : f.requesterId;
         const friendUser = this.users.get(friendId);
-        return { ...f, friendUser: { id: friendId, name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null } };
+        return { ...f, friendUser: { id: friendId, username: friendUser?.username || "unknown", name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null } };
       });
   }
 
-  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> {
+  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
     return this.friendshipsStore
       .filter(f => f.status === "pending" && f.addresseeId === userId)
       .map(f => {
         const requester = this.users.get(f.requesterId);
-        return { ...f, requesterUser: { id: f.requesterId, name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null } };
+        return { ...f, requesterUser: { id: f.requesterId, username: requester?.username || "unknown", name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null } };
       });
   }
 
@@ -1211,6 +1223,8 @@ export class MemStorage implements IStorage {
         ...c,
         senderName: sender?.name,
         receiverName: receiver?.name,
+        senderUsername: sender?.username,
+        receiverUsername: receiver?.username,
         senderAvatarUrl: sender?.avatarUrl ?? null,
         receiverAvatarUrl: receiver?.avatarUrl ?? null,
       };
@@ -1319,11 +1333,11 @@ export class MemStorage implements IStorage {
     this.groupMembersStore = this.groupMembersStore.filter(m => !(m.groupId === groupId && m.userId === userId));
   }
 
-  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
     const members = this.groupMembersStore.filter(m => m.groupId === groupId);
     return members.map(m => {
       const u = this.users.get(m.userId);
-      return { ...m, user: { id: m.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
+      return { ...m, user: { id: m.userId, username: u?.username || "unknown", name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
     });
   }
 
@@ -1370,7 +1384,7 @@ export class MemStorage implements IStorage {
     return s;
   }
 
-  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> {
+  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
     const scores = this.groupRoundScoresStore.filter(s => s.roundId === roundId);
     return scores
       .sort((a, b) => {
@@ -1381,7 +1395,7 @@ export class MemStorage implements IStorage {
       })
       .map(s => {
         const u = this.users.get(s.userId);
-        return { ...s, user: { id: s.userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
+        return { ...s, user: { id: s.userId, username: u?.username || "unknown", name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null } };
       });
   }
 
@@ -1389,7 +1403,7 @@ export class MemStorage implements IStorage {
     return this.groupRoundScoresStore.find(s => s.roundId === roundId && s.userId === userId);
   }
 
-  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
     const roundIds = this.groupRoundsStore.filter(r => r.groupId === groupId).map(r => r.id);
     const relevantScores = this.groupRoundScoresStore.filter(s => roundIds.includes(s.roundId));
     const tally = new Map<number, { totalScore: number; roundsPlayed: number }>();
@@ -1406,7 +1420,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b[1].totalScore - a[1].totalScore)
       .map(([userId, data]) => {
         const u = this.users.get(userId);
-        return { userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
+        return { userId, username: u?.username || "unknown", name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
       });
   }
 
@@ -1798,14 +1812,10 @@ export class MemStorage implements IStorage {
 
   async expireOpenChallenges(): Promise<number> {
     const now = new Date();
-    const fallbackMs = 24 * 60 * 60 * 1000;
     let count = 0;
     for (const c of this.duelChallenges) {
       if (c.status !== "pending" || c.challengeeId !== null) continue;
-      const deadline = c.expiresAt
-        ? new Date(c.expiresAt)
-        : new Date(new Date(c.createdAt).getTime() + fallbackMs);
-      if (deadline < now) {
+      if (isOpenChallengeExpired(c.createdAt, c.expiresAt, now)) {
         c.status = "expired";
         count++;
       }
@@ -1847,7 +1857,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
   }
 
-  async getDuelLeaderboard(limit = 100, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+  async getDuelLeaderboard(limit = 100, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; username: string; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
     let ratings = [...this.duelRatings];
     if (format) {
       const userIdsInFormat = new Set(
@@ -1864,6 +1874,7 @@ export class MemStorage implements IStorage {
       return {
         rank: i + 1,
         userId: r.userId,
+        username: user?.username ?? "unknown",
         displayName: user?.name ?? `User #${r.userId}`,
         avatarUrl: user?.avatarUrl ?? null,
         elo: r.elo,
@@ -2401,7 +2412,7 @@ export class MemStorage implements IStorage {
     return s;
   }
 
-  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
+  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> {
     const roundIds = this.groupRoundsStore.filter(r => r.seasonId === season.id).map(r => r.id);
     const eligible = new Set(season.eligibleMemberIds);
     const scores = this.groupRoundScoresStore.filter(s => roundIds.includes(s.roundId) && eligible.has(s.userId));
@@ -2415,7 +2426,7 @@ export class MemStorage implements IStorage {
       .sort((a, b) => b[1].totalScore - a[1].totalScore)
       .map(([userId, data]) => {
         const u = this.users.get(userId);
-        return { userId, name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
+        return { userId, username: u?.username || "unknown", name: u?.name || "Unknown", avatarUrl: u?.avatarUrl || null, ...data };
       });
   }
 
@@ -2456,16 +2467,16 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
+  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
     const friendIds = this.friendshipsStore
       .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
       .map(f => f.requesterId === userId ? f.addresseeId : f.requesterId);
-    const result: Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }> = [];
+    const result: Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }> = [];
     for (const fid of friendIds) {
       const stats = this.userGameStatsMap.get(`${fid}-${gameSlug}`);
       if (stats && stats.gamesPlayed > 0) {
         const u = this.users.get(fid);
-        if (u) result.push({ id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, gamesPlayed: stats.gamesPlayed });
+        if (u) result.push({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, gamesPlayed: stats.gamesPlayed });
       }
     }
     return result.sort((a, b) => b.gamesPlayed - a.gamesPlayed);

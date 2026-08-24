@@ -2,7 +2,7 @@ import { Lightbulb, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useWordExamples, type WordExamplesGame } from "@/hooks/use-word-examples";
+import { useWordExamples, type DatabaseWordExamplesRequest, type WordExamplesGame } from "@/hooks/use-word-examples";
 
 interface WordExamplesPanelProps {
   game: WordExamplesGame;
@@ -12,6 +12,7 @@ interface WordExamplesPanelProps {
   className?: string;
   position?: number;
   challenge?: number;
+  databaseRequest?: DatabaseWordExamplesRequest;
 }
 
 export function WordExamplesPanel({
@@ -22,11 +23,22 @@ export function WordExamplesPanel({
   className,
   position,
   challenge,
+  databaseRequest,
 }: WordExamplesPanelProps) {
-  const { data, isLoading, isFetched, trigger, isTriggered, resolvedLetters, refetch } =
-    useWordExamples(game, letters, limit, position, challenge);
+  const {
+    data,
+    isLoading,
+    isFetched,
+    trigger,
+    resolvedLetters,
+    refetch,
+    databaseAvailable,
+    isDatabaseAvailabilityLoading,
+  } = useWordExamples(game, letters, limit, position, challenge, databaseRequest);
 
-  if (game === "no-repeats") {
+  if (databaseRequest) {
+    if (isDatabaseAvailabilityLoading || !databaseAvailable) return null;
+  } else if (game === "no-repeats") {
     if (challenge === undefined) return null;
   } else {
     if (resolvedLetters.length === 0) return null;

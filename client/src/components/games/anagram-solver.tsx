@@ -20,11 +20,11 @@ import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
-export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, timeLimitSeconds: timeLimitSecondsProp }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[]; timeLimitSeconds?: number } = {}) {
+export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, timeLimitSeconds: timeLimitSecondsProp, isUntimed }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: AnagramWordSet[]; timeLimitSeconds?: number; isUntimed?: boolean } = {}) {
   const DEFAULT_TIME = timeLimitSecondsProp ?? 90;
   const { playSound } = useSound();
   const [, navigate] = useLocation();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver", quizMode });
+  const { reportResult, resetRecorded } = useGameResult({ slug: "anagram-solver", quizMode, isUntimed });
   const personalBest = usePersonalBest("anagram-solver");
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;
@@ -116,7 +116,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, ti
   }, [gameStatus, score, reportResult, wordsSolved]);
 
   useEffect(() => {
-    if (gameStatus !== "playing") return;
+    if (gameStatus !== "playing" || isUntimed) return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -128,7 +128,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, ti
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [gameStatus]);
+  }, [gameStatus, isUntimed]);
 
   const checkAnswer = () => {
     if (!currentSet || !userInput.trim()) return;
@@ -197,18 +197,24 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, ti
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-center gap-8">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Timer className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`} />
-          <span
-            className={`font-mono font-bold text-lg ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`}
-            data-testid="badge-timer"
-            role="timer"
-            aria-label={`Time remaining: ${formatTime(timeLeft)}`}
-          >
-            {formatTime(timeLeft)}
-          </span>
-        </div>
+        <div className="flex items-center justify-center gap-8">
+        {isUntimed ? (
+          <Badge variant="outline" className="gap-1 text-blue-600 border-blue-400 text-xs" data-testid="badge-untimed">
+            ∞ Untimed
+          </Badge>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Timer className={`h-4 w-4 ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`} />
+            <span
+              className={`font-mono font-bold text-lg ${timeLeft <= 10 ? "text-destructive animate-pulse" : ""}`}
+              data-testid="badge-timer"
+              role="timer"
+              aria-label={`Time remaining: ${formatTime(timeLeft)}`}
+            >
+              {formatTime(timeLeft)}
+            </span>
+          </div>
+        )}
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
           <div className="flex items-center justify-center gap-1.5">
@@ -360,7 +366,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, ti
               <CardContent className="p-6 text-center space-y-4">
                 <Trophy className={`h-16 w-16 mx-auto ${gameStatus === "won" ? "text-accent" : "text-chart-3"}`} />
                 <h3 className="text-2xl font-bold">
-                  {gameStatus === "won" ? "Amazing!" : "Time's Up!"}
+                  {gameStatus === "won" ? "Amazing!" : isUntimed ? "Session Complete" : "Time's Up!"}
                 </h3>
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
@@ -395,7 +401,7 @@ export function AnagramSolverGame({ groupSeed, locked, quizMode, customWords, ti
                     <LogIn className="h-4 w-4 shrink-0" />
                     <span>
                       <button className="underline font-medium" onClick={() => setAuthOpen(true)} data-testid="button-sign-in-cta">Sign in</button>{" "}
-                      to save your score to the leaderboard!
+                      {isUntimed ? "Sign in to keep your stats across devices." : "to save your score to the leaderboard!"}
                     </span>
                   </div>
                 )}

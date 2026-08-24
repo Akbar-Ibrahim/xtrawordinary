@@ -36,7 +36,7 @@ export function registerFriendsRoutes(app: Express): void {
         userId: userId,
         type: "friend_request_received",
         title: "New friend request",
-        body: `${req.user!.name} wants to be your friend`,
+        body: `@${req.user!.username} wants to be your friend`,
         linkUrl: "/friends",
       });
       res.json(friendship);

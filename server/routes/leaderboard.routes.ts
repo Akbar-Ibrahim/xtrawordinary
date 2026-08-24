@@ -142,7 +142,7 @@ export function registerLeaderboardRoutes(app: Express): void {
       res.json(entry);
 
       // Non-blocking: fire overtaken notification after response is sent
-      fireOvertakenNotification(gameSlug, req.user!.id, req.user!.name, rankBefore).catch(() => {});
+      fireOvertakenNotification(gameSlug, req.user!.id, `@${req.user!.username}`, rankBefore).catch(() => {});
     } catch (error) {
       res.status(500).json({ error: "Failed to submit score" });
     }

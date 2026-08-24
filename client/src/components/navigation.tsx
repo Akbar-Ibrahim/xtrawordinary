@@ -453,7 +453,7 @@ export function Navigation() {
                   <DropdownMenuItem className="text-sm text-muted-foreground" disabled>
                     {user.email}
                   </DropdownMenuItem>
-                  <Link href={`/profile/${user.id}`}>
+                  <Link href={`/u/${user.username}`}>
                     <DropdownMenuItem className="cursor-pointer" data-testid="link-profile">
                       <User className="h-4 w-4 mr-2" />
                       My Profile

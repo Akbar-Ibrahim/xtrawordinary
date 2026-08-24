@@ -16,6 +16,7 @@ type FormatFilter = "overall" | "turn" | "race";
 interface LeaderboardEntry {
   rank: number;
   userId: number;
+  username: string;
   displayName: string;
   avatarUrl: string | null;
   elo: number;
@@ -165,7 +166,7 @@ export default function DuelLeaderboard() {
                     <RankMedal rank={entry.rank} />
                   </div>
 
-                  <Link href={`/profile/${entry.userId}`}>
+              <Link href={`/u/${entry.username}`}>
                     <UserAvatar
                       name={entry.displayName}
                       avatarUrl={entry.avatarUrl}
@@ -175,12 +176,12 @@ export default function DuelLeaderboard() {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <Link href={`/profile/${entry.userId}`}>
+                    <Link href={`/u/${entry.username}`}>
                         <span
                           className={`font-medium text-sm hover:underline cursor-pointer truncate ${isMe ? "text-violet-700 dark:text-violet-300 font-semibold" : ""}`}
                           data-testid={`text-name-${entry.userId}`}
                         >
-                          {entry.displayName}
+                          <span>{entry.displayName}<span className="block text-xs font-normal text-muted-foreground">@{entry.username}</span></span>
                           {isMe && <span className="text-xs text-muted-foreground font-normal ml-1">(you)</span>}
                         </span>
                       </Link>

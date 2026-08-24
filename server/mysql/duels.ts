@@ -1,6 +1,7 @@
 import { eq, desc, and, or, inArray, sql, lt } from "drizzle-orm";
 import type { DuelChallenge, InsertDuelChallenge, DuelSession, InsertDuelSession, DuelRating, DuelChallengeStatus } from "@shared/schema";
 import * as schema from "../db-schema";
+import { getOpenChallengeFallbackCutoff } from "../challenge-expiry";
 
 export function tsToIso(d: Date | string | null | undefined): string | null {
   if (!d) return null;
@@ -139,7 +140,7 @@ export async function getOpenDuelChallenges(db: any, excludeUserId: number, game
 
 export async function expireOpenChallenges(db: any): Promise<number> {
   const now = new Date();
-  const fallbackCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const fallbackCutoff = getOpenChallengeFallbackCutoff(now);
   const baseCondition = and(
     sql`${schema.duelChallenges.challengeeId} IS NULL`,
     eq(schema.duelChallenges.status, "pending"),
@@ -224,7 +225,7 @@ export async function upsertDuelRating(db: any, userId: number, updates: Partial
   return (await getDuelRating(db, userId))!;
 }
 
-export async function getDuelLeaderboard(db: any, limit = 50, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
+export async function getDuelLeaderboard(db: any, limit = 50, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; username: string; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> {
   let ratingRows = await db.select().from(schema.duelRatings).orderBy(desc(schema.duelRatings.elo));
   if (format) {
     const sessionRows = await db.select({ player1Id: schema.duelSessions.player1Id, player2Id: schema.duelSessions.player2Id })
@@ -236,13 +237,14 @@ export async function getDuelLeaderboard(db: any, limit = 50, format?: "turn" | 
   const rows = ratingRows.slice(0, limit);
   if (rows.length === 0) return [];
   const userIds = rows.map((r: any) => r.userId as number);
-  const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+  const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   return rows.map((r: any, i: number) => {
     const total = r.wins + r.losses + r.draws;
     return {
       rank: i + 1,
       userId: r.userId,
+      username: (userMap.get(r.userId) as any)?.username ?? "unknown",
       displayName: (userMap.get(r.userId) as any)?.name ?? `User #${r.userId}`,
       avatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null,
       elo: r.elo,

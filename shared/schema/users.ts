@@ -4,6 +4,8 @@ export const userSchema = z.object({
   id: z.number(),
   email: z.string().email(),
   name: z.string(),
+  username: z.string(),
+  usernameNormalized: z.string(),
   passwordHash: z.string().nullable(),
   googleId: z.string().nullable(),
   emailVerified: z.boolean(),
@@ -19,8 +21,23 @@ export type User = z.infer<typeof userSchema>;
 export const insertUserSchema = userSchema.omit({ id: true, createdAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
-export const publicUserSchema = userSchema.omit({ passwordHash: true });
+export const publicUserSchema = userSchema.pick({
+  id: true,
+  username: true,
+  name: true,
+  avatarUrl: true,
+  bio: true,
+  isPremium: true,
+  createdAt: true,
+});
 export type PublicUser = z.infer<typeof publicUserSchema>;
+
+export const authenticatedUserSchema = publicUserSchema.extend({
+  email: z.string().email(),
+  emailVerified: z.boolean(),
+  isAdmin: z.boolean(),
+});
+export type AuthenticatedUser = z.infer<typeof authenticatedUserSchema>;
 
 export const emailVerificationTokenSchema = z.object({
   id: z.number(),

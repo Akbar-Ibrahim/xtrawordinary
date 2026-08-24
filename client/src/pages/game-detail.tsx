@@ -216,7 +216,7 @@ export default function GameDetail() {
 
   const myGameStat = slug ? userStats.find(s => s.gameSlug === slug) : undefined;
 
-  const { data: friends = [] } = useQuery<Array<{ id: number; friendUser: { id: number; name: string; avatarUrl: string | null } }>>({
+  const { data: friends = [] } = useQuery<Array<{ id: number; friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
   });
@@ -307,6 +307,7 @@ export default function GameDetail() {
         title={game?.name ?? "Word Game"}
         description={game ? `Play ${game.name} — ${game.description ?? "a fun vocabulary challenge on xtraWordinary."}` : "Play word games on xtraWordinary."}
         path={`/game/${slug}`}
+        ogImage={game?.ogImage}
       />
       <Link href={challengeResult ? "/friends" : "/"}>
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back">

@@ -19,6 +19,7 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -643,6 +644,20 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                   isWin={gameStatus === "won"}
                   customPlay={customPlay}
                 />
+                {constraint && (
+                  <WordExamplesPanel
+                    game="word-length"
+                    letters={[]}
+                    databaseRequest={{
+                      game: "word-length",
+                      length: constraint.length,
+                      variation: customConstraint ? 1 : variation,
+                      startsWith: constraint.startsWith,
+                      endsWith: constraint.endsWith,
+                      contains: constraint.contains,
+                    }}
+                  />
+                )}
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

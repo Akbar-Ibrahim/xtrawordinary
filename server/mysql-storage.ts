@@ -36,6 +36,7 @@ import * as WordWars from "./mysql/word-wars";
 import * as GuildWars from "./mysql/guild-wars";
 import * as Admin from "./mysql/admin";
 import * as WordDefs from "./mysql/word-definitions";
+import { getMySQLConnectionConfig } from "./mysql-config";
 
 export class MySQLStorage implements IStorage {
   private gameData: MemStorage;
@@ -49,9 +50,7 @@ export class MySQLStorage implements IStorage {
 
   constructor() {
     this.gameData = new MemStorage();
-    if (!process.env.MYSQL_DATABASE_URL) {
-      throw new Error("MYSQL_DATABASE_URL is required");
-    }
+    getMySQLConnectionConfig();
 
     // dbPromise resolves to the raw drizzle db handle; non-word operations
     // await this directly without waiting for the (slower) word preload.
@@ -229,6 +228,7 @@ export class MySQLStorage implements IStorage {
   async getUserById(id: number): Promise<User | undefined> { return Users.getUserById(await this.getDb(), id); }
   async getUserByEmail(email: string): Promise<User | undefined> { return Users.getUserByEmail(await this.getDb(), email); }
   async getUserByGoogleId(googleId: string): Promise<User | undefined> { return Users.getUserByGoogleId(await this.getDb(), googleId); }
+  async getUserByUsername(username: string): Promise<User | undefined> { return Users.getUserByUsername(await this.getDb(), username); }
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> { return Users.updateUser(await this.getDb(), id, updates); }
   async createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken> { return Users.createEmailVerificationToken(await this.getDb(), userId, token, expiresAt); }
   async getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> { return Users.getEmailVerificationToken(await this.getDb(), token); }
@@ -251,7 +251,7 @@ export class MySQLStorage implements IStorage {
   async getAllGamePlayCounts(): Promise<Record<string, number>> { return Stats.getAllGamePlayCounts(await this.getDb()); }
   async getUserStreak(userId: number): Promise<UserStreak | undefined> { return Stats.getUserStreak(await this.getDb(), userId); }
   async saveUserStreak(userId: number, currentStreak: number, longestStreak: number, lastPlayedDate: string): Promise<UserStreak> { return Stats.saveUserStreak(await this.getDb(), userId, currentStreak, longestStreak, lastPlayedDate); }
-  async getTopStreaks(limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> { return Stats.getTopStreaks(await this.getDb(), limit); }
+  async getTopStreaks(limit: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> { return Stats.getTopStreaks(await this.getDb(), limit); }
   async getStreakBatch(userIds: number[]): Promise<Record<number, number>> { return Stats.getStreakBatch(await this.getDb(), userIds); }
   async updateDailyChallengeStreak(userId: number, date: string): Promise<{ streak: number; longest: number; alreadyDone: boolean }> { return Stats.updateDailyChallengeStreak(await this.getDb(), userId, date); }
   async getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }> { return Stats.getLeaderboardPercentile(await this.getDb(), gameSlug, score); }
@@ -259,7 +259,7 @@ export class MySQLStorage implements IStorage {
   async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement> { return Stats.saveUserAchievement(await this.getDb(), userId, achievementId, unlockedAt); }
   async getAchievementRarities(): Promise<Record<string, number>> { return Stats.getAchievementRarities(await this.getDb()); }
   async getUsersWithStreakAtRisk(): Promise<Array<{ userId: number; currentStreak: number }>> { return Stats.getUsersWithStreakAtRisk(await this.getDb()); }
-  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>> { return Stats.getFriendsWhoPlayGame(await this.getDb(), gameSlug, userId); }
+  async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>> { return Stats.getFriendsWhoPlayGame(await this.getDb(), gameSlug, userId); }
   async saveDailyChallengeScore(userId: number, challengeDate: string, gameSlug: string, score: number): Promise<void> { return Stats.saveDailyChallengeScore(await this.getDb(), userId, challengeDate, gameSlug, score); }
   async getDailyLeaderboard(challengeDate: string, gameSlug: string, requestingUserId?: number): Promise<{ entries: DailyLeaderboardEntry[]; myRank?: number; myScore?: number }> { return Stats.getDailyLeaderboard(await this.getDb(), challengeDate, gameSlug, requestingUserId); }
 
@@ -269,8 +269,8 @@ export class MySQLStorage implements IStorage {
   async deleteLeaderboardEntry(id: number): Promise<void> { return Admin.deleteLeaderboardEntry(await this.getDb(), id); }
   async getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> { return Admin.getAdminStats(await this.getDb()); }
   async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> { return Admin.getAllLeaderboardEntries(await this.getDb()); }
-  async searchUsers(query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
-  async getPublicProfile(userId: number): Promise<{ user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
+  async searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
   async getSiteSetting(key: string): Promise<string | null> { return Admin.getSiteSetting(await this.getDb(), key); }
   async setSiteSetting(key: string, value: string | null): Promise<void> { return Admin.setSiteSetting(await this.getDb(), key, value); }
 
@@ -280,8 +280,8 @@ export class MySQLStorage implements IStorage {
   async acceptFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.acceptFriendRequest(await this.getDb(), id); }
   async declineFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.declineFriendRequest(await this.getDb(), id); }
   async removeFriend(id: number): Promise<void> { return Friends.removeFriend(await this.getDb(), id); }
-  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; name: string; avatarUrl: string | null } }>> { return Friends.getFriends(await this.getDb(), userId); }
-  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; name: string; avatarUrl: string | null } }>> { return Friends.getPendingFriendRequests(await this.getDb(), userId); }
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Friends.getFriends(await this.getDb(), userId); }
+  async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Friends.getPendingFriendRequests(await this.getDb(), userId); }
   async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> { return Friends.getFriendship(await this.getDb(), userId1, userId2); }
   async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> { return Friends.createFriendChallenge(await this.getDb(), challenge); }
   async getFriendChallenges(userId: number): Promise<FriendChallenge[]> { return Friends.getFriendChallenges(await this.getDb(), userId); }
@@ -307,7 +307,7 @@ export class MySQLStorage implements IStorage {
 
   async addGroupMember(groupId: number, userId: number, role: string): Promise<GroupMember> { return Groups.addGroupMember(await this.getDb(), groupId, userId, role); }
   async removeGroupMember(groupId: number, userId: number): Promise<void> { return Groups.removeGroupMember(await this.getDb(), groupId, userId); }
-  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; name: string; avatarUrl: string | null } }>> { return Groups.getGroupMembers(await this.getDb(), groupId); }
+  async getGroupMembers(groupId: number): Promise<Array<GroupMember & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Groups.getGroupMembers(await this.getDb(), groupId); }
   async getGroupMember(groupId: number, userId: number): Promise<GroupMember | undefined> { return Groups.getGroupMember(await this.getDb(), groupId, userId); }
   async updateGroupMemberRole(groupId: number, userId: number, role: string): Promise<GroupMember | undefined> { return Groups.updateGroupMemberRole(await this.getDb(), groupId, userId, role); }
 
@@ -318,9 +318,9 @@ export class MySQLStorage implements IStorage {
   async deleteGroupRound(id: number): Promise<void> { return Groups.deleteGroupRound(await this.getDb(), id); }
 
   async submitGroupRoundScore(roundId: number, userId: number, score: number, durationMs?: number): Promise<GroupRoundScore> { return Groups.submitGroupRoundScore(await this.getDb(), roundId, userId, score, durationMs); }
-  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } }>> { return Groups.getGroupRoundScores(await this.getDb(), roundId); }
+  async getGroupRoundScores(roundId: number): Promise<Array<GroupRoundScore & { user: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Groups.getGroupRoundScores(await this.getDb(), roundId); }
   async getUserGroupRoundScore(roundId: number, userId: number): Promise<GroupRoundScore | undefined> { return Groups.getUserGroupRoundScore(await this.getDb(), roundId, userId); }
-  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupLeaderboard(await this.getDb(), groupId); }
+  async getGroupLeaderboard(groupId: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupLeaderboard(await this.getDb(), groupId); }
 
   async addGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<GroupScoreReaction> { return Groups.addGroupReaction(await this.getDb(), roundId, scoreId, userId, emoji); }
   async removeGroupReaction(roundId: number, scoreId: number, userId: number, emoji: string): Promise<void> { return Groups.removeGroupReaction(await this.getDb(), roundId, scoreId, userId, emoji); }
@@ -339,7 +339,7 @@ export class MySQLStorage implements IStorage {
   async getGroupSeasons(groupId: number): Promise<GroupSeason[]> { return Groups.getGroupSeasons(await this.getDb(), groupId); }
   async getGroupSeason(id: number): Promise<GroupSeason | undefined> { return Groups.getGroupSeason(await this.getDb(), id); }
   async endGroupSeason(id: number, winnerId: number | null, winnerName: string | null): Promise<GroupSeason | undefined> { return Groups.endGroupSeason(await this.getDb(), id, winnerId, winnerName); }
-  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupSeasonLeaderboard(await this.getDb(), season); }
+  async getGroupSeasonLeaderboard(season: GroupSeason): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; totalScore: number; roundsPlayed: number }>> { return Groups.getGroupSeasonLeaderboard(await this.getDb(), season); }
 
   // ── Comments & Likes ────────────────────────────────────────────────────────
   async createComment(comment: InsertComment): Promise<Comment> { return Comments.createComment(await this.getDb(), comment); }
@@ -395,7 +395,7 @@ export class MySQLStorage implements IStorage {
 
   async getDuelRating(userId: number): Promise<DuelRating | undefined> { return Duels.getDuelRating(await this.getDb(), userId); }
   async upsertDuelRating(userId: number, updates: Partial<Pick<DuelRating, "elo" | "wins" | "losses" | "draws">>): Promise<DuelRating> { return Duels.upsertDuelRating(await this.getDb(), userId, updates); }
-  async getDuelLeaderboard(limit?: number, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> { return Duels.getDuelLeaderboard(await this.getDb(), limit, format); }
+  async getDuelLeaderboard(limit?: number, format?: "turn" | "race"): Promise<Array<{ rank: number; userId: number; username: string; displayName: string; avatarUrl: string | null; elo: number; wins: number; losses: number; draws: number; winRate: number }>> { return Duels.getDuelLeaderboard(await this.getDb(), limit, format); }
   async getDuelRankContext(userId: number): Promise<{ rank: number; totalPlayers: number } | null> { return Duels.getDuelRankContext(await this.getDb(), userId); }
 
   // ── Huddle ──────────────────────────────────────────────────────────────────

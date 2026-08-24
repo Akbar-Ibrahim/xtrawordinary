@@ -21,6 +21,10 @@ import { WordRootsGame } from "@/components/games/word-roots";
 import { LetterPoolGame } from "@/components/games/letter-pool";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
+import { WordSweepGame } from "@/components/games/word-sweep";
+import { WordBloomGame } from "@/components/games/word-bloom";
+import { WordExtensionGame } from "@/components/games/word-extension";
+import { WordStretchGame } from "@/components/games/word-stretch";
 import { FriendChallengeCard } from "./FriendChallengeCard";
 import { gameComponents } from "./constants";
 import type { Game, FriendChallenge } from "@shared/schema";
@@ -413,6 +417,7 @@ export function GamePlayArea({
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
           timeLimitSeconds={game.timeLimitSeconds ?? undefined}
+          isUntimed={isUntimed}
         />
       ) : slug === "no-repeats" ? (
         <NoRepeatsGame
@@ -526,6 +531,30 @@ export function GamePlayArea({
           locked={isSenderMode || isReceiverMode}
           wordTarget={game.wordTarget ?? undefined}
           timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          isUntimed={isUntimed}
+        />
+      ) : slug === "word-sweep" ? (
+        <WordSweepGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
+          isUntimed={isUntimed}
+        />
+      ) : slug === "word-bloom" ? (
+        <WordBloomGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
+          isUntimed={isUntimed}
+        />
+      ) : slug === "word-extension" ? (
+        <WordExtensionGame
+          locked={isSenderMode || isReceiverMode}
+          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          isUntimed={isUntimed}
+        />
+      ) : slug === "word-stretch" ? (
+        <WordStretchGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
           isUntimed={isUntimed}
         />
       ) : slug === "word-chain" ? (

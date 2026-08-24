@@ -15,6 +15,7 @@ import type { ProgressiveRevealWord } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
@@ -27,6 +28,7 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
   const [, navigate] = useLocation();
   const { reportResult, resetRecorded } = useGameResult({ slug: "progressive-reveal", quizMode });
   const personalBest = usePersonalBest("progressive-reveal");
+  const { markSeen, filterUnseen } = usePuzzleHistory("progressive-reveal");
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;
 
@@ -93,7 +95,8 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
       setUsedWords(prev => new Set(Array.from(prev).concat(word.word)));
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
-      const available = allWords.filter(w => !currentUsed.has(w.word));
+      const available = filterUnseen(allWords, (w) => w.word, "standard")
+        .filter(w => !currentUsed.has(w.word));
       if (available.length === 0) {
         playSound("win");
         setGameStatus("won");
@@ -104,9 +107,12 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
       setCurrentWord(word);
       setupWord(word);
       setUsedWords(prev => new Set(Array.from(prev).concat(word.word)));
+      if (!hasCustomWords) {
+        markSeen(word.word, "standard");
+      }
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [seeded, setupWord, playSound]);
+  }, [seeded, setupWord, playSound, filterUnseen, hasCustomWords, markSeen]);
 
   const lastWordRef = useRef<(typeof words)[0] | null>(null);
 
@@ -121,14 +127,21 @@ export function ProgressiveRevealGame({ groupSeed, locked, quizMode, customWords
     setGameStatus("playing");
     setFeedback(null);
     setCompletionMessage("");
-    const firstWord = overrideWord ?? (seeded ? words[0] : words[Math.floor(Math.random() * words.length)]);
+    const wordPool = seeded || hasCustomWords
+      ? words
+      : filterUnseen(words, (w) => w.word, "standard");
+    const firstWord = overrideWord ?? (seeded ? words[0] : wordPool[Math.floor(Math.random() * wordPool.length)]);
+    if (!firstWord) return;
     lastWordRef.current = firstWord;
     setCurrentWord(firstWord);
     setupWord(firstWord);
     const initialUsed = new Set([firstWord.word]);
     setUsedWords(initialUsed);
+    if (!seeded && !hasCustomWords && !overrideWord) {
+      markSeen(firstWord.word, "standard");
+    }
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [words, seeded, setupWord, resetRecorded]);
+  }, [words, seeded, hasCustomWords, setupWord, resetRecorded, filterUnseen, markSeen]);
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {

@@ -68,6 +68,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/about" component={About} />
       <Route path="/admin" component={Admin} />
+      <Route path="/u/:username" component={Profile} />
       <Route path="/profile/:id" component={Profile} />
       <Route path="/friends" component={Friends} />
       <Route path="/groups" component={Groups} />

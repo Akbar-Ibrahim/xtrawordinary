@@ -257,11 +257,20 @@ export default function Home() {
                           25 word games. Daily challenges. 1-on-1 duels. Pick a game below to get started — it's free to play.
                         </p>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                        <div
+                          className="flex sm:grid sm:grid-cols-3 gap-2 mb-4 overflow-x-auto overscroll-x-contain snap-x snap-mandatory scrollbar-none pb-1"
+                          role="region"
+                          aria-label="Starter game suggestions"
+                        >
                           {STARTER_GAMES.map((g) => (
-                            <Link key={g.slug} href={`/game/${g.slug}`} onClick={dismissWelcome}>
+                            <Link
+                              key={g.slug}
+                              href={`/game/${g.slug}`}
+                              onClick={dismissWelcome}
+                              className="block min-w-[88%] sm:min-w-0 snap-start"
+                            >
                               <div
-                                className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                                className="flex h-full items-center gap-2.5 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
                                 data-testid={`card-starter-${g.slug}`}
                               >
                                 <div
@@ -514,7 +523,7 @@ export default function Home() {
                   </button>
                 )}
               </div>
-              <div className="flex gap-1" role="group" aria-label="Filter by difficulty" onKeyDown={handleDifficultyArrow}>
+              <div className="hidden sm:flex gap-1" role="group" aria-label="Filter by difficulty" onKeyDown={handleDifficultyArrow}>
                 {DIFFICULTIES.map((d) => (
                   <Button
                     key={d}
@@ -529,7 +538,7 @@ export default function Home() {
                   </Button>
                 ))}
               </div>
-              <div className="flex items-center gap-0.5 p-0.5 rounded-md border bg-muted" role="group" aria-label="View mode" onKeyDown={handleViewModeArrow}>
+              <div className="hidden flex items-center gap-0.5 p-0.5 rounded-md border bg-muted" role="group" aria-label="View mode" onKeyDown={handleViewModeArrow}>
                 <button
                   onClick={() => toggleViewMode("grid")}
                   className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}

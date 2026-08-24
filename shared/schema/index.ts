@@ -12,3 +12,4 @@ export * from "./notifications";
 export * from "./word-wars";
 export * from "./guild-wars";
 export * from "./challenges";
+export * from "../usernames";

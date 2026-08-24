@@ -87,6 +87,12 @@ export const UNTIMED_GAME_SLUGS = new Set([
   "word-roots",
   "letter-balance",
   "letter-frequency",
+  "anagram-solver",
+  "definition-match",
+  "word-sweep",
+  "word-bloom",
+  "word-extension",
+  "word-stretch",
 ]);
 
 export const LETTER_BALANCE_CATEGORIES_DETAIL = [

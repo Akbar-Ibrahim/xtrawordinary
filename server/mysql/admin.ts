@@ -1,4 +1,4 @@
-import { eq, desc, asc, like, sql, or } from "drizzle-orm";
+import { eq, desc, asc, like, sql, or, inArray } from "drizzle-orm";
 import type { User, LeaderboardEntry } from "@shared/schema";
 import * as schema from "../db-schema";
 import { toUser } from "./users";
@@ -27,18 +27,24 @@ export async function deleteUser(db: any, id: number): Promise<void> {
   await db.delete(schema.users).where(eq(schema.users.id, id));
 }
 
-export async function searchUsers(db: any, query: string): Promise<Array<{ id: number; name: string; avatarUrl: string | null }>> {
+export async function searchUsers(db: any, query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> {
   const sanitized = query.slice(0, 50).replace(/[%_\\]/g, (c) => `\\${c}`);
-  const rows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
+  const normalized = sanitized.toLowerCase();
+  const rows = await db.select({ id: schema.users.id, username: schema.users.username, usernameNormalized: schema.users.usernameNormalized, name: schema.users.name, avatarUrl: schema.users.avatarUrl })
     .from(schema.users)
-    .where(like(schema.users.name, `%${sanitized}%`))
-    .orderBy(asc(schema.users.name))
+    .where(or(like(schema.users.usernameNormalized, `${normalized}%`), like(schema.users.name, `%${sanitized}%`)))
     .limit(20);
-  return rows.map((r: any) => ({ id: r.id, name: r.name, avatarUrl: r.avatarUrl ?? null }));
+  return rows
+    .sort((a: any, b: any) => {
+      const aExact = a.usernameNormalized === normalized ? 0 : a.usernameNormalized.startsWith(normalized) ? 1 : 2;
+      const bExact = b.usernameNormalized === normalized ? 0 : b.usernameNormalized.startsWith(normalized) ? 1 : 2;
+      return aExact - bExact || a.username.localeCompare(b.username);
+    })
+    .map((r: any) => ({ id: r.id, username: r.username, name: r.name, avatarUrl: r.avatarUrl ?? null }));
 }
 
 export async function getPublicProfile(db: any, userId: number): Promise<{
-  user: { id: number; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null };
+  user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null };
   stats: Awaited<ReturnType<typeof getAllUserGameStats>>;
   achievements: Awaited<ReturnType<typeof getUserAchievements>>;
   leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }>;
@@ -64,7 +70,7 @@ export async function getPublicProfile(db: any, userId: number): Promise<{
     leaderboardRankings.push({ gameSlug: slug, rank: Number(cnt) + 1, score });
   }
   return {
-    user: { id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, createdAt: u.createdAt, isPremium: u.isPremium, bio: u.bio ?? null },
+    user: { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, createdAt: u.createdAt, isPremium: u.isPremium, bio: u.bio ?? null },
     stats,
     achievements,
     leaderboardRankings,
@@ -93,12 +99,16 @@ export async function getAdminStats(db: any): Promise<{ totalUsers: number; tota
 
 export async function getAllLeaderboardEntries(db: any): Promise<LeaderboardEntry[]> {
   const rows = await db.select().from(schema.leaderboardEntries).orderBy(desc(schema.leaderboardEntries.playedAt));
+  const userIds = [...new Set<number>(rows.map((r: any) => Number(r.userId)))];
+  const users = userIds.length ? await db.select({ id: schema.users.id, username: schema.users.username }).from(schema.users).where(inArray(schema.users.id, userIds)) : [];
+  const usernames = new Map(users.map((user: any) => [user.id, user.username]));
   return rows.map((r: any) => ({
     id: r.id,
     userId: r.userId,
     gameSlug: r.gameSlug,
     score: r.score,
     playerName: r.playerName,
+    username: usernames.get(r.userId) ?? "unknown",
     playerAvatarUrl: r.playerAvatarUrl ?? null,
     playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt),
   }));

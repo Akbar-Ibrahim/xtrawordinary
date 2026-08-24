@@ -28,6 +28,7 @@ export const gameSchema = z.object({
   wordTarget: z.number().int().positive().nullable().optional(),
   livesCount: z.number().int().positive().nullable().optional(),
   survivalSecondsPerWord: z.number().int().positive().nullable().optional(),
+  ogImage: z.string().optional(),
 });
 
 export type Game = z.infer<typeof gameSchema>;

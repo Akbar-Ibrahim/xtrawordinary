@@ -63,7 +63,8 @@ export async function saveLeaderboardEntry(db: any, entry: InsertLeaderboardEntr
   const saved = await db.select().from(schema.leaderboardEntries)
     .where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug))).limit(1);
   const row = saved[0];
-  return { id: row.id, userId: row.userId, gameSlug: row.gameSlug, score: row.score, playerName: row.playerName, playedAt: row.playedAt instanceof Date ? row.playedAt.toISOString() : String(row.playedAt) };
+  const userRows = await db.select({ username: schema.users.username }).from(schema.users).where(eq(schema.users.id, row.userId)).limit(1);
+  return { id: row.id, userId: row.userId, gameSlug: row.gameSlug, score: row.score, playerName: row.playerName, username: userRows[0]?.username ?? "unknown", playedAt: row.playedAt instanceof Date ? row.playedAt.toISOString() : String(row.playedAt) };
 }
 
 export async function getLeaderboard(db: any, gameSlug: string, limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
@@ -82,13 +83,13 @@ export async function getLeaderboard(db: any, gameSlug: string, limit = 50, time
     .orderBy(desc(schema.leaderboardEntries.score)).limit(limit);
   if (rows.length === 0) return [];
   const userIds = [...new Set(rows.map((r: any) => r.userId).filter(Boolean))] as number[];
-  const userRows = userIds.length > 0 ? await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds)) : [];
+  const userRows = userIds.length > 0 ? await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds)) : [];
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = userIds.length > 0 ? await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed }).from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, userIds), eq(schema.userGameStats.gameSlug, gameSlug))) : [];
   const statsMap = new Map(statsRows.map((s: any) => [s.userId, s.gamesPlayed]));
   return rows.map((r: any) => {
     const user: any = userMap.get(r.userId);
-    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: user?.name ?? r.playerName, playerAvatarUrl: user?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined };
+    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: user?.name ?? r.playerName, username: user?.username ?? "unknown", playerAvatarUrl: user?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined };
   });
 }
 
@@ -99,11 +100,11 @@ export async function getOverallLeaderboard(db: any, limit = 50, timeFilter?: st
     .groupBy(schema.leaderboardEntries.userId).orderBy(sql`SUM(${schema.leaderboardEntries.score}) DESC`).limit(limit);
   if (totals.length === 0) return [];
   const userIds = totals.map((t: any) => t.userId);
-  const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
+  const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = await db.select({ userId: schema.userGameStats.userId, gamesPlayed: sql<number>`SUM(${schema.userGameStats.gamesPlayed})` }).from(schema.userGameStats).where(inArray(schema.userGameStats.userId, userIds)).groupBy(schema.userGameStats.userId);
   const statsMap = new Map(statsRows.map((s: any) => [s.userId, Number(s.gamesPlayed)]));
-  return totals.map((r: any, i: number) => ({ id: i + 1, userId: r.userId, playerName: (userMap.get(r.userId) as any)?.name || "Unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, score: Number(r.totalScore), playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt), gameSlug: "overall", gamesPlayed: statsMap.get(r.userId) ?? undefined }));
+  return totals.map((r: any, i: number) => ({ id: i + 1, userId: r.userId, playerName: (userMap.get(r.userId) as any)?.name || "Unknown", username: (userMap.get(r.userId) as any)?.username ?? "unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, score: Number(r.totalScore), playedAt: r.latestPlayedAt instanceof Date ? r.latestPlayedAt.toISOString() : String(r.latestPlayedAt), gameSlug: "overall", gamesPlayed: statsMap.get(r.userId) ?? undefined }));
 }
 
 export async function getPlayerRank(db: any, gameSlug: string, userId: number, timeFilter?: string): Promise<{ rank: number; score: number; totalPlayers: number } | null> {
@@ -139,9 +140,9 @@ export async function getFriendsLeaderboard(db: any, gameSlug: string, userId: n
     const totals = await db.select({ userId: schema.leaderboardEntries.userId, totalScore: sql<number>`SUM(${schema.leaderboardEntries.score})`, latestPlayedAt: sql<string>`MAX(${schema.leaderboardEntries.playedAt})` }).from(schema.leaderboardEntries).where(inArray(schema.leaderboardEntries.userId, allowedIds)).groupBy(schema.leaderboardEntries.userId).orderBy(sql`SUM(${schema.leaderboardEntries.score}) DESC`);
     if (totals.length === 0) return [];
     const uIds = totals.map((t: any) => t.userId);
-    const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
+    const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
     const userMap = new Map(userRows.map((u: any) => [u.id, u]));
-    return totals.map((r: any, i: number) => ({ id: i + 1, userId: r.userId, playerName: (userMap.get(r.userId) as any)?.name || "Unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, score: Number(r.totalScore), playedAt: r.latestPlayedAt instanceof Date ? (r.latestPlayedAt as Date).toISOString() : String(r.latestPlayedAt), gameSlug: "overall" }));
+    return totals.map((r: any, i: number) => ({ id: i + 1, userId: r.userId, playerName: (userMap.get(r.userId) as any)?.name || "Unknown", username: (userMap.get(r.userId) as any)?.username ?? "unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, score: Number(r.totalScore), playedAt: r.latestPlayedAt instanceof Date ? (r.latestPlayedAt as Date).toISOString() : String(r.latestPlayedAt), gameSlug: "overall" }));
   }
   const baseWhere = and(eq(schema.leaderboardEntries.gameSlug, gameSlug), inArray(schema.leaderboardEntries.userId, allowedIds));
   const maxScorePerUser = db.select({ userId: schema.leaderboardEntries.userId, maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score") }).from(schema.leaderboardEntries).where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("max_score_per_user");
@@ -149,11 +150,11 @@ export async function getFriendsLeaderboard(db: any, gameSlug: string, userId: n
   const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt }).from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId)).orderBy(desc(schema.leaderboardEntries.score));
   if (rows.length === 0) return [];
   const uIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
-  const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
+  const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed }).from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, uIds), eq(schema.userGameStats.gameSlug, gameSlug)));
   const statsMap = new Map(statsRows.map((s: any) => [s.userId, s.gamesPlayed]));
-  return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: (userMap.get(r.userId) as any)?.name ?? r.playerName, playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined }));
+  return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: (userMap.get(r.userId) as any)?.name ?? r.playerName, username: (userMap.get(r.userId) as any)?.username ?? "unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined }));
 }
 
 export async function incrementGamePlayCount(db: any, gameSlug: string): Promise<void> {
@@ -189,11 +190,11 @@ export async function saveUserStreak(db: any, userId: number, currentStreak: num
   return { id: result[0].insertId, userId, currentStreak, longestStreak, lastPlayedDate, dailyChallengeStreak: 0, longestDailyChallengeStreak: 0 };
 }
 
-export async function getTopStreaks(db: any, limit: number): Promise<Array<{ userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
-  const rows = await db.select({ userId: schema.userStreaks.userId, name: schema.users.name, avatarUrl: schema.users.avatarUrl, currentStreak: schema.userStreaks.currentStreak, longestStreak: schema.userStreaks.longestStreak })
+export async function getTopStreaks(db: any, limit: number): Promise<Array<{ userId: number; username: string; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number }>> {
+  const rows = await db.select({ userId: schema.userStreaks.userId, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl, currentStreak: schema.userStreaks.currentStreak, longestStreak: schema.userStreaks.longestStreak })
     .from(schema.userStreaks).innerJoin(schema.users, eq(schema.userStreaks.userId, schema.users.id))
     .where(sql`${schema.userStreaks.currentStreak} > 0`).orderBy(desc(schema.userStreaks.currentStreak)).limit(limit);
-  return rows.map((r: any) => ({ userId: r.userId, name: r.name, avatarUrl: r.avatarUrl ?? null, currentStreak: r.currentStreak, longestStreak: r.longestStreak }));
+  return rows.map((r: any) => ({ userId: r.userId, username: r.username, name: r.name, avatarUrl: r.avatarUrl ?? null, currentStreak: r.currentStreak, longestStreak: r.longestStreak }));
 }
 
 export async function getStreakBatch(db: any, userIds: number[]): Promise<Record<number, number>> {
@@ -269,7 +270,7 @@ export async function getUsersWithStreakAtRisk(db: any): Promise<Array<{ userId:
   return rows.map((r: any) => ({ userId: r.userId, currentStreak: r.currentStreak }));
 }
 
-export async function getFriendsWhoPlayGame(db: any, gameSlug: string, userId: number): Promise<Array<{ id: number; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
+export async function getFriendsWhoPlayGame(db: any, gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>> {
   const friendships = await db.select({ requesterId: schema.friendships.requesterId, addresseeId: schema.friendships.addresseeId })
     .from(schema.friendships).where(and(eq(schema.friendships.status, "accepted"), or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))));
   const friendIds = friendships.map((f: any) => f.requesterId === userId ? f.addresseeId : f.requesterId);
@@ -278,8 +279,8 @@ export async function getFriendsWhoPlayGame(db: any, gameSlug: string, userId: n
     .from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, friendIds), eq(schema.userGameStats.gameSlug, gameSlug), sql`${schema.userGameStats.gamesPlayed} > 0`));
   if (statsRows.length === 0) return [];
   const playedIds = statsRows.map((s: any) => s.userId);
-  const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, playedIds));
-  return userRows.map((u: any) => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl ?? null, gamesPlayed: statsRows.find((s: any) => s.userId === u.id)?.gamesPlayed ?? 0 }))
+  const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, playedIds));
+  return userRows.map((u: any) => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, gamesPlayed: statsRows.find((s: any) => s.userId === u.id)?.gamesPlayed ?? 0 }))
     .sort((a: any, b: any) => b.gamesPlayed - a.gamesPlayed);
 }
 

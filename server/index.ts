@@ -56,7 +56,7 @@ app.use(requestLogger);
   }
 
   const port = parseInt(process.env.PORT || "5005", 10);
-  httpServer.listen({ port, host: "0.0.0.0", }, () => {
+  httpServer.listen({ port, host: "0.0.0.0" }, () => {
     import("./logger").then(({ log }) => log(`serving on port ${port}`));
   });
 })();

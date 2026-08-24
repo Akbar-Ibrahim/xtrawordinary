@@ -36,13 +36,14 @@ export function MembersTab({
           {members?.map(member => (
             <Card key={member.id} data-testid={`card-member-${member.userId}`}>
               <CardContent className="p-4 flex items-center gap-4">
-                <Link href={`/profile/${member.userId}`}>
+                <Link href={`/u/${member.user.username}`}>
                   <UserAvatar name={member.user.name} avatarUrl={member.user.avatarUrl} className="h-9 w-9 cursor-pointer" />
                 </Link>
                 <div className="flex-1 min-w-0">
-                  <Link href={`/profile/${member.userId}`}>
+                  <Link href={`/u/${member.user.username}`}>
                     <p className="font-semibold truncate hover:underline cursor-pointer">{member.user.name}</p>
                   </Link>
+                  <p className="text-xs text-muted-foreground">@{member.user.username}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     {member.role === "owner" && <Crown className="h-3.5 w-3.5 text-yellow-500" />}
                     {member.role === "admin" && <Shield className="h-3.5 w-3.5 text-blue-500" />}

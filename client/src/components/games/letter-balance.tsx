@@ -19,6 +19,8 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { WordExamplesPanel } from "@/components/word-examples-panel";
+import type { DatabaseWordExamplesRequest } from "@/hooks/use-word-examples";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -81,6 +83,7 @@ type LevelType = number | "advanced";
 interface GameConstraint {
   description: string;
   validate: (word: string) => { valid: boolean; message: string };
+  wordExamplesRequest?: Extract<DatabaseWordExamplesRequest, { game: "letter-balance" }>;
 }
 
 // Category definitions with their level ranges
@@ -189,6 +192,7 @@ function generateConstraint(
       const count = isAdvanced ? getRandomValue(2, 7) : level as number;
       return {
         description: `Words with exactly ${count} consonants`,
+        wordExamplesRequest: { game: "letter-balance", category: "consonant_count", consonantCount: count },
         validate: (word: string) => {
           const actual = countConsonants(word.toUpperCase());
           if (actual !== count) {
@@ -203,6 +207,7 @@ function generateConstraint(
       const count = isAdvanced ? getRandomValue(2, 7) : level as number;
       return {
         description: `Words with exactly ${count} vowels`,
+        wordExamplesRequest: { game: "letter-balance", category: "vowel_count", vowelCount: count },
         validate: (word: string) => {
           const actual = countVowels(word.toUpperCase());
           if (actual !== count) {
@@ -219,6 +224,7 @@ function generateConstraint(
         description: isAdvanced 
           ? `${length}-letter word starting AND ending with a vowel`
           : `${length}-letter words starting AND ending with a vowel`,
+        wordExamplesRequest: { game: "letter-balance", category: "start_end_vowel", length },
         validate: (word: string) => {
           const upper = word.toUpperCase();
           if (upper.length !== length) {
@@ -241,6 +247,7 @@ function generateConstraint(
         description: isAdvanced 
           ? `${length}-letter word starting AND ending with a consonant`
           : `${length}-letter words starting AND ending with a consonant`,
+        wordExamplesRequest: { game: "letter-balance", category: "start_end_consonant", length },
         validate: (word: string) => {
           const upper = word.toUpperCase();
           if (upper.length !== length) {
@@ -263,6 +270,7 @@ function generateConstraint(
         description: isAdvanced 
           ? `${length}-letter word: vowel start, consonant end`
           : `${length}-letter words: vowel start, consonant end`,
+        wordExamplesRequest: { game: "letter-balance", category: "start_vowel_end_consonant", length },
         validate: (word: string) => {
           const upper = word.toUpperCase();
           if (upper.length !== length) {
@@ -285,6 +293,7 @@ function generateConstraint(
         description: isAdvanced 
           ? `${length}-letter word: consonant start, vowel end`
           : `${length}-letter words: consonant start, vowel end`,
+        wordExamplesRequest: { game: "letter-balance", category: "start_consonant_end_vowel", length },
         validate: (word: string) => {
           const upper = word.toUpperCase();
           if (upper.length !== length) {
@@ -316,6 +325,13 @@ function generateConstraint(
       const vowels = wordLength - consonants;
       return {
         description: `${wordLength}-letter word: ${consonants} consonant${consonants !== 1 ? "s" : ""}, ${vowels} vowel${vowels !== 1 ? "s" : ""}`,
+        wordExamplesRequest: {
+          game: "letter-balance",
+          category: "locked_balance",
+          length: wordLength,
+          consonantCount: consonants,
+          vowelCount: vowels,
+        },
         validate: (word: string) => {
           const upper = word.toUpperCase();
           if (upper.length !== wordLength) {
@@ -353,6 +369,15 @@ function generateCustomLbConstraint(cc: CustomLbConstraint): GameConstraint {
   if (cc.length !== undefined) parts.push(`${cc.length} letters long`);
   return {
     description: parts.length > 0 ? `Words with ${parts.join(", ")}` : "Any word",
+    wordExamplesRequest: parts.length > 0
+      ? {
+          game: "letter-balance",
+          category: "custom",
+          length: cc.length,
+          vowelCount: cc.vowels,
+          consonantCount: cc.consonants,
+        }
+      : undefined,
     validate: (word: string) => {
       const upper = word.toUpperCase();
       if (cc.length !== undefined && upper.length !== cc.length) {
@@ -957,6 +982,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               <p className="text-sm text-muted-foreground" data-testid="text-personal-best">Personal Best: {personalBest} pts</p>
             )}
             <ShareResults gameName="Vowel & Consonant" gameSlug="letter-balance" score={score} wordsCompleted={wordsCompleted} isWin={true} customPlay={customPlay} />
+            {currentConstraint?.wordExamplesRequest && (
+              <WordExamplesPanel
+                game="letter-balance"
+                letters={[]}
+                databaseRequest={currentConstraint.wordExamplesRequest}
+              />
+            )}
             {usedWords.size > 0 && (
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
@@ -1049,6 +1081,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               isWin={true}
               customPlay={customPlay}
             />
+            {currentConstraint?.wordExamplesRequest && (
+              <WordExamplesPanel
+                game="letter-balance"
+                letters={[]}
+                databaseRequest={currentConstraint.wordExamplesRequest}
+              />
+            )}
             {usedWords.size > 0 && (
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>
@@ -1170,6 +1209,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
               isWin={false}
               customPlay={customPlay}
             />
+            {currentConstraint?.wordExamplesRequest && (
+              <WordExamplesPanel
+                game="letter-balance"
+                letters={[]}
+                databaseRequest={currentConstraint.wordExamplesRequest}
+              />
+            )}
             {usedWords.size > 0 && (
               <div className="text-left">
                 <p className="text-sm font-medium text-muted-foreground mb-2">Words used ({usedWords.size}):</p>

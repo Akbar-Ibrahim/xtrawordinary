@@ -49,7 +49,7 @@ export function SocialTab({ myFriends, myGroups, friendsLoading }: Props) {
                   <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-7 w-7 text-xs shrink-0" />
                   <span className="text-sm font-medium">{f.friendUser.name}</span>
                 </div>
-                <Link href={`/profile/${f.friendUser.id}`}>
+                <Link href={`/u/${f.friendUser.username}`}>
                   <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" data-testid={`link-friend-profile-${f.friendUser.id}`}>
                     Profile <ChevronRight className="h-3 w-3 ml-0.5" />
                   </Button>

@@ -14,7 +14,7 @@ const individualFeatures = [
   "Advanced stats & score history",
   "Streak shields (2 per month)",
   "Ad-free experience",
-  "Zen mode — no timers on Survival games",
+  "Zen mode — no timers on timed games",
   "Early access to new games",
   "Create unlimited groups",
   "Unlimited friend challenges",

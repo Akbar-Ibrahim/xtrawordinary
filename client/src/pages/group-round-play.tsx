@@ -133,7 +133,7 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfi
   }
 }
 
-type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } };
+type RoundScoreEntry = GroupRoundScore & { user: { id: number; username: string; name: string; avatarUrl: string | null } };
 
 interface RoundResponse {
   round: GroupRound;
@@ -327,11 +327,11 @@ export default function GroupRoundPlay() {
                               <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                                 {i + 1}
                               </span>
-                              <Link href={`/profile/${entry.user.id}`}>
+                              <Link href={`/u/${entry.user.username}`}>
                                 <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
                               </Link>
-                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
-                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              <Link href={`/u/${entry.user.username}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}<span className="block text-xs font-normal text-muted-foreground">@{entry.user.username}</span></span>
                               </Link>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
@@ -384,11 +384,11 @@ export default function GroupRoundPlay() {
                               <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                                 {i + 1}
                               </span>
-                              <Link href={`/profile/${entry.user.id}`}>
+                              <Link href={`/u/${entry.user.username}`}>
                                 <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
                               </Link>
-                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
-                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              <Link href={`/u/${entry.user.username}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}<span className="block text-xs font-normal text-muted-foreground">@{entry.user.username}</span></span>
                               </Link>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />
@@ -438,11 +438,11 @@ export default function GroupRoundPlay() {
                               <span className={`text-sm font-bold w-5 text-center ${i === 0 ? "text-yellow-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-600" : "text-muted-foreground"}`}>
                                 {i + 1}
                               </span>
-                              <Link href={`/profile/${entry.user.id}`}>
+                              <Link href={`/u/${entry.user.username}`}>
                                 <UserAvatar name={entry.user.name} avatarUrl={entry.user.avatarUrl} className="h-7 w-7 cursor-pointer" />
                               </Link>
-                              <Link href={`/profile/${entry.user.id}`} className="flex-1 min-w-0">
-                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}</span>
+                              <Link href={`/u/${entry.user.username}`} className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate hover:underline cursor-pointer">{entry.user.name}<span className="block text-xs font-normal text-muted-foreground">@{entry.user.username}</span></span>
                               </Link>
                               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Clock className="h-3 w-3" />

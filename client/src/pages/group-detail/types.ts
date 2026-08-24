@@ -32,6 +32,7 @@ export interface GroupDetailResponse {
 
 export interface LeaderboardEntry {
   userId: number;
+  username: string;
   name: string;
   avatarUrl: string | null;
   totalScore: number;
@@ -39,13 +40,14 @@ export interface LeaderboardEntry {
 }
 
 export interface MemberWithUser extends GroupMember {
-  user: { id: number; name: string; avatarUrl: string | null };
+  user: { id: number; username: string; name: string; avatarUrl: string | null };
 }
 
-export type RoundScoreEntry = GroupRoundScore & { user: { id: number; name: string; avatarUrl: string | null } };
+export type RoundScoreEntry = GroupRoundScore & { user: { id: number; username: string; name: string; avatarUrl: string | null } };
 
 export interface SeasonLeaderboardEntry {
   userId: number;
+  username: string;
   name: string;
   avatarUrl: string | null;
   totalScore: number;

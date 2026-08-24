@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2 } from "lucide-react";
+import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Share2 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
@@ -27,17 +27,18 @@ type EnrichedDuelChallenge = DuelChallenge & {
 
 interface FriendEntry {
   id: number;
-  friendUser: { id: number; name: string; avatarUrl: string | null };
+  friendUser: { id: number; username: string; name: string; avatarUrl: string | null };
 }
 
 interface FriendRequest {
   id: number;
-  requesterUser: { id: number; name: string; avatarUrl: string | null };
+  requesterUser: { id: number; username: string; name: string; avatarUrl: string | null };
   createdAt: string;
 }
 
 interface SearchResult {
   id: number;
+  username: string;
   name: string;
   avatarUrl: string | null;
 }
@@ -358,7 +359,7 @@ export default function Friends() {
             <div className="relative flex items-center">
               <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
-                placeholder="Search by name..."
+                placeholder="Search by username or display name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-9"
@@ -382,10 +383,10 @@ export default function Friends() {
               <div className="mt-3 space-y-2">
                 {searchResults.map((u) => (
                   <div key={u.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-search-result-${u.id}`}>
-                    <Link href={`/profile/${u.id}`}>
+                      <Link href={`/u/${u.username}`}>
                       <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
                         <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6 text-[9px]" />
-                        {u.name}
+                        <span>{u.name}<span className="block text-xs font-normal text-muted-foreground">@{u.username}</span></span>
                       </span>
                     </Link>
                     <Button size="sm" onClick={() => sendRequestMutation.mutate(u.id)} disabled={sendRequestMutation.isPending} data-testid={`button-add-${u.id}`}>
@@ -458,14 +459,14 @@ export default function Friends() {
                       </div>
                     </div>
                     {[...friends].sort((a, b) => {
-                      const cmp = a.friendUser.name.localeCompare(b.friendUser.name);
+                      const cmp = a.friendUser.username.localeCompare(b.friendUser.username);
                       return friendSort === "za" ? -cmp : cmp;
                     }).map((f) => (
                       <div key={f.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-friend-${f.friendUser.id}`}>
-                        <Link href={`/profile/${f.friendUser.id}`}>
+                        <Link href={`/u/${f.friendUser.username}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
                             <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-8 w-8 text-xs" />
-                            {f.friendUser.name}
+                            <span>{f.friendUser.name}<span className="block text-xs font-normal text-muted-foreground">@{f.friendUser.username}</span></span>
                           </span>
                         </Link>
                         <div className="flex gap-2">
@@ -519,10 +520,10 @@ export default function Friends() {
                   <div className="space-y-2">
                     {requests.map((r) => (
                       <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-request-${r.id}`}>
-                        <Link href={`/profile/${r.requesterUser.id}`}>
+                        <Link href={`/u/${r.requesterUser.username}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
                             <UserAvatar name={r.requesterUser.name} avatarUrl={r.requesterUser.avatarUrl} className="h-8 w-8 text-xs" />
-                            {r.requesterUser.name}
+                            <span>{r.requesterUser.name}<span className="block text-xs font-normal text-muted-foreground">@{r.requesterUser.username}</span></span>
                           </span>
                         </Link>
                         <div className="flex gap-2">
@@ -775,16 +776,34 @@ export default function Friends() {
                                 </>
                               )}
                               {isSender && isPending && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="text-muted-foreground hover:text-red-500"
-                                  onClick={() => cancelChallengeMutation.mutate(c.id)}
-                                  disabled={cancelChallengeMutation.isPending}
-                                  data-testid={`button-cancel-challenge-${c.id}`}
-                                >
-                                  <X className="h-3.5 w-3.5 mr-1" /> Cancel
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                      const url = `${window.location.origin}/share/challenge/${c.id}`;
+                                      navigator.clipboard.writeText(url).then(() => {
+                                        toast({ title: "Invite link copied!", description: "Share it on WhatsApp, Twitter, or anywhere." });
+                                      }).catch(() => {
+                                        toast({ title: "Copy failed", description: "Please copy the link manually.", variant: "destructive" });
+                                      });
+                                    }}
+                                    data-testid={`button-share-challenge-${c.id}`}
+                                  >
+                                    <Share2 className="h-3.5 w-3.5 mr-1" /> Share
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-red-500"
+                                    onClick={() => cancelChallengeMutation.mutate(c.id)}
+                                    disabled={cancelChallengeMutation.isPending}
+                                    data-testid={`button-cancel-challenge-${c.id}`}
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-1" /> Cancel
+                                  </Button>
+                                </>
                               )}
                               {(isDeclined || isCancelled) && (
                                 <Button

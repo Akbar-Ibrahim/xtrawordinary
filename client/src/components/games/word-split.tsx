@@ -29,6 +29,7 @@ import { useSound } from "@/lib/sound-provider";
 import { apiRequest } from "@/lib/queryClient";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 
 type Difficulty = "short" | "medium" | "long";
 type GameState = "menu" | "playing" | "completed" | "failed";
@@ -93,6 +94,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-split" });
   const personalBest = usePersonalBest("word-split");
+  const { markSeen, filterUnseen } = usePuzzleHistory("word-split");
   const { data: puzzles = [], isLoading, error } = useQuery<WordSplitPuzzle[]>({
     queryKey: ["/api/games/word-split/puzzles"],
     refetchOnMount: "always",
@@ -156,11 +158,11 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       p => p.targetWord.length >= config.minLength && p.targetWord.length <= config.maxLength
     );
 
-    if (filtered.length === 0) {
-      setActivePuzzles(puzzles);
-    } else {
-      setActivePuzzles(filtered);
-    }
+    const puzzleList = filtered.length > 0 ? filtered : puzzles;
+    const playablePuzzles = groupSeed === undefined
+      ? filterUnseen(puzzleList, (p) => p.targetWord, diff)
+      : puzzleList;
+    setActivePuzzles(playablePuzzles);
 
     setDifficulty(diff);
     setScore(0);
@@ -172,14 +174,17 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setGameState("playing");
     resetRecorded();
 
-    const puzzleList = filtered.length > 0 ? filtered : puzzles;
-    const puzzle = overrideFirstPuzzle ?? puzzleList[Math.floor(Math.random() * puzzleList.length)];
+    const puzzle = overrideFirstPuzzle
+      ?? playablePuzzles[Math.floor(Math.random() * playablePuzzles.length)];
     if (puzzle) {
       lastFirstPuzzleRef.current = puzzle;
       setUsedPuzzles(new Set<string>([puzzle.targetWord]));
       startPuzzle(puzzle);
+      if (groupSeed === undefined && !overrideFirstPuzzle) {
+        markSeen(puzzle.targetWord, diff);
+      }
     }
-  }, [puzzles, startPuzzle, resetRecorded]);
+  }, [puzzles, groupSeed, startPuzzle, resetRecorded, filterUnseen, markSeen]);
 
   useEffect(() => {
     if (groupSeed !== undefined && puzzles.length > 0 && gameState === "menu") {
@@ -222,8 +227,11 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       return;
     }
     setUsedPuzzles(prev => new Set([...Array.from(prev), puzzle.targetWord]));
+    if (groupSeed === undefined) {
+      markSeen(puzzle.targetWord, difficulty ?? undefined);
+    }
     startPuzzle(puzzle);
-  }, [activePuzzles, usedPuzzles, selectPuzzle, startPuzzle]);
+  }, [activePuzzles, usedPuzzles, selectPuzzle, startPuzzle, groupSeed, markSeen, difficulty]);
 
   useEffect(() => {
     if (puzzles.length > 0 && gameState === "menu" && activePuzzles.length === 0) {

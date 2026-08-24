@@ -22,13 +22,14 @@ export const leaderboardEntrySchema = z.object({
   gameSlug: z.string(),
   score: z.number(),
   playerName: z.string(),
+  username: z.string(),
   playerAvatarUrl: z.string().nullable().optional(),
   playedAt: z.string(),
   gamesPlayed: z.number().optional(),
 });
 export type LeaderboardEntry = z.infer<typeof leaderboardEntrySchema>;
 
-export const insertLeaderboardEntrySchema = leaderboardEntrySchema.omit({ id: true, playerAvatarUrl: true });
+export const insertLeaderboardEntrySchema = leaderboardEntrySchema.omit({ id: true, username: true, playerAvatarUrl: true });
 export type InsertLeaderboardEntry = z.infer<typeof insertLeaderboardEntrySchema>;
 
 export const userStreakSchema = z.object({

@@ -1,8 +1,12 @@
 import { z } from "zod";
+import { USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH, validateUsername } from "@shared/usernames";
 
 export const registerSchema = z.object({
   email: z.string().email("Invalid email format"),
-  name: z.string().min(1, "Name is required").max(100),
+  username: z.string()
+    .min(USERNAME_MIN_LENGTH)
+    .max(USERNAME_MAX_LENGTH)
+    .refine((value) => validateUsername(value) === null, { message: "Choose a valid username." }),
   password: z.string().min(6, "Password must be at least 6 characters").max(200),
 });
 

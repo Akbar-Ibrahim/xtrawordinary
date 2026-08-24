@@ -52,7 +52,7 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
     ? (gameSlug === "ladder-rush-double" ? `ladder-rush-double-${duelWordLength}` : `ladder-rush-${duelWordLength}`)
     : gameSlug;
 
-  const { data: duelUserResults = [], isFetching: duelSearchFetching } = useQuery<{ id: number; name: string; avatarUrl: string | null }[]>({
+  const { data: duelUserResults = [], isFetching: duelSearchFetching } = useQuery<{ id: number; username: string; name: string; avatarUrl: string | null }[]>({
     queryKey: ["/api/users/search", duelSearch],
     queryFn: async () => {
       if (!duelSearch.trim()) return [];
@@ -432,7 +432,7 @@ export function DuelChallengeDialog({ gameSlug, open, onOpenChange }: Props) {
                       data-testid={`option-duel-user-${u.id}`}
                     >
                       <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6" />
-                      {u.name}
+                      <span>{u.name}<span className="block text-xs text-muted-foreground">@{u.username}</span></span>
                       {duelSearchId === u.id && <span className="ml-auto text-violet-600 text-xs">Selected</span>}
                     </button>
                   ))}

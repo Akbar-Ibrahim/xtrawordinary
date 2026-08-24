@@ -20,7 +20,7 @@ import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
 type TimeFilter = "all" | "today" | "week";
 type LeaderboardView = "global" | "friends";
 
-type StreakEntry = { userId: number; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number };
+type StreakEntry = { userId: number; username: string; name: string; avatarUrl: string | null; currentStreak: number; longestStreak: number };
 
 function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth>["user"]; onSignIn: () => void }) {
   const [challengeTarget, setChallengeTarget] = useState<{ id: number; name: string; avatarUrl: string | null } | null>(null);
@@ -95,7 +95,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-2" side="right">
                   <div className="flex flex-col gap-1">
-                    <Link href={`/profile/${entry.userId}`}>
+                    <Link href={`/u/${entry.username}`}>
                       <button className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors" data-testid={`link-streak-profile-${index}`}>
                         View Profile
                       </button>
@@ -111,7 +111,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                 </PopoverContent>
               </Popover>
             ) : (
-              <Link href={`/profile/${entry.userId}`}>
+              <Link href={`/u/${entry.username}`}>
                 <UserAvatar name={entry.name} avatarUrl={entry.avatarUrl} className="w-7 h-7 text-[10px] cursor-pointer" />
               </Link>
             )}
@@ -126,7 +126,7 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                     </PopoverTrigger>
                     <PopoverContent className="w-44 p-2" side="right">
                       <div className="flex flex-col gap-1">
-                        <Link href={`/profile/${entry.userId}`}>
+                        <Link href={`/u/${entry.username}`}>
                           <button className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors" data-testid={`link-streak-name-profile-${index}`}>
                             View Profile
                           </button>
@@ -142,9 +142,9 @@ function StreakLeaderboard({ user, onSignIn }: { user: ReturnType<typeof useAuth
                     </PopoverContent>
                   </Popover>
                 ) : (
-                  <Link href={`/profile/${entry.userId}`}>
+                  <Link href={`/u/${entry.username}`}>
                     <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-streak-player-${index}`}>
-                      {entry.name}
+                      <span>{entry.name}<span className="block text-xs font-normal text-muted-foreground">@{entry.username}</span></span>
                     </span>
                   </Link>
                 )}
@@ -505,7 +505,7 @@ function LeaderboardEntries({
                   <span className="text-muted-foreground">{index + 1}</span>
                 )}
               </div>
-              <Link href={`/profile/${entry.userId}`}>
+              <Link href={`/u/${entry.username}`}>
                 <UserAvatar
                   name={entry.playerName}
                   avatarUrl={entry.playerAvatarUrl}
@@ -515,9 +515,9 @@ function LeaderboardEntries({
               </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <Link href={`/profile/${entry.userId}`}>
+                  <Link href={`/u/${entry.username}`}>
                     <span className="font-medium truncate hover:underline cursor-pointer" data-testid={`text-player-${index}`}>
-                      {entry.playerName}
+                      <span>{entry.playerName}<span className="block text-xs font-normal text-muted-foreground">@{entry.username}</span></span>
                     </span>
                   </Link>
                   {user && !isCurrentUser && (

@@ -36,7 +36,7 @@ export function registerChallengesRoutes(app: Express): void {
         receiverViewed: false,
       });
       try {
-        const senderName = (req.user as any).name as string;
+        const senderName = `@${(req.user as any).username as string}`;
         const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         createNotificationIfEnabled({
           userId: friendId,
@@ -117,7 +117,7 @@ export function registerChallengesRoutes(app: Express): void {
       const updated = await storage.completeFriendChallenge(id, score);
       if (challenge.senderId && challenge.senderId !== req.user!.id) {
         try {
-          const receiverName = (req.user as any).name as string;
+          const receiverName = `@${(req.user as any).username as string}`;
           const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
           createNotificationIfEnabled({
             userId: challenge.senderId,
@@ -143,7 +143,7 @@ export function registerChallengesRoutes(app: Express): void {
       if (challenge.senderId !== req.user!.id) return res.status(403).json({ error: "Only the sender can cancel" });
       if (challenge.status !== "pending") return res.status(400).json({ error: "Only pending challenges can be cancelled" });
       const updated = await storage.cancelFriendChallenge(id);
-      const senderName = (req.user as any).name as string;
+      const senderName = `@${(req.user as any).username as string}`;
       const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       try {
         createNotificationIfEnabled({
@@ -180,7 +180,7 @@ export function registerChallengesRoutes(app: Express): void {
       const updated = await storage.declineFriendChallenge(id);
       if (challenge.senderId) {
         try {
-          const receiverName = (req.user as any).name as string;
+          const receiverName = `@${(req.user as any).username as string}`;
           const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
           createNotificationIfEnabled({
             userId: challenge.senderId,
