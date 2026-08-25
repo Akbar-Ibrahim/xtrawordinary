@@ -161,49 +161,71 @@ export const words = mysqlTable("words", {
 ]);
 
 export const wordAnagrams = mysqlTable("word_anagrams", {
-  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
-  anagramId: int("anagram_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  wordId: int("word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
+  anagramId: int("anagram_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
 }, (table) => [
   primaryKey({ columns: [table.wordId, table.anagramId] }),
+  index("word_anagrams_word_id_idx").on(table.wordId),
   index("idx_anagram_to_word").on(table.anagramId, table.wordId),
 ]);
 
 export const wordDerivatives = mysqlTable("word_derivatives", {
-  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
-  derivativeId: int("derivative_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  wordId: int("word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
+  derivativeId: int("derivative_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
 }, (table) => [
   primaryKey({ columns: [table.wordId, table.derivativeId] }),
+  index("word_derivatives_word_id_idx").on(table.wordId),
   index("idx_derivative_to_word").on(table.derivativeId, table.wordId),
 ]);
 
 export const letterFrequency = mysqlTable("letter_frequency", {
-  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  wordId: int("word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
   letter: char("letter", { length: 1 }).notNull(),
   frequency: int("frequency").notNull(),
 }, (table) => [
   primaryKey({ columns: [table.wordId, table.letter] }),
+  index("letter_frequency_word_id_idx").on(table.wordId),
   index("idx_letter_frequency").on(table.letter, table.frequency),
 ]);
 
 export const shellWords = mysqlTable("shell_words", {
-  shellWordId: int("shell_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
-  innerWordId: int("inner_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  shellWordId: int("shell_word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
+  innerWordId: int("inner_word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
   depth: int("depth").notNull(),
 }, (table) => [
   primaryKey({ columns: [table.shellWordId, table.depth] }),
+  index("shell_words_shell_word_id_idx").on(table.shellWordId),
   index("shell_words_inner_depth_idx").on(table.innerWordId, table.depth),
 ]);
 
 export const wordLetterPositions = mysqlTable("word_letter_positions", {
-  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  wordId: int("word_id")
+    .notNull()
+    .references(() => words.id, { onDelete: "cascade" }),
   position: tinyint("position").notNull(),
   letter: char("letter", { length: 1 }).notNull(),
 }, (table) => [
   primaryKey({ columns: [table.wordId, table.position] }),
+  index("word_letter_positions_word_id_idx").on(table.wordId),
   index("wlp_letter_idx").on(table.letter),
   index("wlp_position_idx").on(table.position),
   index("wlp_letter_position_idx").on(table.letter, table.position),
 ]);
+
 
 export const partsOfSpeech = mysqlTable("parts_of_speech", {
   id: int("id").primaryKey().autoincrement(),
