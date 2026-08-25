@@ -131,6 +131,7 @@ export function registerAuthRoutes(app: Express): void {
     );
 
     app.get("/api/auth/google/pending", (req, res) => {
+      res.set("Cache-Control", "no-store");
       const pending = (req.session as any)[PENDING_GOOGLE_SIGNUP_SESSION_KEY] as PendingGoogleSignup | undefined;
       if (!isPendingGoogleSignup(pending)) {
         return res.status(404).json({ error: "No pending Google signup" });

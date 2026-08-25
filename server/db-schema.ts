@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum, tinyint, char } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, mediumtext, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum, tinyint, char } from "drizzle-orm/mysql-core";
 import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
@@ -19,6 +19,16 @@ export const users = mysqlTable("users", {
 }, (table) => [
   uniqueIndex("users_username_normalized_idx").on(table.usernameNormalized),
 ]);
+
+/**
+ * Persistent Express session storage. This matches express-mysql-session and
+ * is created by `npm run db:push`, rather than implicitly at server startup.
+ */
+export const sessions = mysqlTable("sessions", {
+  sessionId: varchar("session_id", { length: 128 }).primaryKey(),
+  expires: int("expires", { unsigned: true }).notNull(),
+  data: mediumtext("data"),
+});
 
 export const emailVerificationTokens = mysqlTable("email_verification_tokens", {
   id: int("id").primaryKey().autoincrement(),

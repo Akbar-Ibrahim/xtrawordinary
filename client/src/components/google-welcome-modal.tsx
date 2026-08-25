@@ -20,6 +20,7 @@ import { suggestUsername } from "@shared/usernames";
 export function GoogleWelcomeModal() {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState("");
+  const [pendingProfileError, setPendingProfileError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const { refreshUser } = useAuth();
   const { toast } = useToast();
@@ -30,6 +31,7 @@ export function GoogleWelcomeModal() {
     if (params.get("auth") !== "google-new") return;
 
     setOpen(true);
+    setPendingProfileError(null);
     let active = true;
     fetch("/api/auth/google/pending", { credentials: "include" })
       .then(async (res) => {
@@ -39,7 +41,11 @@ export function GoogleWelcomeModal() {
       .then((data) => {
         if (active && data.name) setUsername(suggestUsername(data.name));
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) {
+          setPendingProfileError("We couldn't continue your Google sign-up. Please start again.");
+        }
+      });
 
     return () => {
       active = false;
@@ -89,13 +95,26 @@ export function GoogleWelcomeModal() {
         </DialogHeader>
 
         <div className="space-y-3 pt-1">
+          {pendingProfileError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <p>{pendingProfileError}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                className="mt-1 h-auto p-0 text-destructive underline underline-offset-4 hover:bg-transparent hover:text-destructive"
+                onClick={() => { window.location.assign("/api/auth/google"); }}
+              >
+                Start Google sign-up again
+              </Button>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="welcome-username">Username</Label>
             <Input
               id="welcome-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !pendingProfileError) handleSave(); }}
               minLength={3}
               maxLength={20}
               autoCapitalize="none"
@@ -110,7 +129,7 @@ export function GoogleWelcomeModal() {
           <div className="flex gap-2 pt-1">
             <Button
               onClick={handleSave}
-              disabled={saving || availability.checking || availability.available !== true}
+              disabled={!!pendingProfileError || saving || availability.checking || availability.available !== true}
               className="flex-1"
               data-testid="button-welcome-save"
             >

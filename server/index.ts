@@ -26,6 +26,12 @@ declare module "http" {
 const app = express();
 const httpServer = createServer(app);
 
+if (process.env.NODE_ENV === "production") {
+  // Replit terminates TLS before forwarding requests to this server. Trusting
+  // that single proxy lets Express issue and receive secure session cookies.
+  app.set("trust proxy", 1);
+}
+
 applySecurityMiddleware(app);
 app.use("/api", apiLimiter);
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
@@ -37,7 +43,7 @@ app.use(requestLogger);
   scheduleAllJobs();
   registerProcessHandlers();
 
-  setupAuth(app);
+  await setupAuth(app);
   await registerRoutes(httpServer, app);
   setupDuelWebSocket(httpServer);
   setupTeamRaceWebSocket(httpServer);
@@ -56,7 +62,10 @@ app.use(requestLogger);
   }
 
   const port = parseInt(process.env.PORT || "5005", 10);
-  httpServer.listen({ port, host: "0.0.0.0" }, () => {
+  httpServer.listen({ port, host: "0.0.0.0", }, () => {
     import("./logger").then(({ log }) => log(`serving on port ${port}`));
   });
-})();
+})().catch((error) => {
+  console.error("[Startup] Server failed to initialize:", error);
+  process.exit(1);
+});

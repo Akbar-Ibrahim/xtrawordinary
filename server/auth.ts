@@ -4,11 +4,12 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import session from "express-session";
 import type { RequestHandler } from "express";
 import MySQLStoreFactory from "express-mysql-session";
+import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
 import type { Express } from "express";
 import { storage } from "./storage";
-import { isMySQLStorageEnabled } from "./storage-config";
-import { getMySQLConnectionConfig } from "./mysql-config";
+import { getStorageMode } from "./storage-config";
+import { getMySQLConnectionConfig, type MySQLConnectionConfig } from "./mysql-config";
 
 let _sessionMiddleware: RequestHandler | null = null;
 
@@ -40,6 +41,41 @@ export function getSessionMiddleware(): RequestHandler {
   return _sessionMiddleware;
 }
 
+export function getSessionRuntimeConfig(environment: NodeJS.ProcessEnv = process.env) {
+  const isProduction = environment.NODE_ENV === "production";
+  const storageMode = getStorageMode(environment);
+  const configuredSecret = environment.SESSION_SECRET?.trim();
+
+  if (isProduction && !configuredSecret) {
+    throw new Error("SESSION_SECRET must be configured in production.");
+  }
+
+  if (isProduction && storageMode !== "mysql") {
+    throw new Error("Production requires STORAGE_MODE=mysql for persistent authentication sessions.");
+  }
+
+  return {
+    isProduction,
+    storageMode,
+    secret: configuredSecret || "wordplay-dev-secret",
+  };
+}
+
+type SessionStoreConnection = Pick<mysql.Connection, "query" | "end">;
+type SessionStoreConnectionFactory = (config: MySQLConnectionConfig) => Promise<SessionStoreConnection>;
+
+export async function verifyPersistentSessionStore(
+  connectionFactory: SessionStoreConnectionFactory = mysql.createConnection,
+  config: MySQLConnectionConfig = getMySQLConnectionConfig(),
+): Promise<void> {
+  const connection = await connectionFactory(config);
+  try {
+    await connection.query("SELECT 1 FROM `sessions` LIMIT 1");
+  } finally {
+    await connection.end();
+  }
+}
+
 declare global {
   namespace Express {
     interface User {
@@ -69,23 +105,34 @@ export async function maybePromoteToAdmin(user: Express.User): Promise<Express.U
   return user;
 }
 
-export function setupAuth(app: Express) {
-  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
-    console.error("[Session] WARNING: SESSION_SECRET is not set in production! Using insecure fallback.");
+export async function setupAuth(app: Express): Promise<void> {
+  const runtimeConfig = getSessionRuntimeConfig();
+
+  if (runtimeConfig.isProduction) {
+    try {
+      await verifyPersistentSessionStore();
+      console.log("[Session] MySQL session table verified");
+    } catch (err) {
+      throw new Error(
+        "Production session storage is unavailable. Run `npm run db:push` and verify the MySQL connection settings.",
+        { cause: err },
+      );
+    }
   }
 
   const sessionOptions: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "wordplay-dev-secret",
+    secret: runtimeConfig.secret,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: runtimeConfig.isProduction,
       httpOnly: true,
+      sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   };
 
-  if (isMySQLStorageEnabled()) {
+  if (runtimeConfig.storageMode === "mysql") {
     try {
       const MySQLStore = MySQLStoreFactory(session as any);
       const mysqlConfig = getMySQLConnectionConfig();
@@ -95,7 +142,7 @@ export function setupAuth(app: Express) {
         user: mysqlConfig.user,
         password: mysqlConfig.password,
         database: mysqlConfig.database,
-        createDatabaseTable: true,
+        createDatabaseTable: false,
         checkExpirationInterval: 15 * 60 * 1000,
         expiration: 30 * 24 * 60 * 60 * 1000,
         schema: {
@@ -110,6 +157,9 @@ export function setupAuth(app: Express) {
       sessionOptions.store = store;
       console.log("[Session] Using MySQL session store for persistent sessions");
     } catch (err) {
+      if (runtimeConfig.isProduction) {
+        throw new Error("Failed to configure the required MySQL session store.", { cause: err });
+      }
       console.error("[Session] Failed to create MySQL session store, falling back to memory:", err);
     }
   } else {
