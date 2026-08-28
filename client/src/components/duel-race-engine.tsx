@@ -19,6 +19,9 @@ export interface DuelRaceEngineInitialState {
   myWords: string[];
   opponentWords: string[];
   raceTimeLimitMs: number;
+  currentWord: string;
+  myRoundWords?: string[];
+  myRound?: number;
 }
 
 export interface DuelRaceEngineProps {
@@ -35,6 +38,7 @@ export interface DuelRaceEngineProps {
   onGameOver: (result: GameResult) => void;
   adapter: DuelGameAdapter;
   startWord: string;
+  isWordSplit?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -53,6 +57,7 @@ export function DuelRaceEngine({
   onGameOver,
   adapter,
   startWord,
+  isWordSplit = false,
 }: DuelRaceEngineProps) {
   const [myCount, setMyCount] = useState(initialState.myCount);
   const [opponentCount, setOpponentCount] = useState(initialState.opponentCount);
@@ -60,6 +65,9 @@ export function DuelRaceEngine({
   const opponentCountRef = useRef(initialState.opponentCount);
   const [myWords, setMyWords] = useState<string[]>(initialState.myWords);
   const [opponentWords, setOpponentWords] = useState<string[]>(initialState.opponentWords);
+  const [currentWord, setCurrentWord] = useState(initialState.currentWord || startWord);
+  const [myRoundWords, setMyRoundWords] = useState<string[]>(initialState.myRoundWords ?? []);
+  const [myRound, setMyRound] = useState(initialState.myRound ?? 0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [disconnectDeadline, setDisconnectDeadline] = useState<number | null>(null);
@@ -106,6 +114,11 @@ export function DuelRaceEngine({
           myCountRef.current = msg.count;
           // Server confirmed the move — clear pending so rollback won't fire
           pendingWordRef.current = null;
+          if (isWordSplit && msg.roundCompleted && msg.currentWord) {
+            setCurrentWord(msg.currentWord);
+            setMyRoundWords([]);
+            setMyRound(msg.round ?? myRound + 1);
+          }
         } else {
           setOpponentCount(msg.count);
           opponentCountRef.current = msg.count;
@@ -185,6 +198,13 @@ export function DuelRaceEngine({
             if (idx === -1) return prev;
             return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
           });
+          if (isWordSplit) {
+            setMyRoundWords((prev) => {
+              const idx = prev.lastIndexOf(rejected);
+              if (idx === -1) return prev;
+              return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+            });
+          }
         }
         setFeedback(msg.message);
         setTimeout(() => setFeedback(null), 3000);
@@ -194,7 +214,7 @@ export function DuelRaceEngine({
       default:
         break;
     }
-  }, [latestMessage]);
+  }, [latestMessage, isWordSplit, myRound]);
 
   // Cleanup
   useEffect(() => () => {
@@ -217,7 +237,8 @@ export function DuelRaceEngine({
     if (!upper) return;
 
     // Client-side validation
-    const err = adapter.validateMoveClient(upper, startWord, myWords);
+    const activeWords = isWordSplit ? myRoundWords : myWords;
+    const err = adapter.validateMoveClient(upper, currentWord, activeWords);
     if (err) {
       setFeedback(err);
       setTimeout(() => setFeedback(null), 2000);
@@ -227,10 +248,11 @@ export function DuelRaceEngine({
     // Optimistic update (track pending so we can roll back on server error)
     pendingWordRef.current = upper;
     setMyWords((prev) => [...prev, upper]);
+    if (isWordSplit) setMyRoundWords((prev) => [...prev, upper]);
     setFeedback(null);
 
     sendWs({ type: "game:move", payload: { type: "word", word: upper } });
-  }, [done, adapter, startWord, myWords, sendWs]);
+  }, [done, adapter, currentWord, isWordSplit, myRoundWords, myWords, sendWs]);
 
   const formatTime = (ms: number) => {
     const totalSecs = Math.ceil(ms / 1000);
@@ -273,7 +295,9 @@ export function DuelRaceEngine({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Race to {raceTarget} words</span>
+              <span className="text-sm font-semibold">
+                {isWordSplit ? "Timed Word Split rounds" : `Race to ${raceTarget} words`}
+              </span>
             </div>
             {initialState.raceTimeLimitMs > 0 && (
               <div className={`flex items-center gap-1.5 text-sm font-mono font-medium ${timePct < 20 ? "text-destructive" : "text-muted-foreground"}`}>
@@ -300,10 +324,12 @@ export function DuelRaceEngine({
               <UserAvatar name={myName} avatarUrl={myAvatarUrl} className="h-6 w-6 text-xs" />
               <span className="text-xs font-medium truncate max-w-[80px]">{myName}</span>
               <Badge variant="secondary" className="ml-auto text-xs tabular-nums" data-testid="text-my-count">
-                {myCount}/{raceTarget}
+                {isWordSplit ? `${myCount} round${myCount === 1 ? "" : "s"}` : `${myCount}/${raceTarget}`}
               </Badge>
             </div>
-            <Progress value={myPct} className="h-2 [&>div]:bg-green-500 [&>div]:transition-all [&>div]:duration-500" />
+            {!isWordSplit && (
+              <Progress value={myPct} className="h-2 [&>div]:bg-green-500 [&>div]:transition-all [&>div]:duration-500" />
+            )}
           </CardContent>
         </Card>
         {/* Opponent */}
@@ -313,10 +339,12 @@ export function DuelRaceEngine({
               <UserAvatar name={opponentName} avatarUrl={opponentAvatarUrl} className="h-6 w-6 text-xs shrink-0" />
               <span className="text-xs font-medium truncate max-w-[60px]">{opponentName || "Opponent"}</span>
               <Badge variant="outline" className="ml-auto text-xs tabular-nums shrink-0" data-testid="text-opp-count">
-                {opponentCount}/{raceTarget}
+                {isWordSplit ? `${opponentCount} round${opponentCount === 1 ? "" : "s"}` : `${opponentCount}/${raceTarget}`}
               </Badge>
             </div>
-            <Progress value={oppPct} className="h-2 [&>div]:bg-blue-500 [&>div]:transition-all [&>div]:duration-500" />
+            {!isWordSplit && (
+              <Progress value={oppPct} className="h-2 [&>div]:bg-blue-500 [&>div]:transition-all [&>div]:duration-500" />
+            )}
             {/* Typing indicator */}
             <AnimatePresence>
               {opponentIsTyping && (
@@ -344,11 +372,11 @@ export function DuelRaceEngine({
           <span className="text-xs text-muted-foreground font-medium">Tied</span>
         ) : delta > 0 ? (
           <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-            +{delta} word{delta !== 1 ? "s" : ""} ahead
+            +{delta} {isWordSplit ? `round${delta !== 1 ? "s" : ""}` : `word${delta !== 1 ? "s" : ""}`} ahead
           </span>
         ) : (
           <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-            {Math.abs(delta)} word{Math.abs(delta) !== 1 ? "s" : ""} behind
+            {Math.abs(delta)} {isWordSplit ? `round${Math.abs(delta) !== 1 ? "s" : ""}` : `word${Math.abs(delta) !== 1 ? "s" : ""}`} behind
           </span>
         )}
       </div>
@@ -357,8 +385,8 @@ export function DuelRaceEngine({
       <Card>
         <CardContent className="py-4 px-4">
           {adapter.renderGameDisplay({
-            currentWord: startWord,
-            usedWords: myWords,
+            currentWord,
+            usedWords: isWordSplit ? myRoundWords : myWords,
             isMyTurn: true,
             opponentName,
           })}
@@ -369,8 +397,8 @@ export function DuelRaceEngine({
       <Card>
         <CardContent className="py-4 px-4">
           {adapter.renderInput({
-            currentWord: startWord,
-            usedWords: myWords,
+            currentWord,
+            usedWords: isWordSplit ? myRoundWords : myWords,
             onSubmit: handleSubmit,
             onInvalidMove: () => {},
             disabled: done,
@@ -382,11 +410,13 @@ export function DuelRaceEngine({
       </Card>
 
       {/* My word list */}
-      {myWords.length > 0 && (
+      {(isWordSplit ? myRoundWords : myWords).length > 0 && (
         <div>
-          <p className="text-xs text-muted-foreground mb-1.5">Your words ({myWords.length})</p>
+          <p className="text-xs text-muted-foreground mb-1.5">
+            {isWordSplit ? `Current split · round ${myRound + 1} (${myRoundWords.length} words)` : `Your words (${myWords.length})`}
+          </p>
           <div className="flex flex-wrap gap-1">
-            {myWords.map((w, i) => (
+            {(isWordSplit ? myRoundWords : myWords).map((w, i) => (
               <Badge key={i} variant="secondary" className="font-mono text-xs" data-testid={`word-race-mine-${i}`}>
                 {w}
               </Badge>

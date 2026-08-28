@@ -71,7 +71,9 @@ export function GameOverView({
                   <p className="text-xs text-muted-foreground mb-0.5 truncate max-w-[90px]">{user?.name ?? "You"}</p>
                   <p className="text-3xl font-black text-green-600" data-testid="text-my-final-count">
                     {gameResult.myFinalCount}
-                    <span className="text-sm font-normal text-muted-foreground"> / {raceTarget}</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {gameSlug === "word-split" ? " completed" : ` / ${raceTarget}`}
+                    </span>
                   </p>
                 </div>
                 <div className="flex items-center text-muted-foreground font-bold text-lg">vs</div>
@@ -79,7 +81,9 @@ export function GameOverView({
                   <p className="text-xs text-muted-foreground mb-0.5 truncate max-w-[90px]">{opponentName || "Opponent"}</p>
                   <p className="text-3xl font-black text-blue-600" data-testid="text-opp-final-count">
                     {gameResult.opponentFinalCount ?? 0}
-                    <span className="text-sm font-normal text-muted-foreground"> / {raceTarget}</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {gameSlug === "word-split" ? " completed" : ` / ${raceTarget}`}
+                    </span>
                   </p>
                 </div>
               </div>

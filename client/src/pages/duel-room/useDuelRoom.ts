@@ -163,6 +163,9 @@ export function useDuelRoom(roomCode: string) {
               myWords: msg.myWords ?? [],
               opponentWords: msg.opponentWords ?? [],
               raceTimeLimitMs: msg.raceTimeLimitMs ?? 300_000,
+              currentWord: msg.raceCurrentWord ?? msg.currentWord,
+              myRoundWords: msg.myRoundWords ?? [],
+              myRound: msg.myRound ?? 0,
             });
             setRaceEngineKey((k) => k + 1);
           } else {
@@ -230,8 +233,22 @@ export function useDuelRoom(roomCode: string) {
           // Update spectator live counts when watching
           setSpectatorData((prev) => {
             if (!prev) return prev;
-            if (msg.userId === prev.player1Id) return { ...prev, count1: msg.count };
-            if (msg.userId === prev.player2Id) return { ...prev, count2: msg.count };
+            if (msg.userId === prev.player1Id) {
+              return {
+                ...prev,
+                count1: msg.count,
+                player1CurrentWord: msg.currentWord ?? prev.player1CurrentWord,
+                player1Round: msg.round ?? prev.player1Round,
+              };
+            }
+            if (msg.userId === prev.player2Id) {
+              return {
+                ...prev,
+                count2: msg.count,
+                player2CurrentWord: msg.currentWord ?? prev.player2CurrentWord,
+                player2Round: msg.round ?? prev.player2Round,
+              };
+            }
             return prev;
           });
           setLatestGameMessage(msg);
@@ -282,6 +299,10 @@ export function useDuelRoom(roomCode: string) {
             count2: msg.count2,
             lives1: msg.lives1,
             lives2: msg.lives2,
+            player1CurrentWord: msg.player1CurrentWord,
+            player2CurrentWord: msg.player2CurrentWord,
+            player1Round: msg.player1Round,
+            player2Round: msg.player2Round,
           });
           setRaceTarget(msg.raceTarget);
           setSpectatorCount(msg.spectatorCount);
@@ -362,6 +383,9 @@ export function useDuelRoom(roomCode: string) {
           myWords: [],
           opponentWords: [],
           raceTimeLimitMs: roomInfo.raceTimeLimitMs ?? 300_000,
+          currentWord: roomInfo.startWord,
+          myRoundWords: [],
+          myRound: 0,
         });
       } else if (fmt === "turn" && !engineInitState) {
         const isFirst = user.id === roomInfo.challengerId;

@@ -3,6 +3,7 @@ import { scheduleWordWarsJobs } from "./word-wars";
 import { scheduleGuildWarsJobs } from "./guild-wars";
 import { runDailyJobs } from "./daily";
 import { runFriendChallengeExpiry } from "./friend-challenge-expiry";
+import { ANALYTICS_CLEANUP_INTERVAL_MS, runAnalyticsCleanup } from "./analytics-cleanup";
 
 export function scheduleAllJobs() {
   runPruneJob();
@@ -16,4 +17,7 @@ export function scheduleAllJobs() {
 
   runFriendChallengeExpiry();
   setInterval(runFriendChallengeExpiry, 30 * 60 * 1000);
+
+  void runAnalyticsCleanup();
+  setInterval(() => void runAnalyticsCleanup(), ANALYTICS_CLEANUP_INTERVAL_MS);
 }

@@ -3,7 +3,7 @@ import { MemStorage } from "./mem-storage";
 import type {
   Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord,
   WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig,
-  VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid,
+  VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid,
   WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser,
   EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats,
   LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship,
@@ -18,6 +18,7 @@ import type {
   WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament,
   GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion,
   InsertGroupSeason, GroupSeason, InsertWordDefinition,
+  AnalyticsEventInput, AnalyticsReport, AnalyticsReportFilters,
 } from "@shared/schema";
 
 import * as Games from "./mysql/games";
@@ -36,6 +37,7 @@ import * as WordWars from "./mysql/word-wars";
 import * as GuildWars from "./mysql/guild-wars";
 import * as Admin from "./mysql/admin";
 import * as WordDefs from "./mysql/word-definitions";
+import * as Analytics from "./mysql/analytics";
 import { getMySQLConnectionConfig } from "./mysql-config";
 
 export class MySQLStorage implements IStorage {
@@ -109,6 +111,10 @@ export class MySQLStorage implements IStorage {
   async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> { return Words.getWordRootsPuzzles(await this.getDb(), this.gameData); }
   async getWordStackPuzzles(): Promise<WordStackPuzzle[]> { return Words.getWordStackPuzzles(await this.getDb(), this.gameData); }
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> { return Words.getWordSplitPuzzles(await this.getDb(), this.gameData); }
+  async getWordFusionPuzzles(): Promise<WordFusionPuzzle[]> { return Words.getWordFusionPuzzles(await this.getDb(), this.gameData); }
+  async validateWordFusionAnswer(combinationId: number, answer: string): Promise<WordFusionValidationResponse> {
+    return Words.validateWordFusionAnswer(await this.getDb(), this.gameData, combinationId, answer);
+  }
   async getWordLengthConfig(): Promise<WordLengthConfig> { return this.gameData.getWordLengthConfig(); }
   async getLetterPositionConfig(): Promise<LetterPositionConfig> { return this.gameData.getLetterPositionConfig(); }
   async getLetterHuntConfig(): Promise<LetterHuntConfig> { return this.gameData.getLetterHuntConfig(); }
@@ -194,7 +200,7 @@ export class MySQLStorage implements IStorage {
   async getWordStretchSolutions(seed: number): Promise<string[]> { return this.gameData.getWordStretchSolutions(seed); }
   async getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }> { return this.gameData.getWordBloomPuzzle(seed); }
   async validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }> { return this.gameData.validateWordBloom(currentWord, nextWord); }
-  async getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> { return Words.getWordExtensionPuzzles(await this.getDb(), this.gameData, lettersToAdd); }
+  async getWordExtensionPuzzles(lettersToAdd: number, seed?: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> { return Words.getWordExtensionPuzzles(await this.getDb(), this.gameData, lettersToAdd, seed); }
   async validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> { return Words.validateWordExtension(await this.getDb(), this.gameData, shownWord, submittedWord, lettersToAdd); }
 
   // ── Parts of speech & word definitions ─────────────────────────────────────
@@ -268,6 +274,9 @@ export class MySQLStorage implements IStorage {
   async getAllUsers(): Promise<User[]> { return Admin.getAllUsers(await this.getDb()); }
   async deleteLeaderboardEntry(id: number): Promise<void> { return Admin.deleteLeaderboardEntry(await this.getDb(), id); }
   async getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }> { return Admin.getAdminStats(await this.getDb()); }
+  async recordAnalyticsEvent(event: AnalyticsEventInput & { userId?: number | null; occurredAt?: string }): Promise<void> { return Analytics.recordAnalyticsEvent(await this.getDb(), event); }
+  async getAnalyticsReport(startDate: string, endDate: string, filters?: AnalyticsReportFilters): Promise<AnalyticsReport> { return Analytics.getAnalyticsReport(await this.getDb(), startDate, endDate, filters); }
+  async cleanupAnalyticsEvents(): Promise<number> { return Analytics.cleanupAnalyticsEvents(await this.getDb()); }
   async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> { return Admin.getAllLeaderboardEntries(await this.getDb()); }
   async searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
   async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }

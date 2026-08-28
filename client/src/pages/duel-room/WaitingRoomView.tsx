@@ -9,6 +9,7 @@ import type { PublicUser } from "@shared/schema";
 interface WaitingRoomViewProps {
   isRace: boolean;
   raceTarget: number;
+  gameSlug?: string;
   variationLabel: string | null;
   user: PublicUser | null | undefined;
   meReady: boolean;
@@ -21,6 +22,7 @@ interface WaitingRoomViewProps {
 export function WaitingRoomView({
   isRace,
   raceTarget,
+  gameSlug,
   variationLabel,
   user,
   meReady,
@@ -39,7 +41,9 @@ export function WaitingRoomView({
           {isRace && (
             <div className="flex justify-center">
               <Badge variant="secondary" className="text-xs gap-1.5" data-testid="badge-race-info">
-                ⚡ Race Format — first to {raceTarget} words wins
+                {gameSlug === "word-split"
+                  ? "⚡ Timed rounds — complete each target to advance"
+                  : `⚡ Race Format — first to ${raceTarget} words wins`}
               </Badge>
             </div>
           )}

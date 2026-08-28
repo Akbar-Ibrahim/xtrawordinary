@@ -12,6 +12,7 @@ import {
   PENDING_GOOGLE_SIGNUP_SESSION_KEY,
   type PendingGoogleSignup,
 } from "../auth";
+import { recordRegistrationAnalytics } from "./analytics.routes";
 
 function sanitizeUser(user: any) {
   return {
@@ -59,6 +60,7 @@ export function registerAuthRoutes(app: Express): void {
         isBanned: false,
         isPremium: false,
       });
+      void recordRegistrationAnalytics(req, user.id);
       if (!noEmailService) {
         const token = crypto.randomBytes(32).toString("hex");
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -159,6 +161,7 @@ export function registerAuthRoutes(app: Express): void {
         }
 
         let user;
+        let createdNewUser = false;
         if (pending.existingUserId !== undefined) {
           const existingUser = await storage.getUserById(pending.existingUserId);
           if (!existingUser || existingUser.googleId !== pending.googleId) {
@@ -193,11 +196,13 @@ export function registerAuthRoutes(app: Express): void {
             isBanned: false,
             isPremium: false,
           });
+          createdNewUser = true;
         }
 
         if (!user) {
           return res.status(400).json({ error: "Unable to complete Google signup" });
         }
+        if (createdNewUser) void recordRegistrationAnalytics(req, user.id);
 
         delete (req.session as any)[PENDING_GOOGLE_SIGNUP_SESSION_KEY];
         req.logIn(user, (err) => {

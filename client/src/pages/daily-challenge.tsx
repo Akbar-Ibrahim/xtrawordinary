@@ -36,6 +36,7 @@ import { WordRootsGame } from "@/components/games/word-roots";
 import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
+import { WordExtensionGame } from "@/components/games/word-extension";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 
 interface DailyChallengeResponse {
@@ -153,6 +154,10 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     }
     case "letter-dodge":
       return <LetterDodgeGame groupSeed={seed} locked />;
+    case "word-extension": {
+      const lettersToAdd = (seed % 4) + 1;
+      return <WordExtensionGame initialChallenge={lettersToAdd} groupSeed={seed} locked />;
+    }
     default:
       return null;
   }

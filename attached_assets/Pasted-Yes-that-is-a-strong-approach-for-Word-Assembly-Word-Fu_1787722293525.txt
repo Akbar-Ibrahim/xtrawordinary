@@ -1,0 +1,239 @@
+Yes, that is a strong approach for **Word Assembly / Word Fusion**. The expensive word-combination work should happen ahead of time, so the game can load curated puzzle data immediately instead of solving combinations during play.
+
+## Proposed generation flow
+
+### 1. Select eligible base words
+
+Use the `words` table as the source of base words:
+
+- `is_word_split = true`
+- `word_length >= 6`
+
+This gives us words that are already known to be splittable and are long enough to contain at least two three-letter parts.
+
+For example:
+
+```text
+EDUCATION
+```
+
+### 2. Fetch derivative candidates
+
+For each base word, fetch its related words from `word_derivatives`.
+
+The derivative table is a good candidate pool, but we should still validate every candidate against the base word. A derivative relationship alone should not automatically mean that the word can participate in an exact letter split.
+
+Each candidate should satisfy:
+
+- At least three letters
+- Different from the base word
+- Exists as a valid dictionary word
+- Its letters are available in the base word
+- Its letter counts do not exceed the base word’s letter counts
+
+For example:
+
+```text
+EDUCATION
+DUE
+ION
+ACT
+```
+
+### 3. Find exact combinations
+
+For every base word, search for combinations of candidate derivatives whose combined letter counts exactly equal the base word’s letter counts.
+
+For `EDUCATION`:
+
+```text
+EDUCATION
+= DUE + ION + ACT
+```
+
+Letter accounting:
+
+```text
+EDUCATION → A C D E I N O T U
+DUE       →     D E       U
+ION       →         I N O
+ACT       → A C       T
+```
+
+Every letter is consumed exactly once, with no missing or extra letters.
+
+The minimum valid split would be two three-letter words:
+
+```text
+6-letter base word = 3-letter word + 3-letter word
+```
+
+Longer words could produce combinations such as:
+
+```text
+9-letter base word = 3 + 3 + 3
+10-letter base word = 4 + 3 + 3
+12-letter base word = 4 + 4 + 4
+```
+
+The order of the parts should not matter. These should all be treated as the same solution:
+
+```text
+ACT + DUE + ION
+DUE + ION + ACT
+ION + ACT + DUE
+```
+
+We would store one canonical ordering and shuffle the display order later.
+
+## Important validation detail
+
+The `is_word_split` flag can guarantee that a word is splittable, but it may not guarantee that:
+
+- Every required part is at least three letters
+- The parts come from `word_derivatives`
+- All possible combinations are present in the relationship table
+- The derivative relationship itself represents an exact letter subset
+
+So the flag should be used as the initial filter, while the final exact-letter check should use letter counts, likely through the existing `letter_frequency` data or equivalent normalized counting.
+
+That validation is what makes the generated puzzle trustworthy.
+
+## Recommended precomputed tables
+
+I would separate the data into three layers:
+
+### `word_assembly_puzzles`
+
+One row per eligible base word.
+
+It could contain:
+
+- Base word ID
+- Base word
+- Word length
+- Number of valid solutions
+- Preferred solution ID
+- Difficulty/ranking metadata
+- Generation version
+- Active/enabled status
+
+### `word_assembly_solutions`
+
+One row per valid decomposition.
+
+For example:
+
+```text
+EDUCATION → ACT + DUE + ION
+```
+
+This table could contain:
+
+- Puzzle ID
+- Canonical solution key
+- Number of parts
+- Ranking or quality score
+- Whether it is the preferred solution
+
+### `word_assembly_solution_parts`
+
+One row per component in a solution:
+
+```text
+Solution       Position   Part
+EDUCATION-1    1          ACT
+EDUCATION-1    2          DUE
+EDUCATION-1    3          ION
+```
+
+This is more flexible than storing everything as one JSON field. It allows us to:
+
+- Load parts directly
+- Track solution quality
+- Add hints later
+- Analyze which words are difficult
+- Support multiple valid solutions
+- Avoid recalculating combinations at runtime
+
+## The main gameplay decision
+
+The data supports two possible game directions:
+
+### Reverse Word Split
+
+Show the component words:
+
+```text
+DUE + ION + ACT
+```
+
+The player must find:
+
+```text
+EDUCATION
+```
+
+This is probably the clearest interpretation of **Word Assembly** and the natural companion to Word Split.
+
+### Forward Word Split
+
+Show the base word:
+
+```text
+EDUCATION
+```
+
+The player must discover:
+
+```text
+DUE + ION + ACT
+```
+
+This is closer to a decomposition puzzle and could allow multiple correct solutions.
+
+The precomputed data should support both, even if we launch with only one. For the first version, I would recommend the reverse direction: give players shuffled component words and ask them to assemble the larger word.
+
+## Quality ranking
+
+Not every mathematically valid combination will make a good puzzle. We should rank solutions using factors such as:
+
+- Commonness of the component words
+- Commonness of the base word
+- Number of component words
+- Component lengths
+- Number of alternative solutions
+- Whether any component is obscure or archaic
+- Whether the component words are visually distinct
+
+For example, a solution using three familiar words would rank above one using a rare dictionary entry.
+
+We may also want to mark one solution as the preferred answer while retaining alternate valid solutions.
+
+## Generation should happen offline
+
+The combination search can become expensive as word length and derivative count grow. It should run as a precomputation job rather than inside a request handler.
+
+The process would be:
+
+1. Select eligible base words.
+2. Fetch their derivative candidates.
+3. Filter candidates by length and letter availability.
+4. Solve the exact letter-partition problem.
+5. Rank and deduplicate solutions.
+6. Write the results into the precomputed tables.
+7. Let the game read directly from those tables.
+
+The database query can find the candidates, but the actual combination search is better handled by a generation script because it is an exact-cover or multiset-partition problem rather than a simple SQL query.
+
+## My recommendation
+
+Use:
+
+- **Word Assembly** as the internal/game-mechanic name because it is immediately understandable.
+- **Word Fusion** as a possible player-facing brand name if we want something more distinctive.
+- A precomputed `word_assembly_puzzles` dataset with separate solution and component records.
+- Exact letter-count validation even when `is_word_split = true`.
+- Multiple stored solutions, with one preferred solution ranked for gameplay.
+
+The overall data strategy is sound. The one thing we should settle before implementation is whether the player assembles the base word from visible subwords, or breaks a visible base word into its component words.

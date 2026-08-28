@@ -43,12 +43,16 @@ export function WordExtensionGame({
   locked,
   isUntimed,
   timeLimitSeconds,
+  initialChallenge,
+  groupSeed,
 }: {
   locked?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
+  initialChallenge?: number;
+  groupSeed?: number;
 } = {}) {
-  const [lettersToAdd, setLettersToAdd] = useState<number | null>(null);
+  const [lettersToAdd, setLettersToAdd] = useState<number | null>(initialChallenge ?? null);
 
   if (lettersToAdd === null) {
     return (
@@ -65,6 +69,7 @@ export function WordExtensionGame({
       locked={locked}
       isUntimed={isUntimed}
       timeLimitSeconds={timeLimitSeconds}
+      groupSeed={groupSeed}
       onExit={() => setLettersToAdd(null)}
     />
   );
@@ -122,12 +127,14 @@ function WordExtensionPlay({
   locked,
   isUntimed,
   timeLimitSeconds,
+  groupSeed,
   onExit,
 }: {
   lettersToAdd: number;
   locked?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
+  groupSeed?: number;
   onExit: () => void;
 }) {
   const { user } = useAuth();
@@ -155,11 +162,12 @@ function WordExtensionPlay({
   const endedRef = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load puzzles — always freshly randomized (solo-only, no shared-seed mode).
+  // Daily and group play provide a seed so every player gets the same sequence.
   const { data: puzzles, isLoading, error, refetch } = useQuery<WordExtensionPuzzle[]>({
-    queryKey: ["/api/games/word-extension/puzzles", lettersToAdd],
+    queryKey: ["/api/games/word-extension/puzzles", lettersToAdd, groupSeed],
     queryFn: async () => {
-      const url = `/api/games/word-extension/puzzles?lettersToAdd=${lettersToAdd}`;
+      const seedQuery = groupSeed === undefined ? "" : `&seed=${groupSeed}`;
+      const url = `/api/games/word-extension/puzzles?lettersToAdd=${lettersToAdd}${seedQuery}`;
       const r = await fetch(url, { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load");
       return r.json();
@@ -196,16 +204,15 @@ function WordExtensionPlay({
     }
   }, [gameStatus]);
 
-  const playablePuzzles = useMemo(
-    () => puzzles
-      ? filterUnseen(
-          puzzles,
-          (puzzle) => `${puzzle.shownWord}:${lettersToAdd}`,
-          String(lettersToAdd),
-        )
-      : [],
-    [puzzles, filterUnseen, lettersToAdd],
-  );
+  const playablePuzzles = useMemo(() => {
+    if (!puzzles) return [];
+    if (groupSeed !== undefined) return puzzles;
+    return filterUnseen(
+      puzzles,
+      (puzzle) => `${puzzle.shownWord}:${lettersToAdd}`,
+      String(lettersToAdd),
+    );
+  }, [puzzles, filterUnseen, groupSeed, lettersToAdd]);
   const currentPuzzle = playablePuzzles[round];
   const variation = VARIATIONS.find(v => v.lettersToAdd === lettersToAdd)!;
 

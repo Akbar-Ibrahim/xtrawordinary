@@ -1,4 +1,4 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordLadderPuzzle, LadderRushPuzzle } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, ProgressiveRevealWord, WordLadderPuzzle, LadderRushPuzzle } from "@shared/schema";
 
 export const wordLadderPuzzlesData: WordLadderPuzzle[] = [
   {
@@ -478,6 +478,19 @@ export const wordSplitPuzzles: WordSplitPuzzle[] = [
   { targetWord: "ANCHOR" },
   { targetWord: "TEMPLE" },
   { targetWord: "HONEST" },
+];
+
+// Used when the local preview has no MySQL connection. Production puzzles come
+// from word_assembly_components and are deliberately kept out of this bundle.
+export const wordFusionPuzzles: WordFusionPuzzle[] = [
+  { id: -1, baseWordId: -1, components: ["BOOK", "NOTE"], alternates: [] },
+  { id: -2, baseWordId: -2, components: ["SHELL", "SEA"], alternates: [] },
+  { id: -3, baseWordId: -3, components: ["BALL", "FOOT"], alternates: [] },
+  { id: -4, baseWordId: -4, components: ["WORK", "HOME"], alternates: [] },
+  { id: -5, baseWordId: -5, components: ["LIGHT", "DAY"], alternates: [] },
+  { id: -6, baseWordId: -6, components: ["ROOM", "BED"], alternates: [] },
+  { id: -7, baseWordId: -7, components: ["BOW", "RAIN"], alternates: [] },
+  { id: -8, baseWordId: -8, components: ["FISH", "STAR"], alternates: [] },
 ];
 
 export const progressiveRevealWords: ProgressiveRevealWord[] = [
@@ -1384,5 +1397,27 @@ export const gamesData: Game[] = [
       { label: "Survival", slug: "word-stretch-survival" },
     ],
     ogImage: "/og/word-stretch.png",
+  },
+  {
+    id: 27,
+    slug: "word-fusion",
+    name: "Word Fusion",
+    description: "Fuse the letter tiles back into the base word!",
+    longDescription: "A word has been split into smaller pieces. Tap the letter tiles in order to rebuild the original word, then try a different valid arrangement when you can. Every accepted answer is part of the same base-word family, including its anagrams.",
+    rules: [
+      "Tap the letter tiles to rebuild the hidden base word",
+      "Tiles stay grouped by the component word they came from",
+      "Use every tile exactly once; letters can be arranged in any order",
+      "The original base word and its linked anagrams are accepted",
+      "Try one alternate component combination once per round",
+      "Complete 5 rounds before the 90-second timer ends",
+    ],
+    difficulty: "medium",
+    estimatedTime: "2-3 min",
+    icon: "Combine",
+    color: "hsl(262, 70%, 55%)",
+    playCount: 0,
+    timeLimitSeconds: 90,
+    wordTarget: 5,
   }
 ];

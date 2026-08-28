@@ -32,6 +32,7 @@ test("builds MySQL connection settings from DB_* variables", () => {
       database: "word games",
       user: "word player",
       password: "p@ss word",
+      timezone: "Z",
     });
     assert.equal(
       getMySQLConnectionUrl(),

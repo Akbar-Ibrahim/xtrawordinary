@@ -80,6 +80,25 @@ export const gamePlayCounts = mysqlTable("game_play_counts", {
   count: int("count").notNull().default(0),
 });
 
+export const analyticsEvents = mysqlTable("analytics_events", {
+  id: bigint("id", { mode: "number", unsigned: true }).primaryKey().autoincrement(),
+  eventName: varchar("event_name", { length: 32 }).notNull(),
+  visitorId: varchar("visitor_id", { length: 64 }).notNull(),
+  sessionId: varchar("session_id", { length: 64 }).notNull(),
+  dedupeKey: varchar("dedupe_key", { length: 128 }).notNull().unique(),
+  userId: int("user_id"),
+  route: varchar("route", { length: 255 }),
+  gameSlug: varchar("game_slug", { length: 100 }),
+  gameMode: varchar("game_mode", { length: 32 }),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+}, (table) => [
+  index("analytics_occurred_at_idx").on(table.occurredAt),
+  index("analytics_event_name_idx").on(table.eventName),
+  index("analytics_game_idx").on(table.gameSlug, table.gameMode),
+  index("analytics_visitor_idx").on(table.visitorId, table.occurredAt),
+  index("analytics_session_idx").on(table.sessionId, table.occurredAt),
+]);
+
 export const userStreaks = mysqlTable("user_streaks", {
   id: int("id").primaryKey().autoincrement(),
   userId: int("user_id").notNull().unique(),
@@ -186,6 +205,21 @@ export const wordDerivatives = mysqlTable("word_derivatives", {
   index("idx_derivative_to_word").on(table.derivativeId, table.wordId),
 ]);
 
+/**
+ * Precomputed exact component combinations for Word Assembly.
+ * Each combination_id groups the component rows for one base word.
+ */
+export const wordAssemblyComponents = mysqlTable("word_assembly_components", {
+  id: int("id").primaryKey().autoincrement(),
+  wordId: int("word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+  combinationId: int("combination_id").notNull(),
+  componentWordId: int("component_word_id").notNull().references(() => words.id, { onDelete: "cascade" }),
+}, (table) => [
+  uniqueIndex("wac_combination_component_idx").on(table.combinationId, table.componentWordId),
+  index("wac_word_combination_idx").on(table.wordId, table.combinationId),
+  index("wac_component_word_idx").on(table.componentWordId),
+]);
+
 export const letterFrequency = mysqlTable("letter_frequency", {
   wordId: int("word_id")
     .notNull()
@@ -225,7 +259,6 @@ export const wordLetterPositions = mysqlTable("word_letter_positions", {
   index("wlp_position_idx").on(table.position),
   index("wlp_letter_position_idx").on(table.letter, table.position),
 ]);
-
 
 export const partsOfSpeech = mysqlTable("parts_of_speech", {
   id: int("id").primaryKey().autoincrement(),

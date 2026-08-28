@@ -4,6 +4,7 @@ export interface MySQLConnectionConfig {
   user: string;
   password: string;
   database: string;
+  timezone: "Z";
 }
 
 export function getMySQLConnectionConfig(): MySQLConnectionConfig {
@@ -25,6 +26,7 @@ export function getMySQLConnectionConfig(): MySQLConnectionConfig {
     database: process.env.DB_NAME!.trim(),
     user: process.env.DB_USER!.trim(),
     password: process.env.DB_PASSWORD ?? "",
+    timezone: "Z",
   };
 }
 

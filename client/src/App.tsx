@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
@@ -49,10 +50,19 @@ import Pricing from "@/pages/pricing";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import NotFound from "@/pages/not-found";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 function GlobalAuthModal() {
   const { authModalOpen, setAuthModalOpen } = useAuth();
   return <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />;
+}
+
+function AnalyticsTracker() {
+  const [location] = useLocation();
+  useEffect(() => {
+    trackAnalyticsEvent("page_view", { route: location });
+  }, [location]);
+  return null;
 }
 
 function Router() {
@@ -111,6 +121,7 @@ function App() {
             <MotionConfig reducedMotion="user">
             <div className="min-h-screen min-w-0 overflow-x-hidden bg-background flex flex-col">
               <Navigation />
+              <AnalyticsTracker />
               <main className="flex-1">
                 <ErrorBoundary>
                   <Router />

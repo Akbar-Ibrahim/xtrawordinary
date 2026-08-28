@@ -59,12 +59,12 @@ function remainingPool(startPool: string, usedWords: string[]): string {
 
 const VOWELS = new Set("AEIOU");
 
-function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, onTyping, placeholder, skipDuplicateCheck }: DuelInputProps & { placeholder: string; skipDuplicateCheck?: boolean }) {
+function RaceInput({ currentWord, usedWords, onSubmit, disabled, feedback, clearFeedback, onTyping, placeholder }: DuelInputProps & { placeholder: string }) {
   const [value, setValue] = useState("");
   const handleSubmit = () => {
     const upper = value.toUpperCase().trim();
     if (!upper || disabled) return;
-    if (!skipDuplicateCheck && usedWords.includes(upper)) return;
+    if (usedWords.includes(upper)) return;
     setValue("");
     clearFeedback();
     onSubmit(upper);
@@ -102,7 +102,6 @@ function makeAdapter(opts: {
   validateMoveClient: (input: string, currentWord: string, usedWords: string[]) => string | null;
   renderGameDisplay: (props: DuelDisplayProps) => React.ReactNode;
   placeholder: string;
-  skipDuplicateCheck?: boolean;
 }): DuelGameAdapter {
   return {
     validateMoveClient: opts.validateMoveClient,
@@ -115,7 +114,7 @@ function makeAdapter(opts: {
       }
       return null;
     },
-    renderInput: (props) => <RaceInput {...props} placeholder={opts.placeholder} skipDuplicateCheck={opts.skipDuplicateCheck} />,
+    renderInput: (props) => <RaceInput {...props} placeholder={opts.placeholder} />,
     renderGameDisplay: opts.renderGameDisplay,
   };
 }
@@ -346,41 +345,51 @@ export const wordMakerRaceAdapter: DuelGameAdapter = makeAdapter({
 // ─── word-split ────────────────────────────────────────────────────────────────
 
 export const wordSplitRaceAdapter: DuelGameAdapter = makeAdapter({
-  placeholder: "Type the next slice of the compound word…",
-  skipDuplicateCheck: true,
+  placeholder: "Type a word using your remaining letters…",
   validateMoveClient(input, currentWord, usedWords) {
     const upper = input.toUpperCase().trim();
     if (!upper) return "Please enter a word";
-    const compound = currentWord.toUpperCase();
-    // Compute where the player's cursor is (total letters covered so far, looping)
-    const totalCovered = usedWords.reduce((sum, w) => sum + w.length, 0);
-    const splitPos = totalCovered % compound.length;
-    const remaining = compound.slice(splitPos);
-    if (!remaining.startsWith(upper)) {
-      return `Next slice must start at position ${splitPos + 1}: expected "${remaining.slice(0, upper.length || 4)}…"`;
+    if (usedWords.includes(upper)) return "You already used that word";
+    const target = currentWord.toUpperCase();
+    const remaining = remainingPool(target, usedWords);
+    if (!remaining) return "Your split is complete";
+    if (usedWords.length === 0 && upper.length === target.length && canFormFromPool(upper, remaining)) {
+      return "You need to split the word into at least two words";
     }
-    if (splitPos + upper.length > compound.length) {
-      return `Word extends past the end of "${compound}"`;
-    }
+    if (!canFormFromPool(upper, remaining)) return "Letters don't fit the remaining pool";
     return null;
   },
   renderGameDisplay({ currentWord, usedWords }) {
-    const compound = currentWord.toUpperCase();
-    const totalCovered = usedWords.reduce((sum, w) => sum + w.length, 0);
-    const splitPos = totalCovered % compound.length;
-    const covered = compound.slice(0, splitPos);
-    const cursor = compound[splitPos] ?? "";
-    const rest = compound.slice(splitPos + 1);
+    const target = currentWord.toUpperCase();
+    const remaining = remainingPool(target, usedWords).split("").sort();
     return (
-      <div className="text-center space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">Split the compound word</p>
-        <p className="text-3xl font-black font-mono tracking-widest" data-testid="text-current-word">
-          <span className="text-muted-foreground/40">{covered}</span>
-          <span className="text-primary underline underline-offset-4">{cursor}</span>
-          <span className="text-foreground">{rest}</span>
-        </p>
+      <div className="text-center space-y-3">
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Target word</p>
+          <p className="text-3xl font-black text-primary font-mono tracking-widest" data-testid="text-current-word">
+            {target}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">Your remaining letters</p>
+          {remaining.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-1">
+              {remaining.map((letter, index) => (
+                <Badge
+                  key={`${letter}-${index}`}
+                  variant={VOWELS.has(letter) ? "default" : "secondary"}
+                  className="text-base font-black px-2.5 py-0.5 font-mono"
+                >
+                  {letter}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-accent">Split complete</p>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Submit a word starting at the <strong>underlined letter</strong> (cursor loops after full coverage)
+          Make at least two words. Letters can be rearranged and are consumed as you use them.
         </p>
       </div>
     );

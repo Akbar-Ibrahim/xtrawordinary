@@ -113,4 +113,4 @@ export async function backfillGameConfigFromSeed(db: any): Promise<void> {
 }
 
 /** Slugs for games added after the initial DB seed; these receive an explicit upsert on startup. */
-const NEW_GAME_SLUGS = new Set(["word-extension"]);
+const NEW_GAME_SLUGS = new Set(["word-extension", "word-fusion"]);

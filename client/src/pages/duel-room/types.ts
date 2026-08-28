@@ -32,6 +32,10 @@ export interface SpectatorState {
   count2: number;
   lives1: number;
   lives2: number;
+  player1CurrentWord?: string;
+  player2CurrentWord?: string;
+  player1Round?: number;
+  player2Round?: number;
 }
 
 export const REACT_EMOJIS = ["👀", "🔥", "😬", "❤️", "👏"] as const;

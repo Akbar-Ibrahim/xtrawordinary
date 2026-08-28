@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import type { Game } from "@shared/schema";
+import { AnalyticsOverview } from "./AnalyticsOverview";
 
 export function OverviewTab() {
   const { data: stats, isLoading } = useQuery<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>({
@@ -20,6 +21,7 @@ export function OverviewTab() {
 
   return (
     <div className="space-y-6">
+      <AnalyticsOverview games={games ?? []} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card data-testid="card-total-users">
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Users</CardTitle></CardHeader>
@@ -36,7 +38,7 @@ export function OverviewTab() {
       </div>
       {sortedGames.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Games by Popularity</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Registered-player game totals</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-3">
               {sortedGames.map(([slug, count]) => {

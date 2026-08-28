@@ -98,6 +98,7 @@ export default function DuelRoom() {
           <WaitingRoomView
             isRace={isRace}
             raceTarget={raceTarget}
+            gameSlug={roomInfo?.gameSlug}
             variationLabel={variationLabel}
             user={user}
             meReady={meReady}
@@ -163,6 +164,7 @@ export default function DuelRoom() {
             onGameOver={handleGameOver}
             adapter={adapter}
             startWord={startWord}
+            isWordSplit={roomInfo?.gameSlug === "word-split"}
           />
         )}
 

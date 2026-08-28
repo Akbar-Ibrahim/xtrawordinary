@@ -26,6 +26,12 @@ class SlowDictRegistry extends DuelRoomRegistry {
   }
 }
 
+class AlwaysValidDictionaryRegistry extends DuelRoomRegistry {
+  protected override isDictionaryWord(): Promise<boolean> {
+    return Promise.resolve(true);
+  }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeFakeWs(): WebSocket {
@@ -48,6 +54,20 @@ function setupRaceRoom(registry: DuelRoomRegistry, userId: number) {
   room.livesPerPlayer.set(userId, 3);
   room.countsPerPlayer.set(userId, 0);
   room.wordsPerPlayer.set(userId, []);
+
+  return { roomCode, room };
+}
+
+function setupWordSplitRaceRoom(registry: DuelRoomRegistry, userId: number, target = "CAPITAL") {
+  const { roomCode } = registry.createRoom("word-split", userId, "race", 15, 300, target);
+  const room = registry.getRoom(roomCode)!;
+
+  registry.joinRoom(roomCode, userId, "TestPlayer", null, makeFakeWs());
+  room.status = "playing";
+  room.livesPerPlayer.set(userId, 3);
+  room.countsPerPlayer.set(userId, 0);
+  room.wordsPerPlayer.set(userId, []);
+  room.racePoolPerPlayer.set(userId, target);
 
   return { roomCode, room };
 }
@@ -148,6 +168,95 @@ test("lock on one player does not block a different player", async () => {
   );
   assert.equal(r1.error, undefined, "Player 1's first move should succeed");
   assert.equal(r2.error, undefined, "Player 2's first move should succeed");
+});
+
+test("word-split accepts non-contiguous, reordered words and advances after a complete split", async () => {
+  const registry = new AlwaysValidDictionaryRegistry();
+  const userId = 30;
+  const { roomCode, room } = setupWordSplitRaceRoom(registry, userId);
+
+  // ACT is not a contiguous slice of CAPITAL, but it is a valid use of its letters.
+  const first = await registry.relayMove(roomCode, userId, { type: "word", word: "ACT" });
+  assert.equal(first.error, undefined);
+  assert.equal((room.racePoolPerPlayer.get(userId) ?? "").split("").sort().join(""), "AILP");
+
+  const second = await registry.relayMove(roomCode, userId, { type: "word", word: "PAIL" });
+  assert.equal(second.error, undefined);
+  assert.equal(second.triggered, false, "Word Split must not use the generic first-to-target winner rule");
+  assert.equal(room.countsPerPlayer.get(userId), 1, "A completed target is worth one round");
+  assert.equal(room.raceRoundPerPlayer.get(userId), 1);
+  assert.deepEqual(room.raceRoundWordsPerPlayer.get(userId), []);
+  assert.notEqual(room.racePoolPerPlayer.get(userId), "", "A completed split should load the next target");
+});
+
+test("word-split accepts the EDUCATION → ACT + DUE + ION decomposition", async () => {
+  const registry = new AlwaysValidDictionaryRegistry();
+  const userId = 32;
+  const { roomCode, room } = setupWordSplitRaceRoom(registry, userId, "EDUCATION");
+
+  for (const word of ["ACT", "DUE", "ION"]) {
+    const result = await registry.relayMove(roomCode, userId, { type: "word", word });
+    assert.equal(result.error, undefined, `${word} should be accepted`);
+  }
+
+  assert.equal(room.countsPerPlayer.get(userId), 1, "Three subwords still complete one target round");
+  assert.equal(room.raceRoundPerPlayer.get(userId), 1);
+  assert.notEqual(room.racePoolPerPlayer.get(userId), "");
+});
+
+test("word-split rejects a full target, duplicate words, and reused letters", async () => {
+  const registry = new AlwaysValidDictionaryRegistry();
+  const userId = 31;
+  const { roomCode } = setupWordSplitRaceRoom(registry, userId);
+
+  const wholeWord = await registry.relayMove(roomCode, userId, { type: "word", word: "CAPITAL" });
+  assert.equal(wholeWord.error, "You need to split the word into at least two words");
+
+  await registry.relayMove(roomCode, userId, { type: "word", word: "ACT" });
+  const duplicate = await registry.relayMove(roomCode, userId, { type: "word", word: "ACT" });
+  assert.equal(duplicate.error, "You already used that word");
+
+  const reusedLetter = await registry.relayMove(roomCode, userId, { type: "word", word: "CAP" });
+  assert.equal(reusedLetter.error, "Letters don't fit the remaining pool");
+});
+
+test("word-split players advance through their own independent rounds", async () => {
+  const registry = new AlwaysValidDictionaryRegistry();
+  const userId1 = 40;
+  const userId2 = 41;
+  const { roomCode, room } = setupWordSplitRaceRoom(registry, userId1);
+  registry.joinRoom(roomCode, userId2, "Player2", null, makeFakeWs());
+  room.livesPerPlayer.set(userId2, 3);
+  room.countsPerPlayer.set(userId2, 0);
+  room.wordsPerPlayer.set(userId2, []);
+  room.racePoolPerPlayer.set(userId2, "CAPITAL");
+  room.raceRoundPerPlayer.set(userId2, 0);
+  room.raceRoundWordsPerPlayer.set(userId2, []);
+
+  await registry.relayMove(roomCode, userId1, { type: "word", word: "ACT" });
+  await registry.relayMove(roomCode, userId1, { type: "word", word: "PAIL" });
+
+  assert.equal(room.countsPerPlayer.get(userId1), 1);
+  assert.equal(room.raceRoundPerPlayer.get(userId1), 1);
+  assert.equal(room.countsPerPlayer.get(userId2), 0);
+  assert.equal(room.raceRoundPerPlayer.get(userId2), 0);
+  assert.equal(room.racePoolPerPlayer.get(userId2), "CAPITAL");
+});
+
+test("word-split allows a word to be reused after advancing to a new target", async () => {
+  const registry = new AlwaysValidDictionaryRegistry();
+  const userId = 42;
+  const { roomCode, room } = setupWordSplitRaceRoom(registry, userId, "STARLIGHT");
+
+  await registry.relayMove(roomCode, userId, { type: "word", word: "AIR" });
+  await registry.relayMove(roomCode, userId, { type: "word", word: "STLGHT" });
+
+  assert.equal(room.raceRoundPerPlayer.get(userId), 1);
+  assert.equal(room.racePoolPerPlayer.get(userId), "BLACKBIRD");
+
+  const repeatedInNextRound = await registry.relayMove(roomCode, userId, { type: "word", word: "AIR" });
+  assert.equal(repeatedInNextRound.error, undefined);
+  assert.equal(room.raceRoundWordsPerPlayer.get(userId)?.[0], "AIR");
 });
 
 // Force the process to exit after the test runner finishes.

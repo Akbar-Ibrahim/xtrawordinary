@@ -20,18 +20,21 @@ test("production requires a configured session secret", () => {
   );
 });
 
-test("production requires persistent MySQL sessions", () => {
+test("production rejects an explicit in-memory session configuration", () => {
   assert.throws(
-    () => getSessionRuntimeConfig({ NODE_ENV: "production", SESSION_SECRET: "test-secret" }),
+    () => getSessionRuntimeConfig({
+      NODE_ENV: "production",
+      STORAGE_MODE: "memory",
+      SESSION_SECRET: "test-secret",
+    }),
     /STORAGE_MODE=mysql/,
   );
 });
 
-test("production accepts a persistent MySQL session configuration", () => {
+test("production defaults to a persistent MySQL session configuration", () => {
   assert.deepEqual(
     getSessionRuntimeConfig({
       NODE_ENV: "production",
-      STORAGE_MODE: "mysql",
       SESSION_SECRET: "test-secret",
     }),
     {
@@ -63,6 +66,7 @@ test("verifies the sessions table before production startup", async () => {
       database: "wordplay",
       user: "player",
       password: "secret",
+      timezone: "Z",
     },
   );
 
@@ -90,6 +94,7 @@ test("closes the database connection when the sessions table check fails", async
         database: "wordplay",
         user: "player",
         password: "secret",
+        timezone: "Z",
       },
     ),
     /sessions/,

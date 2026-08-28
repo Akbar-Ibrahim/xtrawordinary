@@ -51,7 +51,7 @@ export function DuelHeader({
         )}
         {isRace && (
           <Badge variant="secondary" className="text-xs gap-1" data-testid="badge-race-format">
-            ⚡ Race to {raceTarget}
+            {roomInfo?.gameSlug === "word-split" ? "⚡ Timed rounds" : `⚡ Race to ${raceTarget}`}
           </Badge>
         )}
         {isSpectator && (

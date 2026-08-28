@@ -43,8 +43,19 @@ export function SpectatorPlayingView({
                   <div className="text-center">
                     <p className="text-3xl font-black text-primary">{p.count}</p>
                     <p className="text-xs text-muted-foreground">
-                      {spectatorData.format === "race" ? `/ ${spectatorData.raceTarget} words` : "words played"}
+                        {spectatorData.format === "race"
+                          ? spectatorData.gameSlug === "word-split"
+                            ? "completed rounds"
+                            : `/ ${spectatorData.raceTarget} words`
+                          : "words played"}
                     </p>
+                      {spectatorData.gameSlug === "word-split" && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {p.id === spectatorData.player1Id
+                            ? `Round ${(spectatorData.player1Round ?? 0) + 1} · ${spectatorData.player1CurrentWord ?? ""}`
+                            : `Round ${(spectatorData.player2Round ?? 0) + 1} · ${spectatorData.player2CurrentWord ?? ""}`}
+                        </p>
+                      )}
                   </div>
                 </div>
               ))}

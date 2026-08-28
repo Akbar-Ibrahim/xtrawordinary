@@ -1,9 +1,12 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./seeded-rng";
-import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
+import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, wordFusionPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
 import { isOpenChallengeExpired } from "./challenge-expiry";
+import { analyticsRetentionDays, buildAnalyticsReport, MAX_ANALYTICS_EVENTS } from "./analytics";
+import { FileAnalyticsStore } from "./file-analytics-store";
+import type { AnalyticsReportFilters } from "@shared/schema";
 
 function generateShareCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -21,6 +24,10 @@ function generateRoomCode(): string {
 
 export class MemStorage implements IStorage {
   private games: Game[];
+  private analyticsEvents: AnalyticsEventRecord[] = [];
+  private analyticsDedupeKeys = new Set<string>();
+  private analyticsFileStore?: FileAnalyticsStore;
+  private analyticsReady: Promise<void> = Promise.resolve();
   private quizSessions: QuizSession[] = [];
   private quizSessionScores: QuizSessionScore[] = [];
   private quizIdCounter = 1;
@@ -70,10 +77,21 @@ export class MemStorage implements IStorage {
   private wordDefinitions: WordDefinition[] = [];
   private wordDefinitionIdCounter = 1;
 
-  constructor() {
+  constructor(options: { analyticsFilePath?: string } = {}) {
     this.games = gamesData;
     const posNames = ["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "article", "determiner"];
     this.partsOfSpeech = posNames.map((name, i) => ({ id: i + 1, name }));
+    if (options.analyticsFilePath) {
+      this.analyticsFileStore = new FileAnalyticsStore(options.analyticsFilePath);
+      this.analyticsReady = this.analyticsFileStore.load(MAX_ANALYTICS_EVENTS)
+        .then(({ events }) => {
+          this.analyticsEvents = events;
+          this.analyticsDedupeKeys = new Set(events.map((event) => event.dedupeKey));
+        })
+        .catch((error) => {
+          console.error("[Analytics] Persistent fallback could not be loaded; continuing in memory", error);
+        });
+    }
   }
 
   async getGames(): Promise<Game[]> {
@@ -144,6 +162,34 @@ export class MemStorage implements IStorage {
 
   async getWordSplitPuzzles(): Promise<WordSplitPuzzle[]> {
     return wordSplitPuzzles;
+  }
+
+  async getWordFusionPuzzles(): Promise<WordFusionPuzzle[]> {
+    return wordFusionPuzzles;
+  }
+
+  async validateWordFusionAnswer(combinationId: number, answer: string): Promise<WordFusionValidationResponse> {
+    const puzzle = wordFusionPuzzles.find(p => p.id === combinationId);
+    if (!puzzle) return { valid: false };
+    const canonicalWord = ({
+      [-1]: "NOTEBOOK",
+      [-2]: "SEASHELL",
+      [-3]: "FOOTBALL",
+      [-4]: "HOMEWORK",
+      [-5]: "DAYLIGHT",
+      [-6]: "BEDROOM",
+      [-7]: "RAINBOW",
+      [-8]: "STARFISH",
+    } as Record<number, string>)[combinationId];
+    if (!canonicalWord) return { valid: false };
+    const normalized = answer.replace(/[^a-z]/gi, "").toUpperCase();
+    const valid = normalized === canonicalWord;
+    return {
+      valid,
+      exact: valid,
+      canonicalWord: valid ? canonicalWord : undefined,
+      points: valid ? 10 : undefined,
+    };
   }
 
   async getWordDictionary(): Promise<string[]> {
@@ -572,9 +618,17 @@ export class MemStorage implements IStorage {
     return { valid: false, isMiddle: false };
   }
 
-  async getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
+  async getWordExtensionPuzzles(lettersToAdd: number, seed?: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
     const rows = wordExtensionFallbackPuzzles[lettersToAdd] ?? wordExtensionFallbackPuzzles[1];
-    return rows.map(r => ({ shownWord: r.shownWord, lettersToAdd, validAnswers: r.validAnswers }));
+    const puzzles = rows.map(r => ({ shownWord: r.shownWord, lettersToAdd, validAnswers: r.validAnswers }));
+    if (seed === undefined) return puzzles;
+
+    const rng = mulberry32(seed);
+    for (let i = puzzles.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [puzzles[i], puzzles[j]] = [puzzles[j], puzzles[i]];
+    }
+    return puzzles;
   }
 
   async validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> {
@@ -1110,6 +1164,45 @@ export class MemStorage implements IStorage {
       gamesPerSlug[stats.gameSlug] = (gamesPerSlug[stats.gameSlug] || 0) + stats.gamesPlayed;
     }
     return { totalUsers, totalGamesPlayed, gamesPerSlug };
+  }
+
+  async recordAnalyticsEvent(event: AnalyticsEventInput & { userId?: number | null; occurredAt?: string }): Promise<void> {
+    await this.analyticsReady;
+    if (this.analyticsDedupeKeys.has(event.dedupeKey)) return;
+    const record: AnalyticsEventRecord = {
+      ...event,
+      userId: event.userId ?? null,
+      occurredAt: event.occurredAt ?? new Date().toISOString(),
+    };
+    this.analyticsDedupeKeys.add(record.dedupeKey);
+    this.analyticsEvents.push(record);
+    if (this.analyticsEvents.length > MAX_ANALYTICS_EVENTS) {
+      const removed = this.analyticsEvents.shift();
+      if (removed) this.analyticsDedupeKeys.delete(removed.dedupeKey);
+    }
+    if (this.analyticsFileStore) {
+      await this.analyticsFileStore.append(record, MAX_ANALYTICS_EVENTS);
+    }
+  }
+
+  async getAnalyticsReport(startDate: string, endDate: string, filters?: AnalyticsReportFilters): Promise<AnalyticsReport> {
+    await this.analyticsReady;
+    return buildAnalyticsReport(this.analyticsEvents, startDate, endDate, filters);
+  }
+
+  async cleanupAnalyticsEvents(): Promise<number> {
+    await this.analyticsReady;
+    const cutoff = Date.now() - analyticsRetentionDays() * 86_400_000;
+    if (this.analyticsFileStore) {
+      const result = await this.analyticsFileStore.removeBefore(cutoff, MAX_ANALYTICS_EVENTS);
+      this.analyticsEvents = result.events;
+      this.analyticsDedupeKeys = new Set(result.events.map((event) => event.dedupeKey));
+      return result.removed;
+    }
+    const before = this.analyticsEvents.length;
+    this.analyticsEvents = this.analyticsEvents.filter((event) => new Date(event.occurredAt).getTime() >= cutoff);
+    this.analyticsDedupeKeys = new Set(this.analyticsEvents.map((event) => event.dedupeKey));
+    return before - this.analyticsEvents.length;
   }
 
   async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> {

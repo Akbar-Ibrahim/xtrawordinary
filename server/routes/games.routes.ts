@@ -44,7 +44,7 @@ function _lrFindNeighbors(word: string, swapCount: number, used: Set<string>): s
   return results;
 }
 
-const DAILY_CHALLENGE_SLUGS = [
+export const DAILY_CHALLENGE_SLUGS = [
   "word-ladder",
   "anagram-solver",
   "word-scramble",
@@ -63,9 +63,10 @@ const DAILY_CHALLENGE_SLUGS = [
   "shell-words",
   "deep-shell-words",
   "letter-dodge",
+  "word-extension",
 ];
 
-function getDailySlugForDate(dateStr: string): string {
+export function getDailySlugForDate(dateStr: string): string {
   let hash = 0;
   for (let i = 0; i < dateStr.length; i++) {
     hash = (hash * 31 + dateStr.charCodeAt(i)) | 0;
@@ -459,6 +460,34 @@ export function registerGamesRoutes(app: Express): void {
     }
   });
 
+  app.get("/api/games/word-fusion/puzzles", async (req, res) => {
+    try {
+      const puzzles = await storage.getWordFusionPuzzles();
+      const rawSeed = req.query.seed;
+      if (rawSeed !== undefined) {
+        const seed = parseInt(rawSeed as string, 10);
+        if (!isNaN(seed)) return res.json(seededShuffle(puzzles, seed).slice(0, 5));
+      }
+      res.json([...puzzles].sort(() => Math.random() - 0.5).slice(0, 5));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch word fusion puzzles" });
+    }
+  });
+
+  app.post("/api/games/word-fusion/validate", async (req, res) => {
+    const parsed = z.object({
+      combinationId: z.number().int(),
+      answer: z.string().min(1).max(40),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "combinationId and answer are required" });
+    try {
+      const result = await storage.validateWordFusionAnswer(parsed.data.combinationId, parsed.data.answer);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate word fusion answer" });
+    }
+  });
+
   app.get("/api/games/progressive-reveal/words", async (req, res) => {
     try {
       const words = await storage.getProgressiveRevealWords();
@@ -481,7 +510,12 @@ export function registerGamesRoutes(app: Express): void {
       if (isNaN(lettersToAdd) || lettersToAdd < 1 || lettersToAdd > 4) {
         return res.status(400).json({ message: "lettersToAdd must be 1–4" });
       }
-      const puzzles = await storage.getWordExtensionPuzzles(lettersToAdd);
+      const rawSeed = req.query.seed;
+      const parsedSeed = rawSeed === undefined ? undefined : parseInt(rawSeed as string, 10);
+      const puzzles = await storage.getWordExtensionPuzzles(
+        lettersToAdd,
+        parsedSeed !== undefined && !isNaN(parsedSeed) ? parsedSeed : undefined,
+      );
       res.json(puzzles);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word extension puzzles" });

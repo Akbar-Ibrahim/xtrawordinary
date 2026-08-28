@@ -138,6 +138,29 @@ export const wordSplitPuzzleSchema = z.object({
 export type WordSplitPuzzle = z.infer<typeof wordSplitPuzzleSchema>;
 export const wordSplitPuzzlesSchema = z.array(wordSplitPuzzleSchema);
 
+export const wordFusionAlternativeSchema = z.object({
+  id: z.number().int(),
+  components: z.array(z.string().min(3)).min(2),
+});
+export type WordFusionAlternative = z.infer<typeof wordFusionAlternativeSchema>;
+
+export const wordFusionPuzzleSchema = z.object({
+  id: z.number().int(),
+  baseWordId: z.number().int(),
+  components: z.array(z.string().min(3)).min(2),
+  alternates: z.array(wordFusionAlternativeSchema),
+});
+export type WordFusionPuzzle = z.infer<typeof wordFusionPuzzleSchema>;
+export const wordFusionPuzzlesSchema = z.array(wordFusionPuzzleSchema);
+
+export const wordFusionValidationResponseSchema = z.object({
+  valid: z.boolean(),
+  exact: z.boolean().optional(),
+  canonicalWord: z.string().optional(),
+  points: z.number().int().nonnegative().optional(),
+});
+export type WordFusionValidationResponse = z.infer<typeof wordFusionValidationResponseSchema>;
+
 export const progressiveRevealWordSchema = z.object({
   word: z.string(),
   subcategory: z.string(),

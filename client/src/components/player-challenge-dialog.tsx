@@ -37,6 +37,7 @@ export function PlayerChallengeDialog({ targetUser, open, onOpenChange }: Props)
   const [duelFormat, setDuelFormat] = useState<"turn" | "race">("turn");
   const [duelRaceTarget, setDuelRaceTarget] = useState(15);
   const [duelRaceTimeLimit, setDuelRaceTimeLimit] = useState(300);
+  const isWordSplitRace = duelFormat === "race" && duelGameSlug === "word-split";
 
   const { data: games = [] } = useQuery<Game[]>({ queryKey: ["/api/games"] });
 
@@ -49,7 +50,7 @@ export function PlayerChallengeDialog({ targetUser, open, onOpenChange }: Props)
         format: duelFormat,
       };
       if (duelFormat === "race") {
-        body.raceTarget = duelRaceTarget;
+        if (duelGameSlug !== "word-split") body.raceTarget = duelRaceTarget;
         body.raceTimeLimit = duelRaceTimeLimit;
       }
       const res = await apiRequest("POST", "/api/duels/challenges", body);
@@ -176,21 +177,28 @@ export function PlayerChallengeDialog({ targetUser, open, onOpenChange }: Props)
 
             {duelFormat === "race" && (
               <>
+                {!isWordSplitRace && (
+                  <div>
+                    <label className="text-sm font-medium">Target (words to win)</label>
+                    <Select value={String(duelRaceTarget)} onValueChange={(v) => setDuelRaceTarget(Number(v))}>
+                      <SelectTrigger data-testid="select-race-target">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 15, 20, 25].map((n) => (
+                          <SelectItem key={n} value={String(n)}>{n} words</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {isWordSplitRace && (
+                  <p className="text-sm text-muted-foreground">
+                    Complete each target split to advance. The player with the most completed rounds when time expires wins.
+                  </p>
+                )}
                 <div>
-                  <label className="text-sm font-medium">Target (words to win)</label>
-                  <Select value={String(duelRaceTarget)} onValueChange={(v) => setDuelRaceTarget(Number(v))}>
-                    <SelectTrigger data-testid="select-race-target">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[5, 10, 15, 20, 25].map((n) => (
-                        <SelectItem key={n} value={String(n)}>{n} words</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Time limit</label>
+                  <label className="text-sm font-medium">{isWordSplitRace ? "Match time limit" : "Time limit"}</label>
                   <Select value={String(duelRaceTimeLimit)} onValueChange={(v) => setDuelRaceTimeLimit(Number(v))}>
                     <SelectTrigger data-testid="select-race-time-limit">
                       <SelectValue />

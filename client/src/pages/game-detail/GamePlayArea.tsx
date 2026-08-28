@@ -25,6 +25,7 @@ import { WordSweepGame } from "@/components/games/word-sweep";
 import { WordBloomGame } from "@/components/games/word-bloom";
 import { WordExtensionGame } from "@/components/games/word-extension";
 import { WordStretchGame } from "@/components/games/word-stretch";
+import { WordFusionGame } from "@/components/games/word-fusion";
 import { FriendChallengeCard } from "./FriendChallengeCard";
 import { gameComponents } from "./constants";
 import type { Game, FriendChallenge } from "@shared/schema";
@@ -408,6 +409,12 @@ export function GamePlayArea({
         <LetterPositionGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "word-roots" ? (
         <WordRootsGame isUntimed locked={isSenderMode || isReceiverMode} wordTarget={game.wordTarget ?? undefined} />
+      ) : isUntimed && slug === "word-fusion" ? (
+        <WordFusionGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
+          isUntimed
+        />
       ) : isUntimed && slug === "letter-balance" ? (
         <LetterBalanceGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "letter-frequency" ? (
@@ -547,6 +554,13 @@ export function GamePlayArea({
         />
       ) : slug === "word-extension" ? (
         <WordExtensionGame
+          locked={isSenderMode || isReceiverMode}
+          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          isUntimed={isUntimed}
+        />
+      ) : slug === "word-fusion" ? (
+        <WordFusionGame
+          groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
           timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}

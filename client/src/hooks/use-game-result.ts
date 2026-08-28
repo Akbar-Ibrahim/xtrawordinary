@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
 import type { Achievement } from "@/lib/game-stats";
 import { useAuth } from "@/lib/auth-context";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 const GUEST_NUDGE_KEY = "xw_guest_nudge_shown";
 
@@ -59,6 +60,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
   const { isAuthenticated, openAuthModal } = useAuth();
   const quizModeRef = useRef(quizMode);
   const isUntimedRef = useRef(isUntimed);
+  const hasStartedRef = useRef(false);
 
   const challengeIdRef = useRef<number | undefined | null>(null);
   if (challengeIdRef.current === null) {
@@ -76,12 +78,26 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
 
+  const analyticsMode = quizMode ? "custom" : isUntimed ? "untimed" : "timed";
+  const trackStart = useCallback(() => {
+    trackAnalyticsEvent("game_start", { gameSlug: slugRef.current, gameMode: analyticsMode });
+  }, [analyticsMode]);
+
+  useEffect(() => {
+    trackStart();
+    hasStartedRef.current = true;
+  }, [trackStart]);
+
   const reportResult = useCallback(
     (score: number, won: boolean, wordsFound?: number) => {
       if (recordedRef.current) return { isNewBest: false, newAchievements: [] as Achievement[] };
       recordedRef.current = true;
 
       const currentSlug = slugRef.current;
+      trackAnalyticsEvent("game_completion", {
+        gameSlug: currentSlug,
+        gameMode: quizModeRef.current ? "custom" : isUntimedRef.current ? "untimed" : "timed",
+      });
       const currentBest = getPersonalBest(currentSlug);
 
       const streakBefore = loadStreak().currentStreak;
@@ -174,7 +190,8 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
 
   const resetRecorded = useCallback(() => {
     recordedRef.current = false;
-  }, []);
+    if (hasStartedRef.current) trackStart();
+  }, [trackStart]);
 
   return { reportResult, resetRecorded };
 }

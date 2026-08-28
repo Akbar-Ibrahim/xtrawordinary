@@ -1,5 +1,5 @@
 import { eq, and, sql, between, inArray, gte, like, notLike, aliasedTable, isNotNull } from "drizzle-orm";
-import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord } from "@shared/schema";
+import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
 
@@ -248,6 +248,98 @@ export async function getWordSplitPuzzles(db: any, gameData: any): Promise<WordS
   return gameData.getWordSplitPuzzles();
 }
 
+export async function getWordFusionPuzzles(db: any, gameData: any): Promise<WordFusionPuzzle[]> {
+  try {
+    const componentWords = aliasedTable(schema.words, "fusion_component_words");
+    const rows = await db
+      .select({
+        id: schema.wordAssemblyComponents.combinationId,
+        baseWordId: schema.wordAssemblyComponents.wordId,
+        component: componentWords.word,
+      })
+      .from(schema.wordAssemblyComponents)
+      .innerJoin(schema.words, eq(schema.wordAssemblyComponents.wordId, schema.words.id))
+      .innerJoin(componentWords, eq(schema.wordAssemblyComponents.componentWordId, componentWords.id))
+      .where(and(
+        gte(schema.words.wordLength, 6),
+        inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+      ))
+      .orderBy(schema.wordAssemblyComponents.wordId, schema.wordAssemblyComponents.combinationId, schema.wordAssemblyComponents.id);
+
+    if (rows.length === 0) return gameData.getWordFusionPuzzles();
+
+    const grouped = new Map<number, { baseWordId: number; components: string[] }>();
+    for (const row of rows) {
+      const current: { baseWordId: number; components: string[] } =
+        grouped.get(row.id) ?? { baseWordId: row.baseWordId, components: [] };
+      current.components.push(row.component);
+      grouped.set(row.id, current);
+    }
+
+    const byBase = new Map<number, WordFusionPuzzle[]>();
+    for (const [id, group] of grouped) {
+      const puzzle: WordFusionPuzzle = { id, baseWordId: group.baseWordId, components: group.components, alternates: [] };
+      const bucket = byBase.get(group.baseWordId) ?? [];
+      bucket.push(puzzle);
+      byBase.set(group.baseWordId, bucket);
+    }
+    return Array.from(byBase.values()).flatMap(bucket => {
+      const [first, ...alternates] = bucket;
+      return [{
+        ...first,
+        alternates: alternates.map(({ id, components }) => ({ id, components })),
+      }];
+    });
+  } catch {
+    return gameData.getWordFusionPuzzles();
+  }
+}
+
+export async function validateWordFusionAnswer(
+  db: any,
+  gameData: any,
+  combinationId: number,
+  answer: string,
+): Promise<WordFusionValidationResponse> {
+  try {
+    const combination = await db
+      .select({ baseWordId: schema.wordAssemblyComponents.wordId })
+      .from(schema.wordAssemblyComponents)
+      .where(eq(schema.wordAssemblyComponents.combinationId, combinationId))
+      .limit(1);
+    if (combination.length === 0) return gameData.validateWordFusionAnswer(combinationId, answer);
+
+    const baseRows = await db
+      .select({ id: schema.words.id, word: schema.words.word })
+      .from(schema.words)
+      .where(eq(schema.words.id, combination[0].baseWordId))
+      .limit(1);
+    if (baseRows.length === 0) return { valid: false };
+
+    const links = await db
+      .select({ wordId: schema.wordAnagrams.wordId, anagramId: schema.wordAnagrams.anagramId })
+      .from(schema.wordAnagrams)
+      .where(sql`${schema.wordAnagrams.wordId} = ${combination[0].baseWordId} OR ${schema.wordAnagrams.anagramId} = ${combination[0].baseWordId}`);
+    const answerIds = Array.from(new Set([
+      combination[0].baseWordId,
+      ...links.map((link: { wordId: number; anagramId: number }) =>
+        link.wordId === combination[0].baseWordId ? link.anagramId : link.wordId),
+    ]));
+    const answerRows = await db
+      .select({ word: schema.words.word })
+      .from(schema.words)
+      .where(inArray(schema.words.id, answerIds));
+    const normalized = answer.replace(/[^a-z]/gi, "").toUpperCase();
+    const canonicalWord = baseRows[0].word.toUpperCase();
+    const accepted = answerRows.map((row: { word: string }) => row.word.toUpperCase());
+    const valid = accepted.includes(normalized);
+    const exact = normalized === canonicalWord;
+    return { valid, exact, canonicalWord: valid ? canonicalWord : undefined, points: valid ? (exact ? 15 : 10) : undefined };
+  } catch {
+    return gameData.validateWordFusionAnswer(combinationId, answer);
+  }
+}
+
 export async function getWordChainStartWord(db: any, gameData: any, variation: number, level: number, seed?: number): Promise<string | null> {
   try {
     if (seed !== undefined) {
@@ -439,7 +531,12 @@ export async function getWordExamples(
   }
 }
 
-export async function getWordExtensionPuzzles(db: any, gameData: any, lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
+export async function getWordExtensionPuzzles(
+  db: any,
+  gameData: any,
+  lettersToAdd: number,
+  seed?: number,
+): Promise<import("@shared/schema").WordExtensionPuzzle[]> {
   try {
     // word_derivatives: derivativeId = shorter shown word, wordId = longer parent word (answer).
     // Base word length is 4–6 letters (random per puzzle); answer is base + lettersToAdd.
@@ -456,10 +553,14 @@ export async function getWordExtensionPuzzles(db: any, gameData: any, lettersToA
         sql`${longWords.wordLength} = ${shortWords.wordLength} + ${lettersToAdd}`,
         inArray(shortWords.frequencyLevel, COMMON_FREQUENCY_LEVELS),
       ))
-      .orderBy(sql`RAND()`)
+      .orderBy(
+        seed === undefined
+          ? sql`RAND()`
+          : sql`MD5(CONCAT(${seed}, '-', ${shortWords.id}, '-', ${longWords.id}))`,
+      )
       .limit(200);
 
-    if (rows.length === 0) return gameData.getWordExtensionPuzzles(lettersToAdd);
+    if (rows.length === 0) return gameData.getWordExtensionPuzzles(lettersToAdd, seed);
 
     // Group by shownWord → collect validAnswers
     const map = new Map<string, string[]>();
@@ -476,7 +577,7 @@ export async function getWordExtensionPuzzles(db: any, gameData: any, lettersToA
     }
     if (puzzles.length > 0) return puzzles;
   } catch {}
-  return gameData.getWordExtensionPuzzles(lettersToAdd);
+  return gameData.getWordExtensionPuzzles(lettersToAdd, seed);
 }
 
 export async function validateWordExtension(db: any, gameData: any, shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }> {

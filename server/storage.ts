@@ -1,6 +1,7 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition } from "@shared/schema";
+import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsReport } from "@shared/schema";
 
 import { isMySQLStorageEnabled } from "./storage-config";
+import type { AnalyticsReportFilters } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -34,6 +35,8 @@ export interface IStorage {
   getWordRootsPuzzles(): Promise<WordRootsPuzzle[]>;
   getWordStackPuzzles(): Promise<WordStackPuzzle[]>;
   getWordSplitPuzzles(): Promise<WordSplitPuzzle[]>;
+  getWordFusionPuzzles(): Promise<WordFusionPuzzle[]>;
+  validateWordFusionAnswer(combinationId: number, answer: string): Promise<WordFusionValidationResponse>;
   getWordDictionary(): Promise<string[]>;
   validateWord(word: string): Promise<boolean>;
   countLetterPositionWords(letter: string, position: number): Promise<number>;
@@ -67,7 +70,7 @@ export interface IStorage {
   getWordBloomPuzzle(seed: number): Promise<{ seed: string; maxDepth: number }>;
   validateWordBloom(currentWord: string, nextWord: string): Promise<{ valid: boolean; isMiddle: boolean }>;
 
-  getWordExtensionPuzzles(lettersToAdd: number): Promise<import("@shared/schema").WordExtensionPuzzle[]>;
+  getWordExtensionPuzzles(lettersToAdd: number, seed?: number): Promise<import("@shared/schema").WordExtensionPuzzle[]>;
   validateWordExtension(shownWord: string, submittedWord: string, lettersToAdd: number): Promise<{ valid: boolean }>;
 
   listPartsOfSpeech(): Promise<PartOfSpeech[]>;
@@ -119,6 +122,9 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   deleteLeaderboardEntry(id: number): Promise<void>;
   getAdminStats(): Promise<{ totalUsers: number; totalGamesPlayed: number; gamesPerSlug: Record<string, number> }>;
+  recordAnalyticsEvent(event: AnalyticsEventInput & { userId?: number | null; occurredAt?: string }): Promise<void>;
+  getAnalyticsReport(startDate: string, endDate: string, filters?: AnalyticsReportFilters): Promise<AnalyticsReport>;
+  cleanupAnalyticsEvents(): Promise<number>;
   getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
 
   getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>>;
@@ -363,8 +369,13 @@ export async function initStorage(): Promise<IStorage> {
     console.log("[Storage] Using MySQL storage");
     const { MySQLStorage } = await import("./mysql-storage");
     _storage = new MySQLStorage();
+    const { db } = await import("./db");
+    if (process.env.NODE_ENV === "production") {
+      const { verifyAnalyticsPersistence } = await import("./mysql/analytics");
+      await verifyAnalyticsPersistence(db);
+      console.log("[Storage] Persistent analytics table verified");
+    }
     try {
-      const { db } = await import("./db");
       const { backfillGameConfigFromSeed } = await import("./mysql/games");
       await backfillGameConfigFromSeed(db);
       console.log("[Storage] Game config backfill complete");
@@ -374,7 +385,9 @@ export async function initStorage(): Promise<IStorage> {
   } else {
     console.log("[Storage] Using in-memory storage");
     const { MemStorage } = await import("./mem-storage");
-    _storage = new MemStorage();
+    _storage = new MemStorage({
+      analyticsFilePath: process.env.ANALYTICS_FILE_PATH?.trim() || ".data/analytics-events.jsonl",
+    });
   }
   return _storage!;
 }

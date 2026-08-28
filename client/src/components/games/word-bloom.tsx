@@ -66,7 +66,7 @@ interface WordBloomPlayProps {
 
 function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBloomPlayProps) {
   const slug = mode === "classic" ? "word-bloom" : "word-bloom-survival";
-  const { reportResult } = useGameResult({ slug, isUntimed });
+  const { reportResult, resetRecorded } = useGameResult({ slug, isUntimed });
   const personalBest = usePersonalBest(slug);
 
   const [gameStatus, setGameStatus] = useState<GameStatus>("playing");
@@ -316,6 +316,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                 <Button
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
                   onClick={() => {
+                    resetRecorded();
                     chainRef.current = [];
                     scoreRef.current = 0;
                     recordedRef.current = false;
@@ -349,6 +350,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                 <Button
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
+                    resetRecorded();
                     chainRef.current = [];
                     scoreRef.current = 0;
                     recordedRef.current = false;

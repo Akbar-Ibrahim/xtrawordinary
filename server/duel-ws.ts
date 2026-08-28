@@ -68,7 +68,7 @@ const RACE_MAKER_WORDS = [
   "BLANKET", "CHAPTER", "MYSTERY", "DRAGONS",
   "PARKING", "COUNTRY", "GARDENS", "WINTERS",
 ];
-/** Compound words for word-split race mode (players submit substrings). */
+/** Target words for word-split race mode (players divide each into a letter pool). */
 const RACE_SPLIT_WORDS = [
   "SUNFLOWER", "STARLIGHT", "BLACKBIRD", "FIREWORKS",
   "AFTERNOON", "BUTTERFLY", "MOONLIGHT", "SNOWFLAKE",
@@ -247,6 +247,14 @@ function deductFromPool(word: string, pool: string): string {
   return remaining;
 }
 
+/** Return the deterministic Word Split target for a player's zero-based round. */
+function getWordSplitRoundTarget(room: DuelRoom, round: number): string {
+  if (round === 0) return room.startWord.toUpperCase();
+  const initialIndex = RACE_SPLIT_WORDS.indexOf(room.startWord.toUpperCase());
+  const baseIndex = initialIndex >= 0 ? initialIndex : room.seed % RACE_SPLIT_WORDS.length;
+  return RACE_SPLIT_WORDS[(baseIndex + round) % RACE_SPLIT_WORDS.length].toUpperCase();
+}
+
 /** Check whether word is an ordered subsequence of base (letters appear in order). */
 function isSubsequenceOf(word: string, base: string): boolean {
   let bi = 0;
@@ -331,14 +339,18 @@ type DuelRoom = {
   // ── Race format fields ──────────────────────────────────────────────────
   /** "turn" (default alternating turns) or "race" (simultaneous, first to target wins). */
   format: "turn" | "race";
-  /** Race: first player to reach this word count wins. Default 15. */
+  /** Race: first player to reach this word count wins. Word Split uses timed rounds instead. */
   raceTarget: number;
   /** Race: time limit in ms; winner by count when time expires. */
   raceTimeLimitMs: number;
   /** Race: per-player valid word counts (userId → count). */
   countsPerPlayer: Map<number, number>;
-  /** Race: per-player remaining letter pool (userId → pool string). Used by letter-pool. */
+  /** Race: per-player remaining letter pool (userId → pool string). Used by pool-based games. */
   racePoolPerPlayer: Map<number, string>;
+  /** Race: zero-based active Word Split round for each player. */
+  raceRoundPerPlayer: Map<number, number>;
+  /** Race: submitted words in each player's active Word Split target. */
+  raceRoundWordsPerPlayer: Map<number, string[]>;
   /** Race: server-side timer handle for the time-limit fallback. */
   raceTimerHandle: ReturnType<typeof setTimeout> | null;
   /** Timestamp (ms) when race started; used to broadcast remaining time. */
@@ -545,6 +557,8 @@ export class DuelRoomRegistry {
       raceTimeLimitMs: raceTimeLimitSecs * 1000,
       countsPerPlayer: new Map(),
       racePoolPerPlayer: new Map(),
+      raceRoundPerPlayer: new Map(),
+      raceRoundWordsPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
       racePendingMoves: new Set(),
@@ -601,6 +615,8 @@ export class DuelRoomRegistry {
       raceTimeLimitMs: raceTimeLimitSecs * 1000,
       countsPerPlayer: new Map(),
       racePoolPerPlayer: new Map(),
+      raceRoundPerPlayer: new Map(),
+      raceRoundWordsPerPlayer: new Map(),
       raceTimerHandle: null,
       raceStartedAt: null,
       racePendingMoves: new Set(),
@@ -671,6 +687,8 @@ export class DuelRoomRegistry {
           const opponentWords = room.wordsPerPlayer.get(opponent.userId) ?? [];
           const myCount = room.countsPerPlayer.get(userId) ?? 0;
           const opponentCount = room.countsPerPlayer.get(opponent.userId) ?? 0;
+            const myRound = room.raceRoundPerPlayer.get(userId) ?? 0;
+            const opponentRound = room.raceRoundPerPlayer.get(opponent.userId) ?? 0;
           send(ws, {
             type: "room:state",
             phase: "playing",
@@ -684,6 +702,14 @@ export class DuelRoomRegistry {
               : room.raceTimeLimitMs,
             myCount,
             opponentCount,
+              raceCurrentWord: room.gameSlug === "word-split"
+                ? getWordSplitRoundTarget(room, myRound)
+                : undefined,
+              myRoundWords: room.gameSlug === "word-split"
+                ? [...(room.raceRoundWordsPerPlayer.get(userId) ?? [])]
+                : undefined,
+              myRound: room.gameSlug === "word-split" ? myRound : undefined,
+              opponentRound: room.gameSlug === "word-split" ? opponentRound : undefined,
             myLives,
             opponentLives,
             myWords: [...myWords],
@@ -763,9 +789,16 @@ export class DuelRoomRegistry {
       for (const pid of Array.from(room.players.keys())) {
         room.livesPerPlayer.set(pid, INITIAL_LIVES);
         room.countsPerPlayer.set(pid, 0);
-        // Initialize per-player letter pool for letter-pool game
-        if (room.gameSlug === "letter-pool") {
-          room.racePoolPerPlayer.set(pid, room.startWord);
+        // Initialize per-player letter pool for pool-based race games.
+        if (room.gameSlug === "letter-pool" || room.gameSlug === "word-split") {
+          const initialPool = room.gameSlug === "word-split"
+            ? getWordSplitRoundTarget(room, 0)
+            : room.startWord;
+          room.racePoolPerPlayer.set(pid, initialPool);
+        }
+        if (room.gameSlug === "word-split") {
+          room.raceRoundPerPlayer.set(pid, 0);
+          room.raceRoundWordsPerPlayer.set(pid, []);
         }
       }
       // Initialize authoritative game state
@@ -983,10 +1016,14 @@ export class DuelRoomRegistry {
     try {
     const slug = room.gameSlug;
 
-    // --- Per-player duplicate check (each player has own word pool) ---
-    // word-split allows repeating the same word across compound cycles
+    // --- Per-player duplicate check ---
     const myWords = room.wordsPerPlayer.get(fromUserId) ?? [];
-    if (slug !== "word-split" && myWords.includes(submittedWord)) {
+    // Word Split starts a fresh pool for every target, so a word may be used
+    // again in a later target while still remaining in the match history.
+    const activeWords = slug === "word-split"
+      ? room.raceRoundWordsPerPlayer.get(fromUserId) ?? []
+      : myWords;
+    if (activeWords.includes(submittedWord)) {
       return { triggered: false, error: "You already used that word" };
     }
 
@@ -1002,35 +1039,67 @@ export class DuelRoomRegistry {
       }
     }
 
-    // Move is valid — update per-player state
+    // Move is valid — retain full history for results.
     room.wordsPerPlayer.set(fromUserId, [...myWords, submittedWord]);
 
-    // word-split: score only when a full compound cycle is completed (no partial cycles)
-    let scoreIncrement = 1;
+    let newCount = room.countsPerPlayer.get(fromUserId) ?? 0;
+    let progress: Extract<DuelServerMessage, { type: "race:progress" }> = {
+      type: "race:progress",
+      userId: fromUserId,
+      count: newCount,
+    };
+
     if (slug === "word-split") {
-      const totalCoveredBefore = myWords.reduce((sum, w) => sum + w.length, 0);
-      const splitPos = totalCoveredBefore % room.startWord.length;
-      scoreIncrement = (splitPos + submittedWord.length === room.startWord.length) ? 1 : 0;
-    }
-    const newCount = (room.countsPerPlayer.get(fromUserId) ?? 0) + scoreIncrement;
-    room.countsPerPlayer.set(fromUserId, newCount);
-
-    // letter-pool: deduct used letters from player's remaining pool
-    if (slug === "letter-pool") {
-      const remaining = deductFromPool(submittedWord, room.racePoolPerPlayer.get(fromUserId) ?? room.startWord);
+      const roundWords = [...(room.raceRoundWordsPerPlayer.get(fromUserId) ?? []), submittedWord];
+      const remaining = deductFromPool(
+        submittedWord,
+        room.racePoolPerPlayer.get(fromUserId) ?? getWordSplitRoundTarget(room, room.raceRoundPerPlayer.get(fromUserId) ?? 0),
+      );
       room.racePoolPerPlayer.set(fromUserId, remaining);
+
+      if (remaining) {
+        room.raceRoundWordsPerPlayer.set(fromUserId, roundWords);
+      } else {
+        // A target counts only when its entire pool has been split. The initial
+        // whole-word guard means every completed target contains at least two words.
+        const nextRound = (room.raceRoundPerPlayer.get(fromUserId) ?? 0) + 1;
+        const nextTarget = getWordSplitRoundTarget(room, nextRound);
+        newCount += 1;
+        room.countsPerPlayer.set(fromUserId, newCount);
+        room.raceRoundPerPlayer.set(fromUserId, nextRound);
+        room.raceRoundWordsPerPlayer.set(fromUserId, []);
+        room.racePoolPerPlayer.set(fromUserId, nextTarget);
+        progress = {
+          type: "race:progress",
+          userId: fromUserId,
+          count: newCount,
+          roundCompleted: true,
+          currentWord: nextTarget,
+          round: nextRound,
+        };
+      }
+    } else {
+      newCount += 1;
+      room.countsPerPlayer.set(fromUserId, newCount);
+      progress = { type: "race:progress", userId: fromUserId, count: newCount };
+
+      // Pool-based letter-pool races consume submitted letters but retain their
+      // existing word-count scoring behavior.
+      if (slug === "letter-pool") {
+        const remaining = deductFromPool(submittedWord, room.racePoolPerPlayer.get(fromUserId) ?? room.startWord);
+        room.racePoolPerPlayer.set(fromUserId, remaining);
+      }
     }
 
-    // Broadcast progress to both players and spectators
-    for (const p2 of Array.from(room.players.values())) {
-      send(p2.ws, { type: "race:progress", userId: fromUserId, count: newCount });
-    }
-    sendToSpectators(room, { type: "race:progress", userId: fromUserId, count: newCount });
+    // Broadcast progress to both players and spectators.
+    for (const p2 of Array.from(room.players.values())) send(p2.ws, progress);
+    sendToSpectators(room, progress);
 
-    log(`[Duel] Race move: user ${fromUserId} in room ${room.roomCode} → count ${newCount}/${room.raceTarget}`, "duel-ws");
+    log(`[Duel] Race move: user ${fromUserId} in room ${room.roomCode} → count ${newCount}${slug === "word-split" ? " completed splits" : `/${room.raceTarget}`}`, "duel-ws");
 
-    // Check win condition
-    if (newCount >= room.raceTarget) {
+    // Word Split races are timed rounds. All other race games retain their
+    // existing first-to-target winner condition.
+    if (slug !== "word-split" && newCount >= room.raceTarget) {
       return { triggered: true, winnerId: fromUserId };
     }
 
@@ -1091,13 +1160,16 @@ export class DuelRoomRegistry {
         return `Word letters must appear in order within "${room.startWord}"`;
       }
     } else if (slug === "word-split") {
-      // Sequential cursor: word must exactly match the compound from the player's current position
-      const totalCovered = myWords.reduce((sum, w) => sum + w.length, 0);
-      const splitPos = totalCovered % room.startWord.length;
-      const remaining = room.startWord.slice(splitPos);
-      if (!remaining.startsWith(word)) {
-        return `Word must match the next letters of "${room.startWord}" (position ${splitPos + 1}: "${remaining.slice(0, 6)}...")`;
+      // Letter-pool split: submitted words may rearrange any remaining target letters.
+      const activeRound = room.raceRoundPerPlayer.get(userId) ?? 0;
+      const target = getWordSplitRoundTarget(room, activeRound);
+      const remainingPool = room.racePoolPerPlayer.get(userId) ?? target;
+      if (!remainingPool) return "Your split is complete";
+      const roundWords = room.raceRoundWordsPerPlayer.get(userId) ?? [];
+      if (roundWords.length === 0 && word.length === target.length && canFormFromPool(word, remainingPool)) {
+        return "You need to split the word into at least two words";
       }
+      if (!canFormFromPool(word, remainingPool)) return "Letters don't fit the remaining pool";
     } else if (slug === "no-repeats") {
       const parts = room.startWord.split("|");
       const minLen = parseInt(parts[0], 10);
@@ -1167,6 +1239,9 @@ export class DuelRoomRegistry {
         room.status = "waiting";
         room.livesPerPlayer.clear();
         room.countsPerPlayer.clear();
+        room.racePoolPerPlayer.clear();
+        room.raceRoundPerPlayer.clear();
+        room.raceRoundWordsPerPlayer.clear();
         room.currentTurnUserId = null;
         room.countdownStartAt = null;
         room.raceStartedAt = null;
@@ -1307,6 +1382,18 @@ export class DuelRoomRegistry {
       lives1: room.livesPerPlayer.get(p1.userId) ?? INITIAL_LIVES,
       lives2: room.livesPerPlayer.get(p2.userId) ?? INITIAL_LIVES,
       spectatorCount: room.spectators.size,
+      player1CurrentWord: room.gameSlug === "word-split"
+        ? getWordSplitRoundTarget(room, room.raceRoundPerPlayer.get(p1.userId) ?? 0)
+        : undefined,
+      player2CurrentWord: room.gameSlug === "word-split"
+        ? getWordSplitRoundTarget(room, room.raceRoundPerPlayer.get(p2.userId) ?? 0)
+        : undefined,
+      player1Round: room.gameSlug === "word-split"
+        ? room.raceRoundPerPlayer.get(p1.userId) ?? 0
+        : undefined,
+      player2Round: room.gameSlug === "word-split"
+        ? room.raceRoundPerPlayer.get(p2.userId) ?? 0
+        : undefined,
     });
 
     log(`[Duel] Spectator ${userId} joined room ${roomCode} (${room.spectators.size} watching)`, "duel-ws");
@@ -1380,7 +1467,8 @@ export class DuelRoomRegistry {
 
   /**
    * Arms the race time-limit fallback timer.
-   * When it fires, the player with more valid words wins (or draw if tied).
+   * When it fires, the player with more accepted words wins (or draw if tied);
+   * Word Split counts completed target rounds instead of individual subwords.
    */
   private armRaceTimer(room: DuelRoom): void {
     if (room.raceTimerHandle !== null) {

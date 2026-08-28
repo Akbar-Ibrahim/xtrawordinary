@@ -52,6 +52,14 @@ export type DuelServerMessage =
       myCount: number;
       /** Race: opponent's word count */
       opponentCount: number;
+      /** Race: the reconnecting player's active target. */
+      raceCurrentWord?: string;
+      /** Race: words the reconnecting player has used in their active target. */
+      myRoundWords?: string[];
+      /** Race: completed target-split number for the reconnecting player. */
+      myRound?: number;
+      /** Race: completed target-split number for the opponent. */
+      opponentRound?: number;
       myLives: number;
       /** Words this player has submitted so far (excluding the seed word). */
       myWords: string[];
@@ -66,8 +74,18 @@ export type DuelServerMessage =
       isMyTurn: boolean;
     }
   | { type: "opponent:move"; payload: unknown }
-  /** Broadcast to both players after each valid race move */
-  | { type: "race:progress"; userId: number; count: number }
+  /** Broadcast to both players after each valid race move. */
+  | {
+      type: "race:progress";
+      userId: number;
+      count: number;
+      /** Present when a Word Split player completes a target and advances. */
+      roundCompleted?: boolean;
+      /** The player's next Word Split target after completing a round. */
+      currentWord?: string;
+      /** Zero-based Word Split round index after the move. */
+      round?: number;
+    }
   | {
       type: "game:over";
       outcome: "you_win" | "you_lose" | "draw" | "forfeit";
@@ -100,6 +118,11 @@ export type DuelServerMessage =
       lives1: number;
       lives2: number;
       spectatorCount: number;
+      /** Current Word Split target and round for each player, when applicable. */
+      player1CurrentWord?: string;
+      player2CurrentWord?: string;
+      player1Round?: number;
+      player2Round?: number;
     }
   /** Sent to both players whenever the spectator count changes. */
   | { type: "spectator:count"; count: number }
