@@ -159,11 +159,11 @@ export default function Pricing() {
             <p className="text-sm text-muted-foreground mb-6">Everything you need to play seriously and compete.</p>
 
             <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$5</span>
+              <span className="text-4xl font-bold text-foreground">$3</span>
               <span className="text-muted-foreground ml-1">/ month</span>
             </div>
 
-            <div className="mb-8">{activateButton}</div>
+            {/* <div className="mb-8">{activateButton}</div> */}
 
             <ul className="space-y-3 flex-1">
               {individualFeatures.map((f) => (
@@ -192,11 +192,11 @@ export default function Pricing() {
             <p className="text-sm text-muted-foreground mb-6">One plan for the whole household. Up to 5 profiles.</p>
 
             <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$10</span>
+              <span className="text-4xl font-bold text-foreground">$8</span>
               <span className="text-muted-foreground ml-1">/ month</span>
             </div>
 
-            <div className="mb-8">{activateButton}</div>
+            {/* <div className="mb-8">{activateButton}</div> */}
 
             <ul className="space-y-3 flex-1">
               <li className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Everything in Individual, plus:</li>
@@ -281,7 +281,7 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground">Teacher Plan</h3>
-                    <p className="text-xs text-muted-foreground">~$10–15 / month per teacher</p>
+                    {/* <p className="text-xs text-muted-foreground">~$10–15 / month per teacher</p> */}
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm text-foreground mb-6">
@@ -311,7 +311,7 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground">School License</h3>
-                    <p className="text-xs text-muted-foreground">~$500–2,000 / year per school</p>
+                    {/* <p className="text-xs text-muted-foreground">~$500–2,000 / year per school</p> */}
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm text-foreground mb-6">
