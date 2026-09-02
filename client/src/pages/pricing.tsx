@@ -158,10 +158,10 @@ export default function Pricing() {
             </div>
             <p className="text-sm text-muted-foreground mb-6">Everything you need to play seriously and compete.</p>
 
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <span className="text-4xl font-bold text-foreground">$3</span>
               <span className="text-muted-foreground ml-1">/ month</span>
-            </div>
+            </div> */}
 
             {/* <div className="mb-8">{activateButton}</div> */}
 
@@ -191,10 +191,10 @@ export default function Pricing() {
             </div>
             <p className="text-sm text-muted-foreground mb-6">One plan for the whole household. Up to 5 profiles.</p>
 
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <span className="text-4xl font-bold text-foreground">$8</span>
               <span className="text-muted-foreground ml-1">/ month</span>
-            </div>
+            </div> */}
 
             {/* <div className="mb-8">{activateButton}</div> */}
 
