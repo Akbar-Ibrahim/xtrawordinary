@@ -8,8 +8,8 @@ import { registerRoutes } from "./routes";
 import { setupAuth } from "./auth";
 import { serveStatic } from "./static";
 import { initStorage } from "./storage";
-import { setupDuelWebSocket } from "./duel-ws";
-import { setupTeamRaceWebSocket } from "./team-race-ws";
+import { setupDuelWebSocket } from "./realtime/duel-ws";
+import { setupTeamRaceWebSocket } from "./realtime/team-race-ws";
 import { applySecurityMiddleware, apiLimiter } from "./middleware/security";
 import { requestLogger } from "./middleware/request-logger";
 import { errorHandler } from "./middleware/error-handler";
@@ -61,7 +61,7 @@ app.use(requestLogger);
     await setupVite(httpServer, app);
   }
 
-  const port = parseInt(process.env.PORT || "5005", 10);
+  const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0", }, () => {
     import("./logger").then(({ log }) => log(`serving on port ${port}`));
   });
