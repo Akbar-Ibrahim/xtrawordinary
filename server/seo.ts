@@ -85,6 +85,10 @@ const STATIC_ROUTES: Record<string, Pick<PageMeta, "title" | "description"> & { 
       "Unlock Premium features on xtraWordinary — custom game modes, exclusive stats, and more.",
     ogImage: `${SITE_BASE_URL}/og/pricing.png`,
   },
+  "/contact": {
+    title: `Contact Us | ${SITE_NAME}`,
+    description: "Send a question, suggestion, or issue to the xtraWordinary team.",
+  },
   "/groups": {
     title: `Groups | ${SITE_NAME}`,
     description:

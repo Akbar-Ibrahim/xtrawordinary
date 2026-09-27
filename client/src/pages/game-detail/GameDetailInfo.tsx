@@ -10,7 +10,7 @@ import { CommentSection } from "@/components/comment-section";
 import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
-import type { Game } from "@shared/schema";
+import { getGameDetailDescription, getGameDetailRules, type Game } from "@shared/schema";
 import { difficultyColors } from "./constants";
 
 interface MyGameStat {
@@ -66,6 +66,13 @@ function FriendsWhoPlay({ slug }: { slug: string }) {
 export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, lastPercentile, likeData }: Props) {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const pageTitleRef = useRef<HTMLHeadingElement>(null);
+  const standardPlayContext = {
+    isSenderMode: false,
+    isReceiverMode: false,
+    isCustomPlay: false,
+  };
+  const description = getGameDetailDescription(game, standardPlayContext);
+  const rules = getGameDetailRules(game, standardPlayContext);
 
   useEffect(() => {
     pageTitleRef.current?.focus();
@@ -94,7 +101,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
       </div>
 
       <div className="space-y-4">
-        <p className="text-lg text-muted-foreground">{game.longDescription}</p>
+        <p className="text-lg text-muted-foreground">{description}</p>
 
         <div className="flex items-center gap-4 flex-wrap">
           <span className="flex items-center gap-2 text-muted-foreground">
@@ -143,7 +150,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            {game.rules.map((rule, index) => (
+            {rules.map((rule, index) => (
               <motion.li
                 key={index}
                 initial={{ opacity: 0, x: -10 }}

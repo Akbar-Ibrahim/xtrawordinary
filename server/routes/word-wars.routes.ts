@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
-import { executeBracketDraw, checkAndForfeitExpiredMatches } from "../word-wars-engine";
-import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "../word-wars-sse";
-import { pushNotifToUser } from "../notification-sse";
+import { executeBracketDraw, checkAndForfeitExpiredMatches } from "../tournaments/word-wars-engine";
+import { registerSSEClient, unregisterSSEClient, ssePublishToUsers } from "../realtime/word-wars-sse";
+import { pushNotifToUser } from "../realtime/notification-sse";
 import { createNotificationIfEnabled } from "./helpers";
 
 export function registerWordWarsRoutes(app: Express): void {

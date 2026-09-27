@@ -13,4 +13,6 @@ export * from "./word-wars";
 export * from "./guild-wars";
 export * from "./challenges";
 export * from "./analytics";
+export * from "./contact";
+export * from "./game-reports";
 export * from "../usernames";

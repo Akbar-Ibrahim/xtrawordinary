@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
-import { leaderboardInputSchema } from "../validators";
+import { leaderboardInputSchema } from "../validation/validators";
 
 const VALID_TIME_FILTERS = new Set(["today", "week", "all"]);
 function parseTimeFilter(raw: unknown): string | undefined {

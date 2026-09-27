@@ -1,12 +1,13 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport } from "@shared/schema";
+import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply, GameReport, InsertGameReport } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
-import { mulberry32 } from "./seeded-rng";
+import { mulberry32 } from "./games/seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, wordFusionPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
-import { isOpenChallengeExpired } from "./challenge-expiry";
-import { analyticsRetentionDays, buildAnalyticsReport, MAX_ANALYTICS_EVENTS } from "./analytics";
-import { FileAnalyticsStore } from "./file-analytics-store";
+import { isOpenChallengeExpired } from "./challenges/expiry";
+import { analyticsRetentionDays, buildAnalyticsReport, MAX_ANALYTICS_EVENTS } from "./analytics/analytics";
+import { FileAnalyticsStore } from "./analytics/file-analytics-store";
 import type { AnalyticsReportFilters } from "@shared/schema";
+import type { InsertGroupRound, InsertTeamRaceChallenge } from "@shared/schema";
 
 function generateShareCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -72,6 +73,10 @@ export class MemStorage implements IStorage {
   private notificationIdCounter = 1;
   private notificationPrefsMap: Map<string, boolean> = new Map();
   private siteSettingsMap: Map<string, string> = new Map();
+  private contactMessages: ContactMessage[] = [];
+  private contactMessageIdCounter = 1;
+  private gameReports: GameReport[] = [];
+  private gameReportIdCounter = 1;
 
   private partsOfSpeech: PartOfSpeech[] = [];
   private wordDefinitions: WordDefinition[] = [];
@@ -106,13 +111,12 @@ export class MemStorage implements IStorage {
     // no-op for in-memory storage
   }
 
-  async updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void> {
+  async updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void> {
     const game = this.games.find(g => g.slug === slug);
     if (game) {
       if ("timeLimitSeconds" in config) game.timeLimitSeconds = config.timeLimitSeconds ?? undefined;
       if ("wordTarget" in config) game.wordTarget = config.wordTarget ?? undefined;
       if ("livesCount" in config) game.livesCount = config.livesCount ?? undefined;
-      if ("survivalSecondsPerWord" in config) game.survivalSecondsPerWord = config.survivalSecondsPerWord ?? undefined;
     }
   }
 
@@ -2540,6 +2544,70 @@ export class MemStorage implements IStorage {
     return this.commentsStore.filter(
       c => c.userId === userId && !c.isDeleted && (c.createdAt ?? "") >= sinceStr
     ).length;
+  }
+
+  async createContactMessage(data: InsertContactMessage): Promise<ContactMessage> {
+    const contactMessage: ContactMessage = {
+      id: this.contactMessageIdCounter++,
+      name: data.name,
+      email: data.email,
+      subject: data.subject ?? null,
+      message: data.message,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+      replies: [],
+    };
+    this.contactMessages.unshift(contactMessage);
+    return contactMessage;
+  }
+
+  async getContactMessage(id: number): Promise<ContactMessage | undefined> {
+    return this.contactMessages.find((item) => item.id === id);
+  }
+
+  async getContactMessages(): Promise<ContactMessage[]> {
+    return [...this.contactMessages].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async markContactMessageRead(id: number): Promise<boolean> {
+    const contactMessage = this.contactMessages.find((item) => item.id === id);
+    if (!contactMessage) return false;
+    if (!contactMessage.readAt) contactMessage.readAt = new Date().toISOString();
+    return true;
+  }
+
+  async createContactMessageReply(data: InsertContactMessageReply): Promise<ContactMessageReply> {
+    const contactMessage = this.contactMessages.find((item) => item.id === data.contactMessageId);
+    if (!contactMessage) throw new Error("Contact message not found");
+    const reply: ContactMessageReply = {
+      ...data,
+      id: contactMessage.replies.length + 1,
+      sentAt: new Date().toISOString(),
+    };
+    contactMessage.replies.push(reply);
+    return reply;
+  }
+
+  async createGameReport(data: InsertGameReport): Promise<GameReport> {
+    const report: GameReport = {
+      ...data,
+      id: this.gameReportIdCounter++,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.gameReports.unshift(report);
+    return report;
+  }
+
+  async getGameReports(): Promise<GameReport[]> {
+    return [...this.gameReports];
+  }
+
+  async markGameReportRead(id: number): Promise<boolean> {
+    const report = this.gameReports.find((item) => item.id === id);
+    if (!report) return false;
+    if (!report.readAt) report.readAt = new Date().toISOString();
+    return true;
   }
 
   async deleteUser(id: number): Promise<void> {

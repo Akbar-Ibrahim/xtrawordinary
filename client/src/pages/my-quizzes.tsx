@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AuthModal } from "@/components/auth-modal";
@@ -74,11 +75,7 @@ export default function MyQuizzes() {
   }
 
   if (authLoading) {
-    return (
-      <div className="container mx-auto px-4 py-12 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <AuthLoadingState />;
   }
 
   if (!isAuthenticated) {

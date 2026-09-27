@@ -36,7 +36,7 @@ interface GroupsResponse {
 }
 
 export default function Groups() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [authOpen, setAuthOpen] = useState(false);
@@ -108,6 +108,7 @@ export default function Groups() {
   }
 
   function requireAuthThen(action: () => void) {
+    if (status === "loading") return;
     if (!isAuthenticated) {
       openAuth("signup");
     } else {
@@ -135,18 +136,18 @@ export default function Groups() {
                 Browse
               </Button>
             </Link>
-            <Button variant="outline" onClick={() => requireAuthThen(() => setJoinOpen(true))} data-testid="button-join-group">
+            <Button variant="outline" onClick={() => requireAuthThen(() => setJoinOpen(true))} disabled={status === "loading"} data-testid="button-join-group">
               <LogIn className="h-4 w-4 mr-2" />
               Join
             </Button>
-            <Button onClick={() => requireAuthThen(() => setCreateOpen(true))} data-testid="button-create-group">
+            <Button onClick={() => requireAuthThen(() => setCreateOpen(true))} disabled={status === "loading"} data-testid="button-create-group">
               <Plus className="h-4 w-4 mr-2" />
               Create
             </Button>
           </div>
         </div>
 
-        {!isAuthenticated && (
+        {status === "unauthenticated" && (
           <div className="space-y-4 mb-6">
             <Card className="border-primary/30 dark:border-primary/40 bg-primary/5 dark:bg-primary/10" data-testid="card-guest-signup-cta">
               <CardContent className="p-5">
@@ -310,7 +311,7 @@ export default function Groups() {
               </section>
             )}
 
-            {(data?.discover.length ?? 0) === 0 && !isAuthenticated && (
+            {(data?.discover.length ?? 0) === 0 && status === "unauthenticated" && (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />

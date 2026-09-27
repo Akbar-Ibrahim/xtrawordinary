@@ -3,8 +3,8 @@ import passport from "passport";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { storage } from "../storage";
-import { sendVerificationEmail, sendPasswordResetEmail } from "../email";
-import { registerSchema, loginSchema } from "../validators";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../services/email";
+import { registerSchema, loginSchema } from "../validation/validators";
 import { authLimiter, passwordLimiter } from "../middleware/security";
 import { normalizeUsername, validateUsername } from "@shared/usernames";
 import {

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToastAction } from "@/components/ui/toast";
@@ -92,7 +93,7 @@ export function Navigation() {
   const [location, navigate] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { soundEnabled, toggleSound } = useSound();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, status, isAuthenticated, logout } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -430,7 +431,13 @@ export function Navigation() {
 
             <PremiumBanner variant="nav" />
 
-            {isAuthenticated && user ? (
+            {status === "loading" ? (
+              <Skeleton
+                className="h-8 w-20 rounded-md"
+                aria-label="Checking your session"
+                data-testid="navigation-auth-loading"
+              />
+            ) : isAuthenticated && user ? (
               <DropdownMenu open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
                 <DropdownMenuTrigger asChild>
                   <Button

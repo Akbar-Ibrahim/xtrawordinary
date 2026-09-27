@@ -19,6 +19,7 @@ import { ChallengeDialog } from "./game-detail/ChallengeDialog";
 import { GameDetailSidebar } from "./game-detail/GameDetailSidebar";
 import { GameDetailInfo } from "./game-detail/GameDetailInfo";
 import { GamePlayArea } from "./game-detail/GamePlayArea";
+import { GameReportDialog } from "./game-detail/GameReportDialog";
 import type { ChallengeResult } from "./game-detail/constants";
 
 export default function GameDetail() {
@@ -193,6 +194,7 @@ export default function GameDetail() {
 
   const { data: game, isLoading, error } = useQuery<Game>({
     queryKey: ["/api/games", slug],
+    refetchOnMount: "always",
   });
 
   const { data: allGames = [] } = useQuery<Game[]>({
@@ -240,6 +242,7 @@ export default function GameDetail() {
   const [isUntimed, setIsUntimed] = useState(false);
   const [showQuizDialog, setShowQuizDialog] = useState(false);
   const [showDuelDialog, setShowDuelDialog] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -346,6 +349,7 @@ export default function GameDetail() {
               onQuiz={() => setShowQuizDialog(true)}
               onCustomPlay={() => setShowCustomPlayDialog(true)}
               onUntimed={() => { setIsUntimed(true); setIsPlaying(true); }}
+              onReport={() => setShowReportDialog(true)}
             />
           </motion.div>
         ) : (
@@ -387,6 +391,13 @@ export default function GameDetail() {
             />          </motion.div>
         )}
       </AnimatePresence>
+
+      <GameReportDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        gameSlug={game.slug}
+        gameName={game.name}
+      />
 
       <QuizCreateDialog
         open={showQuizDialog}

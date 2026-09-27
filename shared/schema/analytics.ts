@@ -98,6 +98,7 @@ export interface AnalyticsReport {
   startDate: string;
   endDate: string;
   filters: AnalyticsReportFilters;
+  uniqueVisitorsInRetainedHistory: number;
   totals: Omit<AnalyticsDailyReport, "date">;
   daily: AnalyticsDailyReport[];
   games: AnalyticsGameReport[];

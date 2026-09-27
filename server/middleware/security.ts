@@ -39,6 +39,22 @@ export const passwordLimiter = rateLimit({
   message: { message: "Too many password reset requests, please try again in an hour." },
 });
 
+export const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many messages sent. Please try again in 15 minutes." },
+});
+
+export const gameReportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many reports sent. Please try again in 15 minutes." },
+});
+
 export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 300,

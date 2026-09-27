@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { resolveAuthStatus, type AuthStatus } from "@/lib/auth-state";
 import type { AuthenticatedUser } from "@shared/schema";
 
 interface AuthContextType {
   user: AuthenticatedUser | null;
   isLoading: boolean;
+  status: AuthStatus;
   isAuthenticated: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<{ error?: string }>;
   register: (username: string, email: string, password: string) => Promise<{ error?: string; message?: string }>;
@@ -75,12 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/api/auth/google";
   }, []);
 
+  const status = resolveAuthStatus(user, isLoading);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isLoading,
-        isAuthenticated: !!user,
+        status,
+        isAuthenticated: status === "authenticated",
         login,
         register,
         logout,

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Trophy, BarChart3, Gamepad2, MessageSquare, Swords } from "lucide-react";
+import { Shield, Users, Trophy, BarChart3, Gamepad2, MessageSquare, Swords, Inbox, Flag } from "lucide-react";
 import { motion } from "framer-motion";
 import { OverviewTab } from "./admin/OverviewTab";
 import { UsersTab } from "./admin/UsersTab";
@@ -12,10 +13,16 @@ import { GroupsTab } from "./admin/GroupsTab";
 import { GuildWarsTab } from "./admin/GuildWarsTab";
 import { WordWarsTab } from "./admin/WordWarsTab";
 import { SiteTab } from "./admin/SiteTab";
+import { ContactMessagesTab } from "./admin/ContactMessagesTab";
+import { GameReportsTab } from "./admin/GameReportsTab";
 
 export default function Admin() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [gameFilter, setGameFilter] = useState("all");
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   if (!isAuthenticated || !user?.isAdmin) {
     return (
@@ -34,13 +41,15 @@ export default function Admin() {
           <Shield className="h-8 w-8" /> Admin Dashboard
         </h1>
         <Tabs defaultValue="overview" data-testid="admin-tabs">
-          <TabsList className="mb-6 flex-wrap">
+          <TabsList className="mb-6 h-auto flex-wrap">
             <TabsTrigger value="overview" data-testid="tab-overview"><BarChart3 className="h-4 w-4 mr-1" />Overview</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users"><Users className="h-4 w-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
             <TabsTrigger value="groups" data-testid="tab-groups"><Users className="h-4 w-4 mr-1" />Groups</TabsTrigger>
             <TabsTrigger value="games" data-testid="tab-games"><Gamepad2 className="h-4 w-4 mr-1" />Games</TabsTrigger>
             <TabsTrigger value="comments" data-testid="tab-comments"><MessageSquare className="h-4 w-4 mr-1" />Comments</TabsTrigger>
+            <TabsTrigger value="contact" data-testid="tab-contact"><Inbox className="h-4 w-4 mr-1" />Contact</TabsTrigger>
+            <TabsTrigger value="game-reports" data-testid="tab-game-reports"><Flag className="h-4 w-4 mr-1" />Game Reports</TabsTrigger>
             <TabsTrigger value="word-wars" data-testid="tab-word-wars"><Swords className="h-4 w-4 mr-1" />Word Wars</TabsTrigger>
             <TabsTrigger value="guild-wars" data-testid="tab-guild-wars"><Swords className="h-4 w-4 mr-1" />Guild Wars</TabsTrigger>
             <TabsTrigger value="site" data-testid="tab-site"><Shield className="h-4 w-4 mr-1" />Site</TabsTrigger>
@@ -51,6 +60,8 @@ export default function Admin() {
           <TabsContent value="groups"><GroupsTab /></TabsContent>
           <TabsContent value="games"><GamesTab /></TabsContent>
           <TabsContent value="comments"><CommentsTab /></TabsContent>
+          <TabsContent value="contact"><ContactMessagesTab /></TabsContent>
+          <TabsContent value="game-reports"><GameReportsTab /></TabsContent>
           <TabsContent value="word-wars"><WordWarsTab /></TabsContent>
           <TabsContent value="guild-wars"><GuildWarsTab /></TabsContent>
           <TabsContent value="site"><SiteTab /></TabsContent>

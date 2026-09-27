@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import {
   ArrowLeft,
   GraduationCap,
@@ -27,7 +28,7 @@ interface ResultsResponse {
 
 export default function QuizResults() {
   const { code } = useParams<{ code: string }>();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -51,6 +52,10 @@ export default function QuizResults() {
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   if (!isAuthenticated) {
     return (

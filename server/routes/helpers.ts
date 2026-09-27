@@ -1,6 +1,6 @@
 import type { InsertNotification } from "@shared/schema";
 import { storage } from "../storage";
-import { pushNotifToUser } from "../notification-sse";
+import { pushNotifToUser } from "../realtime/notification-sse";
 
 export async function createNotificationIfEnabled(data: InsertNotification): Promise<void> {
   try {

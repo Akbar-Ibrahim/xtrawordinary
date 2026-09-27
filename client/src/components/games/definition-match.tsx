@@ -309,9 +309,9 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                         key="placeholder"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="tracking-[0.4em] text-muted-foreground/30 text-lg font-bold select-none"
+                        className="text-sm font-medium text-muted-foreground select-none"
                       >
-                        {"— — —"}
+                        Answer hidden
                       </motion.span>
                     )}
                   </AnimatePresence>

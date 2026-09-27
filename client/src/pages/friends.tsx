@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Share2 } from "lucide-react";
@@ -53,7 +54,7 @@ function getTabFromSearch(): TabValue {
 }
 
 export default function Friends() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -309,6 +310,10 @@ export default function Friends() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   if (!isAuthenticated) {
     return <Redirect to="/" />;

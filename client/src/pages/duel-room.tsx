@@ -12,6 +12,7 @@ import { WaitingRoomView } from "./duel-room/WaitingRoomView";
 import { CountdownView } from "./duel-room/CountdownView";
 import { SpectatorPlayingView, SpectatorGameOverView } from "./duel-room/SpectatorViews";
 import { GameOverView } from "./duel-room/GameOverView";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 
 export default function DuelRoom() {
   const [, params] = useRoute("/duel/:roomCode");
@@ -19,6 +20,7 @@ export default function DuelRoom() {
   const duel = useDuelRoom(roomCode);
   const {
     user,
+    authLoading,
     isAuthenticated,
     volume,
     setVolume,
@@ -54,6 +56,10 @@ export default function DuelRoom() {
     handleGameOver,
     handleRematch,
   } = duel;
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   // ── Not authenticated ──────────────────────────────────────────────────────
   if (!isAuthenticated) {

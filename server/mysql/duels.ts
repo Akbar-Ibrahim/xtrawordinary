@@ -1,7 +1,7 @@
 import { eq, desc, and, or, inArray, sql, lt } from "drizzle-orm";
 import type { DuelChallenge, InsertDuelChallenge, DuelSession, InsertDuelSession, DuelRating, DuelChallengeStatus } from "@shared/schema";
 import * as schema from "../db-schema";
-import { getOpenChallengeFallbackCutoff } from "../challenge-expiry";
+import { getOpenChallengeFallbackCutoff } from "../challenges/expiry";
 
 export function tsToIso(d: Date | string | null | undefined): string | null {
   if (!d) return null;

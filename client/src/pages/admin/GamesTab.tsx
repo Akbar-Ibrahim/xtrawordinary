@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,16 +9,58 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ExternalLink, Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "wouter";
-import type { Game } from "@shared/schema";
+import {
+  getGameConfigConstraint,
+  getSupportedGameConfigFields,
+  type Game,
+  type GameConfigField,
+  type GameConfigUpdate,
+} from "@shared/schema";
+
+const CONFIG_FIELD_DETAILS: Record<GameConfigField, {
+  label: string;
+  placeholder: string;
+  badge: (value: number) => string;
+  testId: string;
+}> = {
+  timeLimitSeconds: {
+    label: "Time limit (s)",
+    placeholder: "e.g. 120",
+    badge: value => `${value}s`,
+    testId: "time",
+  },
+  wordTarget: {
+    label: "Word target",
+    placeholder: "e.g. 15",
+    badge: value => `${value} words`,
+    testId: "words",
+  },
+  livesCount: {
+    label: "Lives",
+    placeholder: "e.g. 3",
+    badge: value => `${value} lives`,
+    testId: "lives",
+  },
+};
 
 function ConfigRow({ game }: { game: Game }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [timeLimit, setTimeLimit] = useState(game.timeLimitSeconds?.toString() ?? "");
-  const [wordTarget, setWordTarget] = useState(game.wordTarget?.toString() ?? "");
-  const [livesCount, setLivesCount] = useState(game.livesCount?.toString() ?? "");
-  const [survivalSecs, setSurvivalSecs] = useState(game.survivalSecondsPerWord?.toString() ?? "");
+  const supportedFields = getSupportedGameConfigFields(game.slug);
+  const [values, setValues] = useState<Record<GameConfigField, string>>({
+    timeLimitSeconds: game.timeLimitSeconds?.toString() ?? "",
+    wordTarget: game.wordTarget?.toString() ?? "",
+    livesCount: game.livesCount?.toString() ?? "",
+  });
+
+  useEffect(() => {
+    setValues({
+      timeLimitSeconds: game.timeLimitSeconds?.toString() ?? "",
+      wordTarget: game.wordTarget?.toString() ?? "",
+      livesCount: game.livesCount?.toString() ?? "",
+    });
+  }, [game.timeLimitSeconds, game.wordTarget, game.livesCount]);
 
   const configMutation = useMutation({
     mutationFn: (body: Record<string, number | null>) =>
@@ -31,19 +73,38 @@ function ConfigRow({ game }: { game: Game }) {
     onError: () => toast({ title: "Failed to save config", variant: "destructive" }),
   });
 
-  const parseVal = (s: string): number | null => {
-    const n = parseInt(s, 10);
-    return s.trim() === "" || isNaN(n) || n <= 0 ? null : n;
+  const handleSave = () => {
+    const body: GameConfigUpdate = {};
+    for (const field of supportedFields) {
+      const rawValue = values[field].trim();
+      if (rawValue === "") {
+        body[field] = null;
+        continue;
+      }
+      const value = Number(rawValue);
+      if (!Number.isInteger(value) || value <= 0) {
+        toast({
+          title: "Invalid config value",
+          description: `${CONFIG_FIELD_DETAILS[field].label} must be a positive whole number.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      const constraint = getGameConfigConstraint(game.slug, field);
+      if (constraint.max !== undefined && value > constraint.max) {
+        toast({
+          title: "Invalid config value",
+          description: `${CONFIG_FIELD_DETAILS[field].label} must be ${constraint.max} or less for this game.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      body[field] = value;
+    }
+    configMutation.mutate(body);
   };
 
-  const handleSave = () => {
-    configMutation.mutate({
-      timeLimitSeconds: parseVal(timeLimit),
-      wordTarget: parseVal(wordTarget),
-      livesCount: parseVal(livesCount),
-      survivalSecondsPerWord: parseVal(survivalSecs),
-    });
-  };
+  if (supportedFields.length === 0) return null;
 
   return (
     <>
@@ -55,10 +116,15 @@ function ConfigRow({ game }: { game: Game }) {
             data-testid={`button-config-toggle-${game.slug}`}
           >
             <Settings className="h-3 w-3" />
-            Config
-            {game.timeLimitSeconds && <Badge variant="outline" className="text-xs py-0 h-4">{game.timeLimitSeconds}s</Badge>}
-            {game.wordTarget && <Badge variant="outline" className="text-xs py-0 h-4">{game.wordTarget} words</Badge>}
-            {game.livesCount && <Badge variant="outline" className="text-xs py-0 h-4">{game.livesCount} lives</Badge>}
+            Standard play config
+            {supportedFields.map(field => {
+              const value = game[field];
+              return value ? (
+                <Badge key={field} variant="outline" className="text-xs py-0 h-4">
+                  {CONFIG_FIELD_DETAILS[field].badge(value)}
+                </Badge>
+              ) : null;
+            })}
             {open ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
           </button>
         </td>
@@ -66,55 +132,30 @@ function ConfigRow({ game }: { game: Game }) {
       {open && (
         <tr className="border-b bg-muted/20" data-testid={`config-panel-${game.slug}`}>
           <td colSpan={5} className="px-3 py-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Time limit (s)</label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 120"
-                  value={timeLimit}
-                  onChange={e => setTimeLimit(e.target.value)}
-                  className="h-8 text-sm"
-                  data-testid={`input-config-time-${game.slug}`}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Word target</label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 15"
-                  value={wordTarget}
-                  onChange={e => setWordTarget(e.target.value)}
-                  className="h-8 text-sm"
-                  data-testid={`input-config-words-${game.slug}`}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Lives</label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 3"
-                  value={livesCount}
-                  onChange={e => setLivesCount(e.target.value)}
-                  className="h-8 text-sm"
-                  data-testid={`input-config-lives-${game.slug}`}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground font-medium">Survival sec/word</label>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder="e.g. 8"
-                  value={survivalSecs}
-                  onChange={e => setSurvivalSecs(e.target.value)}
-                  className="h-8 text-sm"
-                  data-testid={`input-config-survival-${game.slug}`}
-                />
-              </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              These defaults apply to standard play. Challenges, quizzes, and group rounds use their own settings.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {supportedFields.map(field => {
+                const details = CONFIG_FIELD_DETAILS[field];
+                const constraint = getGameConfigConstraint(game.slug, field);
+                return (
+                  <div key={field} className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">{details.label}</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={constraint.max}
+                      step={1}
+                      placeholder={details.placeholder}
+                      value={values[field]}
+                      onChange={event => setValues(current => ({ ...current, [field]: event.target.value }))}
+                      className="h-8 text-sm"
+                      data-testid={`input-config-${details.testId}-${game.slug}`}
+                    />
+                  </div>
+                );
+              })}
             </div>
             <div className="flex items-center gap-2 mt-3">
               <Button
@@ -127,7 +168,7 @@ function ConfigRow({ game }: { game: Game }) {
                 {configMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 Save
               </Button>
-              <p className="text-xs text-muted-foreground">Leave blank to clear (no limit)</p>
+              <p className="text-xs text-muted-foreground">Leave blank to reset to the built-in default</p>
             </div>
           </td>
         </tr>
@@ -193,11 +234,11 @@ export function GamesTab() {
             </thead>
             <tbody>
               {games.map((g) => (
-                <>
-                  <tr key={g.slug} className="border-b hover:bg-muted/50" data-testid={`game-row-${g.slug}`}>
+                <Fragment key={g.slug}>
+                  <tr className="border-b hover:bg-muted/50" data-testid={`game-row-${g.slug}`}>
                     <td className="py-3 px-2 font-medium">
                       <Link
-                        href={`/games/${g.slug}`}
+                        href={`/game/${g.slug}`}
                         className="inline-flex items-center gap-1 hover:text-primary hover:underline"
                         data-testid={`link-game-${g.slug}`}
                       >
@@ -225,8 +266,8 @@ export function GamesTab() {
                       />
                     </td>
                   </tr>
-                  <ConfigRow key={`${g.slug}-config`} game={g} />
-                </>
+                  <ConfigRow game={g} />
+                </Fragment>
               ))}
             </tbody>
           </table>

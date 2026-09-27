@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import type { DuelChallengeStatus } from "@shared/schema";
 import { createNotificationIfEnabled } from "./helpers";
-import { getOpenChallengeExpiresAt, isOpenChallengeExpired } from "../challenge-expiry";
+import { getOpenChallengeExpiresAt, isOpenChallengeExpired } from "../challenges/expiry";
 
 function formatDuelVariationServer(gameSlug: string, startWord: string | null | undefined): string | null {
   if (!startWord) return null;
@@ -127,7 +127,7 @@ export function registerDuelsRoutes(app: Express): void {
           return res.status(404).json({ error: "Target player not found" });
         }
       }
-      const { duelRegistry } = await import("../duel-ws");
+      const { duelRegistry } = await import("../realtime/duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
         gameSlug, challengerId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit, overrideStartWord,
       );
@@ -258,14 +258,14 @@ export function registerDuelsRoutes(app: Express): void {
       if (isOpenChallengeExpired(challenge.createdAt, challenge.expiresAt)) {
         await storage.updateDuelChallengeStatus(id, "expired");
         if (challenge.roomCode) {
-          const { duelRegistry } = await import("../duel-ws");
+          const { duelRegistry } = await import("../realtime/duel-ws");
           duelRegistry.notifyChallengeCancelled(challenge.roomCode, "expired");
         }
         return res.status(410).json({ error: "Challenge has expired" });
       }
       let roomCode = challenge.roomCode;
       if (!roomCode) {
-        const { duelRegistry } = await import("../duel-ws");
+        const { duelRegistry } = await import("../realtime/duel-ws");
         const created = duelRegistry.createRoom(
           challenge.gameSlug,
           challenge.challengerId,
@@ -315,7 +315,7 @@ export function registerDuelsRoutes(app: Express): void {
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "declined");
       if (challenge.roomCode) {
-        const { duelRegistry } = await import("../duel-ws");
+        const { duelRegistry } = await import("../realtime/duel-ws");
         duelRegistry.notifyChallengeCancelled(challenge.roomCode, "declined");
       }
       res.json(updated);
@@ -334,7 +334,7 @@ export function registerDuelsRoutes(app: Express): void {
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       const updated = await storage.updateDuelChallengeStatus(id, "cancelled");
       if (challenge.roomCode) {
-        const { duelRegistry } = await import("../duel-ws");
+        const { duelRegistry } = await import("../realtime/duel-ws");
         duelRegistry.notifyChallengeCancelled(challenge.roomCode, "cancelled");
       }
       res.json(updated);
@@ -345,7 +345,7 @@ export function registerDuelsRoutes(app: Express): void {
 
   app.get("/api/duels/live", requireAuth, async (_req, res) => {
     try {
-      const { duelRegistry } = await import("../duel-ws");
+      const { duelRegistry } = await import("../realtime/duel-ws");
       res.json(duelRegistry.getActiveLiveRooms());
     } catch (err) {
       console.error(err);
@@ -364,7 +364,7 @@ export function registerDuelsRoutes(app: Express): void {
       const isOpenChallenge = challenge.challengeeId === null;
 
       if (!isParticipant && !isOpenChallenge) {
-        const { duelRegistry: reg } = await import("../duel-ws");
+        const { duelRegistry: reg } = await import("../realtime/duel-ws");
         const liveRoom = reg.getRoom(roomCode);
         if (!liveRoom || liveRoom.status !== "playing") {
           return res.status(403).json({ error: "Not a participant" });
@@ -380,7 +380,7 @@ export function registerDuelsRoutes(app: Express): void {
       ) {
         return res.status(410).json({ error: `This challenge has been ${challenge.status}` });
       }
-      const { duelRegistry } = await import("../duel-ws");
+      const { duelRegistry } = await import("../realtime/duel-ws");
       const room =
         duelRegistry.getRoom(roomCode) ??
         duelRegistry.restoreRoom(

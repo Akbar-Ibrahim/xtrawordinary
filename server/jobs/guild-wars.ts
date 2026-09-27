@@ -4,7 +4,7 @@ import { log } from "../logger";
 async function runGuildWarsJobs() {
   try {
     const st = getStorage();
-    const { executeGuildBracketDraw, checkAndForfeitExpiredGuildMatches } = await import("../guild-wars-engine");
+    const { executeGuildBracketDraw, checkAndForfeitExpiredGuildMatches } = await import("../tournaments/guild-wars-engine");
     const tournaments = await st.listGuildWarsTournaments();
     const now = new Date();
 

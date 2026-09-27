@@ -54,7 +54,7 @@ export function registerHuddleRoutes(app: Express): void {
       if (alreadyPending) {
         return res.status(409).json({ error: "There is already a pending huddle challenge between these groups" });
       }
-      const { duelRegistry } = await import("../duel-ws");
+      const { duelRegistry } = await import("../realtime/duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
         gameSlug, userId, duelFormat, parsedRaceTarget, parsedRaceTimeLimit,
       );
@@ -193,7 +193,7 @@ export function registerHuddleRoutes(app: Express): void {
         return res.status(403).json({ error: "Only admins of the challenged group can decline" });
       }
       if (huddle.roomCode) {
-        const { duelRegistry } = await import("../duel-ws");
+        const { duelRegistry } = await import("../realtime/duel-ws");
         duelRegistry.notifyChallengeCancelled(huddle.roomCode, "declined");
       }
       const updated = await storage.updateHuddleChallenge(id, { status: "declined" });
@@ -216,7 +216,7 @@ export function registerHuddleRoutes(app: Express): void {
         return res.status(403).json({ error: "Only admins of the challenger group can cancel" });
       }
       if (huddle.roomCode) {
-        const { duelRegistry } = await import("../duel-ws");
+        const { duelRegistry } = await import("../realtime/duel-ws");
         duelRegistry.notifyChallengeCancelled(huddle.roomCode, "cancelled");
       }
       const updated = await storage.updateHuddleChallenge(id, { status: "cancelled" });

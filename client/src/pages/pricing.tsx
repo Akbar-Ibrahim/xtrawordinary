@@ -4,9 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
-import { AuthModal } from "@/components/auth-modal";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 
 const individualFeatures = [
   "Unlimited plays across all games",
@@ -52,16 +49,16 @@ const comparisonRows: { feature: string; individual: boolean; family: boolean }[
 
 const faqs = [
   {
-    q: "Can I cancel at any time?",
-    a: "Yes. You can cancel your subscription at any time from your account settings. You'll keep access until the end of your current billing period.",
+    q: "When will Premium be available?",
+    a: "We're still preparing Premium membership and billing. We'll share availability and pricing when everything is ready.",
   },
   {
-    q: "What happens to my stats and progress if I cancel?",
-    a: "Your account, stats, achievements, and game history are always yours. Cancelling simply returns you to the free experience — nothing is deleted.",
+    q: "Will my existing stats and progress be affected?",
+    a: "No. Your account, stats, achievements, and game history will remain yours when Premium launches.",
   },
   {
     q: "Does the Family plan count as multiple accounts?",
-    a: "No — the Family plan is one subscription billed to one account. Child profiles live under the parent account and do not have their own logins.",
+    a: "The planned Family membership will use one account with child profiles managed under the parent account.",
   },
   {
     q: "Is the daily challenge always free?",
@@ -69,59 +66,19 @@ const faqs = [
   },
   {
     q: "Do you offer a free trial?",
-    a: "We're working on it. Check back soon — we plan to offer a trial period before charging.",
+    a: "Trial options will be announced when Premium membership and billing are ready.",
   },
 ];
 
 export default function Pricing() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
-  const { user, isAuthenticated, refreshUser } = useAuth();
-  const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
   const isPremium = isAuthenticated && user?.isPremium;
-
-  async function handleActivate() {
-    if (!isAuthenticated) {
-      setAuthOpen(true);
-      return;
-    }
-    setUpgrading(true);
-    try {
-      await apiRequest("POST", "/api/users/me/upgrade-premium");
-      await refreshUser();
-      toast({ title: "You're now Premium!", description: "All premium features are now unlocked." });
-    } catch {
-      toast({ title: "Something went wrong", variant: "destructive" });
-    } finally {
-      setUpgrading(false);
-    }
-  }
-
-  const activateButton = (
-    <Button
-      className="w-full gap-2 bg-amber-500 hover:bg-amber-600 text-white border-0"
-      size="lg"
-      onClick={handleActivate}
-      disabled={upgrading || isPremium}
-      data-testid="button-activate-premium"
-    >
-      <Crown className="h-4 w-4" />
-      {isPremium
-        ? "Already active"
-        : upgrading
-        ? "Activating…"
-        : isAuthenticated
-        ? "Activate — free while in beta"
-        : "Sign in to activate"}
-    </Button>
-  );
 
   return (
     <div className="min-h-screen bg-background">
       <PageSEO title="Premium Pricing" description="Unlock Premium features on xtraWordinary — custom game modes, exclusive stats, and more." path="/pricing" />
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
 
       {/* Hero */}
       <section className="pt-16 pb-10 px-4 text-center">
@@ -133,7 +90,7 @@ export default function Pricing() {
             Unlock the full experience
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            All 24 games are free to try. Upgrade to play without limits, climb the leaderboard, and get every feature we build.
+            Premium membership is coming soon. Explore the planned benefits for individuals, families, teachers, and schools.
           </p>
           {isPremium && (
             <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-100 dark:bg-amber-900/40 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -157,13 +114,6 @@ export default function Pricing() {
               <h2 className="text-xl font-bold text-foreground">Individual</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-6">Everything you need to play seriously and compete.</p>
-
-            {/* <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$3</span>
-              <span className="text-muted-foreground ml-1">/ month</span>
-            </div> */}
-
-            {/* <div className="mb-8">{activateButton}</div> */}
 
             <ul className="space-y-3 flex-1">
               {individualFeatures.map((f) => (
@@ -191,13 +141,6 @@ export default function Pricing() {
             </div>
             <p className="text-sm text-muted-foreground mb-6">One plan for the whole household. Up to 5 profiles.</p>
 
-            {/* <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$8</span>
-              <span className="text-muted-foreground ml-1">/ month</span>
-            </div> */}
-
-            {/* <div className="mb-8">{activateButton}</div> */}
-
             <ul className="space-y-3 flex-1">
               <li className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Everything in Individual, plus:</li>
               {familyExtras.map((f) => (
@@ -212,7 +155,7 @@ export default function Pricing() {
 
         {/* Beta notice */}
         <p className="text-center text-xs text-muted-foreground mt-6 max-w-md mx-auto">
-          Payments are not yet active. Both plans grant the same full Premium access while we're in beta. Pricing will be enforced once billing is live.
+          Pricing and Premium activation are not yet available. These plan details are a preview while billing is being prepared.
         </p>
       </section>
 
@@ -281,7 +224,6 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground">Teacher Plan</h3>
-                    {/* <p className="text-xs text-muted-foreground">~$10–15 / month per teacher</p> */}
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm text-foreground mb-6">
@@ -311,7 +253,6 @@ export default function Pricing() {
                   </div>
                   <div>
                     <h3 className="font-bold text-foreground">School License</h3>
-                    {/* <p className="text-xs text-muted-foreground">~$500–2,000 / year per school</p> */}
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm text-foreground mb-6">

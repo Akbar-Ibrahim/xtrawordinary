@@ -774,7 +774,7 @@ export default function Leaderboard() {
   const [gameFilter, setGameFilter] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [view, setView] = useState<LeaderboardView>("global");
-  const { user } = useAuth();
+  const { user, status } = useAuth();
 
   useEffect(() => {
     const gameParam = new URLSearchParams(search).get("game");
@@ -969,7 +969,13 @@ export default function Leaderboard() {
                   </div>
                 )}
 
-                {isStreaks ? (
+                {status === "loading" ? (
+                  <div className="space-y-3" data-testid="leaderboard-auth-loading">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
+                ) : isStreaks ? (
                   <StreakLeaderboard user={user} onSignIn={() => setAuthOpen(true)} />
                 ) : hasModes ? (
                   <ModeTabs

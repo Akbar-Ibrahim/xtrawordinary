@@ -13,7 +13,12 @@ import {
   Trophy,
   Undo2,
 } from "lucide-react";
-import type { WordFusionPuzzle, WordFusionValidationResponse } from "@shared/schema";
+import {
+  getEffectiveWordFusionTarget,
+  isCurrentWordFusionSubmission,
+  type WordFusionPuzzle,
+  type WordFusionValidationResponse,
+} from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +44,7 @@ import {
 } from "./word-fusion-input";
 
 const DEFAULT_TIME = 90;
-const TARGET_ROUNDS = 5;
+const DEFAULT_TARGET_ROUNDS = 5;
 
 type Feedback = { type: "correct" | "wrong"; message: string } | null;
 type RoundResult = { answer: string; canonicalWord: string; points: number; exact: boolean };
@@ -49,17 +54,20 @@ export function WordFusionGame({
   locked,
   isUntimed,
   timeLimitSeconds,
+  wordTarget,
 }: {
   groupSeed?: number;
   locked?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
+  wordTarget?: number;
 } = {}) {
   const { user } = useAuth();
   const { playSound } = useSound();
   const { reportResult, resetRecorded } = useGameResult({ slug: "word-fusion", isUntimed });
   const personalBest = usePersonalBest("word-fusion");
   const totalTime = timeLimitSeconds ?? DEFAULT_TIME;
+  const requestedRoundCount = wordTarget ?? DEFAULT_TARGET_ROUNDS;
 
   const [round, setRound] = useState(0);
   const [score, setScore] = useState(0);
@@ -78,17 +86,22 @@ export function WordFusionGame({
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerInputRef = useRef<HTMLInputElement>(null);
   const gameActiveRef = useRef(true);
+  const runRef = useRef(0);
+  const validationRequestRef = useRef(0);
   const roundRef = useRef(0);
+  const activeCombinationIdRef = useRef<number | null>(null);
 
   const { data: puzzles, isLoading, isError, refetch } = useQuery<WordFusionPuzzle[]>({
-    queryKey: ["/api/games/word-fusion/puzzles", groupSeed],
+    queryKey: ["/api/games/word-fusion/puzzles", groupSeed, requestedRoundCount],
     queryFn: async () => {
-      const query = groupSeed === undefined ? "" : `?seed=${groupSeed}`;
-      const response = await fetch(`/api/games/word-fusion/puzzles${query}`);
+      const params = new URLSearchParams({ limit: String(requestedRoundCount) });
+      if (groupSeed !== undefined) params.set("seed", String(groupSeed));
+      const response = await fetch(`/api/games/word-fusion/puzzles?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to load Word Fusion puzzles");
       return response.json();
     },
   });
+  const targetRounds = getEffectiveWordFusionTarget(requestedRoundCount, puzzles?.length ?? 0);
 
   const basePuzzle = puzzles?.[round];
   const activeCombination = useMemo(() => {
@@ -97,6 +110,7 @@ export function WordFusionGame({
     return alternate ? { ...basePuzzle, id: alternate.id, components: alternate.components } : basePuzzle;
   }, [basePuzzle, alternateIndex]);
   const answer = typedAnswer || selectedTiles.map(tile => tile.letter).join("");
+  activeCombinationIdRef.current = activeCombination?.id ?? null;
   const totalLetters = activeCombination?.components.reduce((sum, component) => sum + component.length, 0) ?? 0;
   const selectedIds = useMemo(() => new Set(selectedTiles.map(tile => tile.id)), [selectedTiles]);
 
@@ -118,7 +132,7 @@ export function WordFusionGame({
 
   useEffect(() => {
     if (status !== "ended") return;
-    const won = results.length >= Math.min(TARGET_ROUNDS, puzzles?.length ?? TARGET_ROUNDS);
+    const won = results.length >= targetRounds;
     reportResult(score, won, results.length);
     setCompletionMessage(getCompletionMessage(won));
     playSound(won ? "win" : "lose");
@@ -155,7 +169,7 @@ export function WordFusionGame({
     clearAnswer();
     setAlternateIndex(-1);
     setRefreshUsed(false);
-    if (nextRound >= Math.min(TARGET_ROUNDS, puzzles?.length ?? 0)) {
+    if (nextRound >= targetRounds) {
       gameActiveRef.current = false;
       setStatus("ended");
     } else {
@@ -179,6 +193,9 @@ export function WordFusionGame({
 
     const submittedRound = roundRef.current;
     const submittedCombinationId = activeCombination.id;
+    const submittedRun = runRef.current;
+    const submittedRequest = validationRequestRef.current + 1;
+    validationRequestRef.current = submittedRequest;
     setValidating(true);
     try {
       const response = await apiRequest("POST", "/api/games/word-fusion/validate", {
@@ -186,11 +203,21 @@ export function WordFusionGame({
         answer,
       });
       const result = await response.json() as WordFusionValidationResponse;
-      if (
-        !gameActiveRef.current ||
-        roundRef.current !== submittedRound ||
-        activeCombination.id !== submittedCombinationId
-      ) return;
+      if (!isCurrentWordFusionSubmission(
+        gameActiveRef.current,
+        {
+          run: submittedRun,
+          request: submittedRequest,
+          round: submittedRound,
+          combinationId: submittedCombinationId,
+        },
+        {
+          run: runRef.current,
+          request: validationRequestRef.current,
+          round: roundRef.current,
+          combinationId: activeCombinationIdRef.current,
+        },
+      )) return;
       if (!result.valid || !result.canonicalWord) {
         setStreak(0);
         setFeedback({ type: "wrong", message: "Those letters do not form this answer. Try another order." });
@@ -220,7 +247,21 @@ export function WordFusionGame({
       playSound("correct");
       advanceTimerRef.current = setTimeout(moveToNextRound, 1300);
     } catch {
-      if (!gameActiveRef.current || roundRef.current !== submittedRound) return;
+      if (!isCurrentWordFusionSubmission(
+        gameActiveRef.current,
+        {
+          run: submittedRun,
+          request: submittedRequest,
+          round: submittedRound,
+          combinationId: submittedCombinationId,
+        },
+        {
+          run: runRef.current,
+          request: validationRequestRef.current,
+          round: roundRef.current,
+          combinationId: activeCombinationIdRef.current,
+        },
+      )) return;
       setFeedback({ type: "wrong", message: "Could not check that answer. Please try again." });
       playSound("wrong");
       setTimeout(() => {
@@ -228,7 +269,23 @@ export function WordFusionGame({
         focusAnswerInput();
       }, 1400);
     } finally {
-      setValidating(false);
+      if (isCurrentWordFusionSubmission(
+        gameActiveRef.current,
+        {
+          run: submittedRun,
+          request: submittedRequest,
+          round: submittedRound,
+          combinationId: submittedCombinationId,
+        },
+        {
+          run: runRef.current,
+          request: validationRequestRef.current,
+          round: roundRef.current,
+          combinationId: activeCombinationIdRef.current,
+        },
+      )) {
+        setValidating(false);
+      }
     }
   }, [activeCombination, answer, feedback, validating, status, totalLetters, streak, round, puzzles, focusAnswerInput]);
 
@@ -243,6 +300,8 @@ export function WordFusionGame({
   const restart = () => {
     if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     resetRecorded();
+    runRef.current += 1;
+    validationRequestRef.current += 1;
     gameActiveRef.current = true;
     roundRef.current = 0;
     setRound(0);
@@ -254,6 +313,7 @@ export function WordFusionGame({
     setCompletionMessage("");
     setAlternateIndex(-1);
     setRefreshUsed(false);
+    setValidating(false);
     resetRound();
     refetch();
   };
@@ -271,7 +331,7 @@ export function WordFusionGame({
   }
 
   if (status === "ended") {
-    const won = results.length >= Math.min(TARGET_ROUNDS, puzzles.length);
+    const won = results.length >= targetRounds;
     return (
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
         <Card>
@@ -335,7 +395,7 @@ export function WordFusionGame({
           <Card>
             <CardContent className="space-y-5 p-5 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Badge variant="secondary">Round {round + 1}/{Math.min(TARGET_ROUNDS, puzzles.length)}</Badge>
+                <Badge variant="secondary">Round {round + 1}/{targetRounds}</Badge>
                 <span className="text-sm text-muted-foreground">PB: <strong className="text-foreground">{personalBest || "—"}</strong></span>
               </div>
               <div className="space-y-1 text-center">

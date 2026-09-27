@@ -2,14 +2,14 @@ import type { Express, Request } from "express";
 import { analyticsClientEventSchema } from "@shared/schema";
 import { storage } from "../storage";
 import { requireAdmin } from "../auth";
-import { recordAnalyticsEventSafely } from "../analytics-events";
+import { recordAnalyticsEventSafely } from "../analytics/analytics-events";
 import {
   getExistingAnalyticsIdentity,
   getOrCreateAnalyticsIdentity,
   namespacedDedupeKey,
-} from "../analytics-identity";
+} from "../analytics/analytics-identity";
 import type { AnalyticsReportFilters } from "@shared/schema";
-import { analyticsReportToCsv } from "../analytics-export";
+import { analyticsReportToCsv } from "../analytics/analytics-export";
 
 function isDateKey(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());

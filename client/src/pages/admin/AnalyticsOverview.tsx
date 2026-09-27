@@ -1,20 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import type { AnalyticsReport, Game } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AnalyticsAudience,
-  AnalyticsComparison,
-  AnalyticsDailyTable,
-  AnalyticsFunnel,
-  AnalyticsGames,
-  AnalyticsRetention,
-  AnalyticsToolbar,
-  AnalyticsTrends,
-} from "./analytics";
+import { AnalyticsToolbar } from "./analytics";
+import { AnalyticsSections } from "./analytics/AnalyticsSections";
+import type { AdminOverviewStats } from "./analytics/AnalyticsSiteTotals";
 import { buildAnalyticsQuery } from "./analytics/query";
 
 function dateKey(date: Date): string {
@@ -28,7 +20,13 @@ function recentRange(days: number): { startDate: string; endDate: string } {
   return { startDate: dateKey(start), endDate: dateKey(end) };
 }
 
-export function AnalyticsOverview({ games }: { games: Game[] }) {
+export function AnalyticsOverview({
+  games,
+  stats,
+}: {
+  games: Game[];
+  stats?: AdminOverviewStats;
+}) {
   const initialRange = useMemo(() => recentRange(7), []);
   const [startDate, setStartDate] = useState(initialRange.startDate);
   const [endDate, setEndDate] = useState(initialRange.endDate);
@@ -43,6 +41,7 @@ export function AnalyticsOverview({ games }: { games: Game[] }) {
   const { data, isLoading, isFetching, error, refetch } = useQuery<AnalyticsReport>({
     queryKey: [reportUrl],
     enabled: startDate <= endDate,
+    refetchOnMount: "always",
   });
 
   const applyRange = (days: number) => {
@@ -98,23 +97,22 @@ export function AnalyticsOverview({ games }: { games: Game[] }) {
         onExport={() => void exportCsv()}
       />
 
-      {error ? (
-        <Card><CardContent className="py-10 text-center text-sm text-destructive">Analytics could not be loaded for this date range and filter.</CardContent></Card>
-      ) : isLoading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-      ) : data ? (
-        <>
-          <AnalyticsComparison comparison={data.comparison} />
-          <AnalyticsTrends report={data} />
-          <div className="grid gap-6 lg:grid-cols-2">
-            <AnalyticsFunnel funnel={data.funnel} />
-            <AnalyticsAudience audience={data.audience} />
-          </div>
-          <AnalyticsRetention cohorts={data.retention} />
-          <AnalyticsGames games={data.games} catalog={games} />
-          <AnalyticsDailyTable days={data.daily} />
-        </>
-      ) : null}
+      {data && !error && (
+        <Card data-testid="card-retained-unique-visitors">
+          <CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">Total unique visitors in stored history</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Distinct tracked visitors across available analytics records, regardless of the date and game filters above. Records are kept for up to 730 days; this is not an all-time count.
+              </p>
+            </div>
+            <strong className="shrink-0 text-3xl tabular-nums" data-testid="total-retained-unique-visitors">
+              {data.uniqueVisitorsInRetainedHistory.toLocaleString()}
+            </strong>
+          </CardContent>
+        </Card>
+      )}
+      <AnalyticsSections report={data} games={games} stats={stats} isLoading={isLoading} hasError={!!error} />
     </div>
   );
 }

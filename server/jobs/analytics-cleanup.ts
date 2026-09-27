@@ -1,6 +1,6 @@
 import { getStorage } from "../storage";
 import { log } from "../logger";
-import { analyticsRetentionDays } from "../analytics";
+import { analyticsRetentionDays } from "../analytics/analytics";
 
 export const ANALYTICS_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 

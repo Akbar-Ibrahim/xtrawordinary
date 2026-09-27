@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GraduationCap, ArrowLeft, LogIn } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
 import type { Game } from "@shared/schema";
 
@@ -62,11 +63,7 @@ export default function CreateQuiz() {
   const quizGames = allGames.filter((g) => QUIZ_MASTER_GAME_SLUGS.has(g.slug));
 
   if (authLoading) {
-    return (
-      <div className="container mx-auto px-4 py-12 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
+    return <AuthLoadingState />;
   }
 
   if (!isAuthenticated) {

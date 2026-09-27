@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../auth";
-import { executeGuildBracketDraw } from "../guild-wars-engine";
-import { pushNotifToUser } from "../notification-sse";
+import { executeGuildBracketDraw } from "../tournaments/guild-wars-engine";
+import { pushNotifToUser } from "../realtime/notification-sse";
 
 export function registerGuildWarsRoutes(app: Express): void {
   app.post("/api/guild-wars", requireAuth, requireAdmin, async (req, res) => {
@@ -277,7 +277,7 @@ export function registerGuildWarsRoutes(app: Express): void {
           return res.status(400).json({ error: "Series is already decided" });
         }
       }
-      const { duelRegistry } = await import("../duel-ws");
+      const { duelRegistry } = await import("../realtime/duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
         matchGame.gameSlug, reg1.registeredBy, "race", 10, 180,
       );

@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import type { Game, GameMode } from "@shared/schema";
+import type { Game, GameConfigUpdate, GameMode } from "@shared/schema";
 import * as schema from "../db-schema";
 
 export function mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
@@ -39,16 +39,14 @@ export function mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
     ...(row.timeLimitSeconds != null ? { timeLimitSeconds: row.timeLimitSeconds } : {}),
     ...(row.wordTarget != null ? { wordTarget: row.wordTarget } : {}),
     ...(row.livesCount != null ? { livesCount: row.livesCount } : {}),
-    ...(row.survivalSecondsPerWord != null ? { survivalSecondsPerWord: row.survivalSecondsPerWord } : {}),
   };
 }
 
-export async function updateGameConfig(db: any, slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void> {
+export async function updateGameConfig(db: any, slug: string, config: GameConfigUpdate): Promise<void> {
   const updateData: Record<string, number | null> = {};
   if ("timeLimitSeconds" in config) updateData.timeLimitSeconds = config.timeLimitSeconds ?? null;
   if ("wordTarget" in config) updateData.wordTarget = config.wordTarget ?? null;
   if ("livesCount" in config) updateData.livesCount = config.livesCount ?? null;
-  if ("survivalSecondsPerWord" in config) updateData.survivalSecondsPerWord = config.survivalSecondsPerWord ?? null;
   if (Object.keys(updateData).length > 0) {
     await db.update(schema.games).set(updateData).where(eq(schema.games.slug, slug));
   }

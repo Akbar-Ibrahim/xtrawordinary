@@ -1,7 +1,8 @@
-import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsReport } from "@shared/schema";
+import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply } from "@shared/schema";
 
 import { isMySQLStorageEnabled } from "./storage-config";
 import type { AnalyticsReportFilters } from "@shared/schema";
+import type { GameReport, InsertGameReport } from "@shared/schema";
 
 export type LengthConstraint = {
   length: number;
@@ -23,7 +24,7 @@ export interface IStorage {
   getGames(): Promise<Game[]>;
   getAllGames(): Promise<Game[]>;
   setGameActive(slug: string, isActive: boolean): Promise<void>;
-  updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void>;
+  updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
   getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]>;
@@ -126,6 +127,14 @@ export interface IStorage {
   getAnalyticsReport(startDate: string, endDate: string, filters?: AnalyticsReportFilters): Promise<AnalyticsReport>;
   cleanupAnalyticsEvents(): Promise<number>;
   getAllLeaderboardEntries(): Promise<LeaderboardEntry[]>;
+  createContactMessage(data: InsertContactMessage): Promise<ContactMessage>;
+  getContactMessage(id: number): Promise<ContactMessage | undefined>;
+  getContactMessages(): Promise<ContactMessage[]>;
+  markContactMessageRead(id: number): Promise<boolean>;
+  createContactMessageReply(data: InsertContactMessageReply): Promise<ContactMessageReply>;
+  createGameReport(data: InsertGameReport): Promise<GameReport>;
+  getGameReports(): Promise<GameReport[]>;
+  markGameReportRead(id: number): Promise<boolean>;
 
   getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>>;
   searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>>;

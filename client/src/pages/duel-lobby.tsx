@@ -499,7 +499,7 @@ function LiveNowSection() {
 
 export default function DuelLobby() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [gameFilter, setGameFilter] = useState<string>("all");
   const [joiningId, setJoiningId] = useState<number | null>(null);
@@ -511,6 +511,7 @@ export default function DuelLobby() {
   const handleLobbyTabArrow = useArrowKeyNav();
 
   function handleDuelPlay(slug: string) {
+    if (status === "loading") return;
     if (!isAuthenticated) {
       openAuth("signup");
     } else {
@@ -802,7 +803,9 @@ export default function DuelLobby() {
               )}
             </div>
 
-            {!isAuthenticated ? (
+            {status === "loading" ? (
+              <Skeleton className="h-48 w-full rounded-xl" data-testid="duel-lobby-auth-loading" />
+            ) : !isAuthenticated ? (
               <div className="space-y-4">
             {/* Sign-up CTA */}
             <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/60 dark:bg-violet-950/20" data-testid="card-guest-signup-cta">

@@ -4,7 +4,7 @@ import { log } from "../logger";
 async function runWordWarsJobs() {
   try {
     const st = getStorage();
-    const { executeBracketDraw } = await import("../word-wars-engine");
+    const { executeBracketDraw } = await import("../tournaments/word-wars-engine");
     const tournaments = await st.listWordWarsTournaments();
     const now = new Date();
 

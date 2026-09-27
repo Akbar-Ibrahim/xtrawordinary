@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +114,7 @@ function TeamPanel({ name, count, target, players, groupId, isYourTeam }: {
 
 export default function TeamRaceRoom() {
   const { roomCode } = useParams<{ roomCode: string }>();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
 
   const { data: roomInfo, isLoading: roomLoading } = useQuery<RoomInfo>({
     queryKey: ["/api/team-races", roomCode, "room"],
@@ -123,6 +124,7 @@ export default function TeamRaceRoom() {
       return res.json();
     },
     retry: false,
+    enabled: isAuthenticated,
   });
 
   const [phase, setPhase] = useState<"connecting" | "waiting" | "countdown" | "playing" | "over">("connecting");
@@ -322,6 +324,10 @@ export default function TeamRaceRoom() {
       wsRef.current.send(JSON.stringify({ type: "team:start" }));
     }
   };
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   if (!user) {
     return (

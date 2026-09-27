@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLoadingState } from "@/components/auth-loading-state";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, Users, Swords, Trophy, ChevronLeft } from "lucide-react";
@@ -58,7 +59,7 @@ const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => [
 ]);
 
 export default function NotificationSettings() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
 
   const { data: notifPrefs, isLoading } = useQuery<Record<NotificationType, boolean>>({
@@ -120,6 +121,10 @@ export default function NotificationSettings() {
 
   const allEnabled = notifPrefs ? ALL_TYPES.every((t) => notifPrefs[t]) : true;
   const someEnabled = notifPrefs ? ALL_TYPES.some((t) => notifPrefs[t]) : true;
+
+  if (authLoading) {
+    return <AuthLoadingState />;
+  }
 
   if (!isAuthenticated) {
     return (

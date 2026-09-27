@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, mediumtext, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum, tinyint, char } from "drizzle-orm/mysql-core";
+import { mysqlTable, int, varchar, text, mediumtext, boolean, timestamp, json, bigint, index, uniqueIndex, primaryKey, mysqlEnum, tinyint, char, foreignKey } from "drizzle-orm/mysql-core";
 import type { GameMode } from "@shared/schema";
 
 export const users = mysqlTable("users", {
@@ -794,3 +794,45 @@ export const siteSettings = mysqlTable("site_settings", {
   value: text("value").notNull(),
   updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
 });
+
+export const contactMessages = mysqlTable("contact_messages", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 120 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 160 }),
+  message: text("message").notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("contact_messages_created_at_idx").on(table.createdAt),
+  index("contact_messages_read_at_idx").on(table.readAt),
+]);
+
+export const contactMessageReplies = mysqlTable("contact_message_replies", {
+  id: int("id").primaryKey().autoincrement(),
+  contactMessageId: int("contact_message_id").notNull(),
+  message: text("message").notNull(),
+  sentByAdminId: int("sent_by_admin_id").notNull(),
+  sentByAdminName: varchar("sent_by_admin_name", { length: 255 }).notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+}, (table) => [
+  foreignKey({
+    name: "contact_replies_message_fk",
+    columns: [table.contactMessageId],
+    foreignColumns: [contactMessages.id],
+  }).onDelete("cascade"),
+  index("contact_message_replies_message_id_idx").on(table.contactMessageId),
+  index("contact_message_replies_sent_at_idx").on(table.sentAt),
+]);
+
+export const gameReports = mysqlTable("game_reports", {
+  id: int("id").primaryKey().autoincrement(),
+  gameSlug: varchar("game_slug", { length: 100 }).notNull(),
+  message: text("message").notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("game_reports_game_slug_idx").on(table.gameSlug),
+  index("game_reports_created_at_idx").on(table.createdAt),
+  index("game_reports_read_at_idx").on(table.readAt),
+]);

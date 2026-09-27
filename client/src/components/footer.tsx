@@ -28,6 +28,11 @@ export function Footer() {
               Pricing
             </span>
           </Link>
+          <Link href="/contact">
+            <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-contact">
+              Contact
+            </span>
+          </Link>
           <Link href="/privacy">
             <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-privacy">
               Privacy

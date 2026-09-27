@@ -1,7 +1,7 @@
 import { PageSEO } from "@/components/page-seo";
 
 export default function Privacy() {
-  const lastUpdated = "August 27, 2026";
+  const lastUpdated = "September 17, 2026";
 
   return (
     <>
@@ -46,6 +46,11 @@ export default function Privacy() {
               We receive your name and email address from Google. No other Google account data is
               accessed. We do not post to your Google account on your behalf.
             </p>
+            <h3 className="text-base font-medium mb-2 mt-4">If you contact us</h3>
+            <p>
+              We collect the name, email address, optional subject, and message you submit through
+              our contact form so our team can review your enquiry and respond when appropriate.
+            </p>
           </section>
 
           <section>
@@ -57,6 +62,7 @@ export default function Privacy() {
               <li>To track your progress, streaks, and achievements across sessions.</li>
               <li>To enable social features such as friend challenges, groups, and multiplayer duels.</li>
               <li>To measure daily visitors, sessions, registrations, game starts, and game completion rates so we can improve the service.</li>
+              <li>To review and respond to questions, feedback, and support requests you send us.</li>
             </ul>
           </section>
 
@@ -117,6 +123,8 @@ export default function Privacy() {
               (approximately 24 months) and are automatically deleted after the configured retention
               period. Administrator reports and CSV exports contain aggregate counts rather than raw
               visitor or session identifiers.
+              Contact messages are retained only as long as reasonably needed to address the
+              enquiry and maintain appropriate support records.
             </p>
           </section>
 
@@ -151,8 +159,8 @@ export default function Privacy() {
             <h2 className="text-xl font-semibold mb-3">12. Contact</h2>
             <p>
               If you have questions about this privacy policy or how your data is handled, please
-              reach out via the contact information on our{" "}
-              <a href="/about" className="text-primary underline underline-offset-4">About page</a>.
+              use our{" "}
+              <a href="/contact" className="text-primary underline underline-offset-4">contact form</a>.
             </p>
           </section>
 

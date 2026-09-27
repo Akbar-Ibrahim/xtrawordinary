@@ -30,6 +30,7 @@ import {
 import { listGuildWarsTournaments, createGuildWarsRegistration } from "./guild-wars.js";
 import { addGroupReaction, submitGroupRoundScore } from "./groups.js";
 import { countWordsAtLetterPosition } from "./words.js";
+import { mapDbRowToGame, updateGameConfig } from "./games.js";
 
 // ── Mock DB infrastructure ─────────────────────────────────────────────────
 
@@ -168,6 +169,46 @@ test("getAllUsers: no limit, targets users table, ordered by created_at desc", a
   assert.ok(noLimit(rec),                               "must not apply a row limit");
   assert.ok(fromTable(rec, "users"),                    "must query the users table");
   assert.ok(hasSortByColumn(rec, "created_at", "desc"), "must order by created_at DESC");
+});
+
+test("mapDbRowToGame maps persisted standard-play config", () => {
+  const game = mapDbRowToGame({
+    id: 1,
+    slug: "no-repeats",
+    name: "No Repeats",
+    description: "Description",
+    longDescription: "Long description",
+    rules: [],
+    difficulty: "medium",
+    estimatedTime: "2 minutes",
+    icon: "Gamepad2",
+    color: "#000000",
+    playCount: 0,
+    isActive: true,
+    hasSurvival: false,
+    modes: null,
+    timeLimitSeconds: 90,
+    wordTarget: 12,
+    livesCount: null,
+    survivalSecondsPerWord: 8,
+  });
+  assert.equal(game.timeLimitSeconds, 90);
+  assert.equal(game.wordTarget, 12);
+  assert.equal(game.livesCount, undefined);
+  assert.equal("survivalSecondsPerWord" in game, false);
+});
+
+test("updateGameConfig persists only standard-play config fields", async () => {
+  const db = new MockDb();
+  await updateGameConfig(db, "word-fusion", {
+    timeLimitSeconds: 120,
+    wordTarget: 7,
+  });
+  const setCall = db.ops[0].recorder.calls.find(call => call.method === "set");
+  assert.deepEqual(setCall?.args[0], {
+    timeLimitSeconds: 120,
+    wordTarget: 7,
+  });
 });
 
 test("getDuelChallengesForUser: no limit, targets duel_challenges table", async () => {

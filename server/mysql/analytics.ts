@@ -1,7 +1,7 @@
 import { and, gte, lt, min } from "drizzle-orm";
 import * as schema from "../db-schema";
 import type { AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport, AnalyticsReportFilters } from "@shared/schema";
-import { analyticsRetentionDays, buildAnalyticsReport, utcDateKey } from "../analytics";
+import { analyticsRetentionDays, buildAnalyticsReport, utcDateKey } from "../analytics/analytics";
 
 export async function verifyAnalyticsPersistence(db: any): Promise<void> {
   await db.select({ id: schema.analyticsEvents.id }).from(schema.analyticsEvents).limit(1);

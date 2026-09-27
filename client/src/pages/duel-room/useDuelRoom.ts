@@ -12,7 +12,7 @@ import type { Phase, RoomInfo, SpectatorState } from "./types";
 
 export function useDuelRoom(roomCode: string) {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const { playSoundBypass, volume, setVolume } = useSound();
   const [duelMuted, setDuelMuted] = useState<boolean>(() => {
@@ -519,6 +519,7 @@ export function useDuelRoom(roomCode: string) {
 
   return {
     user,
+    authLoading,
     isAuthenticated,
     volume,
     setVolume,

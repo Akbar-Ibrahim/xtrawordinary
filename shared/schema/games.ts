@@ -27,13 +27,228 @@ export const gameSchema = z.object({
   timeLimitSeconds: z.number().int().positive().nullable().optional(),
   wordTarget: z.number().int().positive().nullable().optional(),
   livesCount: z.number().int().positive().nullable().optional(),
-  survivalSecondsPerWord: z.number().int().positive().nullable().optional(),
   ogImage: z.string().optional(),
 });
 
 export type Game = z.infer<typeof gameSchema>;
 
 export const gamesListSchema = z.array(gameSchema);
+
+export const gameConfigFieldSchema = z.enum([
+  "timeLimitSeconds",
+  "wordTarget",
+  "livesCount",
+]);
+export type GameConfigField = z.infer<typeof gameConfigFieldSchema>;
+export type GameConfigUpdate = Partial<Record<GameConfigField, number | null>>;
+export type GameConfigConstraint = { max?: number };
+
+export const GAME_CONFIG_SUPPORT: Readonly<Record<string, readonly GameConfigField[]>> = {
+  "anagram-solver": ["timeLimitSeconds"],
+  "definition-match": ["timeLimitSeconds", "wordTarget"],
+  "ladder-rush": ["timeLimitSeconds"],
+  "ladder-rush-double": ["timeLimitSeconds"],
+  "letter-balance": ["timeLimitSeconds"],
+  "letter-dodge": ["timeLimitSeconds"],
+  "letter-frequency": ["timeLimitSeconds"],
+  "letter-hunt": ["timeLimitSeconds"],
+  "letter-pool": ["livesCount"],
+  "letter-position": ["timeLimitSeconds"],
+  "no-repeats": ["timeLimitSeconds", "wordTarget"],
+  "progressive-reveal": ["livesCount"],
+  "shell-words": ["timeLimitSeconds"],
+  "deep-shell-words": ["timeLimitSeconds"],
+  "word-chain": ["wordTarget"],
+  "word-extension": ["timeLimitSeconds"],
+  "word-fusion": ["timeLimitSeconds", "wordTarget"],
+  "word-length": ["timeLimitSeconds"],
+  "word-roots": ["timeLimitSeconds", "wordTarget"],
+  "word-scramble": ["livesCount"],
+};
+
+export function getSupportedGameConfigFields(slug: string): readonly GameConfigField[] {
+  return GAME_CONFIG_SUPPORT[slug] ?? [];
+}
+
+const GAME_CONFIG_CONSTRAINTS: Readonly<
+  Record<string, Partial<Record<GameConfigField, GameConfigConstraint>>>
+> = {
+  "word-fusion": { wordTarget: { max: 50 } },
+  "word-roots": { wordTarget: { max: 5 } },
+};
+
+export function getGameConfigConstraint(
+  slug: string,
+  field: GameConfigField,
+): GameConfigConstraint {
+  return GAME_CONFIG_CONSTRAINTS[slug]?.[field] ?? {};
+}
+
+export type StandardPlayContext = {
+  isSenderMode: boolean;
+  isReceiverMode: boolean;
+  isCustomPlay: boolean;
+};
+
+export function getStandardPlayGameConfig(
+  game: Pick<Game, GameConfigField>,
+  context: StandardPlayContext,
+): GameConfigUpdate {
+  if (context.isSenderMode || context.isReceiverMode || context.isCustomPlay) {
+    return {};
+  }
+  return {
+    ...(game.timeLimitSeconds != null ? { timeLimitSeconds: game.timeLimitSeconds } : {}),
+    ...(game.wordTarget != null ? { wordTarget: game.wordTarget } : {}),
+    ...(game.livesCount != null ? { livesCount: game.livesCount } : {}),
+  };
+}
+
+function formatRuleDuration(seconds: number): string {
+  if (seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  }
+  return `${seconds} ${seconds === 1 ? "second" : "seconds"}`;
+}
+
+function formatTimerDuration(seconds: number): string {
+  return seconds % 60 === 0
+    ? `${seconds / 60}-minute`
+    : `${seconds}-second`;
+}
+
+function formatLives(count: number): string {
+  return `${count} ${count === 1 ? "life" : "lives"}`;
+}
+
+export function getGameDetailDescription(
+  game: Pick<Game, "slug" | "longDescription" | GameConfigField>,
+  context: StandardPlayContext,
+): string {
+  const config = getStandardPlayGameConfig(game, context);
+  let description = game.longDescription;
+
+  switch (game.slug) {
+    case "word-scramble":
+      return config.livesCount != null
+        ? description.replace("only have 3 lives", `only have ${formatLives(config.livesCount)}`)
+        : description;
+    case "word-chain":
+      return config.wordTarget != null
+        ? description.replace("Complete 100 words per level", `Complete ${config.wordTarget} words per level`)
+        : description;
+    case "ladder-rush":
+      return config.timeLimitSeconds != null
+        ? description.replace("in 90 seconds", `in ${formatRuleDuration(config.timeLimitSeconds)}`)
+        : description;
+    case "letter-dodge":
+      return config.timeLimitSeconds != null
+        ? description.replace(
+            "Classic mode gives 90 seconds",
+            `Classic mode gives ${formatRuleDuration(config.timeLimitSeconds)}`,
+          )
+        : description;
+    default:
+      return description;
+  }
+}
+
+export function getGameDetailRules(
+  game: Pick<Game, "slug" | "rules" | GameConfigField>,
+  context: StandardPlayContext,
+): string[] {
+  const config = getStandardPlayGameConfig(game, context);
+  if (Object.keys(config).length === 0) return game.rules;
+
+  const duration = config.timeLimitSeconds != null
+    ? formatRuleDuration(config.timeLimitSeconds)
+    : null;
+
+  return game.rules.map((rule) => {
+    switch (game.slug) {
+      case "word-scramble":
+        return config.livesCount != null && rule === "You have 3 lives - wrong answers lose a life"
+          ? `You have ${formatLives(config.livesCount)} - wrong answers lose a life`
+          : rule;
+      case "letter-pool":
+        return config.livesCount != null && rule === "Wrong letters cost a life. You have 3 lives."
+          ? `Wrong letters cost a life. You have ${formatLives(config.livesCount)}.`
+          : rule;
+      case "progressive-reveal":
+        return config.livesCount != null && rule === "Wrong guesses cost a life - you have 3 lives"
+          ? `Wrong guesses cost a life - you have ${formatLives(config.livesCount)}`
+          : rule;
+      case "word-chain":
+        return config.wordTarget != null && rule === "Complete 100 valid words per level to advance"
+          ? `Complete ${config.wordTarget} valid words per level to advance`
+          : rule;
+      case "word-roots":
+        if (rule !== "Complete 5 rounds in 3 minutes") return rule;
+        return rule
+          .replace("5 rounds", `${config.wordTarget ?? 5} rounds`)
+          .replace("3 minutes", duration ?? "3 minutes");
+      case "ladder-rush":
+      case "ladder-rush-double":
+        return duration && /^You have 90 seconds\./.test(rule)
+          ? rule.replace("90 seconds", duration)
+          : rule;
+      case "shell-words":
+      case "deep-shell-words":
+        return duration && rule.includes("Classic gives 90 seconds")
+          ? rule.replace("Classic gives 90 seconds", `Classic gives ${duration}`)
+          : rule;
+      case "letter-dodge":
+        return duration && rule === "Classic: you have 90 seconds to submit as many valid words as possible"
+          ? `Classic: you have ${duration} to submit as many valid words as possible`
+          : rule;
+      case "word-fusion":
+        if (rule !== "Complete 5 rounds before the 90-second timer ends") return rule;
+        return rule
+          .replace("5 rounds", `${config.wordTarget ?? 5} rounds`)
+          .replace(
+            "90-second",
+            config.timeLimitSeconds != null
+              ? formatTimerDuration(config.timeLimitSeconds)
+              : "90-second",
+          );
+      default:
+        return rule;
+    }
+  });
+}
+
+export function getEffectiveWordFusionTarget(
+  configuredTarget: number | null | undefined,
+  puzzleCount: number,
+): number {
+  const requestedTarget =
+    Number.isInteger(configuredTarget) && (configuredTarget ?? 0) > 0
+      ? configuredTarget!
+      : 5;
+  return Math.min(requestedTarget, Math.max(0, puzzleCount));
+}
+
+type WordFusionSubmissionSnapshot = {
+  run: number;
+  request: number;
+  round: number;
+  combinationId: number | null;
+};
+
+export function isCurrentWordFusionSubmission(
+  gameActive: boolean,
+  submitted: WordFusionSubmissionSnapshot,
+  current: WordFusionSubmissionSnapshot,
+): boolean {
+  return (
+    gameActive &&
+    submitted.run === current.run &&
+    submitted.request === current.request &&
+    submitted.round === current.round &&
+    submitted.combinationId === current.combinationId
+  );
+}
 
 export const wordGuessingWordsSchema = z.array(z.string());
 export type WordGuessingWords = z.infer<typeof wordGuessingWordsSchema>;

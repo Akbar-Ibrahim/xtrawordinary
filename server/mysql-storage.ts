@@ -1,7 +1,7 @@
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { MemStorage } from "./mem-storage";
 import type {
-  Game, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord,
+  Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord,
   WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig,
   VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid,
   WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser,
@@ -18,7 +18,8 @@ import type {
   WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament,
   GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion,
   InsertGroupSeason, GroupSeason, InsertWordDefinition,
-  AnalyticsEventInput, AnalyticsReport, AnalyticsReportFilters,
+  AnalyticsEventInput, AnalyticsReport, AnalyticsReportFilters, ContactMessage, InsertContactMessage,
+  ContactMessageReply, InsertContactMessageReply,
 } from "@shared/schema";
 
 import * as Games from "./mysql/games";
@@ -38,6 +39,8 @@ import * as GuildWars from "./mysql/guild-wars";
 import * as Admin from "./mysql/admin";
 import * as WordDefs from "./mysql/word-definitions";
 import * as Analytics from "./mysql/analytics";
+import * as ContactMessages from "./mysql/contact-messages";
+import * as GameReports from "./mysql/game-reports";
 import { getMySQLConnectionConfig } from "./mysql-config";
 
 export class MySQLStorage implements IStorage {
@@ -97,7 +100,7 @@ export class MySQLStorage implements IStorage {
   async getGames(): Promise<Game[]> { return Games.getGames(await this.getDb()); }
   async getAllGames(): Promise<Game[]> { return Games.getAllGames(await this.getDb()); }
   async setGameActive(slug: string, isActive: boolean): Promise<void> { return Games.setGameActive(await this.getDb(), slug, isActive); }
-  async updateGameConfig(slug: string, config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null }): Promise<void> { return Games.updateGameConfig(await this.getDb(), slug, config); }
+  async updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void> { return Games.updateGameConfig(await this.getDb(), slug, config); }
   async getGameBySlug(slug: string): Promise<Game | undefined> { return Games.getGameBySlug(await this.getDb(), slug); }
 
   // ── Words / Game-data (delegates to MemStorage) ────────────────────────────
@@ -278,6 +281,14 @@ export class MySQLStorage implements IStorage {
   async getAnalyticsReport(startDate: string, endDate: string, filters?: AnalyticsReportFilters): Promise<AnalyticsReport> { return Analytics.getAnalyticsReport(await this.getDb(), startDate, endDate, filters); }
   async cleanupAnalyticsEvents(): Promise<number> { return Analytics.cleanupAnalyticsEvents(await this.getDb()); }
   async getAllLeaderboardEntries(): Promise<LeaderboardEntry[]> { return Admin.getAllLeaderboardEntries(await this.getDb()); }
+  async createContactMessage(data: InsertContactMessage): Promise<ContactMessage> { return ContactMessages.createContactMessage(await this.getDb(), data); }
+  async getContactMessage(id: number): Promise<ContactMessage | undefined> { return ContactMessages.getContactMessage(await this.getDb(), id); }
+  async getContactMessages(): Promise<ContactMessage[]> { return ContactMessages.getContactMessages(await this.getDb()); }
+  async markContactMessageRead(id: number): Promise<boolean> { return ContactMessages.markContactMessageRead(await this.getDb(), id); }
+  async createContactMessageReply(data: InsertContactMessageReply): Promise<ContactMessageReply> { return ContactMessages.createContactMessageReply(await this.getDb(), data); }
+  async createGameReport(data: import("@shared/schema").InsertGameReport): Promise<import("@shared/schema").GameReport> { return GameReports.createGameReport(await this.getDb(), data); }
+  async getGameReports(): Promise<import("@shared/schema").GameReport[]> { return GameReports.getGameReports(await this.getDb()); }
+  async markGameReportRead(id: number): Promise<boolean> { return GameReports.markGameReportRead(await this.getDb(), id); }
   async searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
   async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
   async getSiteSetting(key: string): Promise<string | null> { return Admin.getSiteSetting(await this.getDb(), key); }

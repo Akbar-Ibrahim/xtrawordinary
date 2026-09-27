@@ -28,7 +28,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ targetType, targetId, headingLevel }: CommentSectionProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(true);
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
@@ -174,7 +174,9 @@ export function CommentSection({ targetType, targetId, headingLevel }: CommentSe
 
       {expanded && (
         <div className="space-y-4">
-          {isAuthenticated ? (
+          {status === "loading" ? (
+            <Skeleton className="h-20 w-full rounded-lg" data-testid="comments-auth-loading" />
+          ) : isAuthenticated ? (
             <CommentForm
               onSubmit={(content) => createMutation.mutate({ content })}
               isPending={createMutation.isPending}

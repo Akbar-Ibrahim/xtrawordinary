@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
-import { seededShuffle } from "../seeded-rng";
+import { seededShuffle } from "../games/seeded-rng";
 import { wordDictionary, wordDictSet } from "../game-data";
 
 // ── Ladder Rush hint helpers ──────────────────────────────────────────────────
@@ -463,12 +463,17 @@ export function registerGamesRoutes(app: Express): void {
   app.get("/api/games/word-fusion/puzzles", async (req, res) => {
     try {
       const puzzles = await storage.getWordFusionPuzzles();
+      const parsedLimit = z.coerce.number().int().min(1).max(50).safeParse(req.query.limit ?? 5);
+      if (!parsedLimit.success) {
+        return res.status(400).json({ message: "limit must be an integer between 1 and 50" });
+      }
+      const limit = parsedLimit.data;
       const rawSeed = req.query.seed;
       if (rawSeed !== undefined) {
         const seed = parseInt(rawSeed as string, 10);
-        if (!isNaN(seed)) return res.json(seededShuffle(puzzles, seed).slice(0, 5));
+        if (!isNaN(seed)) return res.json(seededShuffle(puzzles, seed).slice(0, limit));
       }
-      res.json([...puzzles].sort(() => Math.random() - 0.5).slice(0, 5));
+      res.json([...puzzles].sort(() => Math.random() - 0.5).slice(0, limit));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch word fusion puzzles" });
     }

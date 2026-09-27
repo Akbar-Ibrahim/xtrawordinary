@@ -171,7 +171,7 @@ function TournamentCard({ tournament, userId, isAuthenticated }: {
 }
 
 export default function WordWarsLobby() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
   const { data: tournaments = [], isLoading } = useQuery<WordWarsTournament[]>({
@@ -199,7 +199,7 @@ export default function WordWarsLobby() {
             </h1>
             <p className="text-muted-foreground mt-1">Solo bracket tournaments. Last word warrior standing wins.</p>
           </div>
-          {!isAuthenticated && (
+          {status === "unauthenticated" && (
             <Button onClick={() => setAuthOpen(true)} data-testid="button-signin-word-wars">
               Sign in to compete
             </Button>
@@ -212,7 +212,7 @@ export default function WordWarsLobby() {
           {/* Left column: Active & Upcoming + Past Tournaments */}
           <div className="flex-1 min-w-0 space-y-8">
 
-            {!isAuthenticated && (
+            {status === "unauthenticated" && (
               <Card className="border-dashed">
                 <CardContent className="py-6 text-center text-muted-foreground">
                   <Trophy className="h-10 w-10 mx-auto mb-3 opacity-40" />

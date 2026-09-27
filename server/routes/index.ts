@@ -21,6 +21,8 @@ import { registerAdminRoutes } from "./admin.routes";
 import { registerWordExamplesRoutes } from "./word-examples.routes";
 import { registerShareRoutes } from "./share.routes";
 import { registerAnalyticsRoutes } from "./analytics.routes";
+import { registerContactRoutes } from "./contact.routes";
+import { registerGameReportRoutes } from "./game-reports.routes";
 
 // Static pages included in the sitemap alongside game pages.
 const SITEMAP_STATIC_PATHS = [
@@ -33,6 +35,7 @@ const SITEMAP_STATIC_PATHS = [
   "/guild-wars",
   "/about",
   "/pricing",
+  "/contact",
   "/groups/browse",
   "/privacy",
   "/terms",
@@ -86,6 +89,8 @@ export function registerAllRoutes(httpServer: Server, app: Express): Server {
 
   registerShareRoutes(app);
   registerAnalyticsRoutes(app);
+  registerContactRoutes(app);
+  registerGameReportRoutes(app);
   registerWordExamplesRoutes(app);
   registerGamesRoutes(app);
   registerAuthRoutes(app);

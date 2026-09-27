@@ -277,7 +277,7 @@ function TournamentCard({
 }
 
 export default function GuildWarsLobby() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
 
   const { data: tournaments = [], isLoading } = useQuery<GuildWarsTournament[]>({
@@ -322,7 +322,7 @@ export default function GuildWarsLobby() {
             </h1>
             <p className="text-muted-foreground mt-1">Group bracket tournaments. Last guild standing wins.</p>
           </div>
-          {!isAuthenticated && (
+          {status === "unauthenticated" && (
             <Button onClick={() => setAuthOpen(true)} data-testid="button-signin-guild-wars">
               Sign in to compete
             </Button>
@@ -333,7 +333,7 @@ export default function GuildWarsLobby() {
 
           <div className="flex-1 min-w-0 space-y-8">
 
-            {!isAuthenticated && (
+            {status === "unauthenticated" && (
               <Card className="border-dashed">
                 <CardContent className="py-6 text-center text-muted-foreground">
                   <Shield className="h-10 w-10 mx-auto mb-3 opacity-40" />

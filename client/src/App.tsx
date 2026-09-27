@@ -49,6 +49,7 @@ import NotificationSettings from "@/pages/notification-settings";
 import Pricing from "@/pages/pricing";
 import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
+import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 import { trackAnalyticsEvent } from "@/lib/analytics";
 
@@ -102,6 +103,7 @@ function Router() {
       <Route path="/team-race/:roomCode" component={TeamRaceRoom} />
       <Route path="/settings/notifications" component={NotificationSettings} />
       <Route path="/pricing" component={Pricing} />
+      <Route path="/contact" component={Contact} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
       <Route component={NotFound} />

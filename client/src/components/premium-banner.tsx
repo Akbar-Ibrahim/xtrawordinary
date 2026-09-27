@@ -1,6 +1,7 @@
 import { Crown, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { useLocation } from "wouter";
 
@@ -9,8 +10,14 @@ interface PremiumBannerProps {
 }
 
 export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+
+  if (status === "loading") {
+    return variant === "nav"
+      ? <Skeleton className="h-8 w-24 rounded-md" data-testid="premium-auth-loading" />
+      : null;
+  }
 
   if (isAuthenticated && user?.isPremium) return null;
 

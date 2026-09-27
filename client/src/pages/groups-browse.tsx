@@ -19,7 +19,7 @@ import type { Group } from "@shared/schema";
 const ALL_TAGS = ["School", "Office", "Family", "Friends", "Gaming", "Book Club", "Other"];
 
 export default function GroupsBrowse() {
-  const { isAuthenticated } = useAuth();
+  const { status, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -141,9 +141,10 @@ export default function GroupsBrowse() {
                 <div className="space-y-3">
                   {featuredGroups.map(group => (
                     <BrowseGroupCard key={group.id} group={group}
-                      onJoin={isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
+                      onJoin={status === "loading" ? () => {} : isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
                       joining={joinMutation.isPending && joinMutation.variables === group.id}
                       authenticated={isAuthenticated}
+                      checkingAuth={status === "loading"}
                     />
                   ))}
                 </div>
@@ -158,9 +159,10 @@ export default function GroupsBrowse() {
                 <div className="space-y-3">
                   {otherGroups.map(group => (
                     <BrowseGroupCard key={group.id} group={group}
-                      onJoin={isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
+                      onJoin={status === "loading" ? () => {} : isAuthenticated ? () => joinMutation.mutate(group.id) : () => setAuthOpen(true)}
                       joining={joinMutation.isPending && joinMutation.variables === group.id}
                       authenticated={isAuthenticated}
+                      checkingAuth={status === "loading"}
                     />
                   ))}
                 </div>
@@ -204,11 +206,12 @@ export default function GroupsBrowse() {
   );
 }
 
-function BrowseGroupCard({ group, onJoin, joining, authenticated }: {
+function BrowseGroupCard({ group, onJoin, joining, authenticated, checkingAuth }: {
   group: Group;
   onJoin: () => void;
   joining?: boolean;
   authenticated?: boolean;
+  checkingAuth?: boolean;
 }) {
   return (
     <Card className="hover:bg-muted/30 transition-colors" data-testid={`browse-group-${group.id}`}>
@@ -239,8 +242,10 @@ function BrowseGroupCard({ group, onJoin, joining, authenticated }: {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" onClick={onJoin} disabled={joining} data-testid={`button-join-${group.id}`}>
-            {authenticated ? (
+          <Button size="sm" variant="outline" onClick={onJoin} disabled={joining || checkingAuth} data-testid={`button-join-${group.id}`}>
+            {checkingAuth ? (
+              <><Skeleton className="mr-1.5 h-3.5 w-12" /><span className="sr-only">Checking your session</span></>
+            ) : authenticated ? (
               <><UserPlus className="h-3.5 w-3.5 mr-1.5" />{joining ? "Joining…" : "Join"}</>
             ) : (
               <><LogIn className="h-3.5 w-3.5 mr-1.5" />Sign in</>

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
-import { statsInputSchema } from "../validators";
+import { statsInputSchema } from "../validation/validators";
 import { createNotificationIfEnabled } from "./helpers";
 
 export function registerStatsRoutes(app: Express): void {

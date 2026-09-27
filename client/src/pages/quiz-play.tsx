@@ -189,7 +189,7 @@ interface ScoresResponse {
 
 export default function QuizPlay() {
   const { code } = useParams<{ code: string }>();
-  const { user, isAuthenticated } = useAuth();
+  const { user, status, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -350,7 +350,7 @@ export default function QuizPlay() {
                   </div>
                 )}
 
-                {!isAuthenticated && (
+                {status === "unauthenticated" && (
                   <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground flex items-center gap-2 justify-center">
                     <Lock className="h-4 w-4" />
                     Sign in to submit your score to the leaderboard.
@@ -464,7 +464,7 @@ export default function QuizPlay() {
                   Score saved!
                 </div>
               )}
-              {!isAuthenticated && (
+              {status === "unauthenticated" && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Lock className="h-4 w-4" />
                   Not tracked

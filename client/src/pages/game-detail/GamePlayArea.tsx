@@ -28,7 +28,7 @@ import { WordStretchGame } from "@/components/games/word-stretch";
 import { WordFusionGame } from "@/components/games/word-fusion";
 import { FriendChallengeCard } from "./FriendChallengeCard";
 import { gameComponents } from "./constants";
-import type { Game, FriendChallenge } from "@shared/schema";
+import { getStandardPlayGameConfig, type Game, type FriendChallenge } from "@shared/schema";
 import type { ChallengeResult } from "./constants";
 
 interface Friend {
@@ -95,6 +95,11 @@ export function GamePlayArea({
 }: Props) {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const GameComponent = gameComponents[slug];
+  const standardPlayConfig = getStandardPlayGameConfig(game, {
+    isSenderMode,
+    isReceiverMode,
+    isCustomPlay,
+  });
 
   return (
     <>
@@ -384,15 +389,15 @@ export function GamePlayArea({
           />
         );
       })() : isUntimed && slug === "word-chain" ? (
-        <WordChainGame isUntimed locked={isSenderMode || isReceiverMode} wordTarget={game.wordTarget ?? undefined} />
+        <WordChainGame isUntimed locked={isSenderMode || isReceiverMode} wordTarget={standardPlayConfig.wordTarget ?? undefined} />
       ) : isUntimed && slug === "word-ladder" ? (
         <WordLadderGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "letter-hunt" ? (
         <LetterHuntGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "word-scramble" ? (
-        <WordScrambleGame isUntimed locked={isSenderMode || isReceiverMode} livesCount={game.livesCount ?? undefined} />
+        <WordScrambleGame isUntimed locked={isSenderMode || isReceiverMode} livesCount={standardPlayConfig.livesCount ?? undefined} />
       ) : isUntimed && slug === "no-repeats" ? (
-        <NoRepeatsGame isUntimed groupSeed={receiverChallenge?.seed ?? undefined} locked={isSenderMode || isReceiverMode} wordTarget={game.wordTarget ?? undefined} />
+        <NoRepeatsGame isUntimed groupSeed={receiverChallenge?.seed ?? undefined} locked={isSenderMode || isReceiverMode} wordTarget={standardPlayConfig.wordTarget ?? undefined} />
       ) : isUntimed && slug === "ladder-rush" ? (
         <LadderRushGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "ladder-rush-double" ? (
@@ -408,11 +413,12 @@ export function GamePlayArea({
       ) : isUntimed && slug === "letter-position" ? (
         <LetterPositionGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "word-roots" ? (
-        <WordRootsGame isUntimed locked={isSenderMode || isReceiverMode} wordTarget={game.wordTarget ?? undefined} />
+        <WordRootsGame isUntimed locked={isSenderMode || isReceiverMode} wordTarget={standardPlayConfig.wordTarget ?? undefined} />
       ) : isUntimed && slug === "word-fusion" ? (
         <WordFusionGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed
         />
       ) : isUntimed && slug === "letter-balance" ? (
@@ -423,37 +429,37 @@ export function GamePlayArea({
         <AnagramSolverGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={game.timeLimitSeconds ?? undefined}
+          timeLimitSeconds={standardPlayConfig.timeLimitSeconds ?? undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "no-repeats" ? (
         <NoRepeatsGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
-          wordTarget={game.wordTarget ?? undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "word-roots" ? (
         <WordRootsGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
-          wordTarget={game.wordTarget ?? undefined}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
         />
       ) : slug === "word-scramble" ? (
         <WordScrambleGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          livesCount={game.livesCount ?? undefined}
+          livesCount={standardPlayConfig.livesCount ?? undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "ladder-rush" ? (
         <LadderRushGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "ladder-rush-double" ? (
@@ -461,83 +467,83 @@ export function GamePlayArea({
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
           doubleSwap
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-pool" ? (
         <LetterPoolGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          livesCount={game.livesCount ?? undefined}
+          livesCount={standardPlayConfig.livesCount ?? undefined}
         />
       ) : slug === "progressive-reveal" ? (
         <ProgressiveRevealGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          livesCount={game.livesCount ?? undefined}
+          livesCount={standardPlayConfig.livesCount ?? undefined}
         />
       ) : slug === "word-length" ? (
         <WordLengthGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-position" ? (
         <LetterPositionGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-hunt" ? (
         <LetterHuntGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-balance" ? (
         <LetterBalanceGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-frequency" ? (
         <LetterFrequencyGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "letter-dodge" ? (
         <LetterDodgeGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          initialTimeLimit={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "shell-words" ? (
         <ShellWordsGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "deep-shell-words" ? (
         <DeepShellWordsGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "definition-match" ? (
         <DefinitionMatchGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          wordTarget={game.wordTarget ?? undefined}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "word-sweep" ? (
@@ -555,14 +561,15 @@ export function GamePlayArea({
       ) : slug === "word-extension" ? (
         <WordExtensionGame
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "word-fusion" ? (
         <WordFusionGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          timeLimitSeconds={!isUntimed ? (game.timeLimitSeconds ?? undefined) : undefined}
+          timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed={isUntimed}
         />
       ) : slug === "word-stretch" ? (
@@ -575,7 +582,7 @@ export function GamePlayArea({
         <WordChainGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
-          wordTarget={game.wordTarget ?? undefined}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed={isUntimed}
         />
       ) : GameComponent ? (

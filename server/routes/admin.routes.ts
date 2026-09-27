@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../auth";
 import { notificationTypeSchema } from "@shared/schema";
-import { registerNotifSSE, unregisterNotifSSE } from "../notification-sse";
+import { registerNotifSSE, unregisterNotifSSE } from "../realtime/notification-sse";
+import { parseGameConfigUpdate } from "../game-config";
 
 export function registerAdminRoutes(app: Express): void {
   app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
@@ -142,26 +143,10 @@ export function registerAdminRoutes(app: Express): void {
       const { slug } = req.params;
       const game = await storage.getGameBySlug(slug);
       if (!game) return res.status(404).json({ error: "Game not found" });
-      const { timeLimitSeconds, wordTarget, livesCount, survivalSecondsPerWord } = req.body;
-      const config: { timeLimitSeconds?: number | null; wordTarget?: number | null; livesCount?: number | null; survivalSecondsPerWord?: number | null } = {};
-      if ("timeLimitSeconds" in req.body) {
-        if (timeLimitSeconds !== null && (typeof timeLimitSeconds !== "number" || timeLimitSeconds <= 0)) return res.status(400).json({ error: "timeLimitSeconds must be a positive number or null" });
-        config.timeLimitSeconds = timeLimitSeconds ?? null;
-      }
-      if ("wordTarget" in req.body) {
-        if (wordTarget !== null && (typeof wordTarget !== "number" || wordTarget <= 0)) return res.status(400).json({ error: "wordTarget must be a positive number or null" });
-        config.wordTarget = wordTarget ?? null;
-      }
-      if ("livesCount" in req.body) {
-        if (livesCount !== null && (typeof livesCount !== "number" || livesCount <= 0)) return res.status(400).json({ error: "livesCount must be a positive number or null" });
-        config.livesCount = livesCount ?? null;
-      }
-      if ("survivalSecondsPerWord" in req.body) {
-        if (survivalSecondsPerWord !== null && (typeof survivalSecondsPerWord !== "number" || survivalSecondsPerWord <= 0)) return res.status(400).json({ error: "survivalSecondsPerWord must be a positive number or null" });
-        config.survivalSecondsPerWord = survivalSecondsPerWord ?? null;
-      }
-      await storage.updateGameConfig(slug, config);
-      res.json({ success: true, slug, ...config });
+      const parsed = parseGameConfigUpdate(slug, req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      await storage.updateGameConfig(slug, parsed.config);
+      res.json({ success: true, slug, ...parsed.config });
     } catch {
       res.status(500).json({ error: "Failed to update game config" });
     }

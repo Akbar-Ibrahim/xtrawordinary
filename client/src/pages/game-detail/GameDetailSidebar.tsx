@@ -2,7 +2,7 @@ import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, Swords, GraduationCap, Sparkles } from "lucide-react";
+import { Play, Swords, GraduationCap, Sparkles, Flag } from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { MiniLeaderboard } from "@/components/mini-leaderboard";
 import { UserAvatar } from "@/components/user-avatar";
@@ -27,6 +27,7 @@ interface Props {
   onQuiz: () => void;
   onCustomPlay: () => void;
   onUntimed: () => void;
+  onReport: () => void;
 }
 
 export function GameDetailSidebar({
@@ -41,6 +42,7 @@ export function GameDetailSidebar({
   onQuiz,
   onCustomPlay,
   onUntimed,
+  onReport,
 }: Props) {
   const [, navigate] = useLocation();
 
@@ -164,6 +166,10 @@ export function GameDetailSidebar({
           )}
         </CardContent>
       </Card>
+      <Button variant="outline" className="w-full gap-2" onClick={onReport} data-testid="button-report-game">
+        <Flag className="h-4 w-4" />
+        Report an Issue
+      </Button>
       <PremiumBanner variant="card" />
       <MiniLeaderboard game={game} />
     </aside>

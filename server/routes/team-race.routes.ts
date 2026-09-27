@@ -44,7 +44,7 @@ export function registerTeamRaceRoutes(app: Express): void {
         return res.status(409).json({ error: "There is already a pending Team Race challenge between these groups" });
       }
       const seed = Math.floor(Math.random() * 100000);
-      const { teamRaceRegistry } = await import("../team-race-ws");
+      const { teamRaceRegistry } = await import("../realtime/team-race-ws");
       const challengerGroup = await storage.getGroup(Number(challengerGroupId));
       const { roomCode, startWord } = teamRaceRegistry.createRoom({
         challengeId: 0,
@@ -139,7 +139,7 @@ export function registerTeamRaceRoutes(app: Express): void {
         return res.status(400).json({ error: "Cannot accept your own group's challenge" });
       }
       if (tr.roomCode) {
-        const { teamRaceRegistry } = await import("../team-race-ws");
+        const { teamRaceRegistry } = await import("../realtime/team-race-ws");
         const room = teamRaceRegistry.getRoom(tr.roomCode);
         if (room) room.adminUserIds.add(userId);
       }
