@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { initSentry } from "./monitoring";
 initSentry(); // must run before other imports to instrument them
 
@@ -61,8 +60,8 @@ app.use(requestLogger);
     await setupVite(httpServer, app);
   }
 
-  const port = parseInt(process.env.PORT || "5005", 10);
-  httpServer.listen({ port, host: "0.0.0.0", }, () => {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  httpServer.listen({ port, host: "0.0.0.0", reusePort: true }, () => {
     import("./logger").then(({ log }) => log(`serving on port ${port}`));
   });
 })().catch((error) => {
