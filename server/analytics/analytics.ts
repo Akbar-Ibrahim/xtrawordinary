@@ -255,7 +255,7 @@ function buildReportCore(
     startDate,
     endDate,
     filters,
-    uniqueVisitorsInRetainedHistory: firstSeenByVisitor.size,
+    uniqueVisitorsInRetainedHistory: firstSeenByVisitor.size,retained
     totals: {
       uniqueVisitors: totals.uniqueVisitors,
       sessions: totals.sessions,
