@@ -80,12 +80,13 @@ function fullLeaderboardHref() {
   const link = container?.querySelector<HTMLAnchorElement>(
     '[data-testid="link-full-leaderboard"]',
   )?.parentElement;
-  if (!(link instanceof dom.window.HTMLAnchorElement)) {
+
+  if (!link || link.tagName !== "A") {
     throw new Error("Expected the full leaderboard link to be rendered");
   }
+
   return link.getAttribute("href");
 }
-
 async function renderLeaderboard(game: Game, preferredModeSlug?: string) {
   container = document.createElement("div");
   document.body.append(container);
