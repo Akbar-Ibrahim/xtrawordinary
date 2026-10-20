@@ -31,6 +31,7 @@ export interface IStorage {
   getAnagramWordSets(): Promise<AnagramWordSet[]>;
   getScrambleWords(): Promise<ScrambleWord[]>;
   getDefinitionWords(): Promise<DefinitionWord[]>;
+  getSpokenWordWords(seed?: number): Promise<string[]>;
   getLetterPoolWords(): Promise<LetterPoolWord[]>;
   getMakerWords(): Promise<MakerWord[]>;
   getWordRootsPuzzles(): Promise<WordRootsPuzzle[]>;
@@ -225,6 +226,7 @@ export interface IStorage {
   createQuizSession(session: InsertQuizSession): Promise<QuizSession>;
   getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined>;
   getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]>;
+  updateQuizSessionParams(id: number, params: Record<string, unknown>): Promise<void>;
   deleteQuizSession(id: number): Promise<void>;
   addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore>;
   getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]>;

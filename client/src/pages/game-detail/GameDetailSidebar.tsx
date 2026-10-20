@@ -2,10 +2,11 @@ import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, Swords, GraduationCap, Sparkles, Flag } from "lucide-react";
+import { Play, Swords, GraduationCap, Sparkles, Flag, Search } from "lucide-react";
 import { PremiumBanner } from "@/components/premium-banner";
 import { MiniLeaderboard } from "@/components/mini-leaderboard";
 import { UserAvatar } from "@/components/user-avatar";
+import { getExploreGame } from "@/lib/explore-games";
 import type { Game, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS } from "@shared/schema";
 import { CUSTOM_PLAY_SLUGS, UNTIMED_GAME_SLUGS } from "./constants";
@@ -18,10 +19,12 @@ type OpenDuel = DuelChallenge & {
 interface Props {
   slug: string;
   game: Game;
+  preferredLeaderboardModeSlug?: string;
   isAuthenticated: boolean;
   isPremium: boolean;
   openDuels: OpenDuel[];
   onPlay: () => void;
+  onExplore: () => void;
   onChallenge: () => void;
   onDuel: () => void;
   onQuiz: () => void;
@@ -33,10 +36,12 @@ interface Props {
 export function GameDetailSidebar({
   slug,
   game,
+  preferredLeaderboardModeSlug,
   isAuthenticated,
   isPremium,
   openDuels,
   onPlay,
+  onExplore,
   onChallenge,
   onDuel,
   onQuiz,
@@ -45,6 +50,7 @@ export function GameDetailSidebar({
   onReport,
 }: Props) {
   const [, navigate] = useLocation();
+  const hasExplore = Boolean(getExploreGame(slug));
 
   return (
     <aside aria-label="Play" className="min-w-0 max-w-full lg:sticky lg:top-24 h-fit space-y-4">
@@ -65,6 +71,17 @@ export function GameDetailSidebar({
             <Play className="h-5 w-5" />
             Play Now
           </Button>
+          {hasExplore && (
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={onExplore}
+              data-testid={`button-explore-${slug}`}
+            >
+              <Search className="h-4 w-4" />
+              Explore
+            </Button>
+          )}
           {isAuthenticated && SEEDED_GAME_SLUGS.has(slug) && (
             <Button
               variant="outline"
@@ -171,7 +188,7 @@ export function GameDetailSidebar({
         Report an Issue
       </Button>
       <PremiumBanner variant="card" />
-      <MiniLeaderboard game={game} />
+      <MiniLeaderboard game={game} preferredModeSlug={preferredLeaderboardModeSlug} />
     </aside>
   );
 }

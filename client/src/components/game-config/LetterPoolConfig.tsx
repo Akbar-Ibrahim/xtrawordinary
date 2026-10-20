@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import type { GameConfigProps } from "./types";
+import { LETTER_POOL_DECOY_LEVELS } from "@shared/letter-pool";
 
 interface LpEntry { word: string; hint: string; category: string; letterPool: string[] }
 
@@ -43,11 +44,22 @@ export function LetterPoolConfig({ params, setParams, dialogType, open }: GameCo
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-sm font-medium">Pool Mode</label>
+        <label className="text-sm font-medium">Decoy Letters</label>
         <div className="flex gap-2 mt-1">
-          {(["with-pool", "without-pool"] as const).map(v => (
-            <Button key={v} type="button" size="sm" variant={params.variant === v ? "default" : "outline"} onClick={() => setParams(p => ({ ...p, variant: v }))} data-testid={`button-${dialogType}-pool-${v}`}>
-              {v === "with-pool" ? "With Pool" : "Without Pool"}
+          {LETTER_POOL_DECOY_LEVELS.map(({ decoyCount, label }) => (
+            <Button
+              key={decoyCount}
+              type="button"
+              size="sm"
+              variant={Number(params.decoyCount ?? 1) === decoyCount ? "default" : "outline"}
+              onClick={() => setParams((p) => {
+                const next: Record<string, unknown> = { ...p, decoyCount };
+                delete next["variant"];
+                return next;
+              })}
+              data-testid={`button-${dialogType}-pool-decoys-${decoyCount}`}
+            >
+              {label}
             </Button>
           ))}
         </div>

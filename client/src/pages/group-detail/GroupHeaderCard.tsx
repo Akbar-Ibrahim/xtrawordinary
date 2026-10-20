@@ -15,6 +15,7 @@ export function GroupHeaderCard({
   onLeave,
   onDelete,
   onCopyInvite,
+  copyPending,
 }: {
   group: Group;
   membership: GroupMember | null;
@@ -25,7 +26,8 @@ export function GroupHeaderCard({
   onTeamRace: () => void;
   onLeave: () => void;
   onDelete: () => void;
-  onCopyInvite: () => void;
+  onCopyInvite: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  copyPending: boolean;
 }) {
   return (
     <>
@@ -81,7 +83,7 @@ export function GroupHeaderCard({
                   Delete
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={onCopyInvite} data-testid="button-copy-invite">
+              <Button variant="outline" size="sm" onClick={onCopyInvite} disabled={copyPending} data-testid="button-copy-invite">
                 <Copy className="h-4 w-4 mr-1.5" />
                 {group.inviteCode}
               </Button>

@@ -17,6 +17,7 @@ import type { WordLadderPuzzle } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
+import { useGameSession } from "@/hooks/use-game-session";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
 
@@ -67,6 +68,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   const [errorMsg, setErrorMsg] = useState("");
   const [validating, setValidating] = useState(false);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const hintedStepsRef = useRef<Set<number>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
@@ -75,6 +77,12 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   const inputRef = useRef<HTMLInputElement>(null);
   const ladderScrollRef = useRef<HTMLDivElement>(null);
   const newestRungRef = useRef<HTMLDivElement>(null);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    isSessionActive,
+  } = useGameSession();
 
   const selectPuzzle = useCallback((puzzles: WordLadderPuzzle[]) => {
     if (puzzles.length === 0) return null;
@@ -89,19 +97,24 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
     const puzzlePool = seeded ? allPuzzles : filterUnseen(allPuzzles, (p) => `${p.start}-${p.target}`);
     const selected = overridePuzzle ?? selectPuzzle(puzzlePool);
     if (!selected) return;
+    const activeSession = startSession();
     if (!seeded) markSeen(`${selected.start}-${selected.target}`);
     lastPuzzleRef.current = selected;
     setPuzzle(selected);
     setLadder([selected.start]);
     setCurrentInput("");
     setGameStatus("playing");
+    setValidating(false);
     setErrorMsg("");
     setHintsUsed(0);
+    hintedStepsRef.current.clear();
     setShowPaths(false);
     setScore(0);
     setCompletionMessage("");
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [allPuzzles, selectPuzzle, resetRecorded, seeded, filterUnseen, markSeen]);
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 100);
+  }, [allPuzzles, selectPuzzle, resetRecorded, seeded, filterUnseen, markSeen, startSession, isSessionActive]);
 
   useEffect(() => {
     if (allPuzzles.length > 0 && !puzzle) {
@@ -111,12 +124,21 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
 
   useEffect(() => {
     if (gameStatus === "lost") {
-      reportResult(score, false);
+      reportResult(score, false, undefined, hintsUsed);
     }
-  }, [gameStatus, score, reportResult]);
+  }, [gameStatus, score, hintsUsed, reportResult]);
 
   const lastWord = ladder[ladder.length - 1];
   const isOneStepAway = gameStatus === "playing" && ladder.length > 1 && lastWord && puzzle ? isOneLetterDiff(lastWord, puzzle.target) : false;
+  const shortestPath = puzzle?.optimalPaths.reduce((a, b) => a.length <= b.length ? a : b) ?? [];
+  const currentHintStep = ladder.length;
+  const hintUnavailableMessage = gameStatus !== "playing"
+    ? ""
+    : currentHintStep >= shortestPath.length
+      ? "No hints remain on the optimal path."
+      : hintedStepsRef.current.has(currentHintStep)
+        ? "Hint already shown for this step."
+        : "";
 
   const calculateScore = useCallback((stepsUsed: number, par: number, hints: number) => {
     const baseScore = 200;
@@ -132,7 +154,8 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   }, []);
 
   const submitWord = useCallback(async () => {
-    if (!puzzle || validating || gameStatus !== "playing") return;
+    if (!puzzle || validating || gameStatus !== "playing" || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     const word = currentInput.toUpperCase().trim();
     if (!word) return;
 
@@ -140,7 +163,9 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
       setErrorMsg(`Word must be ${puzzle.start.length} letters`);
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
@@ -148,7 +173,9 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
       setErrorMsg("Change exactly one letter");
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
@@ -156,14 +183,18 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
       setErrorMsg("Word already used in ladder");
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
     setValidating(true);
     try {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
+      if (!isSessionActive(activeSession)) return;
       const data = await response.json();
+      if (!isSessionActive(activeSession)) return;
 
       if (!data.valid) {
         flushSync(() => {
@@ -172,12 +203,16 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
           setValidating(false);
         });
         playSound("wrong");
-        setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-        inputRef.current?.focus();
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+        }, 1500);
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
         return;
       }
 
       const newLadder = [...ladder, word];
+      const reachedTarget = word === puzzle.target;
+      if (reachedTarget && !endSession(activeSession)) return;
       flushSync(() => {
         setValidating(false);
         setLadder(newLadder);
@@ -185,27 +220,31 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
       });
       playSound("correct");
       setTimeout(() => {
+        if (!isSessionActive(activeSession)) return;
         inputRef.current?.focus();
         newestRungRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 50);
 
-      if (word === puzzle.target) {
+      if (reachedTarget) {
         const steps = newLadder.length - 2;
         const finalScore = calculateScore(steps, puzzle.par, hintsUsed);
         setScore(finalScore);
         setGameStatus("won");
         setCompletionMessage(getCompletionMessage(true));
         playSound("win");
-        reportResult(finalScore, true);
+        reportResult(finalScore, true, undefined, hintsUsed);
       }
     } catch {
+      if (!isSessionActive(activeSession)) return;
       flushSync(() => {
         setErrorMsg("Validation failed, try again");
         setValidating(false);
       });
-      setTimeout(() => setErrorMsg(""), 2000);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setErrorMsg("");
+      }, 2000);
     }
-  }, [puzzle, currentInput, lastWord, ladder, validating, gameStatus, playSound, calculateScore, hintsUsed, reportResult]);
+  }, [puzzle, currentInput, lastWord, ladder, validating, gameStatus, sessionId, isSessionActive, endSession, playSound, calculateScore, hintsUsed, reportResult]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -215,16 +254,18 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   }, [submitWord]);
 
   const useHint = useCallback(() => {
-    if (!puzzle || gameStatus !== "playing") return;
-    const shortestPath = puzzle.optimalPaths.reduce((a, b) => a.length <= b.length ? a : b);
-    const currentStep = ladder.length;
-    if (currentStep < shortestPath.length) {
-      const hintWord = shortestPath[currentStep];
-      setCurrentInput(hintWord);
-      setHintsUsed(prev => prev + 1);
-      playSound("click");
-    }
-  }, [puzzle, ladder, gameStatus, playSound]);
+    if (!puzzle || gameStatus !== "playing" || hintUnavailableMessage || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
+
+    hintedStepsRef.current.add(currentHintStep);
+    const hintWord = shortestPath[currentHintStep];
+    setCurrentInput(hintWord);
+    setHintsUsed(prev => prev + 1);
+    playSound("click");
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 50);
+  }, [puzzle, gameStatus, hintUnavailableMessage, currentHintStep, shortestPath, playSound, sessionId, isSessionActive]);
 
   const getGradientColor = useCallback((index: number, total: number) => {
     const startHue = 262;
@@ -260,6 +301,16 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
   const totalRungs = puzzle.par + 2;
   const steps = ladder.length - 2;
   const parDiff = steps - puzzle.par;
+  const scoreWithoutHints = calculateScore(steps, puzzle.par, 0);
+  const effectiveHintDeduction = Math.max(0, scoreWithoutHints - score);
+  const hintPenaltyLimitedByFloor = hintsUsed * 30 > effectiveHintDeduction;
+  const hintCountSummary = `${hintsUsed} ${hintsUsed === 1 ? "hint" : "hints"} used`;
+  const hintPenaltySummary = hintPenaltyLimitedByFloor
+    ? `Hint deduction: -${effectiveHintDeduction} pts (10-point minimum score reached)`
+    : `Hint penalty: -${effectiveHintDeduction} pts`;
+  const shareHintSummary = hintsUsed > 0
+    ? `${hintCountSummary} · ${gameStatus === "won" ? hintPenaltySummary : `Hint penalty: -${hintsUsed * 30} pts`}`
+    : undefined;
 
   return (
     <div className="space-y-4">
@@ -276,19 +327,50 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
               Hints: {hintsUsed}
             </Badge>
           )}
+          {hintsUsed > 0 && (
+            <Badge variant="secondary" data-testid="badge-hint-penalty">
+              Hint penalty: -{hintsUsed * 30} pts
+            </Badge>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {gameStatus === "playing" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={useHint}
-              className="gap-1.5"
-              data-testid="button-hint"
-            >
-              <Lightbulb className="h-4 w-4" />
-              Hint
-            </Button>
+            <div className="flex flex-col items-center gap-0.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={useHint}
+                className="gap-1.5"
+                data-testid="button-hint"
+                disabled={Boolean(hintUnavailableMessage)}
+                aria-describedby={
+                  hintUnavailableMessage
+                    ? "hint-unavailable"
+                    : hintsUsed === 0
+                      ? "hint-cost"
+                      : undefined
+                }
+              >
+                <Lightbulb className="h-4 w-4" />
+                Hint
+              </Button>
+              {hintUnavailableMessage && (
+                <span
+                  id="hint-unavailable"
+                  className="max-w-40 text-center text-xs leading-tight text-muted-foreground"
+                  data-testid="text-hint-unavailable"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {hintUnavailableMessage}
+                </span>
+              )}
+              {hintsUsed === 0 && (
+                <span id="hint-cost" className="max-w-40 text-center text-xs leading-tight text-muted-foreground" data-testid="text-hint-cost">
+                  30 points per hint; score won&apos;t drop below 10.
+                </span>
+              )}
+            </div>
           )}
           {!locked && (
             <Button
@@ -306,7 +388,12 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+              onClick={() => {
+                if (!endSession(sessionId)) return;
+                setValidating(false);
+                setCompletionMessage(getCompletionMessage(false));
+                setGameStatus("lost");
+              }}
               className="gap-1.5"
               data-testid="button-end-game"
             >
@@ -543,8 +630,8 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                     </Badge>
                   )}
                   {hintsUsed > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Hint penalty: -{hintsUsed * 30} pts
+                    <p className="text-xs text-muted-foreground" data-testid="text-result-hint-penalty">
+                      {hintCountSummary} · {hintPenaltySummary}
                     </p>
                   )}
                 </div>
@@ -655,6 +742,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                   score={score}
                   isWin={true}
                   customMessage={`Climbed from ${puzzle.start} to ${puzzle.target} in ${steps} steps (par ${puzzle.par})`}
+                  additionalDetails={shareHintSummary}
                 />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -700,6 +788,11 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                 <p className="text-muted-foreground">You ended the game early.</p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
                 <p className="text-lg font-semibold" data-testid="text-score">Score: {score} pts</p>
+                {hintsUsed > 0 && (
+                  <p className="text-xs text-muted-foreground" data-testid="text-result-hint-penalty">
+                    {hintCountSummary} · Hint penalty: -{hintsUsed * 30} pts
+                  </p>
+                )}
                 {personalBest > 0 && (
                   <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
                     Personal Best: {personalBest} pts
@@ -710,6 +803,7 @@ export function WordLadderGame({ initialChallenge, groupSeed, locked, isUntimed 
                   gameSlug="word-ladder"
                   score={score}
                   isWin={false}
+                  additionalDetails={shareHintSummary}
                 />
                 {ladder.length > 1 && (
                   <div className="text-left">

@@ -19,6 +19,7 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
+import { isCompleteTargetSet } from "./fixed-answer-outcome";
 
 export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isUntimed, livesCount }: { groupSeed?: number; locked?: boolean; quizMode?: boolean; customWords?: ScrambleWord[]; isUntimed?: boolean; livesCount?: number } = {}) {
   const { playSound } = useSound();
@@ -51,12 +52,15 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [wordsCompleted, setWordsCompleted] = useState(0);
+  const solvedWordsRef = useRef(new Set<string>());
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
   const [alsoCorrect, setAlsoCorrect] = useState<string[]>([]);
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const gameStatusRef = useRef(gameStatus);
+  gameStatusRef.current = gameStatus;
 
   const scrambleWord = (word: string, rng: () => number = Math.random): string => {
     const letters = word.split("");
@@ -70,11 +74,13 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   };
 
   const selectNewWord = useCallback(() => {
+    if (gameStatusRef.current !== "playing") return;
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
-      playSound("win");
-      setGameStatus("won");
-      setCompletionMessage(getCompletionMessage(true));
+      const didWin = isCompleteTargetSet(solvedWordsRef.current.size, activeWords.length);
+      playSound(didWin ? "win" : "lose");
+      setGameStatus(didWin ? "won" : "lost");
+      setCompletionMessage(getCompletionMessage(didWin));
       return;
     }
     const rng = seedRngRef.current ?? Math.random;
@@ -100,6 +106,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
     setLives(livesCount ?? 3);
     setGameStatus("playing");
     setWordsCompleted(0);
+    solvedWordsRef.current.clear();
     setUsedWords(new Set());
     const rng = seedRngRef.current ?? Math.random;
     const randomWord = overrideWord ?? wordPool[Math.floor(rng() * wordPool.length)];
@@ -127,7 +134,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   }, [gameStatus, score, reportResult]);
 
   const checkAnswer = () => {
-    if (!currentWord) return;
+    if (!currentWord || feedback || gameStatus !== "playing" || solvedWordsRef.current.has(currentWord.word)) return;
     const allValid = [currentWord.word, ...(currentWord.validAnswers ?? [])];
     if (allValid.includes(userInput.toUpperCase())) {
       playSound("correct");
@@ -137,7 +144,8 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
       setStreak(prev => prev + 1);
       const points = 100 + level * 20;
       setScore((prev) => prev + points);
-      setWordsCompleted((prev) => prev + 1);
+      solvedWordsRef.current.add(currentWord.word);
+      setWordsCompleted(solvedWordsRef.current.size);
 
       if ((wordsCompleted + 1) % 3 === 0) {
         setLevel((prev) => prev + 1);
@@ -168,6 +176,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
   };
 
   const skipWord = () => {
+    if (feedback || gameStatus !== "playing") return;
     setLives((prev) => {
       const newLives = prev - 1;
       if (newLives <= 0) {
@@ -424,7 +433,7 @@ export function WordScrambleGame({ groupSeed, locked, quizMode, customWords, isU
                 <p className="text-muted-foreground">
                   {gameStatus === "won"
                     ? "You unscrambled all the words!"
-                    : `The word was "${currentWord.word}"${(currentWord.validAnswers ?? []).length > 0 ? ` · also: ${(currentWord.validAnswers ?? []).join(", ")}` : ""}`}
+                    : `You solved ${wordsCompleted} of ${activeWords.length} words before the run ended. The answer was "${currentWord.word}"${(currentWord.validAnswers ?? []).length > 0 ? ` · also: ${(currentWord.validAnswers ?? []).join(", ")}` : ""}`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">

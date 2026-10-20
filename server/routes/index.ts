@@ -23,6 +23,15 @@ import { registerShareRoutes } from "./share.routes";
 import { registerAnalyticsRoutes } from "./analytics.routes";
 import { registerContactRoutes } from "./contact.routes";
 import { registerGameReportRoutes } from "./game-reports.routes";
+import { registerExploreRoutes } from "./explore.routes";
+import { registerAnagramExploreRoutes } from "./anagram-explore.routes";
+import { registerUnscrambleExploreRoutes } from "./unscramble-explore.routes";
+import { registerLetterHuntExploreRoutes } from "./letter-hunt-explore.routes";
+import { registerLetterDodgeExploreRoutes } from "./letter-dodge-explore.routes";
+import { registerLetterPositionExploreRoutes } from "./letter-position-explore.routes";
+import { registerLetterFrequencyExploreRoutes } from "./letter-frequency-explore.routes";
+import { registerNoRepeatsExploreRoutes } from "./no-repeats-explore.routes";
+import { registerLetterBalanceExploreRoutes } from "./letter-balance-explore.routes";
 
 // Static pages included in the sitemap alongside game pages.
 const SITEMAP_STATIC_PATHS = [
@@ -93,6 +102,15 @@ export function registerAllRoutes(httpServer: Server, app: Express): Server {
   registerGameReportRoutes(app);
   registerWordExamplesRoutes(app);
   registerGamesRoutes(app);
+  registerExploreRoutes(app);
+  registerAnagramExploreRoutes(app);
+  registerUnscrambleExploreRoutes(app);
+  registerLetterHuntExploreRoutes(app);
+  registerLetterDodgeExploreRoutes(app);
+  registerLetterPositionExploreRoutes(app);
+  registerLetterFrequencyExploreRoutes(app);
+  registerNoRepeatsExploreRoutes(app);
+  registerLetterBalanceExploreRoutes(app);
   registerAuthRoutes(app);
   registerStatsRoutes(app);
   registerLeaderboardRoutes(app);

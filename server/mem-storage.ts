@@ -1,5 +1,6 @@
 import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply, GameReport, InsertGameReport } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
+import { SPOKEN_WORD_BANK } from "@shared/spoken-word";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./games/seeded-rng";
 import { gamesData, wordLadderPuzzlesData, ladderRushStartWords, anagramWordSets, scrambleWords, definitionWords, letterPoolBaseWords, generateLetterPool, makerWords, wordDictionary, wordLengthConfig, letterPositionConfig, letterHuntConfig, wordChainConfig, vowelConsonantConfig, wordStackPuzzles, wordSplitPuzzles, wordFusionPuzzles, progressiveRevealWords, shellWordSet, shellWordPuzzles, crackPuzzles, deepShellWordSet, deepShellWordPuzzles, deepCrackPuzzles, wordStretchPuzzles, wordBloomPuzzles, wordDictSet, wordExtensionFallbackPuzzles } from "./game-data";
@@ -198,6 +199,10 @@ export class MemStorage implements IStorage {
 
   async getWordDictionary(): Promise<string[]> {
     return wordDictionary;
+  }
+
+  async getSpokenWordWords(_seed?: number): Promise<string[]> {
+    return [...SPOKEN_WORD_BANK];
   }
 
   async validateWord(word: string): Promise<boolean> {
@@ -907,15 +912,20 @@ export class MemStorage implements IStorage {
       e => e.userId === entry.userId && e.gameSlug === entry.gameSlug
     );
     if (existing) {
-      if (entry.score > existing.score) {
+      const isHigherScore = entry.score > existing.score;
+      const sameScoreWithFewerHints = entry.score === existing.score
+        && entry.hintsUsed != null
+        && (existing.hintsUsed == null || entry.hintsUsed < existing.hintsUsed);
+      if (isHigherScore) {
         existing.score = entry.score;
         existing.playerName = entry.playerName;
         existing.playedAt = entry.playedAt;
       }
+      if (isHigherScore || sameScoreWithFewerHints) existing.hintsUsed = entry.hintsUsed ?? null;
       return { ...existing };
     }
     const user = this.users.get(entry.userId);
-    const newEntry: LeaderboardEntry = { ...entry, username: user?.username ?? "unknown", id: this.lbIdCounter++ };
+    const newEntry: LeaderboardEntry = { ...entry, hintsUsed: entry.hintsUsed ?? null, username: user?.username ?? "unknown", id: this.lbIdCounter++ };
     this.leaderboardEntries.push(newEntry);
     return newEntry;
   }
@@ -1804,6 +1814,11 @@ export class MemStorage implements IStorage {
 
   async getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]> {
     return this.quizSessions.filter(s => s.creatorId === creatorId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async updateQuizSessionParams(id: number, params: Record<string, unknown>): Promise<void> {
+    const session = this.quizSessions.find(s => s.id === id);
+    if (session) session.params = params;
   }
 
   async addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore> {

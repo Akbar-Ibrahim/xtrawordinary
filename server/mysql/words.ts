@@ -1,4 +1,4 @@
-import { eq, and, sql, between, inArray, gte, like, notLike, aliasedTable, isNotNull } from "drizzle-orm";
+import { eq, and, sql, between, inArray, gte, like, notLike, aliasedTable, isNotNull, notExists } from "drizzle-orm";
 import type { AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord } from "@shared/schema";
 import * as schema from "../db-schema";
 import { generateLetterPool } from "../game-data";
@@ -24,7 +24,7 @@ export async function getDefinitionWords(db: any, gameData: any): Promise<Defini
 }
 
 type FrequencyLevel = "very_low" | "low" | "medium_low" | "medium" | "medium_high" | "high" | "very_high";
-const COMMON_FREQUENCY_LEVELS: FrequencyLevel[] = ["medium_low", "medium", "medium_high", "high", "very_high"];
+export const COMMON_FREQUENCY_LEVELS: FrequencyLevel[] = ["medium_low", "medium", "medium_high", "high", "very_high"];
 const HINT_GAME_FREQUENCY_LEVELS: FrequencyLevel[] = ["medium_high", "high", "very_high"];
 
 export async function getLetterPoolWords(db: any, gameData: any): Promise<LetterPoolWord[]> {
@@ -35,6 +35,11 @@ export async function getLetterPoolWords(db: any, gameData: any): Promise<Letter
       .where(and(
         isNotNull(schema.words.hint),
         inArray(schema.words.frequencyLevel, HINT_GAME_FREQUENCY_LEVELS),
+        notExists(
+          db.select({ wordId: schema.wordAnagrams.wordId })
+            .from(schema.wordAnagrams)
+            .where(sql`${schema.wordAnagrams.wordId} = ${schema.words.id} OR ${schema.wordAnagrams.anagramId} = ${schema.words.id}`),
+        ),
       ))
       .orderBy(sql`RAND()`)
       .limit(50);

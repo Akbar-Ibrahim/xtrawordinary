@@ -30,15 +30,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
+import {
+  getWordSplitLeaderboardSlug,
+  WORD_SPLIT_DIFFICULTIES,
+  type WordSplitDifficulty,
+} from "@shared/word-split";
 
-type Difficulty = "short" | "medium" | "long";
+type Difficulty = WordSplitDifficulty;
 type GameState = "menu" | "playing" | "completed" | "failed";
 
-const DIFFICULTY_CONFIG: Record<Difficulty, { label: string; description: string; minLength: number; maxLength: number }> = {
-  short: { label: "Short Words", description: "5-6 letter target words", minLength: 5, maxLength: 6 },
-  medium: { label: "Medium Words", description: "7-8 letter target words", minLength: 7, maxLength: 8 },
-  long: { label: "Long Words", description: "9+ letter target words", minLength: 9, maxLength: 99 },
-};
+const DIFFICULTY_CONFIG = WORD_SPLIT_DIFFICULTIES;
 
 function getLetterCounts(word: string): Map<string, number> {
   const counts = new Map<string, number>();
@@ -90,10 +91,28 @@ function getTotalRemaining(pool: Map<string, number>): number {
   return total;
 }
 
-export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked, groupSeed }: { initialChallenge?: Difficulty | ""; locked?: boolean; groupSeed?: number } = {}) {
+export function WordSplitGame({
+  initialChallenge = "",
+  locked,
+  groupSeed,
+  onLeaderboardModeChange,
+}: {
+  initialChallenge?: Difficulty | "";
+  locked?: boolean;
+  groupSeed?: number;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
+} = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-split" });
-  const personalBest = usePersonalBest("word-split");
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const leaderboardSlug = difficulty
+    ? getWordSplitLeaderboardSlug(difficulty)
+    : "word-split";
+  const { reportResult, resetRecorded } = useGameResult({
+    slug: leaderboardSlug,
+    statsSlug: "word-split",
+    personalBestSlug: leaderboardSlug,
+  });
+  const personalBest = usePersonalBest(leaderboardSlug);
   const { markSeen, filterUnseen } = usePuzzleHistory("word-split");
   const { data: puzzles = [], isLoading, error } = useQuery<WordSplitPuzzle[]>({
     queryKey: ["/api/games/word-split/puzzles"],
@@ -110,7 +129,6 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
 
   const [activePuzzles, setActivePuzzles] = useState<WordSplitPuzzle[]>([]);
   const [gameState, setGameState] = useState<GameState>("menu");
-  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [currentPuzzle, setCurrentPuzzle] = useState<WordSplitPuzzle | null>(null);
   const [userInput, setUserInput] = useState("");
   const [submittedWords, setSubmittedWords] = useState<string[]>([]);
@@ -165,6 +183,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     setActivePuzzles(playablePuzzles);
 
     setDifficulty(diff);
+    onLeaderboardModeChange?.(getWordSplitLeaderboardSlug(diff));
     setScore(0);
     setStreak(0);
     setPuzzlesCompleted(0);
@@ -184,7 +203,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
         markSeen(puzzle.targetWord, diff);
       }
     }
-  }, [puzzles, groupSeed, startPuzzle, resetRecorded, filterUnseen, markSeen]);
+  }, [puzzles, groupSeed, startPuzzle, resetRecorded, filterUnseen, markSeen, onLeaderboardModeChange]);
 
   useEffect(() => {
     if (groupSeed !== undefined && puzzles.length > 0 && gameState === "menu") {
@@ -205,6 +224,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
       seededQueueRef.current = rest;
 
       setDifficulty(diff);
+      onLeaderboardModeChange?.(getWordSplitLeaderboardSlug(diff));
       setActivePuzzles(puzzleList);
       setScore(0);
       setStreak(0);
@@ -218,7 +238,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     } else if (initialChallenge && puzzles.length > 0 && gameState === "menu") {
       startGame(initialChallenge as Difficulty);
     }
-  }, [initialChallenge, puzzles, startGame, startPuzzle, resetRecorded, gameState, groupSeed]);
+  }, [initialChallenge, puzzles, startGame, startPuzzle, resetRecorded, gameState, groupSeed, onLeaderboardModeChange]);
 
   const nextPuzzle = useCallback(() => {
     const puzzle = selectPuzzle(activePuzzles, usedPuzzles);
@@ -354,7 +374,7 @@ export function WordSplitGame({ initialChallenge = "" as Difficulty | "", locked
     if (gameState === "completed") {
       const allSolved = puzzlesSkipped === 0 && puzzlesCompleted > 0;
       setCompletionMessage(getCompletionMessage(allSolved));
-      reportResult(score, true, puzzlesCompleted);
+      reportResult(score, allSolved, puzzlesCompleted);
     } else if (gameState === "failed") {
       setCompletionMessage(getCompletionMessage(false));
       reportResult(score, false, puzzlesCompleted);

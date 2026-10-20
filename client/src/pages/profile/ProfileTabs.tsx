@@ -32,7 +32,8 @@ interface Props {
   quizzes: QuizSessionWithCount[];
   quizzesLoading: boolean;
   copiedCode: string | null;
-  onCopyLink: (shareCode: string) => void;
+  copyPending: boolean;
+  onCopyLink: (shareCode: string, source: HTMLButtonElement) => void;
   onDeleteQuizClick: (shareCode: string) => void;
 
   unlockedIds: Set<string>;
@@ -56,7 +57,7 @@ export function ProfileTabs({
   activeTab, onTabChange,
   isOwnProfile, profileName, stats, rankings, formatGameName, gameMap,
   ownStreak, ownDailyStreak, viewedStreak, isAuthenticated,
-  quizzes, quizzesLoading, copiedCode, onCopyLink, onDeleteQuizClick,
+  quizzes, quizzesLoading, copiedCode, copyPending, onCopyLink, onDeleteQuizClick,
   unlockedIds, achievementPoints, maxPoints, localStats, localStreak, localDuelStats,
   duelHistory, duelHistoryLoading,
   myFriends, myGroups, friendsLoading,
@@ -103,7 +104,7 @@ export function ProfileTabs({
             <StatsTab profileName={profileName} stats={stats} isOwnProfile={isOwnProfile} isAuthenticated={isAuthenticated} ownStreak={ownStreak} ownDailyStreak={ownDailyStreak} viewedStreak={viewedStreak} formatGameName={formatGameName} />
           </TabsContent>
           <TabsContent value="quizzes" className="mt-4">
-            <QuizzesTab isOwnProfile={isOwnProfile} quizzesLoading={quizzesLoading} quizzes={quizzes} gameMap={gameMap} copiedCode={copiedCode} onCopyLink={onCopyLink} onDeleteClick={onDeleteQuizClick} />
+            <QuizzesTab isOwnProfile={isOwnProfile} quizzesLoading={quizzesLoading} quizzes={quizzes} gameMap={gameMap} copiedCode={copiedCode} copyPending={copyPending} onCopyLink={onCopyLink} onDeleteClick={onDeleteQuizClick} />
           </TabsContent>
           <TabsContent value="rankings" className="mt-4">
             <RankingsTab rankings={rankings} formatGameName={formatGameName} />

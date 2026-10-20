@@ -31,6 +31,11 @@ import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 import { CommentSection } from "@/components/comment-section";
+import {
+  getLockedBalancePair,
+  isLockedBalanceConfig,
+  useLockedBalanceAvailability,
+} from "@/hooks/use-locked-balance-availability";
 
 const SLUG_TO_PRIMARY: Record<string, string> = {
   "shell-words-guided": "shell-words",
@@ -69,7 +74,14 @@ const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
   consonant_oblivion: [2, 3, 4, 5], vowel_oblivion: [2, 3, 4, 5],
 };
 
-type GroupGameConfig = { initialLetters?: string[]; letters?: string[]; category?: string; level?: number; consonantCount?: number };
+type GroupGameConfig = {
+  initialLetters?: string[];
+  letters?: string[];
+  category?: string;
+  level?: number;
+  consonantCount?: number;
+  decoyCount?: 1 | 2 | 3;
+};
 
 function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfig | null): React.ReactNode {
   switch (slug) {
@@ -112,8 +124,7 @@ function renderGroupGame(slug: string, seed: number, gameConfig?: GroupGameConfi
     case "word-scramble": return <WordScrambleGame groupSeed={seed} locked />;
     case "definition-match": return <DefinitionMatchGame groupSeed={seed} locked />;
     case "letter-pool": {
-      const v = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={v as "with-pool" | "without-pool"} groupSeed={seed} locked />;
+      return <LetterPoolGame initialChallenge="with-pool" initialDecoyCount={gameConfig?.decoyCount ?? 1} groupSeed={seed} locked />;
     }
     case "word-maker": return <WordMakerGame groupSeed={seed} locked />;
     case "word-sweep": {
@@ -167,6 +178,23 @@ export default function GroupRoundPlay() {
     },
     enabled: !isNaN(groupId) && !isNaN(roundIdNum),
   });
+  const savedRoundConfig = (() => {
+    if (!data?.round.gameConfig) return null;
+    try {
+      return JSON.parse(data.round.gameConfig) as unknown;
+    } catch {
+      return null;
+    }
+  })();
+  const savedLockedBalanceConfig = data?.round.gameSlug === "letter-balance" &&
+    isLockedBalanceConfig(savedRoundConfig);
+  const savedLockedBalancePair = savedLockedBalanceConfig ? getLockedBalancePair(savedRoundConfig) : null;
+  const lockedBalanceAvailability = useLockedBalanceAvailability(savedLockedBalanceConfig);
+  const savedLockedBalanceAvailable = savedLockedBalancePair
+    ? lockedBalanceAvailability.data?.availability[
+        `${savedLockedBalancePair.length}:${savedLockedBalancePair.consonantCount}`
+      ]
+    : undefined;
 
   const { data: attemptData, isLoading: attemptLoading } = useQuery<AttemptResponse>({
     queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "attempt"],
@@ -195,7 +223,13 @@ export default function GroupRoundPlay() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", groupId, "rounds", roundIdNum, "attempt"] });
     },
-    onError: () => toast({ title: "Failed to start game", variant: "destructive" }),
+    onError: (error: any) => toast({
+      title: "Failed to start game",
+      description: error?.message?.includes("No valid dictionary words match")
+        ? "No valid dictionary words match this saved Locked Balance setting."
+        : error?.message || "This round could not be started.",
+      variant: "destructive",
+    }),
   });
 
   const submitMutation = useMutation({
@@ -468,16 +502,37 @@ export default function GroupRoundPlay() {
                   <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : (
-                  <Button
-                    className="w-full gap-2"
-                    size="lg"
-                    onClick={handlePlayClick}
-                    disabled={recordAttemptMutation.isPending}
-                    data-testid="button-play-group-round"
-                  >
-                    <Play className="h-5 w-5" />
-                    Play {gameName}
-                  </Button>
+                  <>
+                    {savedLockedBalanceConfig && (
+                      lockedBalanceAvailability.isLoading ? (
+                        <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground" role="status">
+                          Checking whether this Locked Balance setting still has valid words…
+                        </div>
+                      ) : lockedBalanceAvailability.isError ? (
+                        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center text-sm text-destructive" role="alert">
+                          Couldn't verify this Locked Balance setting against the active dictionary. Please try again later.
+                        </div>
+                      ) : savedLockedBalanceAvailable !== true ? (
+                        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center text-sm text-destructive" role="alert">
+                          No valid dictionary words match this saved Locked Balance setting, so this round cannot be played. Ask a group admin to start a new round with different settings.
+                        </div>
+                      ) : null
+                    )}
+                    <Button
+                      className="w-full gap-2"
+                      size="lg"
+                      onClick={handlePlayClick}
+                      disabled={recordAttemptMutation.isPending || (savedLockedBalanceConfig && (
+                        lockedBalanceAvailability.isLoading ||
+                        lockedBalanceAvailability.isError ||
+                        savedLockedBalanceAvailable !== true
+                      ))}
+                      data-testid="button-play-group-round"
+                    >
+                      <Play className="h-5 w-5" />
+                      Play {gameName}
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>

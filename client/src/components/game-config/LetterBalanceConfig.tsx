@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { GameConfigProps } from "./types";
+import { useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
 
 const STRUCTURAL_CATS = [
   { id: "consonant_count", name: "Consonant Count", levelType: "count", levels: [2,3,4,5,6,7,"advanced"] as (number | "advanced")[] },
@@ -14,8 +15,9 @@ const STRUCTURAL_CATS = [
   { id: "locked_balance", name: "Locked Balance", levelType: "length", levels: [] as number[] },
 ];
 
-export function LetterBalanceConfig({ params, setParams, dialogType }: GameConfigProps) {
+export function LetterBalanceConfig({ params, setParams, dialogType, open }: GameConfigProps) {
   const [lbMode, setLbMode] = useState<"count" | "structural">("count");
+  const lockedBalanceAvailability = useLockedBalanceAvailability(open);
   const isStructural = lbMode === "structural";
   const pfx = dialogType === "quiz" ? "quiz" : "season";
   const selectedCat = STRUCTURAL_CATS.find(c => c.id === params.category);
@@ -206,20 +208,40 @@ export function LetterBalanceConfig({ params, setParams, dialogType }: GameConfi
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {Array.from({ length: params.level - 1 }, (_, i) => i + 1).map(c => {
                       const v = params.level - c;
+                      const available = lockedBalanceAvailability.data?.availability[`${params.level}:${c}`] === true;
                       return (
                         <Button key={c} type="button" size="sm"
                           variant={params.consonantCount === c ? "default" : "outline"}
+                          disabled={lockedBalanceAvailability.isLoading || lockedBalanceAvailability.isError || !available}
                           onClick={() => setParams(p => ({ ...p, consonantCount: c }))}
                           data-testid={`button-${pfx}-lb-consonant-${c}`}
                           title={`${c}C / ${v}V`}
                         >
-                          {c}C/{v}V
+                          {c}C/{v}V{!available && !lockedBalanceAvailability.isLoading && !lockedBalanceAvailability.isError ? " · No words" : ""}
                         </Button>
                       );
                     })}
                   </div>
                 </div>
               )}
+              {lockedBalanceAvailability.isLoading && (
+                <p className="text-xs text-muted-foreground" role="status">Checking which settings have valid words…</p>
+              )}
+              {lockedBalanceAvailability.isError && (
+                <div className="flex items-center justify-between gap-2" role="alert">
+                  <p className="text-xs text-destructive">Couldn't verify which Locked Balance settings have valid words.</p>
+                  <Button type="button" size="sm" variant="outline" onClick={() => lockedBalanceAvailability.refetch()}>
+                    Check again
+                  </Button>
+                </div>
+              )}
+              {params.level !== undefined &&
+                params.consonantCount !== undefined &&
+                lockedBalanceAvailability.data?.availability[`${params.level}:${params.consonantCount}`] === false && (
+                  <p className="text-xs text-destructive" role="alert">
+                    No valid dictionary words match this Locked Balance setting. Choose a different consonant count.
+                  </p>
+                )}
               {(!params.level || !params.consonantCount) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   {!params.level ? "Pick a word length." : "Pick a consonant count."}

@@ -4,6 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import type { FriendChallenge } from "@shared/schema";
+import {
+  getLetterDodgeChallengeDifficulty,
+  getLetterDodgeChallengeSurvival,
+  LETTER_DODGE_VARIANTS,
+  parseLetterDodgeDifficulty,
+} from "@shared/letter-dodge";
 import type { ChallengeResult } from "./constants";
 
 interface Friend {
@@ -22,6 +28,8 @@ interface Props {
   challengeNewLbCategory: string | null;
   challengeNewLbLevel: string | null;
   challengeNewLbConsonantCount: string | null;
+  challengeNewDodgeDifficulty: string | null;
+  challengeNewDodgeSurvival: boolean;
   isReceiverMode: boolean;
 }
 
@@ -36,11 +44,22 @@ export function FriendChallengeCard({
   challengeNewLbCategory,
   challengeNewLbLevel,
   challengeNewLbConsonantCount,
+  challengeNewDodgeDifficulty,
+  challengeNewDodgeSurvival,
   isReceiverMode,
 }: Props) {
   const opponentAvatarUrl = !challengeResult.isSender
     ? (receiverChallenge?.senderAvatarUrl ?? null)
     : (friends.find(f => String(f.friendUser.id) === challengeNewFriendId)?.friendUser.avatarUrl ?? null);
+  const dodgeDifficulty = challengeResult.isSender
+    ? parseLetterDodgeDifficulty(challengeNewDodgeDifficulty) ?? "advanced"
+    : getLetterDodgeChallengeDifficulty(receiverChallenge?.gameConfig);
+  const dodgeDifficultyLabel = LETTER_DODGE_VARIANTS.find(
+    ({ difficulty }) => difficulty === dodgeDifficulty,
+  )?.label;
+  const dodgeSurvival = challengeResult.isSender
+    ? challengeNewDodgeSurvival
+    : getLetterDodgeChallengeSurvival(receiverChallenge?.gameConfig);
 
   return (
     <Card className={`mb-6 border-2 ${isTied ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20" : challengeResult.won ? "border-green-500 bg-green-50 dark:bg-green-950/20" : "border-muted bg-muted/30"}`}>
@@ -55,6 +74,11 @@ export function FriendChallengeCard({
                 : opponentName ? `${opponentName} wins this one!` : "Your friend wins this one!"}
           </p>
         </div>
+        {slug === "letter-dodge" && dodgeDifficultyLabel && (
+          <p className="text-xs text-muted-foreground mt-1" data-testid="text-challenge-dodge-config">
+            {dodgeDifficultyLabel}{dodgeSurvival ? " · Survival" : ""}
+          </p>
+        )}
         {slug === "letter-balance" && (() => {
           const lbCfgStr = isReceiverMode ? receiverChallenge?.gameConfig : null;
           const senderLbStr = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)

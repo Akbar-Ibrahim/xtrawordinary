@@ -24,6 +24,7 @@ import type {
 
 import * as Games from "./mysql/games";
 import * as Words from "./mysql/words";
+import * as SpokenWord from "./mysql/spoken-word";
 import * as Users from "./mysql/users";
 import * as Stats from "./mysql/stats";
 import * as Friends from "./mysql/friends";
@@ -109,6 +110,7 @@ export class MySQLStorage implements IStorage {
   async getAnagramWordSets(): Promise<AnagramWordSet[]> { return Words.getAnagramWordSets(await this.getDb(), this.gameData); }
   async getScrambleWords(): Promise<ScrambleWord[]> { return Words.getScrambleWords(await this.getDb(), this.gameData); }
   async getDefinitionWords(): Promise<DefinitionWord[]> { return Words.getDefinitionWords(await this.getDb(), this.gameData); }
+  async getSpokenWordWords(seed?: number): Promise<string[]> { return SpokenWord.getSpokenWordWords(await this.getDb(), seed); }
   async getLetterPoolWords(): Promise<LetterPoolWord[]> { return Words.getLetterPoolWords(await this.getDb(), this.gameData); }
   async getMakerWords(): Promise<MakerWord[]> { return Words.getMakerWords(await this.getDb(), this.gameData); }
   async getWordRootsPuzzles(): Promise<WordRootsPuzzle[]> { return Words.getWordRootsPuzzles(await this.getDb(), this.gameData); }
@@ -391,6 +393,7 @@ export class MySQLStorage implements IStorage {
   async createQuizSession(session: InsertQuizSession): Promise<QuizSession> { return Quiz.createQuizSession(await this.getDb(), session); }
   async getQuizSessionByCode(shareCode: string): Promise<QuizSession | undefined> { return Quiz.getQuizSessionByCode(await this.getDb(), shareCode); }
   async getQuizSessionsByCreator(creatorId: number): Promise<QuizSession[]> { return Quiz.getQuizSessionsByCreator(await this.getDb(), creatorId); }
+  async updateQuizSessionParams(id: number, params: Record<string, unknown>): Promise<void> { return Quiz.updateQuizSessionParams(await this.getDb(), id, params); }
   async addQuizSessionScore(sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore> { return Quiz.addQuizSessionScore(await this.getDb(), sessionId, userId, score, guestName); }
   async getQuizSessionScores(sessionId: number): Promise<QuizSessionScore[]> { return Quiz.getQuizSessionScores(await this.getDb(), sessionId); }
   async getQuizSessionScore(sessionId: number, userId: number): Promise<QuizSessionScore | undefined> { return Quiz.getQuizSessionScore(await this.getDb(), sessionId, userId); }

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { GAME_SLUGS, GAME_NAMES } from "./constants";
+import { useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
 
 export function CreateRoundDialog({
   open,
@@ -47,6 +48,13 @@ export function CreateRoundDialog({
   createRoundMutation: UseMutationResult<any, any, void>;
   onCancel: () => void;
 }) {
+  const lockedBalanceAvailability = useLockedBalanceAvailability(
+    open && selectedSlug === "letter-balance" && roundLbMode === "locked",
+  );
+  const selectedLockedPairAvailable = roundLbLevel !== undefined && roundLbConsonantCount !== undefined
+    ? lockedBalanceAvailability.data?.availability[`${roundLbLevel}:${roundLbConsonantCount}`]
+    : undefined;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -113,19 +121,37 @@ export function CreateRoundDialog({
                       <div className="flex gap-1 mt-1 flex-wrap">
                         {Array.from({ length: roundLbLevel - 1 }, (_, i) => i + 1).map(c => {
                           const v = roundLbLevel - c;
+                          const available = lockedBalanceAvailability.data?.availability[`${roundLbLevel}:${c}`] === true;
                           return (
                             <Button key={c} type="button" size="sm"
                               variant={roundLbConsonantCount === c ? "default" : "outline"}
+                              disabled={lockedBalanceAvailability.isLoading || lockedBalanceAvailability.isError || !available}
                               onClick={() => setRoundLbConsonantCount(c)}
                               data-testid={`button-round-lb-consonant-${c}`}
                               title={`${c}C / ${v}V`}
                             >
-                              {c}C/{v}V
+                              {c}C/{v}V{!available && !lockedBalanceAvailability.isLoading && !lockedBalanceAvailability.isError ? " · No words" : ""}
                             </Button>
                           );
                         })}
                       </div>
                     </div>
+                  )}
+                  {lockedBalanceAvailability.isLoading && (
+                    <p className="text-xs text-muted-foreground" role="status">Checking which settings have valid words…</p>
+                  )}
+                  {lockedBalanceAvailability.isError && (
+                    <div className="flex items-center justify-between gap-2" role="alert">
+                      <p className="text-xs text-destructive">Couldn't verify which Locked Balance settings have valid words.</p>
+                      <Button type="button" size="sm" variant="outline" onClick={() => lockedBalanceAvailability.refetch()}>
+                        Check again
+                      </Button>
+                    </div>
+                  )}
+                  {selectedLockedPairAvailable === false && (
+                    <p className="text-xs text-destructive" role="alert">
+                      No valid dictionary words match this Locked Balance setting. Choose a different consonant count.
+                    </p>
                   )}
                   {(!roundLbLevel || !roundLbConsonantCount) && (
                     <p className="text-xs text-amber-600 dark:text-amber-400">
@@ -218,7 +244,7 @@ export function CreateRoundDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending || (selectedSlug === "letter-balance" && roundLbMode === "locked" && (!roundLbLevel || !roundLbConsonantCount))} data-testid="button-create-round-submit">
+          <Button onClick={() => createRoundMutation.mutate()} disabled={createRoundMutation.isPending || (selectedSlug === "letter-balance" && roundLbMode === "locked" && (!roundLbLevel || !roundLbConsonantCount || lockedBalanceAvailability.isLoading || lockedBalanceAvailability.isError || selectedLockedPairAvailable !== true))} data-testid="button-create-round-submit">
             {createRoundMutation.isPending ? "Creating..." : "Start Round"}
           </Button>
         </DialogFooter>

@@ -10,22 +10,25 @@ const GUEST_NUDGE_KEY = "xw_guest_nudge_shown";
 
 interface GameResultOptions {
   slug: string;
+  statsSlug?: string;
+  personalBestSlug?: string;
+  survivalSuggestionSlug?: string;
   challengeId?: number;
   quizMode?: boolean;
   isUntimed?: boolean;
 }
 
-async function syncToBackend(slug: string, score: number, won: boolean, wordsFound?: number, skipLeaderboard?: boolean) {
+async function syncToBackend(leaderboardSlug: string, statsSlug: string, score: number, won: boolean, wordsFound?: number, skipLeaderboard?: boolean, hintsUsed?: number) {
   try {
     const stats = loadStats();
-    const gameStats = stats.perGame[slug];
+    const gameStats = stats.perGame[statsSlug];
     if (gameStats) {
       await fetch("/api/user/stats", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          gameSlug: slug,
+          gameSlug: statsSlug,
           bestScore: gameStats.bestScore,
           gamesPlayed: gameStats.gamesPlayed,
           gamesWon: gameStats.gamesWon,
@@ -48,13 +51,17 @@ async function syncToBackend(slug: string, score: number, won: boolean, wordsFou
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ gameSlug: slug, score }),
+        body: JSON.stringify({
+          gameSlug: leaderboardSlug,
+          score,
+          ...(leaderboardSlug === "word-ladder" && hintsUsed !== undefined ? { hintsUsed } : {}),
+        }),
       });
     }
   } catch {}
 }
 
-export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode, isUntimed }: GameResultOptions) {
+export function useGameResult({ slug, statsSlug, personalBestSlug, survivalSuggestionSlug, challengeId: explicitChallengeId, quizMode, isUntimed }: GameResultOptions) {
   const { toast } = useToast();
   const recordedRef = useRef(false);
   const { isAuthenticated, openAuthModal } = useAuth();
@@ -74,13 +81,19 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
 
   const slugRef = useRef(slug);
   slugRef.current = slug;
+  const statsSlugRef = useRef(statsSlug ?? slug);
+  statsSlugRef.current = statsSlug ?? slug;
+  const personalBestSlugRef = useRef(personalBestSlug ?? slug);
+  personalBestSlugRef.current = personalBestSlug ?? slug;
+  const survivalSuggestionSlugRef = useRef(survivalSuggestionSlug);
+  survivalSuggestionSlugRef.current = survivalSuggestionSlug;
 
   const isAuthenticatedRef = useRef(isAuthenticated);
   isAuthenticatedRef.current = isAuthenticated;
 
   const analyticsMode = quizMode ? "custom" : isUntimed ? "untimed" : "timed";
   const trackStart = useCallback(() => {
-    trackAnalyticsEvent("game_start", { gameSlug: slugRef.current, gameMode: analyticsMode });
+    trackAnalyticsEvent("game_start", { gameSlug: statsSlugRef.current, gameMode: analyticsMode });
   }, [analyticsMode]);
 
   useEffect(() => {
@@ -89,26 +102,31 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
   }, [trackStart]);
 
   const reportResult = useCallback(
-    (score: number, won: boolean, wordsFound?: number) => {
+    (score: number, won: boolean, wordsFound?: number, hintsUsed?: number, skipLeaderboardOverride?: boolean, eventDetails?: Record<string, unknown>) => {
       if (recordedRef.current) return { isNewBest: false, newAchievements: [] as Achievement[] };
       recordedRef.current = true;
 
-      const currentSlug = slugRef.current;
+      const currentLeaderboardSlug = slugRef.current;
+      const currentStatsSlug = statsSlugRef.current;
+      const currentPersonalBestSlug = personalBestSlugRef.current;
+      const currentSurvivalSuggestionSlug = survivalSuggestionSlugRef.current;
       trackAnalyticsEvent("game_completion", {
-        gameSlug: currentSlug,
+        gameSlug: currentStatsSlug,
         gameMode: quizModeRef.current ? "custom" : isUntimedRef.current ? "untimed" : "timed",
       });
-      const currentBest = getPersonalBest(currentSlug);
+      const currentBest = getPersonalBest(currentPersonalBestSlug);
 
       const streakBefore = loadStreak().currentStreak;
 
       const result = recordGameResult({
-        slug: currentSlug,
+        slug: currentStatsSlug,
+        personalBestSlug: currentPersonalBestSlug,
+        survivalSuggestionSlug: currentSurvivalSuggestionSlug,
         score,
         won,
         wordsFound,
         timestamp: Date.now(),
-      });
+      }, eventDetails);
 
       const streakAfter = loadStreak().currentStreak;
       const STREAK_MILESTONES: Record<number, { title: string; description: string }> = {
@@ -154,7 +172,7 @@ export function useGameResult({ slug, challengeId: explicitChallengeId, quizMode
       }
 
       if (isAuthenticatedRef.current && !quizModeRef.current) {
-        syncToBackend(currentSlug, score, won, wordsFound, isUntimedRef.current);
+        syncToBackend(currentLeaderboardSlug, currentStatsSlug, score, won, wordsFound, isUntimedRef.current || skipLeaderboardOverride === true, hintsUsed);
         const challengeId = challengeIdRef.current;
         if (challengeId) {
           fetch(`/api/challenges/${challengeId}/complete`, {

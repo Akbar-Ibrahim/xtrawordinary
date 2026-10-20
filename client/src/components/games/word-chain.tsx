@@ -19,6 +19,7 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { useGameSession } from "@/hooks/use-game-session";
 const SURVIVAL_TIME_PER_WORD = 10;
 const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 20 },
@@ -81,6 +82,15 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   
   const [timerRunning, setTimerRunning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const timerGenerationRef = useRef(0);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    invalidateSession,
+    isCurrentSession,
+    isSessionActive,
+  } = useGameSession();
 
   const getConstraint = useCallback(() => {
     if (!currentWord) return null;
@@ -106,24 +116,26 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
 
   useEffect(() => {
     if (!timerRunning || gameStatus !== "playing") return;
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0 || !isSessionActive(sessionId)) return;
+    const timerGeneration = timerGenerationRef.current;
     
     const timeoutId = setTimeout(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          setTimerRunning(false);
-          playSound("lose");
-          setCompletionMessage(getCompletionMessage(false));
-          setTimedOut(true);
-          setGameStatus("lost");
-          return 0;
-        }
-        return prev - 1;
-      });
+      if (!isSessionActive(sessionId) || timerGeneration !== timerGenerationRef.current) return;
+      if (timeLeft <= 1) {
+        endSession(sessionId);
+        setTimerRunning(false);
+        playSound("lose");
+        setCompletionMessage(getCompletionMessage(false));
+        setTimedOut(true);
+        setGameStatus("lost");
+        setTimeLeft(0);
+        return;
+      }
+      setTimeLeft(timeLeft - 1);
     }, 1000);
     
     return () => clearTimeout(timeoutId);
-  }, [timerRunning, timeLeft, gameStatus]);
+  }, [timerRunning, timeLeft, gameStatus, sessionId, isSessionActive, endSession]);
 
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
@@ -134,27 +146,31 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback((activeSession: number) => {
+    timerGenerationRef.current += 1;
     setTimerRunning(false);
     setTimeLeft(survivalTime);
     requestAnimationFrame(() => {
-      setTimerRunning(true);
+      if (isSessionActive(activeSession)) setTimerRunning(true);
     });
-  }, [survivalTime]);
+  }, [survivalTime, isSessionActive]);
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     setTimerRunning(false);
   }, []);
 
-  const resetTimer = useCallback(() => {
+  const resetTimer = useCallback((activeSession: number) => {
+    timerGenerationRef.current += 1;
     setTimerRunning(false);
     setTimeLeft(survivalTime);
     requestAnimationFrame(() => {
-      setTimerRunning(true);
+      if (isSessionActive(activeSession)) setTimerRunning(true);
     });
-  }, [survivalTime]);
+  }, [survivalTime, isSessionActive]);
 
   const startGame = useCallback(async (v: Variation, l: Level, seed?: number) => {
+    const activeSession = startSession();
     resetRecorded();
     stopTimer();
     setTimedOut(false);
@@ -172,7 +188,9 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     
     try {
       const result = await startWordMutation.mutateAsync({ variation: v, level: l, seed });
+      if (!isSessionActive(activeSession)) return;
       if (!result.word) {
+        endSession(activeSession);
         playSound("wrong");
         setFeedback({ type: "invalid", message: "Could not start game" });
         return;
@@ -183,13 +201,17 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       setChainHistory([{ word: result.word, isPlayer: false }]);
       setGameStatus("playing");
       
-      if (!isUntimed) startTimer();
-      setTimeout(() => inputRef.current?.focus(), 100);
+      if (!isUntimed) startTimer(activeSession);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
+      }, 100);
     } catch {
+      if (!isCurrentSession(activeSession)) return;
+      endSession(activeSession);
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Error starting game" });
     }
-  }, [startWordMutation, stopTimer, startTimer, resetRecorded, survivalTime]);
+  }, [startWordMutation, stopTimer, startTimer, resetRecorded, survivalTime, startSession, endSession, isSessionActive, isCurrentSession]);
 
   useEffect(() => {
     if (groupSeed !== undefined) {
@@ -206,7 +228,8 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
   }, [level, variation, startGame]);
 
   const checkAnswer = async () => {
-    if (!userInput.trim()) return;
+    if (!userInput.trim() || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
 
     const upperWord = userInput.toUpperCase();
 
@@ -214,7 +237,9 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       playSound("wrong");
       setStreak(0);
       setFeedback({ type: "invalid", message: "Already used this word!" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setFeedback(null);
+      }, 1500);
       inputRef.current?.focus();
       return;
     }
@@ -223,19 +248,24 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
     if (!constraintCheck.valid) {
       playSound("wrong");
       setStreak(0);
-        setFeedback({ type: "wrong", message: constraintCheck.message });
-      setTimeout(() => setFeedback(null), 1500);
+      setFeedback({ type: "wrong", message: constraintCheck.message });
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setFeedback(null);
+      }, 1500);
       inputRef.current?.focus();
       return;
     }
 
     try {
       const result = await validateMutation.mutateAsync(upperWord);
+      if (!isSessionActive(activeSession)) return;
       if (!result.valid) {
         playSound("wrong");
         setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word!" });
-        setTimeout(() => setFeedback(null), 1500);
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) setFeedback(null);
+        }, 1500);
         inputRef.current?.focus();
         return;
       }
@@ -256,14 +286,17 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
       inputRef.current?.focus();
 
       setTimeout(async () => {
+        if (!isSessionActive(activeSession)) return;
         setFeedback(null);
         
         if (newWordsCompleted >= wordsPerLevel) {
           if (level >= 2) {
+            endSession(activeSession);
             playSound("win");
             setCompletionMessage(getCompletionMessage(true));
             setGameStatus("won");
           } else {
+            endSession(activeSession);
             playSound("correct");
             setGameStatus("levelComplete");
           }
@@ -277,8 +310,10 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
             level,
             usedWords: newUsedWordsArray
           });
+          if (!isSessionActive(activeSession)) return;
           
           if (!computerResult.word) {
+            endSession(activeSession);
             playSound("win");
             setCompletionMessage(getCompletionMessage(true));
             setGameStatus("won");
@@ -288,18 +323,29 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
           setCurrentWord(computerResult.word);
           setUsedWords(prev => new Set(Array.from(prev).concat(computerResult.word!)));
           setChainHistory(prev => [...prev, { word: computerResult.word!, isPlayer: false }]);
-          if (!isUntimed) resetTimer();
+          if (!isUntimed) resetTimer(activeSession);
         } catch {
-          playSound("win");
-          setCompletionMessage(getCompletionMessage(true));
-          setGameStatus("won");
+          if (!isSessionActive(activeSession)) return;
+          endSession(activeSession);
+          setCompletionMessage("The computer's next word could not be loaded. This round ended without a winner.");
+          setGameStatus("lost");
         }
       }, 500);
     } catch {
+      if (!isSessionActive(activeSession)) return;
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Error validating word" });
-      setTimeout(() => setFeedback(null), 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setFeedback(null);
+      }, 1500);
     }
+  };
+
+  const endGame = () => {
+    if (!endSession(sessionId)) return;
+    stopTimer();
+    setCompletionMessage(getCompletionMessage(false));
+    setGameStatus("lost");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -553,7 +599,11 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setGameStatus("menu")}
+                      onClick={() => {
+                        invalidateSession();
+                        stopTimer();
+                        setGameStatus("menu");
+                      }}
                       data-testid="button-menu"
                     >
                       Menu
@@ -561,7 +611,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => { stopTimer(); setCompletionMessage(getCompletionMessage(false)); setGameStatus("lost"); }}
+                      onClick={endGame}
                       data-testid="button-end-game"
                     >
                       End Game
@@ -664,7 +714,7 @@ export function WordChainGame({ initialChallenge = {} as { variation?: Variation
                     <Button onClick={() => startGame(variation, level)} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
                       Play Again
                     </Button>
-                    <Button onClick={() => setGameStatus("menu")} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
+                    <Button onClick={() => { invalidateSession(); setGameStatus("menu"); }} className="bg-amber-500 hover:bg-amber-600 text-white border-0" data-testid="button-main-menu">
                       Main Menu
                     </Button>
                     <TryAnotherGameButton currentSlug="word-chain" />

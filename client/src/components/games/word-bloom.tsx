@@ -85,6 +85,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const recordedRef = useRef(false);
   const gameStatusRef = useRef<GameStatus>("playing");
   const currentWordRef = useRef("");
@@ -92,16 +93,30 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
   const scoreRef = useRef(0);
   const seedLenRef = useRef(0);
   const currentSeedRef = useRef<number>(initialSeed);
+  const runIdRef = useRef(1);
+  const activeRunRef = useRef(true);
+
+  const isActiveRun = useCallback((runId: number) =>
+    activeRunRef.current && runIdRef.current === runId && gameStatusRef.current === "playing",
+  []);
+
+  const focusInputForRun = useCallback((runId: number, delay: number) => {
+    setTimeout(() => {
+      if (isActiveRun(runId)) inputRef.current?.focus();
+    }, delay);
+  }, [isActiveRun]);
 
   const { data: leaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
-    queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
+    queryFn: () => fetch(`/api/leaderboard/${encodeURIComponent(slug)}`).then(r => r.json()),
     enabled: gameStatus === "ended" && !isUntimed,
     staleTime: 10_000,
   });
 
-  const endGame = useCallback(() => {
+  const endGame = useCallback((runId: number) => {
+    if (!isActiveRun(runId)) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    activeRunRef.current = false;
     gameStatusRef.current = "ended";
     setGameStatus("ended");
     const steps = chainRef.current.length - 1; // subtract seed entry
@@ -110,29 +125,36 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
       recordedRef.current = true;
       reportResult(scoreRef.current, steps > 0, steps);
     }
-  }, [reportResult]);
+  }, [isActiveRun, reportResult]);
 
-  const startTimer = useCallback((duration: number) => {
+  const startTimer = useCallback((duration: number, runId: number) => {
+    if (!isActiveRun(runId)) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    const timerGeneration = ++timerGenerationRef.current;
     setTimeLeft(duration);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
+        if (!isActiveRun(runId)) return prev;
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          if (gameStatusRef.current === "playing") endGame();
+          endGame(runId);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [endGame]);
+  }, [endGame, isActiveRun]);
 
   useEffect(() => {
+    const runId = runIdRef.current;
+    activeRunRef.current = true;
     (async () => {
       try {
         const r = await fetch(`/api/games/word-bloom/puzzle?seed=${initialSeed}`, { credentials: "include" });
         if (!r.ok) return;
         const p: PuzzleData = await r.json();
+        if (!isActiveRun(runId)) return;
         setPuzzle(p);
         const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
         setChain([seedEntry]);
@@ -140,28 +162,38 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
         setCurrentWord(p.seed);
         currentWordRef.current = p.seed;
         seedLenRef.current = p.seed.length;
-        if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
-        setTimeout(() => inputRef.current?.focus(), 100);
+        if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME, runId);
+        focusInputForRun(runId, 100);
       } catch { /* silent */ }
     })();
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      activeRunRef.current = false;
+      runIdRef.current += 1;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
-  const showError = useCallback((msg: string) => {
+  const showError = useCallback((msg: string, runId: number) => {
+    if (!isActiveRun(runId)) return;
     setErrorMsg(msg);
     setShake(true);
-    setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-  }, []);
+    setTimeout(() => {
+      if (!isActiveRun(runId)) return;
+      setShake(false);
+      setErrorMsg("");
+    }, 1500);
+  }, [isActiveRun]);
 
   const handleSubmit = useCallback(async () => {
-    if (validating || gameStatusRef.current !== "playing") return;
+    if (validating || gameStatusRef.current !== "playing" || !puzzle) return;
+    const runId = runIdRef.current;
     const word = input.toUpperCase().trim();
     if (!word) return;
     const cw = currentWordRef.current;
 
     if (!isStructurallyValid(cw, word)) {
-      showError(`Must be ${cw.length + 1} letters with ${cw} inside (in order)`);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      showError(`Must be ${cw.length + 1} letters with ${cw} inside (in order)`, runId);
+      focusInputForRun(runId, 50);
       return;
     }
 
@@ -172,11 +204,12 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
         { credentials: "include" }
       );
       const data = await r.json();
+      if (!isActiveRun(runId)) return;
 
       if (!data.valid) {
-        showError("Not a valid word");
+        showError("Not a valid word", runId);
         setValidating(false);
-        setTimeout(() => inputRef.current?.focus(), 50);
+        focusInputForRun(runId, 50);
         return;
       }
 
@@ -198,16 +231,64 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
       setValidating(false);
 
       if (mode === "survival" && !isUntimed) {
-        startTimer(SURVIVAL_TIME);
+        startTimer(SURVIVAL_TIME, runId);
       }
 
-      setTimeout(() => inputRef.current?.focus(), 50);
+      focusInputForRun(runId, 50);
     } catch {
-      showError("Validation failed, try again");
+      if (!isActiveRun(runId)) return;
+      showError("Validation failed, try again", runId);
       setValidating(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      focusInputForRun(runId, 50);
     }
-  }, [input, validating, mode, showError, startTimer]);
+  }, [input, validating, puzzle, mode, showError, startTimer, isActiveRun, focusInputForRun]);
+
+  const startNewRun = useCallback(async (runSeed: number) => {
+    const runId = ++runIdRef.current;
+    activeRunRef.current = true;
+    gameStatusRef.current = "playing";
+    if (timerRef.current) clearInterval(timerRef.current);
+    resetRecorded();
+    chainRef.current = [];
+    scoreRef.current = 0;
+    seedLenRef.current = 0;
+    currentWordRef.current = "";
+    recordedRef.current = false;
+    setPuzzle(null);
+    setChain([]);
+    setScore(0);
+    setInput("");
+    setCurrentWord("");
+    setValidating(false);
+    setErrorMsg("");
+    setShake(false);
+    setGameStatus("playing");
+
+    try {
+      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${runSeed}`, { credentials: "include" });
+      if (!r.ok) return;
+      const p: PuzzleData = await r.json();
+      if (!isActiveRun(runId)) return;
+      setPuzzle(p);
+      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
+      setChain([seedEntry]);
+      chainRef.current = [seedEntry];
+      setCurrentWord(p.seed);
+      currentWordRef.current = p.seed;
+      seedLenRef.current = p.seed.length;
+      if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME, runId);
+      focusInputForRun(runId, 100);
+    } catch {
+      // Keep the new run isolated if its puzzle request fails.
+    }
+  }, [focusInputForRun, isActiveRun, isUntimed, mode, resetRecorded, startTimer]);
+
+  const leaveGame = useCallback(() => {
+    activeRunRef.current = false;
+    runIdRef.current += 1;
+    if (timerRef.current) clearInterval(timerRef.current);
+    onExit();
+  }, [onExit]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
@@ -316,31 +397,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                 <Button
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
                   onClick={() => {
-                    resetRecorded();
-                    chainRef.current = [];
-                    scoreRef.current = 0;
-                    recordedRef.current = false;
-                    gameStatusRef.current = "playing";
-                    setChain([]);
-                    setScore(0);
-                    setInput("");
-                    setCurrentWord("");
-                    setGameStatus("playing");
-                    const replaySeed = currentSeedRef.current;
-                    (async () => {
-                      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${replaySeed}`, { credentials: "include" });
-                      if (!r.ok) return;
-                      const p: PuzzleData = await r.json();
-                      setPuzzle(p);
-                      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
-                      setChain([seedEntry]);
-                      chainRef.current = [seedEntry];
-                      setCurrentWord(p.seed);
-                      currentWordRef.current = p.seed;
-                      seedLenRef.current = p.seed.length;
-                      if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
-                      setTimeout(() => inputRef.current?.focus(), 100);
-                    })();
+                    void startNewRun(currentSeedRef.current);
                   }}
                   data-testid="button-replay"
                 >
@@ -350,38 +407,15 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                 <Button
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
-                    resetRecorded();
-                    chainRef.current = [];
-                    scoreRef.current = 0;
-                    recordedRef.current = false;
-                    gameStatusRef.current = "playing";
-                    setChain([]);
-                    setScore(0);
-                    setInput("");
-                    setCurrentWord("");
-                    setGameStatus("playing");
                     const newSeed = Math.floor(Math.random() * 100000);
                     currentSeedRef.current = newSeed;
-                    (async () => {
-                      const r = await fetch(`/api/games/word-bloom/puzzle?seed=${newSeed}`, { credentials: "include" });
-                      if (!r.ok) return;
-                      const p: PuzzleData = await r.json();
-                      setPuzzle(p);
-                      const seedEntry: ChainEntry = { word: p.seed, insertPos: -1, points: 0 };
-                      setChain([seedEntry]);
-                      chainRef.current = [seedEntry];
-                      setCurrentWord(p.seed);
-                      currentWordRef.current = p.seed;
-                      seedLenRef.current = p.seed.length;
-                      if (!isUntimed) startTimer(mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME);
-                      setTimeout(() => inputRef.current?.focus(), 100);
-                    })();
+                    void startNewRun(newSeed);
                   }}
                   data-testid="button-play-again"
                 >
                   Play Again
                 </Button>
-                <Button className="bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={onExit} data-testid="button-main-menu">
+                <Button className="bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={leaveGame} data-testid="button-main-menu">
                   Main Menu
                 </Button>
                 <TryAnotherGameButton currentSlug="word-bloom" />
@@ -550,7 +584,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={onExit}
+                    onClick={leaveGame}
                     data-testid="button-menu"
                   >
                     Menu
@@ -558,7 +592,7 @@ function WordBloomPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordBlo
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => endGame()}
+                    onClick={() => endGame(runIdRef.current)}
                     data-testid="button-give-up"
                   >
                     Give Up

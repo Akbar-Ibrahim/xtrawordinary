@@ -1,6 +1,7 @@
 import type { Game } from "@shared/schema";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatAnalyticsCount } from "./format";
 
 export type AdminOverviewStats = {
   totalUsers: number;
@@ -23,15 +24,15 @@ export function AnalyticsSiteTotals({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card data-testid="card-total-users">
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Users</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-bold">{stats?.totalUsers ?? 0}</div></CardContent>
+          <CardContent><div className="text-3xl font-bold">{formatAnalyticsCount(stats?.totalUsers ?? 0)}</div></CardContent>
         </Card>
         <Card data-testid="card-total-games">
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total Games Played</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-bold">{stats?.totalGamesPlayed ?? 0}</div></CardContent>
+          <CardContent><div className="text-3xl font-bold">{formatAnalyticsCount(stats?.totalGamesPlayed ?? 0)}</div></CardContent>
         </Card>
         <Card data-testid="card-unique-games">
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Active Game Types</CardTitle></CardHeader>
-          <CardContent><div className="text-3xl font-bold">{sortedGames.length}</div></CardContent>
+          <CardContent><div className="text-3xl font-bold">{formatAnalyticsCount(sortedGames.length)}</div></CardContent>
         </Card>
       </div>
 
@@ -56,7 +57,7 @@ export function AnalyticsSiteTotals({
                     <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-12 text-right text-sm text-muted-foreground">{count}</span>
+                    <span className="w-12 text-right text-sm text-muted-foreground">{formatAnalyticsCount(count)}</span>
                   </div>
                 );
               })}

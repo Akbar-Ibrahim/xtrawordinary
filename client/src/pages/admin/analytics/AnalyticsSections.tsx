@@ -52,8 +52,8 @@ export function AnalyticsSections({
 
   return (
     <Tabs defaultValue="period" className="space-y-4">
-      <div className="overflow-x-auto pb-1">
-        <TabsList aria-label="Overview sections" className="h-auto min-w-max justify-start gap-1">
+      <div className="max-w-full overflow-x-auto pb-1 scrollbar-none" data-testid="overview-sections-scroll">
+        <TabsList aria-label="Overview sections" className="h-auto min-w-max flex-nowrap justify-start gap-1">
           {sections.map(section => (
             <TabsTrigger
               key={section.value}

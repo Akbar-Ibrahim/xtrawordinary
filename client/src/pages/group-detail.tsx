@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,7 @@ function getGroupTabFromSearch(): GroupTab {
 }
 
 export default function GroupDetail() {
+  const linkCopy = useLinkCopy("invitation", { title: "Invite link copied!" });
   const { id } = useParams<{ id: string }>();
   const groupId = parseInt(id);
   const [location, navigate] = useLocation();
@@ -226,7 +229,13 @@ export default function GroupDetail() {
       setRoundLbConsonantCount(undefined);
       navigate(`/groups/${groupId}/rounds/${round.id}/play`);
     },
-    onError: () => toast({ title: "Failed to create round", variant: "destructive" }),
+    onError: (error: any) => toast({
+      title: "Failed to create round",
+      description: error?.message?.includes("No valid dictionary words match")
+        ? "No valid dictionary words match this Locked Balance setting. Choose a different word length and consonant count."
+        : undefined,
+      variant: "destructive",
+    }),
   });
 
   const leaveMutation = useMutation({
@@ -399,11 +408,10 @@ export default function GroupDetail() {
     setEditOpen(true);
   }
 
-  function copyInviteCode() {
+  function copyInviteCode(event: React.MouseEvent<HTMLButtonElement>) {
     if (!data?.group.inviteCode) return;
     const url = `${window.location.origin}/groups?code=${data.group.inviteCode}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: "Invite link copied!" });
+    void linkCopy.copy(url, event.currentTarget);
   }
 
   function toggleEditTag(tag: string) {
@@ -449,6 +457,7 @@ export default function GroupDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <ManualCopyDialog {...linkCopy.dialogProps} />
       <Link href="/groups">
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back-groups">
           <ArrowLeft className="h-4 w-4" />
@@ -468,6 +477,7 @@ export default function GroupDetail() {
           onLeave={() => setLeaveConfirmOpen(true)}
           onDelete={() => setDeleteConfirmOpen(true)}
           onCopyInvite={copyInviteCode}
+          copyPending={linkCopy.isPending}
         />
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as GroupTab)}>

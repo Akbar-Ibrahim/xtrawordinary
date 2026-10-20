@@ -47,24 +47,31 @@ export async function saveLeaderboardEntry(db: any, entry: InsertLeaderboardEntr
   const existing = await db.select().from(schema.leaderboardEntries)
     .where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug))).limit(1);
   if (existing.length > 0) {
-    if (entry.score > existing[0].score) {
+    const isHigherScore = entry.score > existing[0].score;
+    const sameScoreWithFewerHints = entry.score === existing[0].score
+      && entry.hintsUsed != null
+      && (existing[0].hintsUsed == null || entry.hintsUsed < existing[0].hintsUsed);
+    if (isHigherScore || sameScoreWithFewerHints) {
       await db.update(schema.leaderboardEntries).set({
-        score: entry.score,
-        playerName: entry.playerName,
-        playedAt: new Date(entry.playedAt),
+        ...(isHigherScore ? {
+          score: entry.score,
+          playerName: entry.playerName,
+          playedAt: new Date(entry.playedAt),
+        } : {}),
+        hintsUsed: entry.hintsUsed ?? null,
       }).where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug)));
     }
   } else {
     await db.insert(schema.leaderboardEntries).values({
       userId: entry.userId, gameSlug: entry.gameSlug, score: entry.score,
-      playerName: entry.playerName, playedAt: new Date(entry.playedAt),
+      hintsUsed: entry.hintsUsed ?? null, playerName: entry.playerName, playedAt: new Date(entry.playedAt),
     });
   }
   const saved = await db.select().from(schema.leaderboardEntries)
     .where(and(eq(schema.leaderboardEntries.userId, entry.userId), eq(schema.leaderboardEntries.gameSlug, entry.gameSlug))).limit(1);
   const row = saved[0];
   const userRows = await db.select({ username: schema.users.username }).from(schema.users).where(eq(schema.users.id, row.userId)).limit(1);
-  return { id: row.id, userId: row.userId, gameSlug: row.gameSlug, score: row.score, playerName: row.playerName, username: userRows[0]?.username ?? "unknown", playedAt: row.playedAt instanceof Date ? row.playedAt.toISOString() : String(row.playedAt) };
+  return { id: row.id, userId: row.userId, gameSlug: row.gameSlug, score: row.score, hintsUsed: row.hintsUsed ?? null, playerName: row.playerName, username: userRows[0]?.username ?? "unknown", playedAt: row.playedAt instanceof Date ? row.playedAt.toISOString() : String(row.playedAt) };
 }
 
 export async function getLeaderboard(db: any, gameSlug: string, limit = 50, timeFilter?: string): Promise<LeaderboardEntry[]> {
@@ -78,7 +85,7 @@ export async function getLeaderboard(db: any, gameSlug: string, limit = 50, time
     .from(schema.leaderboardEntries)
     .innerJoin(maxScorePerUser, and(eq(schema.leaderboardEntries.userId, maxScorePerUser.userId), eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore)))
     .where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("best_row_ids");
-  const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt })
+  const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, hintsUsed: schema.leaderboardEntries.hintsUsed, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt })
     .from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId))
     .orderBy(desc(schema.leaderboardEntries.score)).limit(limit);
   if (rows.length === 0) return [];
@@ -89,7 +96,7 @@ export async function getLeaderboard(db: any, gameSlug: string, limit = 50, time
   const statsMap = new Map(statsRows.map((s: any) => [s.userId, s.gamesPlayed]));
   return rows.map((r: any) => {
     const user: any = userMap.get(r.userId);
-    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: user?.name ?? r.playerName, username: user?.username ?? "unknown", playerAvatarUrl: user?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined };
+    return { id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, hintsUsed: r.hintsUsed ?? null, playerName: user?.name ?? r.playerName, username: user?.username ?? "unknown", playerAvatarUrl: user?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined };
   });
 }
 
@@ -147,14 +154,14 @@ export async function getFriendsLeaderboard(db: any, gameSlug: string, userId: n
   const baseWhere = and(eq(schema.leaderboardEntries.gameSlug, gameSlug), inArray(schema.leaderboardEntries.userId, allowedIds));
   const maxScorePerUser = db.select({ userId: schema.leaderboardEntries.userId, maxScore: sql<number>`MAX(${schema.leaderboardEntries.score})`.as("max_score") }).from(schema.leaderboardEntries).where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("max_score_per_user");
   const bestRowIds = db.select({ userId: schema.leaderboardEntries.userId, bestId: sql<number>`MIN(${schema.leaderboardEntries.id})`.as("best_id") }).from(schema.leaderboardEntries).innerJoin(maxScorePerUser, and(eq(schema.leaderboardEntries.userId, maxScorePerUser.userId), eq(schema.leaderboardEntries.score, maxScorePerUser.maxScore))).where(baseWhere).groupBy(schema.leaderboardEntries.userId).as("best_row_ids");
-  const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt }).from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId)).orderBy(desc(schema.leaderboardEntries.score));
+  const rows = await db.select({ id: schema.leaderboardEntries.id, userId: schema.leaderboardEntries.userId, gameSlug: schema.leaderboardEntries.gameSlug, score: schema.leaderboardEntries.score, hintsUsed: schema.leaderboardEntries.hintsUsed, playerName: schema.leaderboardEntries.playerName, playedAt: schema.leaderboardEntries.playedAt }).from(schema.leaderboardEntries).innerJoin(bestRowIds, eq(schema.leaderboardEntries.id, bestRowIds.bestId)).orderBy(desc(schema.leaderboardEntries.score));
   if (rows.length === 0) return [];
   const uIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
   const userRows = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, uIds));
   const userMap = new Map(userRows.map((u: any) => [u.id, u]));
   const statsRows = await db.select({ userId: schema.userGameStats.userId, gamesPlayed: schema.userGameStats.gamesPlayed }).from(schema.userGameStats).where(and(inArray(schema.userGameStats.userId, uIds), eq(schema.userGameStats.gameSlug, gameSlug)));
   const statsMap = new Map(statsRows.map((s: any) => [s.userId, s.gamesPlayed]));
-  return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, playerName: (userMap.get(r.userId) as any)?.name ?? r.playerName, username: (userMap.get(r.userId) as any)?.username ?? "unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined }));
+  return rows.map((r: any) => ({ id: r.id, userId: r.userId, gameSlug: r.gameSlug, score: r.score, hintsUsed: r.hintsUsed ?? null, playerName: (userMap.get(r.userId) as any)?.name ?? r.playerName, username: (userMap.get(r.userId) as any)?.username ?? "unknown", playerAvatarUrl: (userMap.get(r.userId) as any)?.avatarUrl ?? null, playedAt: r.playedAt instanceof Date ? r.playedAt.toISOString() : String(r.playedAt), gamesPlayed: statsMap.get(r.userId) ?? undefined }));
 }
 
 export async function incrementGamePlayCount(db: any, gameSlug: string): Promise<void> {

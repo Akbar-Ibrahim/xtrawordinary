@@ -50,6 +50,8 @@ export function recordDuelResult(
 
 export interface GameRecord {
   slug: string;
+  personalBestSlug?: string;
+  survivalSuggestionSlug?: string;
   score: number;
   won: boolean;
   wordsFound?: number;
@@ -67,6 +69,8 @@ export interface GameStats {
 
 export interface AllStats {
   perGame: Record<string, GameStats>;
+  variantBestScores?: Record<string, number>;
+  variantBestWordCounts?: Record<string, number>;
   totalGamesPlayed: number;
   totalGamesWon: number;
   firstPlayedAt: number;
@@ -433,7 +437,7 @@ function checkDuelAchievements(ds: DuelStats): Achievement[] {
   return newlyUnlocked;
 }
 
-export function recordGameResult(record: GameRecord): {
+export function recordGameResult(record: GameRecord, eventDetails?: Record<string, unknown>): {
   stats: AllStats;
   streak: StreakData;
   isNewBest: boolean;
@@ -454,14 +458,41 @@ export function recordGameResult(record: GameRecord): {
   }
 
   const gs = stats.perGame[record.slug];
+  const personalBestSlug = record.personalBestSlug ?? record.slug;
+  const currentPersonalBest =
+    personalBestSlug === record.slug
+      ? gs.bestScore
+      : stats.variantBestScores?.[personalBestSlug] ??
+        stats.perGame[personalBestSlug]?.bestScore ??
+        0;
   gs.gamesPlayed++;
   gs.totalScore += record.score;
   gs.totalWordsFound += record.wordsFound || 0;
   gs.lastPlayed = record.timestamp;
   if (record.won) gs.gamesWon++;
 
-  const isNewBest = record.score > gs.bestScore;
-  if (isNewBest) gs.bestScore = record.score;
+  const isNewBest = record.score > currentPersonalBest;
+  if (record.score > gs.bestScore) gs.bestScore = record.score;
+  if (personalBestSlug !== record.slug && isNewBest) {
+    stats.variantBestScores ??= {};
+    stats.variantBestScores[personalBestSlug] = record.score;
+  }
+
+  if (record.survivalSuggestionSlug && record.wordsFound !== undefined) {
+    stats.variantBestWordCounts ??= {};
+    const priorWordBest =
+      stats.variantBestWordCounts[record.survivalSuggestionSlug] ??
+      stats.history.reduce((best, historyRecord) => {
+        const historySlug = historyRecord.personalBestSlug ?? historyRecord.slug;
+        return historySlug === record.survivalSuggestionSlug
+          ? Math.max(best, historyRecord.wordsFound ?? 0)
+          : best;
+      }, 0);
+    stats.variantBestWordCounts[record.survivalSuggestionSlug] = Math.max(
+      priorWordBest,
+      record.wordsFound,
+    );
+  }
 
   stats.totalGamesPlayed++;
   if (record.won) stats.totalGamesWon++;
@@ -493,7 +524,14 @@ export function recordGameResult(record: GameRecord): {
   try {
     window.dispatchEvent(
       new CustomEvent("wordplay-game-result", {
-        detail: { slug: record.slug, score: record.score, won: record.won },
+        detail: {
+          ...eventDetails,
+          slug: record.slug,
+          score: record.score,
+          won: record.won,
+          survivalSuggestionSlug: record.survivalSuggestionSlug,
+          wordsFound: record.wordsFound,
+        },
       })
     );
   } catch {}
@@ -503,7 +541,41 @@ export function recordGameResult(record: GameRecord): {
 
 export function getPersonalBest(slug: string): number {
   const stats = loadStats();
-  return stats.perGame[slug]?.bestScore || 0;
+  return (
+    stats.variantBestScores?.[slug] ??
+    stats.perGame[slug]?.bestScore ??
+    0
+  );
+}
+
+export function getBestWordsFound(slug: string): number {
+  const stats = loadStats();
+  const storedBest = stats.variantBestWordCounts?.[slug] ?? 0;
+  const historicalBest = stats.history.reduce((best, record) => {
+    const resultSlug = record.personalBestSlug ?? record.slug;
+    return resultSlug === slug ? Math.max(best, record.wordsFound ?? 0) : best;
+  }, 0);
+  return Math.max(storedBest, historicalBest);
+}
+
+export function getBestWordsFoundForGame(gameSlug: string): number {
+  const stats = loadStats();
+  const isClassicSlug = (slug: string) =>
+    (slug === gameSlug || slug.startsWith(`${gameSlug}-`)) &&
+    !/(^|-)survival(?:-|$)/i.test(slug);
+
+  const storedBest = Object.entries(stats.variantBestWordCounts ?? {}).reduce(
+    (best, [slug, count]) => isClassicSlug(slug) ? Math.max(best, count) : best,
+    0,
+  );
+  const historicalBest = stats.history.reduce((best, record) => {
+    const resultSlug = record.personalBestSlug ?? record.slug;
+    return isClassicSlug(resultSlug)
+      ? Math.max(best, record.wordsFound ?? 0)
+      : best;
+  }, 0);
+
+  return Math.max(storedBest, historicalBest);
 }
 
 export function getGameStats(slug: string): GameStats | null {
@@ -614,6 +686,8 @@ export interface DailyChallengeRecord {
   date: string;
   slug: string;
   score: number;
+  /** Missing on records saved before win/loss tracking was added. */
+  won?: boolean;
   completedAt: number;
 }
 

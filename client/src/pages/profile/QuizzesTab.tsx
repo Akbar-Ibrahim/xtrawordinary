@@ -12,7 +12,8 @@ interface Props {
   quizzes: QuizSessionWithCount[];
   gameMap: Map<string, Game>;
   copiedCode: string | null;
-  onCopyLink: (shareCode: string) => void;
+  copyPending: boolean;
+  onCopyLink: (shareCode: string, source: HTMLButtonElement) => void;
   onDeleteClick: (shareCode: string) => void;
 }
 
@@ -22,6 +23,7 @@ export function QuizzesTab({
   quizzes,
   gameMap,
   copiedCode,
+  copyPending,
   onCopyLink,
   onDeleteClick,
 }: Props) {
@@ -99,7 +101,8 @@ export function QuizzesTab({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => onCopyLink(quiz.shareCode)}
+                      onClick={(event) => onCopyLink(quiz.shareCode, event.currentTarget)}
+                      disabled={copyPending}
                       title="Copy play link"
                       aria-label="Copy play link"
                       data-testid={`button-copy-quiz-${quiz.id}`}

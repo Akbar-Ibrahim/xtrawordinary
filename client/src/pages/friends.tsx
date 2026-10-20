@@ -1,4 +1,6 @@
 import { PageSEO } from "@/components/page-seo";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, Redirect, useLocation } from "wouter";
@@ -15,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Share2 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
+import { FriendChallengeGameLabel } from "@/components/friend-challenge-game-label";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
@@ -53,7 +56,15 @@ function getTabFromSearch(): TabValue {
   return (VALID_TABS as readonly string[]).includes(tab ?? "") ? (tab as TabValue) : "friends";
 }
 
+function getChallengeIdFromSearch(): number | null {
+  const rawId = new URLSearchParams(window.location.search).get("challengeId");
+  if (!rawId || !/^\d+$/.test(rawId)) return null;
+  const id = Number(rawId);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 export default function Friends() {
+  const linkCopy = useLinkCopy("invitation", { title: "Invite link copied!", description: "Share it on WhatsApp, Twitter, or anywhere." });
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [location, navigate] = useLocation();
@@ -61,6 +72,7 @@ export default function Friends() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const latestQueryRef = useRef("");
   const [activeTab, setActiveTab] = useState<TabValue>(getTabFromSearch);
+  const resultChallengeId = getChallengeIdFromSearch();
 
   useEffect(() => {
     setActiveTab(getTabFromSearch());
@@ -117,6 +129,21 @@ export default function Friends() {
     queryKey: ["/api/challenges"],
     enabled: isAuthenticated,
   });
+
+  useEffect(() => {
+    if (activeTab !== "challenges" || !challengesLoaded || !resultChallengeId) return;
+    const isSenderResult = challenges.some(
+      (challenge) =>
+        challenge.id === resultChallengeId &&
+        challenge.status === "completed" &&
+        challenge.senderId === user?.id,
+    );
+    if (!isSenderResult) return;
+    document.getElementById(`row-challenge-${resultChallengeId}`)?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "center",
+    });
+  }, [activeTab, challenges, challengesLoaded, resultChallengeId, user?.id]);
 
   useEffect(() => {
     if (!challengesLoaded) return;
@@ -345,6 +372,7 @@ export default function Friends() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <ManualCopyDialog {...linkCopy.dialogProps} />
       <PageSEO title="Friends" description="Connect with friends, send word game challenges, and see how your vocabulary stacks up." path="/friends" />
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <div className="text-center space-y-2">
@@ -662,6 +690,7 @@ export default function Friends() {
                       const isDeclined = c.status === "declined";
                       const isCancelled = c.status === "cancelled";
                       const isNew = isCompleted && isSender && !c.senderViewed;
+                      const isResultTarget = c.id === resultChallengeId && isCompleted && isSender;
 
                       let myScore = isSender ? c.senderScore : (c.receiverScore ?? null);
                       let theirScore = isSender ? (c.receiverScore ?? null) : c.senderScore;
@@ -677,14 +706,18 @@ export default function Friends() {
                       return (
                         <div
                           key={c.id}
-                          className={`rounded-lg border p-4 transition-colors ${isNew ? "border-primary/50 bg-primary/5" : "bg-muted/40 border-transparent"}`}
+                          className={`rounded-lg border p-4 transition-colors ${isResultTarget ? "ring-2 ring-primary border-primary/50 bg-primary/5" : isNew ? "border-primary/50 bg-primary/5" : "bg-muted/40 border-transparent"}`}
                           data-testid={`row-challenge-${c.id}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <Gamepad2 className="h-4 w-4 text-primary shrink-0" />
-                                <span className="font-medium">{game?.name || c.gameSlug}</span>
+                                <FriendChallengeGameLabel
+                                  challengeId={c.id}
+                                  gameName={game?.name || c.gameSlug}
+                                  gameSlug={c.gameSlug}
+                                  gameConfig={c.gameConfig}
+                                />
                                 {isNew && (
                                   <Badge className="text-xs bg-primary text-primary-foreground">NEW</Badge>
                                 )}
@@ -764,7 +797,9 @@ export default function Friends() {
                             <div className="flex flex-col gap-1.5 shrink-0">
                               {!isSender && isPending && (
                                 <>
-                                  <Link href={`/game/${c.gameSlug}?challenge=${c.id}`}>
+                                  <Link
+                                    href={`/game/${c.gameSlug}?challenge=${c.id}${c.gameSlug === "letter-dodge" ? "&challenge-preview=1" : ""}`}
+                                  >
                                     <Button size="sm" data-testid={`button-play-challenge-${c.id}`}>
                                       <Gamepad2 className="h-4 w-4 mr-1" /> Play
                                     </Button>
@@ -787,13 +822,10 @@ export default function Friends() {
                                     size="sm"
                                     variant="ghost"
                                     className="text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
+                                    disabled={linkCopy.isPending}
+                                    onClick={(event) => {
                                       const url = `${window.location.origin}/share/challenge/${c.id}`;
-                                      navigator.clipboard.writeText(url).then(() => {
-                                        toast({ title: "Invite link copied!", description: "Share it on WhatsApp, Twitter, or anywhere." });
-                                      }).catch(() => {
-                                        toast({ title: "Copy failed", description: "Please copy the link manually.", variant: "destructive" });
-                                      });
+                                      void linkCopy.copy(url, event.currentTarget);
                                     }}
                                     data-testid={`button-share-challenge-${c.id}`}
                                   >

@@ -11,6 +11,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AuthModal } from "@/components/auth-modal";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   GraduationCap,
   ArrowLeft,
   Play,
@@ -20,10 +28,12 @@ import {
   Clock,
   LogIn,
   Plus,
+  Pencil,
 } from "lucide-react";
 import type { QuizSession } from "@shared/schema";
 import { useState } from "react";
 import { getVariantSummary } from "@/lib/variant-summary";
+import { useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
 
 type EnrichedSession = QuizSession & { playerCount: number };
 
@@ -49,10 +59,43 @@ export default function MyQuizzes() {
   const { toast } = useToast();
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<EnrichedSession | null>(null);
+  const [editingLength, setEditingLength] = useState<number | null>(null);
+  const [editingConsonantCount, setEditingConsonantCount] = useState<number | null>(null);
 
   const { data: sessions = [], isLoading } = useQuery<EnrichedSession[]>({
     queryKey: ["/api/quiz-sessions/my"],
     enabled: isAuthenticated,
+  });
+  const lockedBalanceAvailability = useLockedBalanceAvailability(
+    sessions.some((session) =>
+      session.gameSlug === "letter-balance" &&
+      (session.params as Record<string, unknown> | null)?.category === "locked_balance"
+    ),
+  );
+
+  const updateLockedBalanceMutation = useMutation({
+    mutationFn: async ({ code, length, consonantCount }: { code: string; length: number; consonantCount: number }) => {
+      const response = await apiRequest("PATCH", `/api/quiz-sessions/${code}`, { length, consonantCount });
+      return response.json();
+    },
+    onSuccess: async (updatedSession: QuizSession) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions/my"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/quiz-sessions", updatedSession.shareCode] }),
+      ]);
+      setEditingSession(null);
+      toast({ title: "Quiz rules updated" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't update quiz rules",
+        description: error.message.includes("400")
+          ? "Those Locked Balance settings no longer have valid dictionary words. Choose another combination."
+          : "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -72,6 +115,23 @@ export default function MyQuizzes() {
     if (!confirm("Delete this quiz? This cannot be undone.")) return;
     setDeletingCode(code);
     deleteMutation.mutate(code);
+  }
+
+  function openLockedBalanceEditor(session: EnrichedSession) {
+    const params = session.params as Record<string, unknown>;
+    setEditingSession(session);
+    setEditingLength(typeof params.level === "number" ? params.level : null);
+    setEditingConsonantCount(typeof params.consonantCount === "number" ? params.consonantCount : null);
+  }
+
+  function saveLockedBalanceRules() {
+    if (!editingSession || editingLength === null || editingConsonantCount === null) return;
+    if (lockedBalanceAvailability.data?.availability[`${editingLength}:${editingConsonantCount}`] !== true) return;
+    updateLockedBalanceMutation.mutate({
+      code: editingSession.shareCode,
+      length: editingLength,
+      consonantCount: editingConsonantCount,
+    });
   }
 
   if (authLoading) {
@@ -215,6 +275,19 @@ export default function MyQuizzes() {
                           Results
                         </Button>
                       </Link>
+                      {session.gameSlug === "letter-balance" &&
+                        (session.params as Record<string, unknown> | null)?.category === "locked_balance" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full gap-1"
+                            onClick={() => openLockedBalanceEditor(session)}
+                            data-testid={`button-edit-quiz-rules-${session.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit rules
+                          </Button>
+                        )}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -234,6 +307,101 @@ export default function MyQuizzes() {
           })}
         </div>
       )}
+      <Dialog
+        open={!!editingSession}
+        onOpenChange={(open) => {
+          if (!open && !updateLockedBalanceMutation.isPending) setEditingSession(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Locked Balance rules</DialogTitle>
+            <DialogDescription>
+              Choose a word length and consonant count that have words in the active dictionary.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Word length</p>
+              <div className="flex flex-wrap gap-2">
+                {[4, 5, 6, 7, 8, 9, 10].map((length) => (
+                  <Button
+                    key={length}
+                    type="button"
+                    size="sm"
+                    variant={editingLength === length ? "default" : "outline"}
+                    onClick={() => {
+                      setEditingLength(length);
+                      setEditingConsonantCount(null);
+                    }}
+                    data-testid={`button-edit-locked-balance-length-${length}`}
+                  >
+                    {length}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {editingLength !== null && (
+              <div>
+                <p className="text-sm font-medium mb-2">Consonant count</p>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: editingLength - 1 }, (_, index) => index + 1).map((count) => {
+                    const available = lockedBalanceAvailability.data?.availability[`${editingLength}:${count}`] === true;
+                    return (
+                      <Button
+                        key={count}
+                        type="button"
+                        size="sm"
+                        variant={editingConsonantCount === count ? "default" : "outline"}
+                        disabled={lockedBalanceAvailability.isLoading || lockedBalanceAvailability.isError || !available}
+                        onClick={() => setEditingConsonantCount(count)}
+                        data-testid={`button-edit-locked-balance-consonants-${count}`}
+                        title={available ? `${count} consonants, ${editingLength - count} vowels` : "No matching dictionary words"}
+                      >
+                        {count}C/{editingLength - count}V
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {lockedBalanceAvailability.isLoading && (
+              <p className="text-sm text-muted-foreground" role="status">Checking the active dictionary…</p>
+            )}
+            {lockedBalanceAvailability.isError && (
+              <div className="space-y-2" role="alert">
+                <p className="text-sm text-destructive">Couldn't check the active dictionary. Try again before saving.</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => lockedBalanceAvailability.refetch()}>
+                  Check again
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingSession(null)}
+              disabled={updateLockedBalanceMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={saveLockedBalanceRules}
+              disabled={
+                editingLength === null ||
+                editingConsonantCount === null ||
+                lockedBalanceAvailability.isLoading ||
+                lockedBalanceAvailability.isError ||
+                lockedBalanceAvailability.data?.availability[`${editingLength}:${editingConsonantCount}`] !== true ||
+                updateLockedBalanceMutation.isPending
+              }
+              data-testid="button-save-locked-balance-rules"
+            >
+              {updateLockedBalanceMutation.isPending ? "Saving…" : "Save rules"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { createNotificationIfEnabled } from "./helpers";
 import { QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
+import { checkLockedBalanceConfigAvailability } from "../games/letter-balance-availability";
 
 function isRoundPastDeadline(round: GroupRound): boolean {
   return !!round.closesAt && new Date(round.closesAt).getTime() <= Date.now();
@@ -412,6 +413,12 @@ export function registerGroupsRoutes(app: Express): void {
       }
       const { gameSlug, closesAt, gameConfig } = req.body;
       const slug = gameSlug && CHALLENGE_GAME_SLUGS.includes(gameSlug) ? gameSlug : CHALLENGE_GAME_SLUGS[Math.floor(Math.random() * CHALLENGE_GAME_SLUGS.length)];
+      if (slug === "letter-balance" && gameConfig?.category === "locked_balance") {
+        const dictionary = await storage.getWordDictionary();
+        if (checkLockedBalanceConfigAvailability(dictionary, gameConfig) !== "available") {
+          return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+        }
+      }
       const seed = Math.floor(Math.random() * 2147483647);
       const configJson = ((slug === "letter-frequency" || slug === "letter-balance") && gameConfig && typeof gameConfig === "object")
         ? JSON.stringify(gameConfig)
@@ -476,6 +483,12 @@ export function registerGroupsRoutes(app: Express): void {
       }
 
       let finalParams = (params && typeof params === "object") ? params : {};
+      if (gameSlug === "letter-balance" && finalParams.category === "locked_balance") {
+        const dictionary = await storage.getWordDictionary();
+        if (checkLockedBalanceConfigAvailability(dictionary, finalParams) !== "available") {
+          return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+        }
+      }
       if (gameSlug === "letter-position") {
         const letter = (typeof finalParams.letter === "string" ? finalParams.letter : "").toUpperCase().trim();
         const position = Number(finalParams.position);
@@ -561,6 +574,21 @@ export function registerGroupsRoutes(app: Express): void {
       const round = await storage.getGroupRound(roundId);
       if (!round || round.groupId !== groupId) return res.status(404).json({ error: "Round not found" });
       if (!isRoundActive(round)) return res.status(400).json({ error: "Round is not active" });
+      if (round.gameSlug === "letter-balance" && round.gameConfig) {
+        let gameConfig: unknown;
+        try {
+          gameConfig = JSON.parse(round.gameConfig);
+        } catch {
+          gameConfig = null;
+        }
+        if (gameConfig && typeof gameConfig === "object" &&
+          (gameConfig as Record<string, unknown>).category === "locked_balance") {
+          const dictionary = await storage.getWordDictionary();
+          if (checkLockedBalanceConfigAvailability(dictionary, gameConfig) !== "available") {
+            return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+          }
+        }
+      }
       if (round.seasonId !== null) {
         const season = await storage.getGroupSeason(round.seasonId);
         if (season && !season.eligibleMemberIds.includes(userId)) {

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import type { Game, QuizSession } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { getLockedBalancePair, useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
 import {
   LetterPoolConfig,
   LetterDodgeConfig,
@@ -59,8 +62,15 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
   const [quizClosesAt, setQuizClosesAt] = useState("");
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
-  const [quizLinkCopied, setQuizLinkCopied] = useState(false);
+  const linkCopy = useLinkCopy("quiz");
   const [dmReview, setDmReview] = useState(false);
+  const lockedBalancePair = getLockedBalancePair(quizParams);
+  const lockedBalanceAvailability = useLockedBalanceAvailability(
+    open && slug === "letter-balance" && quizParams.category === "locked_balance",
+  );
+  const selectedLockedPairAvailable = lockedBalancePair
+    ? lockedBalanceAvailability.data?.availability[`${lockedBalancePair.length}:${lockedBalancePair.consonantCount}`]
+    : undefined;
 
   const lpLetter = quizParams.letter as string | undefined;
   const lpPosition = quizParams.position as number | undefined;
@@ -114,15 +124,19 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
       setQuizTitle("");
       setQuizDescription("");
     },
-    onError: () => toast({ title: "Error", description: "Could not create quiz session.", variant: "destructive" }),
+    onError: (error: any) => toast({
+      title: "Error",
+      description: error?.message?.includes("No valid dictionary words match")
+        ? "No valid dictionary words match this Locked Balance setting. Choose a different word length and consonant count."
+        : "Could not create quiz session.",
+      variant: "destructive",
+    }),
   });
 
-  const handleCopyQuizLink = () => {
+  const handleCopyQuizLink = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (!createdQuiz) return;
     const link = `${window.location.origin}/quiz/${createdQuiz.shareCode}`;
-    navigator.clipboard.writeText(link);
-    setQuizLinkCopied(true);
-    setTimeout(() => setQuizLinkCopied(false), 2000);
+    void linkCopy.copy(link, event.currentTarget);
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -140,6 +154,7 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
+        <ManualCopyDialog {...linkCopy.dialogProps} />
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5" />
@@ -261,6 +276,17 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             {slug === "letter-balance" && (
               <LetterBalanceConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
+            {slug === "letter-balance" && quizParams.category === "locked_balance" && (
+              lockedBalanceAvailability.isError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  Couldn't verify which Locked Balance settings have valid words. Check again before creating this quiz.
+                </p>
+              ) : lockedBalancePair && selectedLockedPairAvailable === false ? (
+                <p className="text-sm text-destructive" role="alert">
+                  No valid dictionary words match this Locked Balance setting. Choose a different consonant count.
+                </p>
+              ) : null
+            )}
             {slug === "progressive-reveal" && (
               <ProgressiveRevealConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
@@ -299,6 +325,12 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
                 (["letter-hunt", "letter-position", "letter-frequency"].includes(slug) && !quizParams.survival && quizParams.wordCount !== undefined && quizParams.wordCount < 1) ||
                 (slug === "letter-balance" && quizParams.category === undefined && quizParams.vowels === undefined && quizParams.consonants === undefined) ||
                 (slug === "letter-balance" && quizParams.category === "locked_balance" && (!quizParams.level || !quizParams.consonantCount)) ||
+                (slug === "letter-balance" && quizParams.category === "locked_balance" && (
+                  !lockedBalancePair ||
+                  lockedBalanceAvailability.isLoading ||
+                  lockedBalanceAvailability.isError ||
+                  selectedLockedPairAvailable !== true
+                )) ||
                 (slug === "definition-match" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                 (slug === "progressive-reveal" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
                 (slug === "anagram-solver" && (!Array.isArray(quizParams.words) || quizParams.words.length === 0)) ||
@@ -332,9 +364,10 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
                   variant="outline"
                   size="icon"
                   onClick={handleCopyQuizLink}
+                  disabled={linkCopy.isPending}
                   data-testid="button-copy-quiz-link"
                 >
-                  {quizLinkCopied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {linkCopy.copied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>

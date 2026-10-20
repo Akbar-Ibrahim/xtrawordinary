@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Trophy, XCircle, Lightbulb, Heart, Loader2, Eye, EyeOff, LogIn } from "lucide-react";
+import { RotateCcw, Trophy, XCircle, Lightbulb, Heart, Loader2, LogIn } from "lucide-react";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -15,22 +15,51 @@ import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import {
+  chooseRandomUnfilledLetterIndex,
+  createLetterPool,
+  filterWordsWithoutAnagrams,
+  getLetterPoolDecoyCount,
+  getLetterPoolLeaderboardSlug,
+  type LetterPoolDecoyCount,
+  type LetterPoolVariation,
+} from "@shared/letter-pool";
+import { LetterPoolChallengeSelector } from "./letter-pool-challenge-selector";
+import { LetterPoolAlternateWordCheck } from "./letter-pool-alternate-word-check";
 
-type Variation = "with-pool" | "without-pool";
+type Variation = LetterPoolVariation;
 
-interface LetterPoolGameProps {
+export interface LetterPoolSessionProps {
   initialChallenge?: Variation;
+  initialDecoyCount?: number;
   groupSeed?: number;
   locked?: boolean;
   quizMode?: boolean;
   customWords?: LetterPoolWord[];
   livesCount?: number;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
 }
 
-export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, customWords, livesCount }: LetterPoolGameProps) {
+export type LetterPoolGameProps = Omit<LetterPoolSessionProps, "initialChallenge"> & {
+  initialChallenge?: "with-pool";
+};
+
+export function LetterPoolSession({ initialChallenge, initialDecoyCount, groupSeed, locked, quizMode, customWords, livesCount, onLeaderboardModeChange }: LetterPoolSessionProps) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "letter-pool", quizMode });
-  const personalBest = usePersonalBest("letter-pool");
+  const [variation, setVariation] = useState<Variation | null>(initialChallenge || null);
+  const [decoyCount, setDecoyCount] = useState<LetterPoolDecoyCount>(
+    getLetterPoolDecoyCount(initialDecoyCount),
+  );
+  const leaderboardSlug = variation
+    ? getLetterPoolLeaderboardSlug(variation, decoyCount)
+    : "letter-pool";
+  const { reportResult, resetRecorded } = useGameResult({
+    slug: leaderboardSlug,
+    statsSlug: "letter-pool",
+    personalBestSlug: leaderboardSlug,
+    quizMode,
+  });
+  const personalBest = usePersonalBest(leaderboardSlug);
   const seeded = groupSeed !== undefined;
   const hasCustomWords = customWords && customWords.length > 0;
   const { data: fetchedWords = [], isLoading, error } = useQuery<LetterPoolWord[]>({
@@ -42,7 +71,6 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
   });
   const words = hasCustomWords ? customWords! : fetchedWords;
 
-  const [variation, setVariation] = useState<Variation | null>(initialChallenge || null);
   const [activeWords, setActiveWords] = useState<LetterPoolWord[]>([]);
   const [currentWord, setCurrentWord] = useState<LetterPoolWord | null>(null);
   const [filledLetters, setFilledLetters] = useState<(string | null)[]>([]);
@@ -57,7 +85,9 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [showHint, setShowHint] = useState(false);
+  const [hintedLetterIndex, setHintedLetterIndex] = useState<number | null>(null);
   const [hintUsed, setHintUsed] = useState(false);
+  const [puzzleSequence, setPuzzleSequence] = useState(0);
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
@@ -71,12 +101,27 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     }
   }, [initialChallenge]);
 
-  const buildPool = useCallback((word: LetterPoolWord) => {
+  const buildPool = useCallback((
+    word: LetterPoolWord,
+    mode: Variation,
+    selectedDecoyCount: LetterPoolDecoyCount,
+  ) => {
     const allLetters = word.word.split("");
     const extraLetters = word.letterPool.filter(l => !allLetters.includes(l));
+    if (mode === "with-pool") {
+      return createLetterPool(word.word, selectedDecoyCount).map((letter, id) => ({
+        letter,
+        used: false,
+        id,
+      }));
+    }
+
     const combined = [...allLetters];
-    const decoyCount = Math.min(extraLetters.length, Math.max(2, Math.floor(allLetters.length * 0.4)));
-    for (let i = 0; i < decoyCount; i++) {
+    const legacyDecoyCount = Math.min(
+      extraLetters.length,
+      Math.max(2, Math.floor(allLetters.length * 0.4)),
+    );
+    for (let i = 0; i < legacyDecoyCount; i++) {
       if (extraLetters[i]) combined.push(extraLetters[i]);
     }
     for (let i = combined.length - 1; i > 0; i--) {
@@ -86,10 +131,16 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     return combined.map((l, i) => ({ letter: l, used: false, id: i }));
   }, []);
 
-  const setupWord = useCallback((word: LetterPoolWord) => {
+  const setupWord = useCallback((
+    word: LetterPoolWord,
+    mode: Variation,
+    selectedDecoyCount: LetterPoolDecoyCount,
+  ) => {
+    setPuzzleSequence((sequence) => sequence + 1);
     setFilledLetters(new Array(word.word.length).fill(null));
-    setPoolLetters(buildPool(word));
+    setPoolLetters(buildPool(word, mode, selectedDecoyCount));
     setShowHint(false);
+    setHintedLetterIndex(null);
     setHintUsed(false);
     setFeedback(null);
     setWrongGuesses(0);
@@ -106,18 +157,27 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     }
     const nextWord = seeded ? availableWords[0] : availableWords[Math.floor(Math.random() * availableWords.length)];
     setCurrentWord(nextWord);
-    setupWord(nextWord);
+    if (variation) setupWord(nextWord, variation, decoyCount);
     setUsedWords((prev) => new Set(Array.from(prev).concat(nextWord.word)));
-  }, [usedWords, activeWords, setupWord, playSound, seeded]);
+  }, [usedWords, activeWords, setupWord, playSound, seeded, variation, decoyCount]);
 
   const lastFirstWordRef = useRef<(typeof words)[0] | null>(null);
 
-  const initGame = useCallback((v: Variation, overrideFirstWord?: (typeof words)[0]) => {
+  const initGame = useCallback((
+    v: Variation,
+    selectedDecoyCount: LetterPoolDecoyCount = 1,
+    overrideFirstWord?: (typeof words)[0],
+  ) => {
     if (words.length === 0) return;
     resetRecorded();
-    const freshWords = words;
+    const freshWords = v === "with-pool"
+      ? filterWordsWithoutAnagrams(words)
+      : words;
+    if (freshWords.length === 0) return;
     setActiveWords(freshWords);
     setVariation(v);
+    setDecoyCount(selectedDecoyCount);
+    onLeaderboardModeChange?.(getLetterPoolLeaderboardSlug(v, selectedDecoyCount));
     setScore(0);
     setStreak(0);
     setLives(livesCount ?? 3);
@@ -128,16 +188,16 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
     const firstWord = overrideFirstWord ?? (seeded ? freshWords[0] : freshWords[Math.floor(Math.random() * freshWords.length)]);
     lastFirstWordRef.current = firstWord;
     setCurrentWord(firstWord);
-    setupWord(firstWord);
+    setupWord(firstWord, v, selectedDecoyCount);
     setUsedWords(new Set([firstWord.word]));
     setTimeout(() => gameAreaRef.current?.focus(), 100);
-  }, [words, setupWord, resetRecorded, seeded]);
+  }, [words, setupWord, resetRecorded, seeded, onLeaderboardModeChange]);
 
   useEffect(() => {
     if (initialChallenge && words.length > 0 && !currentWord) {
-      initGame(initialChallenge);
+      initGame(initialChallenge, getLetterPoolDecoyCount(initialDecoyCount));
     }
-  }, [words, currentWord, initialChallenge, initGame]);
+  }, [words, currentWord, initialChallenge, initialDecoyCount, initGame]);
 
   useEffect(() => {
     if (gameStatus === "won") {
@@ -146,6 +206,37 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
       reportResult(score, false, wordsCompleted);
     }
   }, [gameStatus, score, reportResult, wordsCompleted]);
+
+  const completeWord = useCallback((
+    nextFillOrder: number[],
+    usedHint: boolean,
+    mistakesMade: number,
+  ) => {
+    if (!currentWord) return;
+    setFeedback("correct");
+    setStreak(prev => prev + 1);
+
+    const basePoints = currentWord.word.length * 20;
+    const wrongPenalty = mistakesMade * 10;
+    const hintPenalty = usedHint ? Math.floor(basePoints * 0.2) : 0;
+    const streakBonus = streak * 5;
+    let sequentialRun = 0;
+    for (let i = 0; i < nextFillOrder.length; i++) {
+      if (nextFillOrder[i] === i) sequentialRun++;
+      else break;
+    }
+    const perfectOrder = sequentialRun >= currentWord.word.length;
+    const orderBonus = perfectOrder
+      ? Math.floor(basePoints * 0.5)
+      : Math.floor((sequentialRun / currentWord.word.length) * basePoints * 0.25);
+    const points = Math.max(10, basePoints - wrongPenalty - hintPenalty + streakBonus + orderBonus);
+    setScore(prev => prev + points);
+    setWordsCompleted(prev => prev + 1);
+    setTimeout(() => {
+      setFeedback(null);
+      selectNewWord();
+    }, 1200);
+  }, [currentWord, streak, selectNewWord]);
 
   const processLetter = useCallback((letter: string, poolId?: number) => {
     if (!currentWord || feedback || gameStatus !== "playing") return;
@@ -178,28 +269,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
 
       const filledCount = newFilled.filter(l => l !== null).length;
       if (filledCount >= currentWord.word.length) {
-        setFeedback("correct");
-        setStreak(prev => prev + 1);
-        const basePoints = currentWord.word.length * 20;
-        const wrongPenalty = wrongGuesses * 10;
-        const hintPenalty = hintUsed ? Math.floor(basePoints * 0.2) : 0;
-        const streakBonus = streak * 5;
-        let sequentialRun = 0;
-        for (let i = 0; i < newFillOrder.length; i++) {
-          if (newFillOrder[i] === i) sequentialRun++;
-          else break;
-        }
-        const perfectOrder = sequentialRun >= currentWord.word.length;
-        const orderBonus = perfectOrder
-          ? Math.floor(basePoints * 0.5)
-          : Math.floor((sequentialRun / currentWord.word.length) * basePoints * 0.25);
-        const points = Math.max(10, basePoints - wrongPenalty - hintPenalty + streakBonus + orderBonus);
-        setScore(prev => prev + points);
-        setWordsCompleted(prev => prev + 1);
-        setTimeout(() => {
-          setFeedback(null);
-          selectNewWord();
-        }, 1200);
+        completeWord(newFillOrder, hintUsed, wrongGuesses);
       }
     } else {
       playSound("wrong");
@@ -222,7 +292,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
 
       setTimeout(() => setFeedback(null), 500);
     }
-  }, [currentWord, filledLetters, feedback, gameStatus, playSound, selectNewWord, streak, wrongGuesses, hintUsed, variation, fillOrder]);
+  }, [currentWord, filledLetters, feedback, gameStatus, playSound, completeWord, wrongGuesses, hintUsed, variation, fillOrder]);
 
   const handlePoolClick = useCallback((poolId: number) => {
     if (!currentWord || feedback || gameStatus !== "playing") return;
@@ -248,19 +318,54 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
   }, [gameStatus, currentWord]);
 
   const handleHint = useCallback(() => {
-    if (showHint || !currentWord) return;
-    setShowHint(true);
-    setHintUsed(true);
+    if (hintUsed || !currentWord || feedback || gameStatus !== "playing") return;
+    if (variation === "with-pool") {
+      const index = chooseRandomUnfilledLetterIndex(filledLetters);
+      if (index === null) return;
+      const nextFilled = [...filledLetters];
+      nextFilled[index] = currentWord.word[index];
+      const nextFillOrder = [...fillOrder, -1];
+      const revealedLetter = currentWord.word[index].toUpperCase();
+      const nextPool = poolLetters.map((item) => ({ ...item }));
+      const tileIndex = nextPool.findIndex(
+        (item) => !item.used && item.letter.toUpperCase() === revealedLetter,
+      );
+      if (tileIndex >= 0) nextPool[tileIndex].used = true;
+
+      setFilledLetters(nextFilled);
+      setPoolLetters(nextPool);
+      setFillOrder(nextFillOrder);
+      setHintedLetterIndex(index);
+      setHintUsed(true);
+      if (nextFilled.every((letter) => letter !== null)) {
+        completeWord(nextFillOrder, true, wrongGuesses);
+      }
+    } else {
+      setShowHint(true);
+      setHintUsed(true);
+    }
     playSound("click");
-  }, [showHint, currentWord, playSound]);
+  }, [
+    hintUsed,
+    currentWord,
+    feedback,
+    gameStatus,
+    variation,
+    filledLetters,
+    fillOrder,
+    poolLetters,
+    completeWord,
+    wrongGuesses,
+    playSound,
+  ]);
 
   const restartGame = useCallback(() => {
-    if (variation) initGame(variation);
-  }, [variation, initGame]);
+    if (variation) initGame(variation, decoyCount);
+  }, [variation, decoyCount, initGame]);
 
   const replayGame = useCallback(() => {
-    if (variation) initGame(variation, lastFirstWordRef.current ?? undefined);
-  }, [variation, initGame]);
+    if (variation) initGame(variation, decoyCount, lastFirstWordRef.current ?? undefined);
+  }, [variation, decoyCount, initGame]);
 
   if (isLoading) {
     return (
@@ -287,52 +392,9 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
 
   if (gameStatus === "menu") {
     return (
-      <div className="space-y-6">
-        <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold">Choose Your Challenge</h3>
-          <p className="text-sm text-muted-foreground">
-            Spell out words letter by letter. Each correct letter fills in, each wrong one costs a life.
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
-              onClick={() => initGame("with-pool")}
-              data-testid="card-with-pool"
-            >
-              <Eye className="h-6 w-6 text-primary flex-shrink-0" />
-              <div className="flex flex-col items-start gap-1">
-                <span className="font-semibold">With Letter Pool</span>
-                <span className="text-sm text-muted-foreground font-normal">
-                  See scrambled letters as a reference. Click them or type your answer.
-                </span>
-              </div>
-              <Badge variant="secondary" className="ml-auto">Easier</Badge>
-            </Button>
-          </motion.div>
-
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              className="w-full h-auto py-4 px-6 flex items-center gap-4 text-left"
-              onClick={() => initGame("without-pool")}
-              data-testid="card-without-pool"
-            >
-              <EyeOff className="h-6 w-6 text-primary flex-shrink-0" />
-              <div className="flex flex-col items-start gap-1">
-                <span className="font-semibold">Without Letter Pool</span>
-                <span className="text-sm text-muted-foreground font-normal">
-                  No clues — just blank spaces. Type each letter from memory.
-                </span>
-              </div>
-              <Badge variant="secondary" className="ml-auto">Harder</Badge>
-            </Button>
-          </motion.div>
-        </div>
-      </div>
+      <LetterPoolChallengeSelector
+        onSelectDecoyLevel={(count) => initGame("with-pool", count)}
+      />
     );
   }
 
@@ -354,7 +416,9 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
           </Badge>
           <StreakIndicator streak={streak} />
           <Badge variant="outline" className="text-xs">
-            {variation === "with-pool" ? "Pool" : "Blind"}
+            {variation === "with-pool"
+              ? `Pool · ${decoyCount} Decoy${decoyCount === 1 ? "" : "s"}`
+              : "Blind"}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -455,7 +519,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                   })}
                 </motion.div>
 
-                {showHint && (
+                {showHint && variation === "without-pool" && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -466,6 +530,12 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                       Hint: {currentWord.hint}
                     </p>
                   </motion.div>
+                )}
+
+                {hintedLetterIndex !== null && variation === "with-pool" && (
+                  <p className="text-center text-sm text-primary font-medium" aria-live="polite">
+                    Hint: revealed the letter at position {hintedLetterIndex + 1}.
+                  </p>
                 )}
 
                 {variation === "with-pool" && (
@@ -494,6 +564,12 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                         </motion.button>
                       ))}
                     </div>
+                    <LetterPoolAlternateWordCheck
+                      key={`${currentWord.word}-${puzzleSequence}`}
+                      targetWord={currentWord.word}
+                      poolLetters={poolLetters.map((item) => item.letter)}
+                      disabled={!!feedback || gameStatus !== "playing"}
+                    />
                   </div>
                 )}
 
@@ -501,12 +577,16 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                   <Button
                     variant="outline"
                     onClick={handleHint}
-                    disabled={showHint}
+                    disabled={hintUsed}
                     className="gap-1.5"
                     data-testid="button-hint"
                   >
                     <Lightbulb className="h-4 w-4" />
-                    {showHint ? "Hint Used" : "Hint (-20% pts)"}
+                    {hintUsed
+                      ? "Hint Used"
+                      : variation === "with-pool"
+                        ? "Reveal a letter (-20% pts)"
+                        : "Hint (-20% pts)"}
                   </Button>
                 </div>
 
@@ -566,6 +646,7 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
                   gameSlug="letter-pool"
                   score={score}
                   wordsCompleted={wordsCompleted}
+                  challengeName={variation === "without-pool" ? "Blind (No Pool)" : "With Letter Pool"}
                   isWin={gameStatus === "won"}
                 />
                 {usedWords.size > 0 && (
@@ -617,4 +698,8 @@ export function LetterPoolGame({ initialChallenge, groupSeed, locked, quizMode, 
       <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </div>
   );
+}
+
+export function LetterPoolGame(props: LetterPoolGameProps) {
+  return <LetterPoolSession {...props} />;
 }

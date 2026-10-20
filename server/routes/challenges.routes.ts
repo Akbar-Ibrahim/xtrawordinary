@@ -2,7 +2,117 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { SEEDED_GAME_SLUGS } from "@shared/schema";
+import type { FriendChallenge } from "@shared/schema/social";
+import { LETTER_DODGE_VARIANTS, parseLetterDodgeDifficulty } from "@shared/letter-dodge";
+import { validateLetterBalanceChallengeConfig } from "@shared/letter-balance-challenge";
 import { createNotificationIfEnabled } from "./helpers";
+import { isLockedBalancePairAvailable } from "../games/letter-balance-availability";
+
+export { validateLetterBalanceChallengeConfig };
+
+const LETTER_BALANCE_CATEGORY_LABELS: Record<string, string> = {
+  consonant_count: "Consonant Count",
+  vowel_count: "Vowel Count",
+  start_end_vowel: "Start & End Vowels",
+  start_end_consonant: "Start & End Consonants",
+  start_vowel_end_consonant: "Start Vowel, End Consonant",
+  start_consonant_end_vowel: "Start Consonant, End Vowel",
+  locked_balance: "Locked Balance",
+};
+
+function getLetterDodgeCompletionSummary(gameConfig: string | null | undefined): string {
+  if (!gameConfig) return "";
+
+  try {
+    const config: unknown = JSON.parse(gameConfig);
+    if (typeof config !== "object" || config === null) return "";
+
+    const difficulty = parseLetterDodgeDifficulty(
+      (config as Record<string, unknown>).difficulty,
+    );
+    if (!difficulty) return "";
+
+    const label = LETTER_DODGE_VARIANTS.find(
+      (variant) => variant.difficulty === difficulty,
+    )?.label;
+    if (!label) return "";
+
+    const survival = (config as Record<string, unknown>).survival === true;
+    return ` · ${label}${survival ? " · Survival" : ""}`;
+  } catch {
+    return "";
+  }
+}
+
+function getLetterBalanceCompletionSummary(gameConfig: string | null | undefined): string {
+  if (!gameConfig) return " · Random";
+
+  try {
+    const config: unknown = JSON.parse(gameConfig);
+    if (typeof config !== "object" || config === null || Array.isArray(config)) return "";
+
+    const settings = config as Record<string, unknown>;
+    const category = typeof settings.category === "string"
+      ? LETTER_BALANCE_CATEGORY_LABELS[settings.category]
+      : undefined;
+    if (!category) return "";
+
+    const parts = [category];
+    const level = settings.level;
+    if (category === "Locked Balance" && typeof level === "number") {
+      parts.push(`${level}-letter words`);
+      if (typeof settings.consonantCount === "number") {
+        parts.push(`${settings.consonantCount}C/${level - settings.consonantCount}V`);
+      }
+    } else if (typeof level === "number" || level === "advanced") {
+      if (level === "advanced") {
+        parts.push("Advanced");
+      } else if (category === "Consonant Count") {
+        parts.push(`${level} consonants`);
+      } else if (category === "Vowel Count") {
+        parts.push(`${level} vowels`);
+      } else {
+        parts.push(`${level}-letter words`);
+      }
+    }
+    return ` · ${parts.join(" · ")}`;
+  } catch {
+    return "";
+  }
+}
+
+export function getChallengeCompletionConfigSummary(
+  gameSlug: string,
+  gameConfig: string | null | undefined,
+): string {
+  if (gameSlug === "letter-balance") return getLetterBalanceCompletionSummary(gameConfig);
+  if (gameSlug === "letter-dodge") return getLetterDodgeCompletionSummary(gameConfig);
+  return "";
+}
+
+export function getChallengeResultNotificationBody(
+  receiverName: string,
+  completedChallenge: Pick<FriendChallenge, "gameSlug" | "gameConfig" | "receiverScore"> & { receiverScore: number },
+): string {
+  const gameTitle = completedChallenge.gameSlug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  const configSummary = getChallengeCompletionConfigSummary(completedChallenge.gameSlug, completedChallenge.gameConfig);
+  return `${receiverName} completed your ${gameTitle} challenge with a score of ${completedChallenge.receiverScore}${configSummary}`;
+}
+
+export function getChallengeInvitationNotificationBody(
+  senderName: string,
+  gameSlug: string,
+  senderScore: number,
+  gameConfig: string | null | undefined,
+): string {
+  const gameTitle = gameSlug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  const configSummary = gameSlug === "letter-balance"
+    ? getLetterBalanceCompletionSummary(gameConfig)
+    : gameSlug === "letter-dodge"
+      ? getLetterDodgeCompletionSummary(gameConfig)
+    : "";
+  return `${senderName} wants you to beat their ${gameTitle} score of ${senderScore}${configSummary}`;
+}
 
 export function registerChallengesRoutes(app: Express): void {
   app.post("/api/challenges", requireAuth, async (req, res) => {
@@ -15,13 +125,32 @@ export function registerChallengesRoutes(app: Express): void {
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
       if (message && typeof message === "string" && message.length > 200) return res.status(400).json({ error: "Message too long (max 200 chars)" });
       if (seed !== undefined && (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > 2147483647)) return res.status(400).json({ error: "Seed must be a non-negative integer" });
+      let configJson: string | null = null;
+      if (gameSlug === "letter-balance" && gameConfig !== undefined && gameConfig !== null) {
+        const configError = validateLetterBalanceChallengeConfig(gameConfig);
+        if (configError) return res.status(400).json({ error: configError });
+        if (gameConfig.category === "locked_balance") {
+          const dictionary = await storage.getWordDictionary();
+          if (!isLockedBalancePairAvailable(dictionary, gameConfig.level, gameConfig.consonantCount)) {
+            return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+          }
+        }
+        configJson = JSON.stringify(gameConfig);
+      }
       const targetUser = await storage.getUserById(friendId);
       if (!targetUser) return res.status(404).json({ error: "User not found" });
       const existing = await storage.getPendingFriendChallenge(req.user!.id, friendId, gameSlug);
       if (existing) return res.status(409).json({ error: "You already have a pending challenge for this game with that player" });
-      const configJson = (gameSlug === "letter-balance" && gameConfig && typeof gameConfig === "object")
-        ? JSON.stringify(gameConfig)
-        : null;
+      if (gameSlug === "letter-dodge" && gameConfig !== undefined) {
+        const difficulty = gameConfig && typeof gameConfig === "object"
+          ? parseLetterDodgeDifficulty(gameConfig.difficulty)
+          : undefined;
+        if (!difficulty) return res.status(400).json({ error: "Valid Letter Dodge difficulty is required" });
+        if (gameConfig.survival !== undefined && typeof gameConfig.survival !== "boolean") {
+          return res.status(400).json({ error: "Valid Letter Dodge mode is required" });
+        }
+        configJson = JSON.stringify({ difficulty, survival: gameConfig.survival === true });
+      }
       const challenge = await storage.createFriendChallenge({
         senderId: req.user!.id,
         receiverId: friendId,
@@ -37,12 +166,11 @@ export function registerChallengesRoutes(app: Express): void {
       });
       try {
         const senderName = `@${(req.user as any).username as string}`;
-        const gameTitle = gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
         createNotificationIfEnabled({
           userId: friendId,
           type: "friend_challenge_received",
           title: `${senderName} challenged you!`,
-          body: `${senderName} wants you to beat their ${gameTitle} score`,
+          body: getChallengeInvitationNotificationBody(senderName, gameSlug, score, configJson),
           linkUrl: "/friends?tab=challenges",
         });
       } catch {}
@@ -115,16 +243,19 @@ export function registerChallengesRoutes(app: Express): void {
       if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Not your challenge" });
       if (challenge.status !== "pending") return res.status(400).json({ error: "Challenge is no longer pending" });
       const updated = await storage.completeFriendChallenge(id, score);
-      if (challenge.senderId && challenge.senderId !== req.user!.id) {
+      if (updated && typeof updated.receiverScore === "number" && challenge.senderId && challenge.senderId !== req.user!.id) {
         try {
           const receiverName = `@${(req.user as any).username as string}`;
-          const gameTitle = challenge.gameSlug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
           createNotificationIfEnabled({
             userId: challenge.senderId,
             type: "friend_challenge_result",
             title: "Challenge result ready",
-            body: `${receiverName} completed your ${gameTitle} challenge`,
-            linkUrl: "/friends?tab=challenges",
+            body: getChallengeResultNotificationBody(receiverName, {
+              gameSlug: updated.gameSlug,
+              gameConfig: updated.gameConfig,
+              receiverScore: updated.receiverScore,
+            }),
+            linkUrl: `/friends?tab=challenges&challengeId=${updated.id}`,
           });
         } catch {}
       }

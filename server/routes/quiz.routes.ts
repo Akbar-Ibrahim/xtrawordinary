@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
+import { checkLockedBalanceConfigAvailability } from "../games/letter-balance-availability";
 
 function generateShareCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -19,6 +20,12 @@ export function registerQuizRoutes(app: Express): void {
       if (!QUIZ_MASTER_GAME_SLUGS.has(gameSlug)) return res.status(400).json({ error: "Game does not support Quiz Master" });
 
       let finalParams = params ?? {};
+      if (gameSlug === "letter-balance" && finalParams?.category === "locked_balance") {
+        const dictionary = await storage.getWordDictionary();
+        if (checkLockedBalanceConfigAvailability(dictionary, finalParams) !== "available") {
+          return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+        }
+      }
       if (gameSlug === "letter-position") {
         const letter = (typeof finalParams.letter === "string" ? finalParams.letter : "").toUpperCase().trim();
         const position = Number(finalParams.position);
@@ -86,6 +93,38 @@ export function registerQuizRoutes(app: Express): void {
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Failed to delete quiz session" });
+    }
+  });
+
+  app.patch("/api/quiz-sessions/:code", requireAuth, async (req: any, res) => {
+    try {
+      const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!session) return res.status(404).json({ error: "Quiz session not found" });
+      if (session.creatorId !== req.user.id) return res.status(403).json({ error: "Only the creator can update this session" });
+      const existingParams = session.params as Record<string, unknown> | null;
+      if (session.gameSlug !== "letter-balance" || existingParams?.category !== "locked_balance") {
+        return res.status(400).json({ error: "Only Locked Balance quiz rules can be updated here" });
+      }
+
+      const length = Number(req.body?.length);
+      const consonantCount = Number(req.body?.consonantCount);
+      if (
+        !Number.isInteger(length) || length < 4 || length > 10 ||
+        !Number.isInteger(consonantCount) || consonantCount < 1 || consonantCount >= length
+      ) {
+        return res.status(400).json({ error: "Choose a valid word length and consonant count" });
+      }
+
+      const params = { ...existingParams, level: length, consonantCount };
+      const dictionary = await storage.getWordDictionary();
+      if (checkLockedBalanceConfigAvailability(dictionary, params) !== "available") {
+        return res.status(400).json({ error: "No valid dictionary words match this Locked Balance setting" });
+      }
+
+      await storage.updateQuizSessionParams(session.id, params);
+      res.json({ ...session, params });
+    } catch {
+      res.status(500).json({ error: "Failed to update quiz rules" });
     }
   });
 

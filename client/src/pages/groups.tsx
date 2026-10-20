@@ -1,5 +1,7 @@
 import { PageSEO } from "@/components/page-seo";
 import { useState, useEffect } from "react";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -431,16 +433,16 @@ export default function Groups() {
 }
 
 function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: boolean; onJoin?: () => void }) {
-  const { toast } = useToast();
+  const linkCopy = useLinkCopy("invitation", { title: "Invite link copied!" });
 
-  function copyInviteCode() {
+  function copyInviteCode(source: HTMLButtonElement) {
     const url = `${window.location.origin}/groups?code=${group.inviteCode}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: "Invite link copied!" });
+    void linkCopy.copy(url, source);
   }
 
   return (
     <Card className="hover:bg-muted/30 transition-colors" data-testid={`card-group-${group.id}`}>
+      <ManualCopyDialog {...linkCopy.dialogProps} />
       <CardContent className="p-4 flex items-center gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 relative">
           <Users className="h-6 w-6 text-primary" />
@@ -466,7 +468,8 @@ function GroupCard({ group, isDiscover, onJoin }: { group: Group; isDiscover?: b
           {!isDiscover && (
             <button
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1"
-              onClick={e => { e.preventDefault(); copyInviteCode(); }}
+              onClick={e => { e.preventDefault(); copyInviteCode(e.currentTarget); }}
+              disabled={linkCopy.isPending}
               data-testid={`button-copy-invite-${group.id}`}
             >
               <Copy className="h-3 w-3" />

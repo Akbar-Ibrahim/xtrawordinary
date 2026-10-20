@@ -27,4 +27,5 @@ export const statsInputSchema = z.object({
 export const leaderboardInputSchema = z.object({
   gameSlug: z.string().min(1),
   score: z.number().int().min(0).max(100000),
+  hintsUsed: z.number().int().min(0).max(100).optional(),
 });

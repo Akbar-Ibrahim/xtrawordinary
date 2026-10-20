@@ -18,6 +18,7 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -32,6 +33,11 @@ import {
 } from "./no-repeats-helpers";
 import { NoRepeatsMenu }   from "./no-repeats-menu";
 import { NoRepeatsResult } from "./no-repeats-result";
+import { SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import {
+  getNoRepeatsLeaderboardSlug,
+  type NoRepeatsPlayMode,
+} from "@shared/no-repeats";
 
 const DEFAULT_WORDS_PER_CHALLENGE = 15;
 const timePerChallenge  = 600;
@@ -49,6 +55,7 @@ export function NoRepeatsGame({
   quizMode,
   onGameEnd,
   onPlayAgain,
+  onLeaderboardModeChange,
 }: {
   initialChallenge?: Challenge;
   locked?: boolean;
@@ -62,6 +69,7 @@ export function NoRepeatsGame({
   quizMode?: boolean;
   onGameEnd?: () => void;
   onPlayAgain?: () => void;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
 } = {}) {
   const { playSound }                       = useSound();
   const { user }                            = useAuth();
@@ -71,12 +79,27 @@ export function NoRepeatsGame({
   const [isSurvival, setIsSurvival]         = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime]     = useState(SURVIVAL_TIME_PER_WORD);
   const isSurvivalRef                       = useRef(false);
+  const [challenge, setChallenge]           = useState<Challenge>(initialChallenge ?? 3);
+  const [playMode, setPlayMode]             = useState<NoRepeatsPlayMode>("restricted");
+  const leaderboardSlug = getNoRepeatsLeaderboardSlug(
+    challenge,
+    playMode,
+    isSurvival,
+  );
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival;
 
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "no-repeats-survival" : "no-repeats",
+    slug: leaderboardSlug,
+    statsSlug: "no-repeats",
+    personalBestSlug: leaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? leaderboardSlug : undefined,
+    quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "no-repeats-survival" : "no-repeats");
+  const personalBest = usePersonalBest(leaderboardSlug);
 
   const validateMutation = useMutation({
     mutationFn: async (word: string) => {
@@ -86,7 +109,6 @@ export function NoRepeatsGame({
   });
 
   // ── Core game state ────────────────────────────────────────────────────────
-  const [challenge, setChallenge]           = useState<Challenge>(initialChallenge ?? 3);
   const [gameStatus, setGameStatus]         = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [userInput, setUserInput]           = useState("");
   const [score, setScore]                   = useState(0);
@@ -100,14 +122,15 @@ export function NoRepeatsGame({
   // ── Required letters state ─────────────────────────────────────────────────
   const [requiredLetters, setRequiredLetters] = useState<string[]>([]);
   const [rerollsUsed, setRerollsUsed]         = useState(0);
-  const [playMode, setPlayMode]               = useState<"free" | "restricted">("restricted");
   const rngRef                                = useRef<(() => number) | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // ── Timer helpers ──────────────────────────────────────────────────────────
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -117,10 +140,13 @@ export function NoRepeatsGame({
   const startTimer = useCallback(
     (survivalMode: boolean) => {
       stopTimer();
+      const timerGeneration = timerGenerationRef.current;
       const initial = survivalMode ? survivalTime : (initialTimeLimit ?? timePerChallenge);
       setTimeLeft(initial);
       timerRef.current = setInterval(() => {
+        if (timerGeneration !== timerGenerationRef.current) return;
         setTimeLeft((prev) => {
+          if (timerGeneration !== timerGenerationRef.current) return prev;
           if (prev <= 1) {
             stopTimer();
             playSound("lose");
@@ -143,6 +169,9 @@ export function NoRepeatsGame({
       isSurvivalRef.current = survival;
       setIsSurvival(survival);
       setChallenge(c);
+      onLeaderboardModeChange?.(
+        getNoRepeatsLeaderboardSlug(c, playMode),
+      );
       setScore(0);
       setStreak(0);
       setWordsCompleted(0);
@@ -178,7 +207,15 @@ export function NoRepeatsGame({
       if (!isUntimed) startTimer(survival);
       setTimeout(() => inputRef.current?.focus(), 100);
     },
-    [stopTimer, startTimer, resetRecorded, groupSeed, isUntimed, playMode],
+    [
+      stopTimer,
+      startTimer,
+      resetRecorded,
+      groupSeed,
+      isUntimed,
+      playMode,
+      onLeaderboardModeChange,
+    ],
   );
 
   // ── Reroll required letters (1 use per session, disabled when locked/seeded) ─
@@ -292,7 +329,7 @@ export function NoRepeatsGame({
         setUserInput("");
         inputRef.current?.focus();
 
-        if (newCompleted >= (wordTarget ?? DEFAULT_WORDS_PER_CHALLENGE)) {
+        if (!isOpenEndedClassic && newCompleted >= (wordTarget ?? DEFAULT_WORDS_PER_CHALLENGE)) {
           stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -328,6 +365,12 @@ export function NoRepeatsGame({
           playMode={playMode}
           onPlayModeChange={setPlayMode}
           showModeToggle={!locked && groupSeed === undefined}
+          showSurvivalSuggestion={
+            canSuggestSurvival &&
+            !isSurvival &&
+            getBestWordsFoundForGame("no-repeats") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
+          }
+          onTrySurvival={() => setIsSurvival(true)}
         />
         <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       </>
@@ -342,6 +385,7 @@ export function NoRepeatsGame({
         <NoRepeatsResult
           gameStatus={gameStatus}
           isSurvival={isSurvival}
+          playMode={playMode}
           wordsCompleted={wordsCompleted}
           score={score}
           personalBest={personalBest}
@@ -352,6 +396,16 @@ export function NoRepeatsGame({
           requiredLetters={requiredLetters}
           locked={locked}
           isSignedIn={!!user}
+          survivalSuggestion={
+            canSuggestSurvival && !isSurvival
+              ? wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
+                ? "completion"
+                : getBestWordsFoundForGame("no-repeats") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
+                  ? "replay"
+                  : undefined
+              : undefined
+          }
+          onTrySurvival={() => startGame(challenge, true)}
           onPlayAgain={customPlay ? () => onPlayAgain?.() : () => startGame(challenge, isSurvival)}
           onMenu={returnToMenu}
           onNextChallenge={() => next && startGame(next, isSurvival)}
@@ -505,11 +559,15 @@ export function NoRepeatsGame({
             <span className="text-sm text-muted-foreground leading-none">
               word{wordsCompleted !== 1 ? "s" : ""} found
             </span>
-            <span className="text-muted-foreground/40 leading-none">·</span>
-            <span className="text-sm text-muted-foreground leading-none">
-              Goal:{" "}
-              <span className="font-semibold text-foreground">{wordTarget ?? DEFAULT_WORDS_PER_CHALLENGE}</span>
-            </span>
+            {!isOpenEndedClassic && (
+              <>
+                <span className="text-muted-foreground/40 leading-none">·</span>
+                <span className="text-sm text-muted-foreground leading-none">
+                  Goal:{" "}
+                  <span className="font-semibold text-foreground">{wordTarget ?? DEFAULT_WORDS_PER_CHALLENGE}</span>
+                </span>
+              </>
+            )}
             <span className="text-muted-foreground/40 leading-none">·</span>
             <span className="text-sm text-muted-foreground leading-none">
               PB:{" "}
@@ -601,7 +659,9 @@ export function NoRepeatsGame({
         </CardContent>
       </Card>
 
-      <Progress value={progress} className="h-2" data-testid="progress-bar" />
+      {!isOpenEndedClassic && (
+        <Progress value={progress} className="h-2" data-testid="progress-bar" />
+      )}
 
       {/* Words found */}
       {usedWords.size > 0 && (

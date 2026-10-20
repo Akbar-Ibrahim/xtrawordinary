@@ -1,4 +1,6 @@
 import { PageSEO } from "@/components/page-seo";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,7 +66,7 @@ export default function Profile() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [playerChallengeOpen, setPlayerChallengeOpen] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const linkCopy = useLinkCopy("quiz");
   const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
 
   const {
@@ -81,10 +83,8 @@ export default function Profile() {
     localStats, localStreak, localDuelStats,
   } = useProfileData(userId);
 
-  function copyQuizLink(shareCode: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/quiz/${shareCode}`);
-    setCopiedCode(shareCode);
-    setTimeout(() => setCopiedCode(null), 2000);
+  function copyQuizLink(shareCode: string, source: HTMLButtonElement) {
+    void linkCopy.copy(`${window.location.origin}/quiz/${shareCode}`, source);
   }
 
   if (resolvingUsername || isLoading) {
@@ -111,6 +111,7 @@ export default function Profile() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <ManualCopyDialog {...linkCopy.dialogProps} />
       <PageSEO
         title={`${profile.user.name}'s Profile`}
         description={`View ${profile.user.name}'s word game stats, achievements, and leaderboard rankings on xtraWordinary.`}
@@ -158,7 +159,8 @@ export default function Profile() {
           isAuthenticated={isAuthenticated}
           quizzes={quizzes}
           quizzesLoading={quizzesLoading}
-          copiedCode={copiedCode}
+          copiedCode={linkCopy.copiedText?.split("/quiz/")[1] ?? null}
+          copyPending={linkCopy.isPending}
           onCopyLink={copyQuizLink}
           onDeleteQuizClick={setDeleteQuizCode}
           unlockedIds={unlockedIds}

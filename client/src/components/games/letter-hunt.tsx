@@ -17,9 +17,12 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { getLetterHuntLeaderboardSlug, type LetterHuntChallenge } from "@shared/letter-hunt";
+import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const HUNT_EXAMPLES_THRESHOLD = 5;
@@ -42,7 +45,7 @@ const HUNT_WEIGHTED_POOL = [
   ...HUNT_UNCOMMON_CONSONANTS,
 ];
 
-type Challenge = 1 | 2 | 3 | 4 | 5 | "advanced";
+type Challenge = LetterHuntChallenge;
 
 const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; letterCount: number | "random" }> = {
   1: { name: "Challenge 1", description: "Find words containing 2 letters", letterCount: 2 },
@@ -131,16 +134,42 @@ function getNextChallenge(current: Challenge): Challenge | null {
   return (current + 1) as Challenge;
 }
 
-export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain, isUntimed }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void; isUntimed?: boolean } = {}) {
+export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters, groupSeed, locked, quizMode, customPlay, initialSurvival, initialWordCount, initialTimeLimit, onGameEnd, onPlayAgain, onLeaderboardModeChange, isUntimed }: { initialChallenge?: Challenge; initialLetter?: string; initialLetters?: string[]; groupSeed?: number; locked?: boolean; quizMode?: boolean; customPlay?: boolean; initialSurvival?: boolean; initialWordCount?: number; initialTimeLimit?: number; onGameEnd?: () => void; onPlayAgain?: () => void; onLeaderboardModeChange?: (modeSlug: string) => void; isUntimed?: boolean } = {}) {
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
+  const [ordered, setOrdered] = useState(false);
+  const isVariantLeaderboardPlay =
+    initialChallenge === undefined &&
+    initialLetter === undefined &&
+    initialLetters === undefined &&
+    initialSurvival === undefined &&
+    groupSeed === undefined &&
+    !locked &&
+    !quizMode &&
+    !customPlay &&
+    !isUntimed;
+  const selectedLeaderboardSlug = isVariantLeaderboardPlay
+    ? getLetterHuntLeaderboardSlug(challenge, ordered, isSurvival)
+    : isSurvival
+      ? "letter-hunt-survival"
+      : "letter-hunt";
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival && initialWordCount === undefined &&
+    initialChallenge === undefined && initialLetter === undefined &&
+    initialLetters === undefined;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival;
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "letter-hunt-survival" : "letter-hunt",
+    slug: selectedLeaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? selectedLeaderboardSlug : undefined,
+    statsSlug: isVariantLeaderboardPlay ? "letter-hunt" : undefined,
+    personalBestSlug: selectedLeaderboardSlug,
     quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "letter-hunt-survival" : "letter-hunt");
+  const personalBest = usePersonalBest(selectedLeaderboardSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -151,8 +180,6 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
-  const [ordered, setOrdered] = useState(false);
   const [pendingChallenge, setPendingChallenge] = useState<Challenge | null>(null);
   const [currentLetters, setCurrentLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
@@ -168,6 +195,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
   const lastGameSeedRef = useRef<number | null>(null);
@@ -177,6 +205,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -185,10 +214,13 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const timerGeneration = timerGenerationRef.current;
     const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
+      if (timerGeneration !== timerGenerationRef.current) return;
       setTimeLeft((prev) => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
@@ -224,13 +256,23 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
     setGameStatus("mode-select");
   }, []);
 
-  const startGame = useCallback((c: Challenge, isOrdered: boolean, seedOverride?: number) => {
+  const startGame = useCallback((
+    c: Challenge,
+    isOrdered: boolean,
+    seedOverride?: number,
+    survivalOverride?: boolean,
+  ) => {
     resetRecorded();
     stopTimer();
     setTimedOut(false);
-    isSurvivalRef.current = isSurvival;
+    const survival = survivalOverride ?? isSurvival;
+    isSurvivalRef.current = survival;
+    setIsSurvival(survival);
     setChallenge(c);
     setOrdered(isOrdered);
+    if (isVariantLeaderboardPlay) {
+      onLeaderboardModeChange?.(getLetterHuntLeaderboardSlug(c, isOrdered, survival));
+    }
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
@@ -251,9 +293,17 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
 
     setCurrentLetters(generateLettersForChallenge(c, constraintRng));
     setGameStatus("playing");
-    if (!isUntimed) startTimer(isSurvival);
+    if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [generateLettersForChallenge, startTimer, stopTimer, resetRecorded, isSurvival]);
+  }, [
+    generateLettersForChallenge,
+    startTimer,
+    stopTimer,
+    resetRecorded,
+    isSurvival,
+    isVariantLeaderboardPlay,
+    onLeaderboardModeChange,
+  ]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -354,7 +404,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsToComplete) {
+        if (!isOpenEndedClassic && newWordsCompleted >= wordsToComplete) {
           stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -443,6 +493,13 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                     </p>
                   </>
                 )}
+                {canSuggestSurvival && !isSurvival &&
+                  getBestWordsFoundForGame("letter-hunt") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD && (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => setIsSurvival(true)}
+                    />
+                  )}
               </>
             )}
           </div>
@@ -579,7 +636,9 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
           </div>
         </div>
       </div>
-      <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-1.5" />
+      {!isOpenEndedClassic && (
+        <Progress value={(wordsCompleted / wordsToComplete) * 100} className="h-1.5" />
+      )}
 
       <AnimatePresence mode="wait">
         {gameStatus === "playing" ? (
@@ -765,6 +824,19 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   You found {wordsCompleted} words!
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                {canSuggestSurvival && !isSurvivalRef.current && (
+                  wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="completion"
+                      onTrySurvival={() => startGame(challenge, ordered, undefined, true)}
+                    />
+                  ) : getBestWordsFoundForGame("letter-hunt") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => startGame(challenge, ordered, undefined, true)}
+                    />
+                  ) : null
+                )}
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   {personalBest > 0 && (
@@ -778,7 +850,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   gameSlug={isSurvivalRef.current ? "letter-hunt-survival" : "letter-hunt"}
                   score={score}
                   wordsCompleted={wordsCompleted}
-                  challengeName={CHALLENGE_CONFIG[challenge].name}
+                  challengeName={`${CHALLENGE_CONFIG[challenge].name} - ${ordered ? "Ordered" : "Unordered"}`}
                   isWin={true}
                   customPlay={customPlay}
                 />
@@ -872,6 +944,19 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   You found {wordsCompleted} words in {CHALLENGE_CONFIG[challenge].name}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                {canSuggestSurvival && !isSurvivalRef.current && (
+                  wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="completion"
+                      onTrySurvival={() => startGame(challenge, ordered, undefined, true)}
+                    />
+                  ) : getBestWordsFoundForGame("letter-hunt") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => startGame(challenge, ordered, undefined, true)}
+                    />
+                  ) : null
+                )}
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   {personalBest > 0 && (
@@ -885,7 +970,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                   gameSlug={isSurvivalRef.current ? "letter-hunt-survival" : "letter-hunt"}
                   score={score}
                   wordsCompleted={wordsCompleted}
-                  challengeName={CHALLENGE_CONFIG[challenge].name}
+                  challengeName={`${CHALLENGE_CONFIG[challenge].name} - ${ordered ? "Ordered" : "Unordered"}`}
                   isWin={false}
                   customPlay={customPlay}
                 />

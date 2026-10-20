@@ -25,17 +25,27 @@ import type { WordExtensionPuzzle } from "@shared/schema";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useSound } from "@/lib/sound-provider";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
+import {
+  getWordExtensionLeaderboardSlug,
+  type WordExtensionLettersToAdd,
+  WORD_EXTENSION_VARIANTS,
+} from "@shared/word-extension";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_TIME = 90;
 const POINTS_PER_ANSWER = 10;
 
-const VARIATIONS: { lettersToAdd: number; label: string; color: string }[] = [
-  { lettersToAdd: 1, label: "Easy",   color: "bg-accent text-accent-foreground" },
-  { lettersToAdd: 2, label: "Medium", color: "bg-chart-3 text-white" },
-  { lettersToAdd: 3, label: "Hard",   color: "bg-orange-500 text-white" },
-  { lettersToAdd: 4, label: "Expert", color: "bg-destructive text-destructive-foreground" },
-];
+const VARIATION_COLORS: Record<WordExtensionLettersToAdd, string> = {
+  1: "bg-accent text-accent-foreground",
+  2: "bg-chart-3 text-white",
+  3: "bg-orange-500 text-white",
+  4: "bg-destructive text-destructive-foreground",
+};
+
+const VARIATIONS = WORD_EXTENSION_VARIANTS.map((variant) => ({
+  ...variant,
+  color: VARIATION_COLORS[variant.lettersToAdd],
+}));
 
 // ── Main exported component ───────────────────────────────────────────────────
 
@@ -45,14 +55,26 @@ export function WordExtensionGame({
   timeLimitSeconds,
   initialChallenge,
   groupSeed,
+  onLeaderboardModeChange,
 }: {
   locked?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
-  initialChallenge?: number;
+  initialChallenge?: WordExtensionLettersToAdd;
   groupSeed?: number;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
 } = {}) {
-  const [lettersToAdd, setLettersToAdd] = useState<number | null>(initialChallenge ?? null);
+  const [lettersToAdd, setLettersToAdd] = useState<WordExtensionLettersToAdd | null>(
+    initialChallenge ?? null,
+  );
+
+  useEffect(() => {
+    if (lettersToAdd !== null) {
+      onLeaderboardModeChange?.(
+        getWordExtensionLeaderboardSlug(lettersToAdd),
+      );
+    }
+  }, [lettersToAdd, onLeaderboardModeChange]);
 
   if (lettersToAdd === null) {
     return (
@@ -81,7 +103,7 @@ function VariationSelector({
   onSelect,
   locked,
 }: {
-  onSelect: (n: number) => void;
+  onSelect: (n: WordExtensionLettersToAdd) => void;
   locked?: boolean;
 }) {
   return (
@@ -103,7 +125,7 @@ function VariationSelector({
               data-testid={`btn-variation-${v.lettersToAdd}`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-base">{v.label}</span>
+                <span className="font-semibold text-base">{v.difficulty}</span>
                 <Badge className={v.color + " text-xs"}>+{v.lettersToAdd}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -130,7 +152,7 @@ function WordExtensionPlay({
   groupSeed,
   onExit,
 }: {
-  lettersToAdd: number;
+  lettersToAdd: WordExtensionLettersToAdd;
   locked?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
@@ -139,11 +161,16 @@ function WordExtensionPlay({
 }) {
   const { user } = useAuth();
   const { playSound } = useSound();
-  // All variations report under the same canonical game slug so stats/leaderboard consolidate.
-  const slug = "word-extension";
-  const { reportResult, resetRecorded } = useGameResult({ slug, isUntimed });
-  const personalBest = usePersonalBest(slug);
-  const { markSeen, filterUnseen } = usePuzzleHistory("word-extension");
+  const statsSlug = "word-extension";
+  const leaderboardSlug = getWordExtensionLeaderboardSlug(lettersToAdd);
+  const { reportResult, resetRecorded } = useGameResult({
+    slug: leaderboardSlug,
+    statsSlug,
+    personalBestSlug: leaderboardSlug,
+    isUntimed,
+  });
+  const personalBest = usePersonalBest(leaderboardSlug);
+  const { markSeen, filterUnseen } = usePuzzleHistory(statsSlug);
 
   const totalTime = timeLimitSeconds ?? DEFAULT_TIME;
 
@@ -222,6 +249,13 @@ function WordExtensionPlay({
     }
   }, [currentPuzzle, lettersToAdd, markSeen]);
 
+  // Only move focus when a playable input is mounted and enabled. Autofocus on
+  // the keyed round input handles new rounds after AnimatePresence finishes.
+  useEffect(() => {
+    if (isLoading || error || !currentPuzzle || gameStatus !== "playing" || feedback || isValidating) return;
+    inputRef.current?.focus();
+  }, [currentPuzzle, error, feedback, gameStatus, isLoading, isValidating]);
+
   const handleSubmit = useCallback(async () => {
     if (!currentPuzzle || isValidating || feedback || gameStatus !== "playing") return;
     const trimmed = userInput.trim();
@@ -232,7 +266,7 @@ function WordExtensionPlay({
     if (submitted.length !== currentPuzzle.shownWord.length + lettersToAdd) {
       setFeedback({ type: "wrong", message: `Must be exactly ${currentPuzzle.shownWord.length + lettersToAdd} letters` });
       playSound("wrong");
-      setTimeout(() => { setFeedback(null); inputRef.current?.focus(); }, 1400);
+      setTimeout(() => setFeedback(null), 1400);
       return;
     }
 
@@ -248,7 +282,7 @@ function WordExtensionPlay({
       if (!data.valid) {
         setFeedback({ type: "wrong", message: "Not a valid extension — check your letters" });
         playSound("wrong");
-        setTimeout(() => { setFeedback(null); setUserInput(""); inputRef.current?.focus(); }, 1400);
+        setTimeout(() => setFeedback(null), 1400);
       } else {
         const pts = POINTS_PER_ANSWER * lettersToAdd;
         setScore(s => s + pts);
@@ -269,12 +303,11 @@ function WordExtensionPlay({
           } else {
             setRound(next);
           }
-          setTimeout(() => inputRef.current?.focus(), 50);
         }, 1000);
       }
     } catch {
       setFeedback({ type: "wrong", message: "Error checking word — try again" });
-      setTimeout(() => { setFeedback(null); inputRef.current?.focus(); }, 1400);
+      setTimeout(() => setFeedback(null), 1400);
     } finally {
       setIsValidating(false);
     }
@@ -294,7 +327,6 @@ function WordExtensionPlay({
     } else {
       setRound(next);
     }
-    setTimeout(() => inputRef.current?.focus(), 50);
   }, [gameStatus, round, playablePuzzles.length]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -371,9 +403,10 @@ function WordExtensionPlay({
 
             <ShareResults
               gameName="Word Extension"
-              gameSlug={slug}
+              gameSlug={statsSlug}
               score={score}
               wordsCompleted={answeredCount}
+              challengeName={variation.label}
               isWin={answeredCount > 0}
             />
 
@@ -497,6 +530,7 @@ function WordExtensionPlay({
                   placeholder={`Type a ${targetLength}-letter word…`}
                   className="text-center font-mono text-lg tracking-widest uppercase"
                   maxLength={targetLength + 2}
+                  autoFocus
                   disabled={isValidating || !!feedback}
                   autoComplete="off"
                   autoCapitalize="none"

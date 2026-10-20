@@ -17,7 +17,8 @@ import {
   Clock,
   Hash,
 } from "lucide-react";
-import { useState } from "react";
+import { useLinkCopy } from "@/hooks/use-link-copy";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 import type { QuizSession, QuizSessionScore } from "@shared/schema";
 import { UserAvatar } from "@/components/user-avatar";
 
@@ -30,7 +31,7 @@ export default function QuizResults() {
   const { code } = useParams<{ code: string }>();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
-  const [linkCopied, setLinkCopied] = useState(false);
+  const linkCopy = useLinkCopy("quiz");
 
   const { data, isLoading, error } = useQuery<ResultsResponse>({
     queryKey: ["/api/quiz-sessions", code, "results"],
@@ -46,11 +47,9 @@ export default function QuizResults() {
     refetchInterval: 10000,
   });
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (event: React.MouseEvent<HTMLButtonElement>) => {
     const link = `${window.location.origin}/quiz/${code}`;
-    navigator.clipboard.writeText(link);
-    setLinkCopied(true);
-    setTimeout(() => setLinkCopied(false), 2000);
+    void linkCopy.copy(link, event.currentTarget);
   };
 
   if (authLoading) {
@@ -107,6 +106,7 @@ export default function QuizResults() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <ManualCopyDialog {...linkCopy.dialogProps} />
       <Link href={`/quiz/${code}`}>
         <Button variant="ghost" className="gap-2 mb-6" data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
@@ -169,9 +169,10 @@ export default function QuizResults() {
               variant="outline"
               size="icon"
               onClick={handleCopyLink}
+              disabled={linkCopy.isPending}
               data-testid="button-copy-link"
             >
-              {linkCopied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              {linkCopy.copied ? <CheckCheck className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
             <Button
               variant="outline"

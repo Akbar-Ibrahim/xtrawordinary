@@ -1,5 +1,5 @@
 import { PageSEO } from "@/components/page-seo";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,25 @@ import { GameDetailSidebar } from "./game-detail/GameDetailSidebar";
 import { GameDetailInfo } from "./game-detail/GameDetailInfo";
 import { GamePlayArea } from "./game-detail/GamePlayArea";
 import { GameReportDialog } from "./game-detail/GameReportDialog";
+import { LetterDodgeChallengePreview } from "./game-detail/LetterDodgeChallengePreview";
+import { getExploreGame } from "@/lib/explore-games";
 import type { ChallengeResult } from "./game-detail/constants";
+import {
+  parseLetterDodgeDifficulty,
+  type LetterDodgeChallengeConfig,
+} from "@shared/letter-dodge";
 
 export default function GameDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [preferredLeaderboardModeSlugs, setPreferredLeaderboardModeSlugs] = useState<Record<string, string>>({});
+  const handleLeaderboardModeChange = useCallback((modeSlug: string) => {
+    if (!slug) return;
+    setPreferredLeaderboardModeSlugs((current) => ({
+      ...current,
+      [slug]: modeSlug,
+    }));
+  }, [slug]);
   const [challengeResult, setChallengeResult] = useState<ChallengeResult | null>(null);
   const [urlCleaned, setUrlCleaned] = useState(false);
   const [lastPercentile, setLastPercentile] = useState<{ percentile: number; totalPlayers: number } | null>(null);
@@ -32,12 +46,16 @@ export default function GameDetail() {
   const searchString = useSearch();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading, openAuthModal } = useAuth();
 
   const searchParams = new URLSearchParams(searchString);
   const [challengeId] = useState(() => {
     const p = new URLSearchParams(window.location.search);
     return p.get("challenge");
+  });
+  const [isLetterDodgeChallengePreview] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("challenge-preview") === "1";
   });
   const challengeNewFriendId = searchParams.get("challenge-new");
   const challengeNewSeed = searchParams.get("seed");
@@ -45,8 +63,12 @@ export default function GameDetail() {
   const challengeNewLbCategory = searchParams.get("lbCategory");
   const challengeNewLbLevel = searchParams.get("lbLevel");
   const challengeNewLbConsonantCount = searchParams.get("lbConsonantCount");
+  const challengeNewDodgeDifficulty = searchParams.get("dodgeDifficulty");
+  const challengeNewDodgeSurvival = searchParams.get("dodgeSurvival") === "1";
 
   const isReceiverMode = !!challengeId;
+  const showLetterDodgeChallengePreview =
+    slug === "letter-dodge" && isReceiverMode && isLetterDodgeChallengePreview;
   const isSenderMode = !!challengeNewFriendId && !!challengeNewSeed;
   const groupSeedForGame = isSenderMode
     ? parseInt(challengeNewSeed!)
@@ -78,8 +100,24 @@ export default function GameDetail() {
   const effectiveGroupSeed = isSenderMode ? groupSeedForGame : receiverGroupSeed;
 
   useEffect(() => {
+    if (challengeId && showLetterDodgeChallengePreview) return;
+    if (
+      challengeId &&
+      slug === "letter-balance" &&
+      (isAuthLoading || challengeLoading || !receiverChallenge)
+    ) {
+      return;
+    }
     if (challengeId || challengeNewFriendId) setIsPlaying(true);
-  }, [challengeId, challengeNewFriendId]);
+  }, [
+    challengeId,
+    challengeNewFriendId,
+    showLetterDodgeChallengePreview,
+    slug,
+    isAuthLoading,
+    challengeLoading,
+    receiverChallenge,
+  ]);
 
   const createQuizHandledRef = useRef(false);
   useEffect(() => {
@@ -99,14 +137,16 @@ export default function GameDetail() {
     if (!challengeLoading && receiverChallenge) {
       const url = new URL(window.location.href);
       url.searchParams.delete("challenge");
+      url.searchParams.delete("challenge-preview");
       window.history.replaceState(null, "", url.toString());
       setUrlCleaned(true);
     }
   }, [isReceiverMode, challengeLoading, receiverChallenge]);
 
-  type LbGameConfig = { category: "locked_balance"; level: number; consonantCount: number };
+  type LbGameConfig = { category: string; level: number | "advanced"; consonantCount?: number };
+  type ChallengeGameConfig = LbGameConfig | LetterDodgeChallengeConfig;
   const submitChallengeMutation = useMutation({
-    mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string; gameConfig?: LbGameConfig }) =>
+    mutationFn: (payload: { friendId: number; gameSlug: string; score: number; seed: number; message?: string; gameConfig?: ChallengeGameConfig }) =>
       apiRequest("POST", "/api/challenges", payload),
     onSuccess: () => {
       toast({ title: "Challenge sent!", description: "Your friend will be notified." });
@@ -162,7 +202,7 @@ export default function GameDetail() {
     if (!isSenderMode && !isReceiverMode) return;
 
     const handleResult = (e: Event) => {
-      const { score } = (e as CustomEvent).detail;
+      const { score, gameConfig: resultLbGameConfig } = (e as CustomEvent).detail;
       if (alreadySubmittedRef.current) return;
       alreadySubmittedRef.current = true;
 
@@ -170,16 +210,49 @@ export default function GameDetail() {
         const parsedFriendId = parseInt(challengeNewFriendId);
         const parsedSeed = parseInt(challengeNewSeed);
         if (isNaN(parsedFriendId) || isNaN(parsedSeed)) return;
-        const lbGameConfig: LbGameConfig | undefined = (slug === "letter-balance" && challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
-          ? { category: "locked_balance" as const, level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) }
+        const parsedLbLevel = challengeNewLbLevel === "advanced"
+          ? "advanced"
+          : challengeNewLbLevel !== null
+            ? Number(challengeNewLbLevel)
+            : undefined;
+        const parsedLbConsonantCount = challengeNewLbConsonantCount !== null
+          ? Number(challengeNewLbConsonantCount)
           : undefined;
+        const selectedLbGameConfig: LbGameConfig | undefined =
+          slug === "letter-balance" &&
+          challengeNewLbCategory &&
+          parsedLbLevel !== undefined &&
+          (parsedLbLevel === "advanced" || Number.isInteger(parsedLbLevel)) &&
+          (challengeNewLbCategory !== "locked_balance" ||
+            (parsedLbLevel !== "advanced" && Number.isInteger(parsedLbConsonantCount)))
+            ? {
+                category: challengeNewLbCategory,
+                level: parsedLbLevel,
+                ...(challengeNewLbCategory === "locked_balance"
+                  ? { consonantCount: parsedLbConsonantCount }
+                  : {}),
+              }
+            : undefined;
+        const lbGameConfig: LbGameConfig | undefined = slug === "letter-balance"
+          ? selectedLbGameConfig ??
+            (resultLbGameConfig && typeof resultLbGameConfig === "object"
+              ? resultLbGameConfig as LbGameConfig
+              : undefined)
+          : undefined;
+        const dodgeGameConfig: LetterDodgeChallengeConfig | undefined =
+          slug === "letter-dodge"
+            ? {
+                difficulty: parseLetterDodgeDifficulty(challengeNewDodgeDifficulty) ?? "advanced",
+                survival: challengeNewDodgeSurvival,
+              }
+            : undefined;
         submitChallengeMutation.mutate({
           friendId: parsedFriendId,
           gameSlug: slug!,
           score,
           seed: parsedSeed,
           message: challengeNewMsg || undefined,
-          gameConfig: lbGameConfig,
+          gameConfig: lbGameConfig ?? dodgeGameConfig,
         });
       } else if (isReceiverMode && challengeId && receiverChallenge) {
         if (receiverChallenge.status === "pending") {
@@ -190,7 +263,7 @@ export default function GameDetail() {
 
     window.addEventListener("wordplay-game-result", handleResult);
     return () => window.removeEventListener("wordplay-game-result", handleResult);
-  }, [isPlaying, isSenderMode, isReceiverMode, receiverChallenge, challengeId, challengeNewFriendId, challengeNewSeed, challengeNewMsg, slug]);
+  }, [isPlaying, isSenderMode, isReceiverMode, receiverChallenge, challengeId, challengeNewFriendId, challengeNewSeed, challengeNewMsg, challengeNewLbCategory, challengeNewLbLevel, challengeNewLbConsonantCount, challengeNewDodgeDifficulty, challengeNewDodgeSurvival, slug]);
 
   const { data: game, isLoading, error } = useQuery<Game>({
     queryKey: ["/api/games", slug],
@@ -320,7 +393,26 @@ export default function GameDetail() {
       </Link>
 
       <AnimatePresence mode="wait">
-        {!isPlaying ? (
+        {!isPlaying && showLetterDodgeChallengePreview ? (
+          <motion.div
+            key="challenge-preview"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="max-w-2xl mx-auto"
+          >
+            <LetterDodgeChallengePreview
+              challenge={receiverChallenge}
+              challengeLoading={challengeLoading}
+              challengeError={challengeError}
+              isAuthenticated={isAuthenticated}
+              isAuthLoading={isAuthLoading}
+              onSignIn={openAuthModal}
+              onStart={() => setIsPlaying(true)}
+            />
+          </motion.div>
+        ) : !isPlaying ? (
           <motion.div
             key="details"
             initial={{ opacity: 0, y: 20 }}
@@ -340,10 +432,15 @@ export default function GameDetail() {
             <GameDetailSidebar
               slug={slug}
               game={game}
+              preferredLeaderboardModeSlug={slug ? preferredLeaderboardModeSlugs[slug] : undefined}
               isAuthenticated={isAuthenticated}
               isPremium={!!user?.isPremium}
               openDuels={openDuels}
               onPlay={() => setIsPlaying(true)}
+              onExplore={() => {
+                const exploreGame = slug ? getExploreGame(slug) : undefined;
+                if (exploreGame) navigate(exploreGame.path);
+              }}
               onChallenge={() => setShowChallengeDialog(true)}
               onDuel={() => setShowDuelDialog(true)}
               onQuiz={() => setShowQuizDialog(true)}
@@ -372,6 +469,8 @@ export default function GameDetail() {
               challengeNewLbCategory={challengeNewLbCategory}
               challengeNewLbLevel={challengeNewLbLevel}
               challengeNewLbConsonantCount={challengeNewLbConsonantCount}
+              challengeNewDodgeDifficulty={challengeNewDodgeDifficulty}
+              challengeNewDodgeSurvival={challengeNewDodgeSurvival}
               receiverChallenge={receiverChallenge}
               challengeLoading={challengeLoading}
               challengeError={challengeError}
@@ -388,6 +487,7 @@ export default function GameDetail() {
               onCustomPlayEnd={() => setCustomPlayEnded(true)}
               onCustomPlayAgain={() => { setCustomPlayEnded(false); setCustomPlayKey(k => k + 1); }}
               isUntimed={isUntimed}
+              onLeaderboardModeChange={handleLeaderboardModeChange}
             />          </motion.div>
         )}
       </AnimatePresence>

@@ -15,9 +15,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import {
+  getLetterDodgeLeaderboardSlug,
+  type LetterDodgeDifficulty,
+} from "@shared/letter-dodge";
 
 const DODGE_EXAMPLES_THRESHOLD = 3;
 const DODGE_LETTER_POOL = ["E", "T", "A", "O", "I", "N", "S", "R", "H", "L", "D", "C", "U", "M", "F", "P", "G", "W", "Y", "B"];
@@ -28,7 +34,7 @@ const GAME_TIME = 600;
 const SURVIVAL_TIME = 8;
 const MIN_WORD_LENGTH = 4;
 
-type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "savant" | "advanced";
+type DodgeDifficulty = LetterDodgeDifficulty;
 
 const DIFFICULTY_CONFIG: Record<DodgeDifficulty, { name: string; description: string; count: number | "random"; stars: string }> = {
   1:        { name: "Easy",     description: "Avoid 1 forbidden letter",             count: 1,        stars: "★" },
@@ -117,13 +123,22 @@ export function LetterDodgeGame({
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const isSurvivalRef = useRef(false);
+  const [difficulty, setDifficulty] = useState<DodgeDifficulty>(initialDifficulty ?? 1);
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival && initialWordCount === undefined;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival;
+  const selectedLeaderboardSlug = getLetterDodgeLeaderboardSlug(difficulty, isSurvival);
 
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "letter-dodge-survival" : "letter-dodge",
+    slug: selectedLeaderboardSlug,
+    statsSlug: "letter-dodge",
+    personalBestSlug: selectedLeaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? selectedLeaderboardSlug : undefined,
     quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "letter-dodge-survival" : "letter-dodge");
+  const personalBest = usePersonalBest(selectedLeaderboardSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -135,7 +150,6 @@ export function LetterDodgeGame({
     },
   });
 
-  const [difficulty, setDifficulty] = useState<DodgeDifficulty>(1);
   const [forbiddenLetters, setForbiddenLetters] = useState<string[]>([]);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -148,11 +162,13 @@ export function LetterDodgeGame({
   const [authOpen, setAuthOpen] = useState(false);
   const { user } = useAuth();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const scoreRef = useRef(0);
   const foundWordsRef = useRef<FoundWord[]>([]);
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -161,9 +177,12 @@ export function LetterDodgeGame({
 
   const startCountdown = useCallback((initialTime: number) => {
     stopTimer();
+    const timerGeneration = timerGenerationRef.current;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
+      if (timerGenerationRef.current !== timerGeneration) return;
       setTimeLeft((prev) => {
+        if (timerGenerationRef.current !== timerGeneration) return prev;
         if (prev <= 1) {
           clearInterval(timerRef.current!);
           timerRef.current = null;
@@ -180,10 +199,12 @@ export function LetterDodgeGame({
   const lastForbiddenLettersRef = useRef<string[]>([]);
 
   const startGame = useCallback(
-    (d: DodgeDifficulty, overrideLetters?: string[]) => {
+    (d: DodgeDifficulty, overrideLetters?: string[], survivalOverride?: boolean) => {
       resetRecorded();
       stopTimer();
-      isSurvivalRef.current = isSurvival;
+      const survival = survivalOverride ?? isSurvival;
+      isSurvivalRef.current = survival;
+      setIsSurvival(survival);
       setDifficulty(d);
       setScore(0);
       scoreRef.current = 0;
@@ -219,7 +240,7 @@ export function LetterDodgeGame({
       }
 
       setGameStatus("playing");
-      if (!isUntimed) startCountdown(isSurvival ? SURVIVAL_TIME : (initialTimeLimit ?? GAME_TIME));
+      if (!isUntimed) startCountdown(survival ? SURVIVAL_TIME : (initialTimeLimit ?? GAME_TIME));
       setTimeout(() => inputRef.current?.focus(), 100);
     },
     [stopTimer, startCountdown, resetRecorded, playSound, isSurvival, groupSeed, initialForbiddenLetters, initialTimeLimit, isUntimed]
@@ -304,7 +325,7 @@ export function LetterDodgeGame({
 
       // End game when word count target is reached (classic mode only)
       const wordsToComplete = initialWordCount ?? 100;
-      if (!isSurvivalRef.current && foundWordsRef.current.length >= wordsToComplete) {
+      if (!isOpenEndedClassic && !isSurvivalRef.current && foundWordsRef.current.length >= wordsToComplete) {
         stopTimer();
         setCompletionMessage(getCompletionMessage(true));
         setGameStatus("finished");
@@ -370,6 +391,14 @@ export function LetterDodgeGame({
               </div>
             )}
           </div>
+
+          {canSuggestSurvival && !isSurvival &&
+            getBestWordsFoundForGame("letter-dodge") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD && (
+              <SurvivalSuggestion
+                placement="replay"
+                onTrySurvival={() => setIsSurvival(true)}
+              />
+            )}
 
           <div className="grid gap-3">
             {([1, 2, 3, 4, 5, "savant", "advanced"] as DodgeDifficulty[]).map((d) => {
@@ -653,6 +682,27 @@ export function LetterDodgeGame({
           <Trophy className="h-12 w-12 mx-auto text-primary" />
           <h3 className="text-2xl font-bold">{score} pts</h3>
           <p className="text-muted-foreground">{completionMessage}</p>
+          {canSuggestSurvival && !isSurvivalRef.current && (
+            foundWords.length >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+              <SurvivalSuggestion
+                placement="completion"
+                onTrySurvival={() => startGame(
+                  difficulty,
+                  lastForbiddenLettersRef.current.length > 0 ? lastForbiddenLettersRef.current : undefined,
+                  true,
+                )}
+              />
+            ) : getBestWordsFoundForGame("letter-dodge") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+              <SurvivalSuggestion
+                placement="replay"
+                onTrySurvival={() => startGame(
+                  difficulty,
+                  lastForbiddenLettersRef.current.length > 0 ? lastForbiddenLettersRef.current : undefined,
+                  true,
+                )}
+              />
+            ) : null
+          )}
           {personalBest > 0 && score > personalBest && (
             <Badge className="bg-amber-500 text-white">New Personal Best!</Badge>
           )}

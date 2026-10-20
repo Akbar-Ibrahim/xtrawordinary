@@ -1,4 +1,15 @@
 import type { Game, AnagramWordSet, ScrambleWord, DefinitionWord, MakerWord, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, ProgressiveRevealWord, WordLadderPuzzle, LadderRushPuzzle } from "@shared/schema";
+import { getSpokenWordLeaderboardSlug, SPOKEN_WORD_MODES } from "@shared/spoken-word";
+import { LETTER_FREQUENCY_GAME_MODES } from "@shared/letter-frequency";
+import { LETTER_POSITION_GAME_MODES } from "@shared/letter-position";
+import { LETTER_HUNT_GAME_MODES } from "@shared/letter-hunt";
+import { WORD_LENGTH_GAME_MODES } from "@shared/word-length";
+import { LETTER_DODGE_GAME_MODES } from "@shared/letter-dodge";
+import { LETTER_POOL_GAME_MODES } from "@shared/letter-pool";
+import { WORD_STACK_GAME_MODES } from "@shared/word-stack";
+import { NO_REPEATS_GAME_MODES } from "@shared/no-repeats";
+import { WORD_EXTENSION_GAME_MODES } from "@shared/word-extension";
+import { WORD_SPLIT_GAME_MODES } from "@shared/word-split";
 
 export const wordLadderPuzzlesData: WordLadderPuzzle[] = [
   {
@@ -855,15 +866,16 @@ export const gamesData: Game[] = [
     id: 5,
     slug: "letter-pool",
     name: "Letter Pool",
-    description: "Spell out hidden words letter by letter. Choose Pool mode or go Blind!",
-    longDescription: "All letters are hidden. Spell each word from left to right, one letter at a time. Choose 'With Pool' mode to see scrambled letters as a reference (click or type), or go 'Without Pool' for the ultimate blind challenge. Correct letters fill in with a satisfying sound, wrong ones cost a life. Request a hint to reveal the category, but it costs points!",
+    description: "Spell hidden words using a shuffled pool with decoy letters.",
+    longDescription: "Spell each hidden word one letter at a time using a shuffled pool that contains every target letter plus 1, 2, or 3 decoys. Click a tile or type a letter to fill its matching position. Once per word, you can reveal a random target letter at the cost of 20% of that word's points.",
     rules: [
-      "Two modes: With Pool (see scrambled letters) or Without Pool (blind)",
-      "Type or click any letter that belongs in the word",
+      "Choose a pool with 1, 2, or 3 decoy letters",
+      "The pool contains every target letter plus the selected number of distinct decoys",
+      "Type a target letter or click its matching pool tile to fill the next matching blank",
       "Correct letters snap into their correct position automatically",
       "Spell letters in order (left to right) for bonus points!",
       "Wrong letters cost a life. You have 3 lives.",
-      "Request a hint to see the word's category (costs 20% of points)"
+      "Reveal one random unfilled target letter per word for a 20% score penalty"
     ],
     difficulty: "medium",
     estimatedTime: "4-6 min",
@@ -871,6 +883,7 @@ export const gamesData: Game[] = [
     color: "hsl(340, 75%, 55%)",
     playCount: 6420,
     livesCount: 3,
+    modes: LETTER_POOL_GAME_MODES,
     ogImage: "/og/letter-pool.png",
   },
   {
@@ -914,6 +927,7 @@ export const gamesData: Game[] = [
     color: "hsl(190, 70%, 45%)",
     playCount: 4250,
     hasSurvival: true,
+    modes: WORD_LENGTH_GAME_MODES,
     timeLimitSeconds: 600,
     ogImage: "/og/word-length.png",
   },
@@ -935,6 +949,7 @@ export const gamesData: Game[] = [
     icon: "MapPin",
     color: "hsl(45, 85%, 50%)",
     playCount: 3890,
+    modes: LETTER_POSITION_GAME_MODES,
     hasSurvival: true,
     timeLimitSeconds: 600,
     ogImage: "/og/letter-position.png",
@@ -944,13 +959,14 @@ export const gamesData: Game[] = [
     slug: "letter-hunt",
     name: "Letter Hunt",
     description: "Find words with exact letter counts - match the pattern!",
-    longDescription: "Think you know your words? You'll be given a set of required letters, and your challenge is to find words that contain exactly those letters - no more, no less! Choose from 6 challenge variations with 2-6 required letters, or try Advanced mode where the letters change after each correct word.",
+    longDescription: "Think you know your words? You'll be given a set of required letters, and your challenge is to find words that contain exactly those letters - no more, no less! Choose from 6 challenge variations with 2-6 required letters, then play Ordered or Unordered. Advanced mode changes the letter count after each correct word.",
     rules: [
       "Find words containing the required letters",
       "Words must have EXACTLY the right count of each letter",
       "Example: If 'A' appears once, your word must have exactly 1 'A'",
       "Challenges 1-5: Fixed letter count (2-6 letters)",
       "Advanced: Random letter count, changes after each correct word",
+      "Choose Ordered (letters appear in sequence) or Unordered (order does not matter)",
       "Words must be valid English words"
     ],
     difficulty: "medium",
@@ -959,6 +975,7 @@ export const gamesData: Game[] = [
     color: "hsl(320, 70%, 50%)",
     playCount: 4120,
     hasSurvival: true,
+    modes: LETTER_HUNT_GAME_MODES,
     timeLimitSeconds: 600,
     ogImage: "/og/letter-hunt.png",
   },
@@ -1027,6 +1044,7 @@ export const gamesData: Game[] = [
     color: "hsl(320, 70%, 50%)",
     playCount: 0,
     hasSurvival: true,
+    modes: LETTER_FREQUENCY_GAME_MODES,
     timeLimitSeconds: 600,
     ogImage: "/og/letter-frequency.png",
   },
@@ -1035,12 +1053,12 @@ export const gamesData: Game[] = [
     slug: "word-stack",
     name: "Word Stack",
     description: "Build words one letter at a time from a 2-letter base to the target word!",
-    longDescription: "Stack your way to the target! Start with a 2-letter word and build up by adding one letter at a time. Each new word must contain all the letters from the previous word. Can you reach the top of the stack?",
+    longDescription: "Choose Build Up to start with a 2-letter word and add one letter at a time, or Break Down to start with the target and remove one letter at a time. Each step must form a valid word while preserving the previous word's letters.",
     rules: [
-      "Start with a given 2-letter word",
-      "Add one letter to form a new valid word",
-      "Each word must contain all letters from the previous word",
-      "Continue until you reach the target word length",
+      "Build Up: start with a 2-letter word and add one letter at a time",
+      "Break Down: start with the target word and remove one letter at a time",
+      "Every step must form a valid word",
+      "Continue until you reach the target length or reduce the word to 2 letters",
       "Use the hint to guide you toward the target word"
     ],
     difficulty: "hard",
@@ -1048,6 +1066,7 @@ export const gamesData: Game[] = [
     icon: "Layers",
     color: "hsl(25, 85%, 55%)",
     playCount: 0,
+    modes: WORD_STACK_GAME_MODES,
     ogImage: "/og/word-stack.png",
   },
   {
@@ -1055,9 +1074,10 @@ export const gamesData: Game[] = [
     slug: "no-repeats",
     name: "No Repeats: Isogram",
     description: "Find isogram words with no repeated letters that also contain the required letters shown!",
-    longDescription: "Two constraints in one: every word you enter must be an isogram (no letter appears more than once), AND it must contain a set of required letters shown on screen. Required letters scale with difficulty: 1 letter for 3-letter challenges, 2 for 4–6 letters, and 3 for the longest challenges. You get one reroll per session if the required letters don't suit you. How many isograms can you find before time runs out?",
+    longDescription: "Every word must be an isogram (no repeated letters). Choose Free Form for no required-letter constraint, or Required Letters to include the letters shown on screen. Challenge lengths range from 3 to 9 letters, with the number of required letters scaling by difficulty.",
     rules: [
       "Every word must be an isogram: no letter can appear more than once",
+      "Choose Free Form or Required Letters before starting",
       "Your word must also contain all of the required letters shown on screen",
       "Required letters: 1 for Challenge 3, 2 for Challenges 4–6, 3 for Challenges 7–9",
       "You get one free reroll per session to change your required letters",
@@ -1070,6 +1090,7 @@ export const gamesData: Game[] = [
     color: "hsl(180, 70%, 45%)",
     playCount: 0,
     hasSurvival: true,
+    modes: NO_REPEATS_GAME_MODES,
     timeLimitSeconds: 120,
     wordTarget: 15,
     ogImage: "/og/no-repeats.png",
@@ -1094,6 +1115,7 @@ export const gamesData: Game[] = [
     color: "hsl(15, 80%, 50%)",
     playCount: 0,
     ogImage: "/og/word-split.png",
+    modes: WORD_SPLIT_GAME_MODES,
   },
   {
     id: 16,
@@ -1341,10 +1363,8 @@ export const gamesData: Game[] = [
     color: "hsl(0, 75%, 52%)",
     playCount: 0,
     timeLimitSeconds: 600,
-    modes: [
-      { label: "Classic",  slug: "letter-dodge" },
-      { label: "Survival", slug: "letter-dodge-survival" },
-    ],
+    hasSurvival: true,
+    modes: LETTER_DODGE_GAME_MODES,
     ogImage: "/og/letter-dodge.png",
   },
   {
@@ -1366,6 +1386,7 @@ export const gamesData: Game[] = [
     icon: "PlusCircle",
     color: "hsl(210, 70%, 52%)",
     playCount: 0,
+    modes: WORD_EXTENSION_GAME_MODES,
     timeLimitSeconds: 90,
     ogImage: "/og/word-extension.png",
   },
@@ -1419,5 +1440,29 @@ export const gamesData: Game[] = [
     playCount: 0,
     timeLimitSeconds: 90,
     wordTarget: 5,
+  },
+  {
+    id: 28,
+    slug: "spoken-word-transformations",
+    name: "Spoken Word Transformations",
+    description: "Listen to a word, then spell or transform it before time runs out.",
+    longDescription: "Listen carefully as a word is spoken, then respond to the prompt: spell it, reverse it, enter only its vowels or consonants, or count them. Play one mode at a time or take on the mixed challenge.",
+    rules: [
+      "Hear each word spoken aloud, then follow the on-screen instruction",
+      "Choose Spell It, Reverse, Vowels Only, Consonants Only, Vowel Count, Consonant Count, or Mixed Challenge",
+      "Answer each of 10 words within 8 seconds",
+      "You may replay each word once",
+      "Earn points for correct answers, with a small bonus for answering quickly",
+      "Y counts as a consonant",
+    ],
+    difficulty: "medium",
+    estimatedTime: "2-3 min",
+    icon: "Headphones",
+    color: "hsl(215, 70%, 55%)",
+    playCount: 0,
+    modes: SPOKEN_WORD_MODES.map(({ label, slug }) => ({
+      label,
+      slug: getSpokenWordLeaderboardSlug(slug),
+    })),
   }
 ];

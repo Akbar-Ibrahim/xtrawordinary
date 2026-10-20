@@ -26,6 +26,7 @@ import { AuthModal } from "@/components/auth-modal";
 import { ShareResults } from "@/components/share-results";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
+import { useGameSession } from "@/hooks/use-game-session";
 
 const BLITZ_TIME = 90;
 const WRAPPER_TIME = 120;
@@ -126,10 +127,20 @@ export function ShellWordsGame({
   const foundSet = useRef<Set<string>>(new Set());
   const scoreRef = useRef(0);
   const solvedCountRef = useRef(0);
+  const correctCrackRoundsRef = useRef(new Set<number>());
+  const [didWin, setDidWin] = useState(false);
   const variationRef = useRef<Variation>(variation);
   const subModeRef = useRef<SubMode>(subMode);
   const timeLeftRef = useRef(effectiveBlitzTime);
   const survivalTurnRef = useRef(0);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    invalidateSession,
+    isCurrentSession,
+    isSessionActive,
+  } = useGameSession();
 
   useEffect(() => { variationRef.current = variation; }, [variation]);
   useEffect(() => { subModeRef.current = subMode; }, [subMode]);
@@ -153,38 +164,51 @@ export function ShellWordsGame({
   }, []);
 
   const endGame = useCallback(
-    (tLeft = 0) => {
+    (tLeft = 0, activeSession = sessionId) => {
+      if (!endSession(activeSession)) return;
       if (classicTimerRef.current) clearInterval(classicTimerRef.current);
       if (survivalTimerRef.current) clearInterval(survivalTimerRef.current);
+      if (feedbackRef.current) clearTimeout(feedbackRef.current);
+      setIsValidating(false);
       setGameStatus("ended");
-      setCompletionMessage(getCompletionMessage(true));
+      const won = variationRef.current === "crack" && subModeRef.current === "classic"
+        && correctCrackRoundsRef.current.size === CRACK_ROUNDS;
+      setDidWin(won);
+      setCompletionMessage(won
+        ? getCompletionMessage(true)
+        : `Run ended. You found ${solvedCountRef.current} word${solvedCountRef.current === 1 ? "" : "s"}.`);
       let finalScore = scoreRef.current;
       if (variationRef.current === "wrapper" && subModeRef.current === "classic") {
         finalScore = wrapperClassicScore(solvedCountRef.current, tLeft);
       }
       setScore(finalScore);
-      reportResult(finalScore, true, solvedCountRef.current);
+      reportResult(finalScore, won, solvedCountRef.current);
     },
-    [reportResult]
+    [reportResult, endSession, sessionId]
   );
 
   const startClassicTimer = useCallback(
-    (duration: number) => {
+    (duration: number, activeSession: number) => {
       if (classicTimerRef.current) clearInterval(classicTimerRef.current);
       let remaining = duration;
       setTimeLeft(remaining);
       timeLeftRef.current = remaining;
-      classicTimerRef.current = setInterval(() => {
+      const timer = setInterval(() => {
+        if (!isSessionActive(activeSession)) {
+          clearInterval(timer);
+          return;
+        }
         remaining -= 1;
         setTimeLeft(remaining);
         timeLeftRef.current = remaining;
         if (remaining <= 0) {
-          clearInterval(classicTimerRef.current!);
-          endGame(0);
+          clearInterval(timer);
+          endGame(0, activeSession);
         }
       }, 1000);
+      classicTimerRef.current = timer;
     },
-    [endGame]
+    [endGame, isSessionActive]
   );
 
   const stopSurvivalTimer = useCallback(() => {
@@ -195,24 +219,25 @@ export function ShellWordsGame({
     survivalTurnRef.current++;
   }, []);
 
-  const startSurvivalTimer = useCallback(() => {
+  const startSurvivalTimer = useCallback((activeSession: number) => {
     stopSurvivalTimer();
     const thisTurn = survivalTurnRef.current;
     setSurvivalTime(SURVIVAL_TIME);
     let remaining = SURVIVAL_TIME;
-    survivalTimerRef.current = setInterval(() => {
-      if (survivalTurnRef.current !== thisTurn) {
-        clearInterval(survivalTimerRef.current!);
+    const timer = setInterval(() => {
+      if (survivalTurnRef.current !== thisTurn || !isSessionActive(activeSession)) {
+        clearInterval(timer);
         return;
       }
       remaining -= 1;
       setSurvivalTime(remaining);
       if (remaining <= 0) {
-        clearInterval(survivalTimerRef.current!);
-        endGame(0);
+        clearInterval(timer);
+        endGame(0, activeSession);
       }
     }, 1000);
-  }, [stopSurvivalTimer, endGame]);
+    survivalTimerRef.current = timer;
+  }, [stopSurvivalTimer, endGame, isSessionActive]);
 
 
   const fetchWrapperPuzzle = useCallback(async (seed: number) => {
@@ -227,12 +252,13 @@ export function ShellWordsGame({
     return (await res.json()) as { first: string; last: string };
   }, []);
 
-  const loadFreshWrapperPuzzle = useCallback(async (initialSeed: number, replaying = false) => {
+  const loadFreshWrapperPuzzle = useCallback(async (initialSeed: number, replaying = false, activeSession?: number) => {
     let seed = initialSeed;
     let fallback: { seed: number; puzzle: { middle: string; count: number } } | null = null;
 
     for (let attempt = 0; attempt < 20; attempt++) {
       const puzzle = await fetchWrapperPuzzle(seed);
+      if (activeSession !== undefined && !isSessionActive(activeSession)) return { seed, puzzle };
       fallback = { seed, puzzle };
       if (replaying || groupSeed !== undefined || !hasSeen(puzzle.middle, puzzleHistoryScope)) {
         if (!replaying && groupSeed === undefined) {
@@ -248,14 +274,15 @@ export function ShellWordsGame({
       markSeen(fallback.puzzle.middle, puzzleHistoryScope);
     }
     return fallback;
-  }, [fetchWrapperPuzzle, groupSeed, hasSeen, markSeen, puzzleHistoryScope]);
+  }, [fetchWrapperPuzzle, groupSeed, hasSeen, markSeen, puzzleHistoryScope, isSessionActive]);
 
-  const loadFreshCrackPair = useCallback(async (initialSeed: number, replaying = false) => {
+  const loadFreshCrackPair = useCallback(async (initialSeed: number, replaying = false, activeSession?: number) => {
     let seed = initialSeed;
     let fallback: { seed: number; pair: { first: string; last: string } } | null = null;
 
     for (let attempt = 0; attempt < 20; attempt++) {
       const pair = await fetchCrackPair(seed);
+      if (activeSession !== undefined && !isSessionActive(activeSession)) return { seed, pair };
       fallback = { seed, pair };
       const key = `${pair.first}:${pair.last}`;
       if (replaying || groupSeed !== undefined || !hasSeen(key, puzzleHistoryScope)) {
@@ -272,14 +299,15 @@ export function ShellWordsGame({
       markSeen(`${fallback.pair.first}:${fallback.pair.last}`, puzzleHistoryScope);
     }
     return fallback;
-  }, [fetchCrackPair, groupSeed, hasSeen, markSeen, puzzleHistoryScope]);
+  }, [fetchCrackPair, groupSeed, hasSeen, markSeen, puzzleHistoryScope, isSessionActive]);
 
   const crackRoundSeedsRef = useRef<number[]>([]);
 
   const advanceCrackRound = useCallback(
-    async (nextRound: number, seedBase: number) => {
+    async (nextRound: number, seedBase: number, activeSession: number) => {
+      if (!isSessionActive(activeSession)) return;
       if (nextRound >= CRACK_ROUNDS) {
-        endGame(0);
+        endGame(0, activeSession);
         setCrackAdvancing(false);
         return;
       }
@@ -288,25 +316,32 @@ export function ShellWordsGame({
         const { seed, pair } = await loadFreshCrackPair(
           knownSeed ?? seedBase + nextRound,
           knownSeed !== undefined,
+          activeSession,
         );
+        if (!isSessionActive(activeSession)) return;
         crackRoundSeedsRef.current[nextRound] = seed;
         setCrackPair(pair);
         setCrackRound(nextRound);
         setInput("");
         setCrackAdvancing(false);
-        setTimeout(() => inputRef.current?.focus(), 50);
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) inputRef.current?.focus();
+        }, 50);
       } catch {
+        if (!isSessionActive(activeSession)) return;
         setFeedback({ type: "err", message: "Failed to load next puzzle" });
         setCrackAdvancing(false);
       }
     },
-    [endGame, loadFreshCrackPair]
+    [endGame, loadFreshCrackPair, isSessionActive]
   );
 
   const lastWrapperSeedRef = useRef<number | null>(null);
   const lastCrackSeedBaseRef = useRef<number | null>(null);
 
   const startGame = useCallback(async (overrideWrapperSeed?: number, overrideCrackSeedBase?: number) => {
+    clearAllTimers();
+    const activeSession = startSession();
     resetRecorded();
     foundSet.current = new Set();
     scoreRef.current = 0;
@@ -314,8 +349,11 @@ export function ShellWordsGame({
     setScore(0);
     setInput("");
     setFeedback(null);
+    setIsValidating(false);
     setCompletionMessage("");
     solvedCountRef.current = 0;
+    correctCrackRoundsRef.current.clear();
+    setDidWin(false);
     crackRoundSeedsRef.current = [];
     setCrackAdvancing(false);
     setWrapperTransitioning(false);
@@ -323,13 +361,16 @@ export function ShellWordsGame({
     if (variation === "wrapper") {
       const seed = overrideWrapperSeed ?? (groupSeed !== undefined ? groupSeed : Math.floor(Math.random() * 100000));
       try {
-        const { seed: selectedSeed, puzzle } = await loadFreshWrapperPuzzle(seed, overrideWrapperSeed !== undefined);
+        const { seed: selectedSeed, puzzle } = await loadFreshWrapperPuzzle(seed, overrideWrapperSeed !== undefined, activeSession);
+        if (!isSessionActive(activeSession)) return;
         lastWrapperSeedRef.current = selectedSeed;
         setWrapperSeed(selectedSeed);
         setWrapperSeedHistory([selectedSeed]);
         setPuzzleMiddle(puzzle.middle);
         setPuzzleCount(puzzle.count);
       } catch {
+        if (!isCurrentSession(activeSession)) return;
+        endSession(activeSession);
         setFeedback({ type: "err", message: "Failed to load puzzle" });
         return;
       }
@@ -337,38 +378,46 @@ export function ShellWordsGame({
       const seedBase = overrideCrackSeedBase ?? Math.floor(Math.random() * 100000);
       setCrackRound(0);
       try {
-        const { seed: selectedSeed, pair } = await loadFreshCrackPair(seedBase, overrideCrackSeedBase !== undefined);
+        const { seed: selectedSeed, pair } = await loadFreshCrackPair(seedBase, overrideCrackSeedBase !== undefined, activeSession);
+        if (!isSessionActive(activeSession)) return;
         lastCrackSeedBaseRef.current = selectedSeed;
         setCrackSeedBase(selectedSeed);
         crackRoundSeedsRef.current = [selectedSeed];
         setCrackPair(pair);
       } catch {
+        if (!isCurrentSession(activeSession)) return;
+        endSession(activeSession);
         setFeedback({ type: "err", message: "Failed to load puzzle" });
         return;
       }
     }
 
+    if (!isSessionActive(activeSession)) return;
     setGameStatus("playing");
 
     if (!isUntimed) {
       if (subMode === "classic") {
-        if (variation === "blitz") startClassicTimer(effectiveBlitzTime);
-        else if (variation === "wrapper") startClassicTimer(WRAPPER_TIME);
+        if (variation === "blitz") startClassicTimer(effectiveBlitzTime, activeSession);
+        else if (variation === "wrapper") startClassicTimer(WRAPPER_TIME, activeSession);
       } else {
-        startSurvivalTimer();
+        startSurvivalTimer(activeSession);
       }
     }
 
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 100);
   }, [
     variation, subMode, groupSeed,
     loadFreshWrapperPuzzle, loadFreshCrackPair,
     resetRecorded, startClassicTimer, startSurvivalTimer, isUntimed,
+    clearAllTimers, startSession, isSessionActive, isCurrentSession, endSession,
   ]);
 
   const switchMode = useCallback(
     (v: Variation, s: SubMode) => {
       clearAllTimers();
+      invalidateSession();
       setVariation(v);
       setSubMode(s);
       setGameStatus("idle");
@@ -388,11 +437,19 @@ export function ShellWordsGame({
       foundSet.current = new Set();
       resetRecorded();
     },
-    [clearAllTimers, resetRecorded]
+    [clearAllTimers, resetRecorded, invalidateSession]
   );
 
+  const returnToMenu = useCallback(() => {
+    clearAllTimers();
+    invalidateSession();
+    setIsValidating(false);
+    setGameStatus("idle");
+  }, [clearAllTimers, invalidateSession]);
+
   const handleSubmit = useCallback(async () => {
-    if (!input.trim() || isValidating || gameStatus !== "playing" || crackAdvancing || wrapperTransitioning) return;
+    if (!input.trim() || isValidating || gameStatus !== "playing" || crackAdvancing || wrapperTransitioning || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     const word = input.trim().toUpperCase();
 
     setIsValidating(true);
@@ -413,6 +470,7 @@ export function ShellWordsGame({
         );
         if (!res.ok) throw new Error("Validation request failed");
         const data = (await res.json()) as { valid: boolean; innerWord: string | null };
+        if (!isSessionActive(activeSession)) return;
 
         if (!data.valid) {
           setFeedback({ type: "err", message: `"${outer}" is not a valid shell word` });
@@ -424,6 +482,7 @@ export function ShellWordsGame({
         const pts = crackScore(word.length);
         scoreRef.current += pts;
         solvedCountRef.current++;
+        if (subMode === "classic") correctCrackRoundsRef.current.add(crackRound);
         setScore(scoreRef.current);
         setFoundWords(prev => [{ outer, inner: word, points: pts }, ...prev]);
         setFeedback({ type: "ok", message: `+${pts} pts` });
@@ -433,18 +492,22 @@ export function ShellWordsGame({
         if (subMode === "classic") {
           setCrackAdvancing(true);
           setTimeout(() => {
-            advanceCrackRound(crackRound + 1, crackSeedBase);
+            advanceCrackRound(crackRound + 1, crackSeedBase, activeSession);
           }, 600);
         } else {
           stopSurvivalTimer();
           setCrackAdvancing(true);
           const newSeed = Math.floor(Math.random() * 100000);
-          loadFreshCrackPair(newSeed).then(({ pair }) => {
+          loadFreshCrackPair(newSeed, false, activeSession).then(({ pair }) => {
+            if (!isSessionActive(activeSession)) return;
             setCrackPair(pair);
             setCrackAdvancing(false);
-            if (!isUntimed) startSurvivalTimer();
-            setTimeout(() => inputRef.current?.focus(), 50);
+            if (!isUntimed) startSurvivalTimer(activeSession);
+            setTimeout(() => {
+              if (isSessionActive(activeSession)) inputRef.current?.focus();
+            }, 50);
           }).catch(() => {
+            if (!isSessionActive(activeSession)) return;
             setFeedback({ type: "err", message: "Failed to load next puzzle" });
             setCrackAdvancing(false);
           });
@@ -465,6 +528,7 @@ export function ShellWordsGame({
       );
       if (!res.ok) throw new Error("Validation request failed");
       const data = (await res.json()) as { valid: boolean; innerWord: string | null };
+      if (!isSessionActive(activeSession)) return;
 
       if (!data.valid) {
         setFeedback({ type: "err", message: `"${word}" is not a valid shell word` });
@@ -498,14 +562,18 @@ export function ShellWordsGame({
         setWrapperTransitioning(true);
         const newSeed = wrapperSeed + 1;
         foundSet.current = new Set();
-        loadFreshWrapperPuzzle(newSeed).then(({ seed, puzzle }) => {
+        loadFreshWrapperPuzzle(newSeed, false, activeSession).then(({ seed, puzzle }) => {
+          if (!isSessionActive(activeSession)) return;
           setWrapperSeed(seed);
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
           setWrapperTransitioning(false);
-          if (!isUntimed) startSurvivalTimer();
-          setTimeout(() => inputRef.current?.focus(), 50);
+          if (!isUntimed) startSurvivalTimer(activeSession);
+          setTimeout(() => {
+            if (isSessionActive(activeSession)) inputRef.current?.focus();
+          }, 50);
         }).catch(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
           setWrapperTransitioning(false);
         });
@@ -516,14 +584,18 @@ export function ShellWordsGame({
         setWrapperTransitioning(true);
         const newSeed = wrapperSeed + 1;
         foundSet.current = new Set();
-        loadFreshWrapperPuzzle(newSeed).then(({ seed, puzzle }) => {
+        loadFreshWrapperPuzzle(newSeed, false, activeSession).then(({ seed, puzzle }) => {
+          if (!isSessionActive(activeSession)) return;
           setWrapperSeed(seed);
           setWrapperSeedHistory(prev => [...prev, seed]);
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
           setWrapperTransitioning(false);
-          setTimeout(() => inputRef.current?.focus(), 50);
+          setTimeout(() => {
+            if (isSessionActive(activeSession)) inputRef.current?.focus();
+          }, 50);
         }).catch(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
           setWrapperTransitioning(false);
         });
@@ -531,30 +603,35 @@ export function ShellWordsGame({
       }
 
       if (variation === "blitz" && subMode === "survival" && !isUntimed) {
-        startSurvivalTimer();
+        startSurvivalTimer(activeSession);
       }
 
     } catch {
+      if (!isSessionActive(activeSession)) return;
       setFeedback({ type: "err", message: "Connection error" });
       clearFeedback();
     } finally {
-      setIsValidating(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      if (isCurrentSession(activeSession)) setIsValidating(false);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
+      }, 50);
     }
   }, [
     input, isValidating, gameStatus, crackAdvancing, wrapperTransitioning,
     variation, subMode, crackPair, crackRound, crackSeedBase,
     puzzleMiddle, puzzleCount, wrapperSeed,
     clearFeedback, endGame, advanceCrackRound, startSurvivalTimer, stopSurvivalTimer,
-    loadFreshWrapperPuzzle, loadFreshCrackPair,
+    loadFreshWrapperPuzzle, loadFreshCrackPair, sessionId, isSessionActive, isCurrentSession,
   ]);
 
   const handleSkip = useCallback(() => {
     if (gameStatus !== "playing" || crackAdvancing || isValidating || wrapperTransitioning) return;
+    if (!isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     setInput("");
     if (variation === "crack") {
       setCrackAdvancing(true);
-      advanceCrackRound(crackRound + 1, crackSeedBase);
+      advanceCrackRound(crackRound + 1, crackSeedBase, activeSession);
     } else if (variation === "wrapper") {
       if (subMode === "survival") {
         stopSurvivalTimer();
@@ -563,31 +640,37 @@ export function ShellWordsGame({
         setWrapperTransitioning(true);
         const newSeed = wrapperSeed + 1;
         foundSet.current = new Set();
-        loadFreshWrapperPuzzle(newSeed).then(({ seed, puzzle }) => {
+        loadFreshWrapperPuzzle(newSeed, false, activeSession).then(({ seed, puzzle }) => {
+          if (!isSessionActive(activeSession)) return;
           setWrapperSeed(seed);
           setWrapperSeedHistory(prev => [...prev, seed]);
           setPuzzleMiddle(puzzle.middle);
           setPuzzleCount(puzzle.count);
           setWrapperTransitioning(false);
-          setTimeout(() => inputRef.current?.focus(), 50);
+          setTimeout(() => {
+            if (isSessionActive(activeSession)) inputRef.current?.focus();
+          }, 50);
         }).catch(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback({ type: "err", message: "Failed to load next puzzle" });
           setWrapperTransitioning(false);
         });
       }
     }
   }, [
-    gameStatus, crackAdvancing, isValidating, wrapperTransitioning,
+    gameStatus, crackAdvancing, isValidating, wrapperTransitioning, sessionId, isSessionActive,
     variation, subMode, crackRound, crackSeedBase, wrapperSeed,
     advanceCrackRound, stopSurvivalTimer, endGame, loadFreshWrapperPuzzle,
   ]);
 
   const handlePrevious = useCallback(() => {
     if (gameStatus !== "playing" || crackAdvancing || isValidating || wrapperTransitioning || subMode !== "classic") return;
+    if (!isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     setInput("");
     if (variation === "crack" && crackRound > 0) {
       setCrackAdvancing(true);
-      advanceCrackRound(crackRound - 1, crackSeedBase);
+      advanceCrackRound(crackRound - 1, crackSeedBase, activeSession);
     } else if (variation === "wrapper" && wrapperSeedHistory.length > 1) {
       const prevHistory = wrapperSeedHistory.slice(0, -1);
       const prevSeed = prevHistory[prevHistory.length - 1];
@@ -596,17 +679,21 @@ export function ShellWordsGame({
       setWrapperTransitioning(true);
       foundSet.current = new Set();
       fetchWrapperPuzzle(prevSeed).then(puzzle => {
+        if (!isSessionActive(activeSession)) return;
         setPuzzleMiddle(puzzle.middle);
         setPuzzleCount(puzzle.count);
         setWrapperTransitioning(false);
-        setTimeout(() => inputRef.current?.focus(), 50);
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) inputRef.current?.focus();
+        }, 50);
       }).catch(() => {
+        if (!isSessionActive(activeSession)) return;
         setFeedback({ type: "err", message: "Failed to load previous puzzle" });
         setWrapperTransitioning(false);
       });
     }
   }, [
-    gameStatus, crackAdvancing, isValidating, wrapperTransitioning, subMode,
+    gameStatus, crackAdvancing, isValidating, wrapperTransitioning, subMode, sessionId, isSessionActive,
     variation, crackRound, crackSeedBase, wrapperSeedHistory,
     advanceCrackRound, fetchWrapperPuzzle,
   ]);
@@ -926,7 +1013,7 @@ export function ShellWordsGame({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setGameStatus("idle")}
+                    onClick={returnToMenu}
                     data-testid="button-menu"
                   >
                     Menu
@@ -1004,9 +1091,11 @@ export function ShellWordsGame({
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring" }}
               >
-                <Trophy className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+                {didWin
+                  ? <Trophy className="h-12 w-12 text-yellow-500 mx-auto mb-2" />
+                  : <Shell className="h-12 w-12 text-muted-foreground mx-auto mb-2" />}
                 <h3 className="text-xl font-bold">
-                  {isSurvival ? "Time's Up!" : "Game Over!"}
+                  {didWin ? "All Rounds Solved!" : isSurvival ? "Time's Up!" : "Game Over!"}
                 </h3>
                 <p className="text-muted-foreground mt-1">{completionMessage}</p>
               </motion.div>
@@ -1049,7 +1138,7 @@ export function ShellWordsGame({
                 gameSlug={activeSlug}
                 score={score}
                 wordsCompleted={foundWords.length}
-                isWin
+                isWin={didWin}
               />
 
               {!user && (

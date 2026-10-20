@@ -16,6 +16,12 @@ import { AuthModal } from "@/components/auth-modal";
 import { PlayerChallengeDialog } from "@/components/player-challenge-dialog";
 import { motion } from "framer-motion";
 import type { LeaderboardEntry, Game, GameMode } from "@shared/schema";
+import {
+  buildLeaderboardUrl,
+  parseLeaderboardUrl,
+  resolveLeaderboardGameSlug,
+  resolveLeaderboardModeSlug,
+} from "@/lib/leaderboard-url";
 
 type TimeFilter = "all" | "today" | "week";
 type LeaderboardView = "global" | "friends";
@@ -359,6 +365,28 @@ function MyRankBanner({
   );
 }
 
+function LeaderboardLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      className="text-center py-12 text-muted-foreground space-y-4"
+      data-testid="leaderboard-error"
+      role="alert"
+    >
+      <p>Leaderboard results couldn&apos;t be loaded. Please check your connection and try again.</p>
+      <Button
+        onClick={onRetry}
+        variant="outline"
+        size="sm"
+        data-testid="button-retry-leaderboard"
+      >
+        Retry
+      </Button>
+    </div>
+  );
+}
+
 const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
   today: "today",
   week: "this week",
@@ -388,26 +416,39 @@ function LeaderboardEntries({
   const globalUrl = `${baseUrl}${queryString ? `?${queryString}` : ""}`;
   const friendsUrl = isOverall ? `/api/leaderboard/overall/friends` : `/api/leaderboard/${slug}/friends`;
 
-  const { data: globalEntries = [], isLoading: globalLoading } = useQuery<LeaderboardEntry[]>({
+  const {
+    data: globalEntries = [],
+    isLoading: globalLoading,
+    isError: globalError,
+    refetch: retryGlobal,
+  } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug, timeFilter],
     queryFn: async () => {
       const res = await fetch(globalUrl);
+      if (!res.ok) throw new Error("Failed to load leaderboard results");
       return res.json();
     },
     enabled: view === "global",
   });
 
-  const { data: friendEntries = [], isLoading: friendsLoading } = useQuery<LeaderboardEntry[]>({
+  const {
+    data: friendEntries = [],
+    isLoading: friendsLoading,
+    isError: friendsError,
+    refetch: retryFriends,
+  } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug, "friends"],
     queryFn: async () => {
       const res = await fetch(friendsUrl);
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Failed to load friends leaderboard results");
       return res.json();
     },
     enabled: view === "friends" && !!user,
   });
 
   const isLoading = view === "global" ? globalLoading : friendsLoading;
+  const hasError = view === "global" ? globalError : friendsError;
+  const retry = view === "global" ? retryGlobal : retryFriends;
   const entries = view === "friends" ? friendEntries : globalEntries;
 
   const batchKey = [...entries.map(e => e.userId)].sort((a, b) => a - b).join(",");
@@ -448,6 +489,15 @@ function LeaderboardEntries({
             <LogIn className="h-4 w-4" /> Sign In
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div aria-live="polite" aria-atomic="true" data-testid="leaderboard-results">
+        <span className="sr-only">{statusLabel}, results failed to load</span>
+        <LeaderboardLoadError onRetry={() => void retry()} />
       </div>
     );
   }
@@ -549,6 +599,19 @@ function LeaderboardEntries({
                       · {entry.gamesPlayed} {entry.gamesPlayed === 1 ? "play" : "plays"}
                     </span>
                   )}
+                  {slug === "word-ladder" && (
+                    <Badge
+                      variant={entry.hintsUsed === 0 ? "secondary" : entry.hintsUsed == null ? "outline" : "secondary"}
+                      className="text-[10px] h-5 px-1.5"
+                      data-testid={`badge-hints-used-${index}`}
+                    >
+                      {entry.hintsUsed == null
+                        ? "Hint usage unknown"
+                        : entry.hintsUsed === 0
+                          ? "No hints"
+                          : `${entry.hintsUsed} ${entry.hintsUsed === 1 ? "hint" : "hints"}`}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="text-right">
@@ -625,6 +688,8 @@ function SurvivalToggle({
 
 function ModeTabs({
   modes,
+  initialModeSlug,
+  onModeChange,
   isSurvival,
   user,
   onSignIn,
@@ -632,24 +697,34 @@ function ModeTabs({
   view,
 }: {
   modes: GameMode[];
+  initialModeSlug?: string;
+  onModeChange: (modeSlug: string) => void;
   isSurvival: boolean;
   user: ReturnType<typeof useAuth>["user"];
   onSignIn: () => void;
   timeFilter: TimeFilter;
   view: LeaderboardView;
 }) {
-  const [activeMode, setActiveMode] = useState(modes[0]?.slug ?? "");
+  const [activeMode, setActiveMode] = useState(() =>
+    resolveLeaderboardModeSlug(modes, initialModeSlug),
+  );
+  useEffect(() => {
+    setActiveMode(resolveLeaderboardModeSlug(modes, initialModeSlug));
+  }, [initialModeSlug, modes]);
   const effectiveSlug = isSurvival ? `${activeMode}-survival` : activeMode;
 
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="Game modes" className="flex gap-1 p-1 bg-muted rounded-lg overflow-x-auto" data-testid="tabs-mode">
+      <div role="tablist" aria-label="Game modes" className="flex max-w-full gap-1 p-1 bg-muted rounded-lg overflow-x-auto scrollbar-none" data-testid="tabs-mode">
         {modes.map((mode) => (
           <button
             key={mode.slug}
             role="tab"
             aria-selected={activeMode === mode.slug}
-            onClick={() => setActiveMode(mode.slug)}
+            onClick={() => {
+              setActiveMode(mode.slug);
+              onModeChange(mode.slug);
+            }}
             className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
               activeMode === mode.slug
                 ? "bg-background shadow-sm text-foreground"
@@ -767,22 +842,15 @@ function MobileGameStrip({
 export default function Leaderboard() {
   const search = useSearch();
   const [, setLocation] = useLocation();
-  const initialGame = new URLSearchParams(search).get("game") ?? "overall";
+  const initialSelection = parseLeaderboardUrl(search);
+  const initialGame = initialSelection.gameSlug ?? "overall";
   const [selectedGame, setSelectedGame] = useState(initialGame);
-  const [isSurvival, setIsSurvival] = useState(false);
+  const [isSurvival, setIsSurvival] = useState(initialSelection.isSurvival);
   const [authOpen, setAuthOpen] = useState(false);
   const [gameFilter, setGameFilter] = useState("");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [view, setView] = useState<LeaderboardView>("global");
   const { user, status } = useAuth();
-
-  useEffect(() => {
-    const gameParam = new URLSearchParams(search).get("game");
-    if (gameParam && gameParam !== selectedGame) {
-      setSelectedGame(gameParam);
-      setIsSurvival(false);
-    }
-  }, [search]);
 
   const { data: friends = [] } = useQuery<Array<{ id: number }>>({
     queryKey: ["/api/friends"],
@@ -790,7 +858,13 @@ export default function Leaderboard() {
   });
   const hasFriends = friends.length > 0;
 
-  const { data: games = [] } = useQuery<Game[]>({
+  const {
+    data: games = [],
+    isLoading: gamesLoading,
+    isError: gamesError,
+    isFetching: gamesFetching,
+    refetch: refetchGames,
+  } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
 
@@ -799,8 +873,75 @@ export default function Leaderboard() {
     : games;
 
   const selectedGameObj = games.find(g => g.slug === selectedGame);
+  const querySelection = parseLeaderboardUrl(search);
+  const requestedModeSlug = querySelection.modeSlug ?? undefined;
   const hasModes = !!(selectedGameObj?.modes && selectedGameObj.modes.length > 0);
   const showSurvivalToggle = !!(selectedGameObj?.hasSurvival);
+  const selectedModeSlug = resolveLeaderboardModeSlug(selectedGameObj?.modes, requestedModeSlug);
+
+  useEffect(() => {
+    if (gamesLoading) return;
+
+    const urlSelection = parseLeaderboardUrl(search);
+    if (gamesError && games.length === 0) {
+      const requestedGame = urlSelection.gameSlug ?? selectedGame;
+      if (requestedGame !== "overall" && requestedGame !== "streaks") {
+        if (selectedGame !== "overall") {
+          setSelectedGame("overall");
+        }
+        setIsSurvival(false);
+      }
+      return;
+    }
+
+    const resolvedGame = resolveLeaderboardGameSlug(
+      games,
+      urlSelection.gameSlug ?? selectedGame,
+    );
+    if (resolvedGame !== selectedGame) {
+      setSelectedGame(resolvedGame);
+    }
+    const urlHasResolvedGame =
+      urlSelection.gameSlug === resolvedGame ||
+      (resolvedGame === "overall" && urlSelection.gameSlug === null);
+    if (!urlHasResolvedGame) {
+      setLocation(buildLeaderboardUrl(resolvedGame), { replace: true });
+      return;
+    }
+
+    if (resolvedGame !== selectedGame) return;
+
+    const supportsSurvival = !!selectedGameObj?.hasSurvival;
+    setIsSurvival(supportsSurvival && urlSelection.isSurvival);
+
+    const hasModesForGame = !!selectedGameObj?.modes?.length;
+    const validMode = !!selectedGameObj?.modes?.some((mode) => mode.slug === urlSelection.modeSlug);
+    const invalidModeParam =
+      urlSelection.modeSlug !== null && (!hasModesForGame || !validMode);
+    const invalidSurvivalParam =
+      urlSelection.hasSurvivalParam && (!supportsSurvival || !urlSelection.isSurvival);
+
+    if (invalidModeParam || invalidSurvivalParam) {
+      const normalizedMode = hasModesForGame
+        ? resolveLeaderboardModeSlug(selectedGameObj?.modes, urlSelection.modeSlug)
+        : undefined;
+      setLocation(
+        buildLeaderboardUrl(
+          selectedGame,
+          normalizedMode,
+          supportsSurvival && urlSelection.isSurvival,
+        ),
+        { replace: true },
+      );
+    }
+  }, [games, gamesError, gamesLoading, search, selectedGame, selectedGameObj, setLocation]);
+
+  const gameSelectionResolving =
+    gamesLoading ||
+    (!gamesError &&
+      !selectedGameObj &&
+      selectedGame !== "overall" &&
+      selectedGame !== "streaks");
 
   const isStreaks = selectedGame === "streaks";
   const cardTitle = selectedGame === "overall"
@@ -812,9 +953,27 @@ export default function Leaderboard() {
   function handleGameChange(slug: string) {
     setSelectedGame(slug);
     setIsSurvival(false);
-    const params = new URLSearchParams();
-    if (slug !== "overall") params.set("game", slug);
-    setLocation(`/leaderboard${params.toString() ? `?${params.toString()}` : ""}`, { replace: true });
+    setLocation(buildLeaderboardUrl(slug), { replace: true });
+  }
+
+  function handleModeChange(modeSlug: string) {
+    setLocation(
+      buildLeaderboardUrl(selectedGame, modeSlug, isSurvival && showSurvivalToggle),
+      { replace: true },
+    );
+  }
+
+  function handleSurvivalChange(nextIsSurvival: boolean) {
+    const supportedSurvival = nextIsSurvival && showSurvivalToggle;
+    setIsSurvival(supportedSurvival);
+    setLocation(
+      buildLeaderboardUrl(
+        selectedGame,
+        hasModes ? selectedModeSlug : undefined,
+        supportedSurvival,
+      ),
+      { replace: true },
+    );
   }
 
   const noModeSlug = isSurvival ? `${selectedGame}-survival` : selectedGame;
@@ -836,6 +995,27 @@ export default function Leaderboard() {
         </div>
 
         <PremiumBanner />
+
+        {gamesError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3"
+            data-testid="game-catalog-error"
+          >
+            <p className="text-sm text-muted-foreground">
+              Game-specific leaderboards couldn’t be loaded. The Overall leaderboard is still available.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetchGames()}
+              disabled={gamesFetching}
+              data-testid="button-retry-game-catalog"
+            >
+              {gamesFetching ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
+        )}
 
         {/* Mobile: search + horizontal pill strip */}
         <div className="md:hidden space-y-2">
@@ -912,7 +1092,7 @@ export default function Leaderboard() {
           {/* Main content */}
           <div role="region" aria-label="Leaderboard" className="flex-1 min-w-0 space-y-4">
             {showSurvivalToggle && !isStreaks && (
-              <SurvivalToggle isSurvival={isSurvival} onChange={setIsSurvival} />
+              <SurvivalToggle isSurvival={isSurvival} onChange={handleSurvivalChange} />
             )}
 
             <Card>
@@ -975,12 +1155,20 @@ export default function Leaderboard() {
                       <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
                     ))}
                   </div>
+                ) : gameSelectionResolving ? (
+                  <div className="space-y-3" data-testid="leaderboard-selection-loading">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+                    ))}
+                  </div>
                 ) : isStreaks ? (
                   <StreakLeaderboard user={user} onSignIn={() => setAuthOpen(true)} />
                 ) : hasModes ? (
                   <ModeTabs
                     key={selectedGame}
                     modes={selectedGameObj!.modes!}
+                    initialModeSlug={requestedModeSlug ?? undefined}
+                    onModeChange={handleModeChange}
                     isSurvival={isSurvival}
                     user={user}
                     onSignIn={() => setAuthOpen(true)}

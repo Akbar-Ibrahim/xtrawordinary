@@ -23,6 +23,11 @@ import type { QuizSession, QuizSessionScore, DefinitionWord } from "@shared/sche
 import { UserAvatar } from "@/components/user-avatar";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 import { getVariantSummary } from "@/lib/variant-summary";
+import {
+  getLockedBalancePair,
+  isLockedBalanceConfig,
+  useLockedBalanceAvailability,
+} from "@/hooks/use-locked-balance-availability";
 
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterPositionGame } from "@/components/games/letter-position";
@@ -131,9 +136,8 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
       return <DefinitionMatchGame groupSeed={seed} locked quizMode customWords={customWords} timeLimitSeconds={dmTl} />;
     }
     case "letter-pool": {
-      const v: "with-pool" | "without-pool" = params?.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
       const lpCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").LetterPoolWord[] : undefined;
-      return <LetterPoolGame initialChallenge={v} groupSeed={seed} locked quizMode customWords={lpCustomWords} />;
+      return <LetterPoolGame initialChallenge="with-pool" initialDecoyCount={params?.decoyCount ?? 1} groupSeed={seed} locked quizMode customWords={lpCustomWords} />;
     }
     case "letter-dodge": {
       type DodgeDifficulty = 1 | 2 | 3 | 4 | 5 | "advanced";
@@ -206,7 +210,16 @@ export default function QuizPlay() {
       return res.json();
     },
     enabled: !!code,
+    staleTime: 0,
   });
+  const savedLockedBalanceConfig = session?.gameSlug === "letter-balance" && isLockedBalanceConfig(session.params);
+  const savedLockedBalancePair = savedLockedBalanceConfig ? getLockedBalancePair(session?.params) : null;
+  const lockedBalanceAvailability = useLockedBalanceAvailability(savedLockedBalanceConfig);
+  const savedLockedBalanceAvailable = savedLockedBalancePair
+    ? lockedBalanceAvailability.data?.availability[
+        `${savedLockedBalancePair.length}:${savedLockedBalancePair.consonantCount}`
+      ]
+    : undefined;
 
   const { data: scoresData, isLoading: scoresLoading } = useQuery<ScoresResponse>({
     queryKey: ["/api/quiz-sessions", code, "scores"],
@@ -341,6 +354,27 @@ export default function QuizPlay() {
                   </div>
                 )}
 
+                {savedLockedBalanceConfig && (
+                  lockedBalanceAvailability.isLoading ? (
+                    <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground" role="status">
+                      Checking whether this Locked Balance setting still has valid words…
+                    </div>
+                  ) : lockedBalanceAvailability.isError ? (
+                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center text-sm text-destructive" role="alert">
+                      Couldn't verify this Locked Balance setting against the active dictionary. Please try again later.
+                    </div>
+                  ) : savedLockedBalanceAvailable !== true ? (
+                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-center text-sm text-destructive" role="alert">
+                      No valid dictionary words match this saved Locked Balance setting, so this quiz cannot be played. Ask the creator to choose a different word length and consonant count.
+                      {isAuthenticated && session.creatorId === user?.id && (
+                        <Link href="/my-quizzes" className="block mt-2 font-medium underline text-destructive" data-testid="link-repair-locked-balance">
+                          Edit this quiz’s rules
+                        </Link>
+                      )}
+                    </div>
+                  ) : null
+                )}
+
                 {alreadySubmitted && (
                   <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 text-center">
                     <CheckCircle className="h-6 w-6 text-green-500 mx-auto mb-1" />
@@ -362,6 +396,11 @@ export default function QuizPlay() {
                     className="w-full gap-2"
                     size="lg"
                     onClick={() => setIsPlaying(true)}
+                    disabled={savedLockedBalanceConfig && (
+                      lockedBalanceAvailability.isLoading ||
+                      lockedBalanceAvailability.isError ||
+                      savedLockedBalanceAvailable !== true
+                    )}
                     data-testid="button-play-quiz"
                   >
                     <Play className="h-5 w-5" />
@@ -374,6 +413,11 @@ export default function QuizPlay() {
                     className="w-full gap-2"
                     size="lg"
                     onClick={() => setIsPlaying(true)}
+                    disabled={savedLockedBalanceConfig && (
+                      lockedBalanceAvailability.isLoading ||
+                      lockedBalanceAvailability.isError ||
+                      savedLockedBalanceAvailable !== true
+                    )}
                     variant="outline"
                     data-testid="button-play-again-quiz"
                   >

@@ -12,12 +12,22 @@ import { DuelNotificationsProvider } from "@/lib/duel-notifications-context";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { ErrorBoundary } from "@/components/error-boundary";
+import ExploreDirectory from "@/pages/explore";
 import { WhatsNewModal } from "@/components/whats-new-modal";
 import { GoogleWelcomeModal } from "@/components/google-welcome-modal";
 import { AuthModal } from "@/components/auth-modal";
 import { MotionConfig } from "framer-motion";
 import Home from "@/pages/home";
 import GameDetail from "@/pages/game-detail";
+import WordMakerExplore from "@/pages/word-maker-explore";
+import { AnagramSolverExplore } from "@/pages/anagram-explore";
+import UnscrambleLettersExplore from "@/pages/unscramble-explore";
+import LetterHuntExplore from "@/pages/letter-hunt-explore";
+import LetterDodgeExplore from "@/pages/letter-dodge-explore";
+import LetterPositionExplore from "@/pages/letter-position-explore";
+import LetterFrequencyExplore from "@/pages/letter-frequency-explore";
+import NoRepeatsExplore from "@/pages/no-repeats-explore";
+import LetterBalanceExplore from "@/pages/letter-balance-explore";
 import Stats from "@/pages/stats";
 import Achievements from "@/pages/achievements";
 import DailyChallenge from "@/pages/daily-challenge";
@@ -70,6 +80,16 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/explore" component={ExploreDirectory} />
+      <Route path="/explore/word-maker" component={WordMakerExplore} />
+      <Route path="/explore/anagram-solver" component={AnagramSolverExplore} />
+      <Route path="/explore/word-scramble" component={UnscrambleLettersExplore} />
+      <Route path="/explore/letter-hunt" component={LetterHuntExplore} />
+      <Route path="/explore/letter-dodge" component={LetterDodgeExplore} />
+      <Route path="/explore/letter-position" component={LetterPositionExplore} />
+      <Route path="/explore/letter-frequency" component={LetterFrequencyExplore} />
+      <Route path="/explore/no-repeats" component={NoRepeatsExplore} />
+      <Route path="/explore/letter-balance" component={LetterBalanceExplore} />
       <Route path="/game/:slug" component={GameDetail} />
       <Route path="/stats" component={Stats} />
       <Route path="/achievements" component={Achievements} />

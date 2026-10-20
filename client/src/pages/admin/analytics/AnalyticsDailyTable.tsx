@@ -1,5 +1,6 @@
 import type { AnalyticsDailyReport } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatAnalyticsCount } from "./format";
 
 export function AnalyticsDailyTable({ days }: { days: AnalyticsDailyReport[] }) {
   return (
@@ -24,11 +25,11 @@ export function AnalyticsDailyTable({ days }: { days: AnalyticsDailyReport[] }) 
             {[...days].reverse().map((day) => (
               <tr key={day.date} className="border-b last:border-0">
                 <td className="px-2 py-3 font-medium">{day.date}</td>
-                <td className="px-2 py-3 text-right tabular-nums">{day.uniqueVisitors}</td>
-                <td className="px-2 py-3 text-right tabular-nums">{day.sessions}</td>
-                <td className="px-2 py-3 text-right tabular-nums">{day.gameStarts}</td>
-                <td className="px-2 py-3 text-right tabular-nums">{day.gameCompletions}</td>
-                <td className="px-2 py-3 text-right tabular-nums">{day.registrations}</td>
+                <td className="px-2 py-3 text-right tabular-nums">{formatAnalyticsCount(day.uniqueVisitors)}</td>
+                <td className="px-2 py-3 text-right tabular-nums">{formatAnalyticsCount(day.sessions)}</td>
+                <td className="px-2 py-3 text-right tabular-nums">{formatAnalyticsCount(day.gameStarts)}</td>
+                <td className="px-2 py-3 text-right tabular-nums">{formatAnalyticsCount(day.gameCompletions)}</td>
+                <td className="px-2 py-3 text-right tabular-nums">{formatAnalyticsCount(day.registrations)}</td>
               </tr>
             ))}
           </tbody>

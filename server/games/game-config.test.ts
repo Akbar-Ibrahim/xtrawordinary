@@ -7,6 +7,96 @@ import {
   getSupportedGameConfigFields,
 } from "@shared/schema";
 import { parseGameConfigUpdate } from "../game-config";
+import { gamesData } from "../game-data";
+
+test("Letter Dodge exposes all difficulty leaderboards and Survival", () => {
+  const game = gamesData.find(({ slug }) => slug === "letter-dodge");
+  assert.equal(game?.hasSurvival, true);
+  assert.deepEqual(game?.modes, [
+    { label: "Easy (1 letter)", slug: "letter-dodge-easy" },
+    { label: "Medium (2 letters)", slug: "letter-dodge-medium" },
+    { label: "Hard (3 letters)", slug: "letter-dodge-hard" },
+    { label: "Expert (4 letters)", slug: "letter-dodge-expert" },
+    { label: "Master (5 letters)", slug: "letter-dodge-master" },
+    { label: "Savant (6–12 letters)", slug: "letter-dodge-savant" },
+    { label: "Advanced (random 1–5)", slug: "letter-dodge-advanced" },
+  ]);
+});
+
+test("Letter Hunt exposes each challenge and order combination as a leaderboard mode", () => {
+  const game = gamesData.find(({ slug }) => slug === "letter-hunt");
+  assert.equal(game?.hasSurvival, true);
+  assert.equal(game?.modes?.length, 12);
+  assert.deepEqual(game?.modes?.[0], {
+    label: "Challenge 1 (2 letters) - Unordered",
+    slug: "letter-hunt-1-unordered",
+  });
+  assert.deepEqual(game?.modes?.[11], {
+    label: "Challenge Advanced (random 2-6 letters) - Ordered",
+    slug: "letter-hunt-advanced-ordered",
+  });
+});
+
+test("Letter Pool exposes a separate non-Survival leaderboard per decoy level", () => {
+  const game = gamesData.find(({ slug }) => slug === "letter-pool");
+  assert.equal(Boolean(game?.hasSurvival), false);
+  assert.deepEqual(game?.modes, [
+    { label: "With Pool · 1 Decoy", slug: "letter-pool-decoys-1" },
+    { label: "With Pool · 2 Decoys", slug: "letter-pool-decoys-2" },
+    { label: "With Pool · 3 Decoys", slug: "letter-pool-decoys-3" },
+  ]);
+});
+
+test("catalogue seed data includes Spoken Word but not a separate dormant no-pool game", () => {
+  const spokenWord = gamesData.find(({ slug }) => slug === "spoken-word-transformations");
+  const letterPool = gamesData.find(({ slug }) => slug === "letter-pool");
+
+  assert.ok(spokenWord);
+  assert.ok(spokenWord.modes && spokenWord.modes.length > 0);
+  assert.deepEqual(letterPool?.modes?.map(({ slug }) => slug), [
+    "letter-pool-decoys-1",
+    "letter-pool-decoys-2",
+    "letter-pool-decoys-3",
+  ]);
+  assert.equal(
+    gamesData.some(({ slug }) => slug === "letter-pool-without-pool"),
+    false,
+  );
+});
+
+test("Word Stack exposes separate non-Survival leaderboards for both challenges", () => {
+  const game = gamesData.find(({ slug }) => slug === "word-stack");
+  assert.equal(Boolean(game?.hasSurvival), false);
+  assert.deepEqual(game?.modes, [
+    { label: "Build Up", slug: "word-stack-build-up" },
+    { label: "Break Down", slug: "word-stack-break-down" },
+  ]);
+});
+
+test("No Repeats exposes separate leaderboards for challenge length and play mode", () => {
+  const game = gamesData.find(({ slug }) => slug === "no-repeats");
+  assert.equal(game?.hasSurvival, true);
+  assert.equal(game?.modes?.length, 14);
+  assert.deepEqual(game?.modes?.slice(0, 2), [
+    { label: "Challenge 3 - Free Form", slug: "no-repeats-3-free" },
+    { label: "Challenge 3 - Required Letters", slug: "no-repeats-3-required" },
+  ]);
+  assert.deepEqual(game?.modes?.slice(-2), [
+    { label: "Challenge 9 - Free Form", slug: "no-repeats-9-free" },
+    { label: "Challenge 9 - Required Letters", slug: "no-repeats-9-required" },
+  ]);
+});
+
+test("Word Extension exposes one leaderboard per added-letter difficulty and no Survival boards", () => {
+  const game = gamesData.find(({ slug }) => slug === "word-extension");
+  assert.equal(Boolean(game?.hasSurvival), false);
+  assert.deepEqual(game?.modes, [
+    { label: "Easy (+1)", slug: "word-extension-1" },
+    { label: "Medium (+2)", slug: "word-extension-2" },
+    { label: "Hard (+3)", slug: "word-extension-3" },
+    { label: "Expert (+4)", slug: "word-extension-4" },
+  ]);
+});
 
 test("support matrix exposes only settings consumed by standard play", () => {
   assert.deepEqual(getSupportedGameConfigFields("word-fusion"), [

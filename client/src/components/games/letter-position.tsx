@@ -17,9 +17,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import {
+  getLetterPositionLeaderboardSlug,
+  type LetterPositionChallenge,
+} from "@shared/letter-position";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -43,7 +49,7 @@ const LETTER_MAX_POSITION: Record<string, number> = {
 // Position weights biased toward 1–5; higher positions are possible but rare
 const POSITION_WEIGHTS = [5, 5, 5, 5, 4, 3, 2, 1];
 
-type Challenge = 1 | 2;
+type Challenge = LetterPositionChallenge;
 
 type PositionConstraint = {
   position: number;
@@ -85,12 +91,22 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival && initialWordCount === undefined &&
+    initialLetter === undefined && initialPosition === undefined;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival;
+  const leaderboardSlug = getLetterPositionLeaderboardSlug(challenge, isSurvival);
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "letter-position-survival" : "letter-position",
+    slug: leaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? leaderboardSlug : undefined,
+    statsSlug: "letter-position",
+    personalBestSlug: leaderboardSlug,
     quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "letter-position-survival" : "letter-position");
+  const personalBest = usePersonalBest(leaderboardSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -101,7 +117,6 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
@@ -116,6 +131,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
   const lastGameSeedRef = useRef<number | null>(null);
@@ -125,6 +141,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -133,10 +150,13 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const timerGeneration = timerGenerationRef.current;
     const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
+      if (timerGeneration !== timerGenerationRef.current) return;
       setTimeLeft((prev) => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
@@ -259,7 +279,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerChallenge) {
+        if (!isOpenEndedClassic && newWordsCompleted >= wordsPerChallenge) {
           stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -346,6 +366,13 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                 </p>
               </>
             )}
+            {canSuggestSurvival && !isSurvival &&
+              getBestWordsFoundForGame("letter-position") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD && (
+                <SurvivalSuggestion
+                  placement="replay"
+                  onTrySurvival={() => setIsSurvival(true)}
+                />
+              )}
           </div>
           
           <div className="grid gap-3">
@@ -607,6 +634,19 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                   You completed {CHALLENGE_CONFIG[challenge].name}!
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                {canSuggestSurvival && !isSurvival && (
+                  wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="completion"
+                      onTrySurvival={() => startGame(challenge, true)}
+                    />
+                  ) : getBestWordsFoundForGame("letter-position") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => startGame(challenge, true)}
+                    />
+                  ) : null
+                )}
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   {personalBest > 0 && (

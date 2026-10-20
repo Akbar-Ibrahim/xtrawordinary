@@ -8,10 +8,13 @@ import { ShareResults } from "@/components/share-results";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { type Challenge, CHALLENGE_CONFIG } from "./no-repeats-helpers";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import type { NoRepeatsPlayMode } from "@shared/no-repeats";
+import { SurvivalSuggestion } from "./survival-suggestion";
 
 interface NoRepeatsResultProps {
   gameStatus: "won" | "lost";
   isSurvival: boolean;
+  playMode: NoRepeatsPlayMode;
   wordsCompleted: number;
   score: number;
   personalBest: number;
@@ -22,6 +25,8 @@ interface NoRepeatsResultProps {
   requiredLetters: string[];
   locked?: boolean;
   isSignedIn: boolean;
+  survivalSuggestion?: "completion" | "replay";
+  onTrySurvival?: () => void;
   onPlayAgain: () => void;
   onMenu: () => void;
   onNextChallenge: () => void;
@@ -31,6 +36,7 @@ interface NoRepeatsResultProps {
 export function NoRepeatsResult({
   gameStatus,
   isSurvival,
+  playMode,
   wordsCompleted,
   score,
   personalBest,
@@ -41,6 +47,8 @@ export function NoRepeatsResult({
   requiredLetters,
   locked,
   isSignedIn,
+  survivalSuggestion,
+  onTrySurvival,
   onPlayAgain,
   onMenu,
   onNextChallenge,
@@ -76,6 +84,9 @@ export function NoRepeatsResult({
               Survival Mode
             </Badge>
           )}
+          <Badge variant="outline" className="mb-2">
+            {CHALLENGE_CONFIG[challenge].name} · {playMode === "free" ? "Free Form" : "Required Letters"}
+          </Badge>
 
           {requiredLetters.length > 0 && (
             <div className="flex items-center justify-center gap-1.5 mb-3 flex-wrap">
@@ -100,6 +111,12 @@ export function NoRepeatsResult({
           <p className="text-sm italic text-muted-foreground mb-4" data-testid="text-completion-message">
             {completionMessage}
           </p>
+          {survivalSuggestion && !isSurvival && onTrySurvival && (
+            <SurvivalSuggestion
+              placement={survivalSuggestion}
+              onTrySurvival={onTrySurvival}
+            />
+          )}
 
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap className="w-5 h-5 text-yellow-500" />
@@ -120,7 +137,7 @@ export function NoRepeatsResult({
             gameSlug={isSurvival ? "no-repeats-survival" : "no-repeats"}
             score={score}
             wordsCompleted={wordsCompleted}
-            challengeName={CHALLENGE_CONFIG[challenge].name}
+            challengeName={`${CHALLENGE_CONFIG[challenge].name} - ${playMode === "free" ? "Free Form" : "Required Letters"}`}
             isWin={gameStatus === "won"}
           />
 

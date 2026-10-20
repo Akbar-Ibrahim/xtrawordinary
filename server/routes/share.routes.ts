@@ -108,7 +108,9 @@ export function registerShareRoutes(app: Express): void {
         return res.redirect(`/game/${challenge.gameSlug}?challenge=${id}`);
       }
 
-      const gameRedirectUrl = `/game/${challenge.gameSlug}?challenge=${id}`;
+      const gameRedirectUrl = challenge.gameSlug === "letter-dodge"
+        ? `/game/${challenge.gameSlug}?challenge=${id}&challenge-preview=1`
+        : `/game/${challenge.gameSlug}?challenge=${id}`;
 
       // Look up game and sender in parallel.
       const [sender, game] = await Promise.all([

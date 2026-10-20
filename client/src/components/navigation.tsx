@@ -10,7 +10,7 @@ import { useTheme } from "@/lib/theme-provider";
 import { useSound } from "@/lib/sound-provider";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
-import { Sun, Moon, Home, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword, Settings, Heart } from "lucide-react";
+import { Sun, Moon, Home, Compass, Volume2, VolumeX, BarChart3, Award, Calendar, Trophy, LogIn, LogOut, User, Shield, Users, Crown, GraduationCap, Swords, BookOpen, Bell, CheckCheck, MessageSquare, PlayCircle, UserPlus, Sword, Settings, Heart } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { motion } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -207,6 +207,7 @@ export function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/explore", label: "Explore", icon: Compass },
     { href: "/daily", label: "Daily", icon: Calendar },
     { href: "/duels", label: "Duels", icon: Swords },
     { href: "/word-wars", label: "Word Wars", icon: Sword },
@@ -514,7 +515,9 @@ export function Navigation() {
         <nav aria-label="Main" className="border-t border-border/40">
           <div className="container mx-auto flex h-10 items-center gap-0.5 px-4 overflow-x-auto scrollbar-none">
             {navLinks.map((link) => {
-              const isActive = location === link.href;
+              const isActive =
+                location === link.href ||
+                (link.href === "/explore" && location.startsWith("/explore/"));
               const Icon = link.icon;
               const isDuels = link.href === "/duels";
               return (

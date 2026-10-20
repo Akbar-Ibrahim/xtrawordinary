@@ -112,6 +112,11 @@ export function WordRootsGame({ groupSeed, locked, quizMode, isUntimed, timeLimi
     : [];
   const allFit = userInput.length >= 3 && derivativeStatuses.length > 0 && derivativeStatuses.every(Boolean);
 
+  useEffect(() => {
+    if (isLoading || error || !currentPuzzle || gameStatus !== "playing" || feedback || isValidating) return;
+    inputRef.current?.focus();
+  }, [currentPuzzle, error, feedback, gameStatus, isLoading, isValidating]);
+
   const handleSubmit = useCallback(async () => {
     if (!currentPuzzle || !allFit || isValidating || feedback) return;
     const upperWord = userInput.toUpperCase();
@@ -121,7 +126,7 @@ export function WordRootsGame({ groupSeed, locked, quizMode, isUntimed, timeLimi
       const data = await res.json();
       if (!data.valid) {
         setFeedback({ type: "invalid", message: "Not a valid dictionary word" });
-        setTimeout(() => { setFeedback(null); inputRef.current?.focus(); }, 1500);
+        setTimeout(() => setFeedback(null), 1500);
         setIsValidating(false);
         return;
       }
@@ -141,12 +146,11 @@ export function WordRootsGame({ groupSeed, locked, quizMode, isUntimed, timeLimi
           setGameStatus("won");
         } else {
           setRound(next);
-          setTimeout(() => inputRef.current?.focus(), 50);
         }
       }, 1500);
     } catch {
       setFeedback({ type: "invalid", message: "Error checking word" });
-      setTimeout(() => { setFeedback(null); inputRef.current?.focus(); }, 1500);
+      setTimeout(() => setFeedback(null), 1500);
     } finally {
       setIsValidating(false);
     }

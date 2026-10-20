@@ -1,3 +1,5 @@
+import type { NoRepeatsChallenge } from "@shared/no-repeats";
+
 export const SURVIVAL_TIME_PER_WORD = 8;
 export const SURVIVAL_TIME_OPTIONS = [
   { label: "Easy",   seconds: 15 },
@@ -5,7 +7,7 @@ export const SURVIVAL_TIME_OPTIONS = [
   { label: "Hard",   seconds: 5  },
 ] as const;
 
-export type Challenge = 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type Challenge = NoRepeatsChallenge;
 
 export const CHALLENGE_CONFIG: Record<Challenge, { name: string; description: string; wordLength: number; requiredCount: number }> = {
   3: { name: "Challenge 3", description: "3-letter isograms · 1 required letter",  wordLength: 3, requiredCount: 1 },

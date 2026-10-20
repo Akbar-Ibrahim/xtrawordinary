@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Calendar, Trophy, X, Play, CheckCircle, Share2, Medal, ChevronDown, ChevronUp, Flame, BarChart2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { Game, DailyLeaderboardEntry } from "@shared/schema";
+import type { WordExtensionLettersToAdd } from "@shared/word-extension";
 import { getDailyChallengeRecord, saveDailyChallengeRecord, getLocalDailyChallengeStreak, updateLocalDailyChallengeStreak } from "@/lib/game-stats";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,8 +37,12 @@ import { WordRootsGame } from "@/components/games/word-roots";
 import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
+import { LadderRushGame } from "@/components/games/ladder-rush";
 import { WordExtensionGame } from "@/components/games/word-extension";
+import { SpokenWordTransformationsGame } from "@/components/games/spoken-word-transformations";
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
+import { useResultSharing } from "@/hooks/use-result-sharing";
+import { ManualCopyDialog } from "@/components/manual-copy-dialog";
 
 interface DailyChallengeResponse {
   date: string;
@@ -62,7 +67,10 @@ const SLUG_TO_PRIMARY: Record<string, string> = {
   "deep-shell-words-crack": "deep-shell-words",
   "deep-shell-words-crack-survival": "deep-shell-words",
 };
-function primarySlug(slug: string): string { return SLUG_TO_PRIMARY[slug] ?? slug; }
+function primarySlug(slug: string): string {
+  const ladderRushMode = /^(ladder-rush(?:-double)?)-[456](?:-survival)?$/.exec(slug);
+  return SLUG_TO_PRIMARY[slug] ?? ladderRushMode?.[1] ?? slug;
+}
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -120,8 +128,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     case "definition-match":
       return <DefinitionMatchGame locked />;
     case "letter-pool": {
-      const poolVariation = seed % 2 === 0 ? "with-pool" : "without-pool";
-      return <LetterPoolGame initialChallenge={poolVariation as "with-pool" | "without-pool"} locked />;
+      return <LetterPoolGame initialChallenge="with-pool" locked />;
     }
     case "word-maker":
       return <WordMakerGame locked />;
@@ -143,7 +150,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     case "progressive-reveal":
       return <ProgressiveRevealGame locked />;
     case "word-roots":
-      return <WordRootsGame locked />;
+      return <WordRootsGame groupSeed={seed} locked />;
     case "shell-words": {
       const shellMode = seed % 2 === 0 ? "blitz" : "wrapper";
       return <ShellWordsGame initialMode={shellMode} groupSeed={seed} locked />;
@@ -154,10 +161,14 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
     }
     case "letter-dodge":
       return <LetterDodgeGame groupSeed={seed} locked />;
+    case "ladder-rush":
+      return <LadderRushGame dailyChallengeSeed={seed} locked />;
     case "word-extension": {
-      const lettersToAdd = (seed % 4) + 1;
+      const lettersToAdd = ((seed % 4) + 1) as WordExtensionLettersToAdd;
       return <WordExtensionGame initialChallenge={lettersToAdd} groupSeed={seed} locked />;
     }
+    case "spoken-word-transformations":
+      return <SpokenWordTransformationsGame initialMode="mixed" groupSeed={seed} locked />;
     default:
       return null;
   }
@@ -165,6 +176,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
 
 export default function DailyChallenge() {
   const { toast } = useToast();
+  const sharing = useResultSharing({ title: "Result copied!", description: "Share it with your friends." });
   const { isAuthenticated, user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -185,6 +197,7 @@ export default function DailyChallenge() {
 
   const [completed, setCompleted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [finalWon, setFinalWon] = useState(false);
   const [attemptStarted, setAttemptStarted] = useState(false);
   const [countdown, setCountdown] = useState("");
   const [leaderboardOpen, setLeaderboardOpen] = useState(true);
@@ -242,13 +255,16 @@ export default function DailyChallenge() {
       const detail = (e as CustomEvent).detail;
       if (primarySlug(detail.slug) !== data.slug) return;
       const score = detail.score ?? 0;
+      const won = detail.won === true;
       saveDailyChallengeRecord({
         date: data.date,
         slug: data.slug,
         score,
+        won,
         completedAt: Date.now(),
       });
       setFinalScore(score);
+      setFinalWon(won);
       setCompleted(true);
       setAttemptStarted(false);
       setIsPlaying(false);
@@ -334,6 +350,7 @@ export default function DailyChallenge() {
     <div className="container mx-auto px-4 py-8">
       <PageSEO title="Daily Challenge" description="A new word game challenge every day. Play today's puzzle and see how you rank on the daily leaderboard." path="/daily" />
       {ConfirmDialog}
+      <ManualCopyDialog text={sharing.manualText} onClose={sharing.closeManualCopy} restoreFocus={sharing.restoreFocus} />
       <Link href="/">
         <Button variant="ghost" className="gap-2 mb-8" data-testid="button-back-daily">
           <ArrowLeft className="h-4 w-4" />
@@ -394,6 +411,11 @@ export default function DailyChallenge() {
                               Score: {completed ? finalScore : localRecord?.score ?? 0}
                             </span>
                           </div>
+                          {(completed || typeof localRecord?.won === "boolean") && (
+                            <p className="text-sm font-medium" data-testid="text-daily-outcome">
+                              Outcome: {(completed ? finalWon : localRecord?.won) ? "Won" : "Not won"}
+                            </p>
+                          )}
                           {percentileData && percentileData.totalPlayers >= 3 && (
                             <div className="flex items-center justify-center gap-1.5 text-sm" data-testid="text-daily-percentile">
                               <BarChart2 className="h-4 w-4 text-primary" />
@@ -424,17 +446,15 @@ export default function DailyChallenge() {
                           size="sm"
                           className="gap-2"
                           data-testid="button-share-daily"
-                          onClick={() => {
+                          disabled={sharing.isPending}
+                          aria-busy={sharing.isPending}
+                          onClick={(event) => {
                             const scoreVal = completed ? finalScore : localRecord?.score ?? 0;
                             const displayDate = new Date(date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
                             const rankLine = leaderboardData?.myRank ? ` · Rank #${leaderboardData.myRank}` : "";
                             const tierEmoji = scoreVal >= 1000 ? "🏆🔥✨" : scoreVal >= 500 ? "⭐⭐⭐" : scoreVal >= 200 ? "⭐⭐" : "⭐";
                             const text = `${tierEmoji} xtraWordinary Daily Challenge\n${game.name} · ${displayDate}${rankLine}\nScore: ${scoreVal.toLocaleString()}\nCan you beat it? ${window.location.origin}/daily`;
-                            navigator.clipboard.writeText(text).then(() => {
-                              toast({ title: "Result copied!", description: "Share it with your friends." });
-                            }).catch(() => {
-                              toast({ title: "Couldn't copy", description: text, variant: "destructive" });
-                            });
+                            void sharing.copy(text, event.currentTarget);
                           }}
                         >
                           <Share2 className="h-4 w-4" />

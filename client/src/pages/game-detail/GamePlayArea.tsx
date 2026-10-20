@@ -6,7 +6,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { LetterPositionGame } from "@/components/games/letter-position";
 import { LetterHuntGame } from "@/components/games/letter-hunt";
 import { LetterFrequencyGame } from "@/components/games/letter-frequency";
-import { LetterBalanceGame } from "@/components/games/letter-balance";
+import { LetterBalanceGame, type VariationCategory } from "@/components/games/letter-balance";
 import { WordLengthGame } from "@/components/games/word-length";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { WordChainGame } from "@/components/games/word-chain";
@@ -19,6 +19,8 @@ import { ShellWordsGame } from "@/components/games/shell-words";
 import { DeepShellWordsGame } from "@/components/games/deep-shell-words";
 import { WordRootsGame } from "@/components/games/word-roots";
 import { LetterPoolGame } from "@/components/games/letter-pool";
+import { WordStackGame } from "@/components/games/word-stack";
+import { WordSplitGame } from "@/components/games/word-split";
 import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { DefinitionMatchGame } from "@/components/games/definition-match";
 import { WordSweepGame } from "@/components/games/word-sweep";
@@ -29,7 +31,15 @@ import { WordFusionGame } from "@/components/games/word-fusion";
 import { FriendChallengeCard } from "./FriendChallengeCard";
 import { gameComponents } from "./constants";
 import { getStandardPlayGameConfig, type Game, type FriendChallenge } from "@shared/schema";
+import { parseSavedLetterBalanceChallengeConfig } from "@shared/letter-balance-challenge";
 import type { ChallengeResult } from "./constants";
+import {
+  getLetterDodgeChallengeDifficulty,
+  getLetterDodgeChallengeSurvival,
+  LETTER_DODGE_VARIANTS,
+  parseLetterDodgeDifficulty,
+  type LetterDodgeDifficulty,
+} from "@shared/letter-dodge";
 
 interface Friend {
   id: number;
@@ -47,6 +57,8 @@ interface Props {
   challengeNewLbCategory: string | null;
   challengeNewLbLevel: string | null;
   challengeNewLbConsonantCount: string | null;
+  challengeNewDodgeDifficulty: string | null;
+  challengeNewDodgeSurvival: boolean;
   receiverChallenge: FriendChallenge | undefined;
   challengeLoading: boolean;
   challengeError: boolean;
@@ -63,6 +75,7 @@ interface Props {
   onCustomPlayEnd: () => void;
   onCustomPlayAgain: () => void;
   isUntimed: boolean;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
 }
 
 export function GamePlayArea({
@@ -76,6 +89,8 @@ export function GamePlayArea({
   challengeNewLbCategory,
   challengeNewLbLevel,
   challengeNewLbConsonantCount,
+  challengeNewDodgeDifficulty,
+  challengeNewDodgeSurvival,
   receiverChallenge,
   challengeLoading,
   challengeError,
@@ -92,14 +107,53 @@ export function GamePlayArea({
   onCustomPlayEnd,
   onCustomPlayAgain,
   isUntimed,
+  onLeaderboardModeChange,
 }: Props) {
   const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[game.icon] || LucideIcons.Gamepad2;
   const GameComponent = gameComponents[slug];
+  const senderDodgeDifficulty = parseLetterDodgeDifficulty(challengeNewDodgeDifficulty);
+  const receiverDodgeDifficulty = receiverChallenge
+    ? getLetterDodgeChallengeDifficulty(receiverChallenge.gameConfig)
+    : undefined;
+  const challengeDodgeSurvival = isSenderMode
+    ? challengeNewDodgeSurvival
+    : isReceiverMode && receiverChallenge
+      ? getLetterDodgeChallengeSurvival(receiverChallenge.gameConfig)
+      : false;
+  const challengeDodgeDifficulty = isSenderMode
+    ? senderDodgeDifficulty ?? "advanced"
+    : isReceiverMode
+      ? receiverDodgeDifficulty ?? "advanced"
+      : undefined;
+  const challengeDodgeLabel = challengeDodgeDifficulty
+    ? LETTER_DODGE_VARIANTS.find(({ difficulty }) => difficulty === challengeDodgeDifficulty)?.label
+    : undefined;
   const standardPlayConfig = getStandardPlayGameConfig(game, {
     isSenderMode,
     isReceiverMode,
     isCustomPlay,
   });
+  const receiverLetterBalanceConfig =
+    isReceiverMode && slug === "letter-balance"
+      ? parseSavedLetterBalanceChallengeConfig(receiverChallenge?.gameConfig)
+      : undefined;
+
+  if (receiverLetterBalanceConfig?.kind === "invalid") {
+    return (
+      <Card className="border-destructive/40">
+        <CardContent className="py-8 px-6 text-center space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold">This challenge can’t be played</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Its saved Letter Balance settings are invalid or no longer supported, so the game was not started.
+              Return to the game page to play a regular round.
+            </p>
+          </div>
+          <Button onClick={onExit}>Return to game page</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -147,6 +201,8 @@ export function GamePlayArea({
               </p>
               <p className="text-xs text-muted-foreground">
                 Play your best — your score will be sent as a challenge when you finish!
+                {slug === "letter-dodge" && challengeDodgeLabel && ` Difficulty: ${challengeDodgeLabel}.`}
+                {slug === "letter-dodge" && ` Mode: ${challengeDodgeSurvival ? "Survival" : "Classic"}.`}
                 {challengeNewMsg && ` "${challengeNewMsg}"`}
               </p>
             </div>
@@ -168,6 +224,8 @@ export function GamePlayArea({
                 Score to beat: <strong>{receiverChallenge.senderScore} pts</strong>
                 {receiverChallenge.message && ` — "${receiverChallenge.message}"`}
                 {receiverChallenge.seed != null && " · Same puzzle as your friend"}
+                {slug === "letter-dodge" && challengeDodgeLabel && ` · ${challengeDodgeLabel}`}
+                {slug === "letter-dodge" && ` · ${challengeDodgeSurvival ? "Survival" : "Classic"}`}
               </p>
             </div>
           </CardContent>
@@ -219,6 +277,8 @@ export function GamePlayArea({
           challengeNewLbCategory={challengeNewLbCategory}
           challengeNewLbLevel={challengeNewLbLevel}
           challengeNewLbConsonantCount={challengeNewLbConsonantCount}
+          challengeNewDodgeDifficulty={challengeNewDodgeDifficulty}
+          challengeNewDodgeSurvival={challengeNewDodgeSurvival}
           isReceiverMode={isReceiverMode}
         />
       )}
@@ -338,6 +398,7 @@ export function GamePlayArea({
           initialDifficulty={(() => {
             const d = customPlayFrozenParams.difficulty;
             if (d === "advanced") return "advanced" as const;
+            if (d === "savant") return "savant" as const;
             if (d !== undefined) return Math.min(5, Math.max(1, Number(d) || 1)) as 1 | 2 | 3 | 4 | 5;
             return undefined;
           })()}
@@ -363,23 +424,37 @@ export function GamePlayArea({
           initialSurvival={customPlayFrozenParams.survival === true}
           onGameEnd={onCustomPlayEnd}
           onPlayAgain={onCustomPlayAgain}
+          onLeaderboardModeChange={onLeaderboardModeChange}
           locked
           customPlay
         />
       ) : (isSenderMode || isReceiverMode) && slug === "letter-balance" ? (() => {
-        const senderLbConfig = (challengeNewLbCategory === "locked_balance" && challengeNewLbLevel && challengeNewLbConsonantCount)
-          ? { category: "locked_balance" as const, level: parseInt(challengeNewLbLevel), consonantCount: parseInt(challengeNewLbConsonantCount) }
+        const senderLbLevel: number | "advanced" | undefined = challengeNewLbLevel === "advanced"
+          ? "advanced"
+          : challengeNewLbLevel !== null
+            ? Number(challengeNewLbLevel)
+            : undefined;
+        const senderConsonantCount = challengeNewLbConsonantCount !== null
+          ? Number(challengeNewLbConsonantCount)
           : undefined;
-        const receiverLbConfig = (() => {
-          if (!receiverChallenge?.gameConfig) return undefined;
-          try {
-            const cfg = JSON.parse(receiverChallenge.gameConfig);
-            if (cfg?.category === "locked_balance" && cfg.level && cfg.consonantCount) {
-              return { category: "locked_balance" as const, level: cfg.level as number, consonantCount: cfg.consonantCount as number };
-            }
-          } catch {}
-          return undefined;
-        })();
+        const senderLbConfig =
+          challengeNewLbCategory &&
+          senderLbLevel !== undefined &&
+          (senderLbLevel === "advanced" || Number.isInteger(senderLbLevel)) &&
+          (challengeNewLbCategory !== "locked_balance" ||
+            (senderLbLevel !== "advanced" && Number.isInteger(senderConsonantCount)))
+            ? {
+                category: challengeNewLbCategory as VariationCategory,
+                level: senderLbLevel,
+                ...(challengeNewLbCategory === "locked_balance"
+                  ? { consonantCount: senderConsonantCount }
+                  : {}),
+              }
+            : undefined;
+        const receiverLbConfig =
+          receiverLetterBalanceConfig?.kind === "configured"
+            ? receiverLetterBalanceConfig.config
+            : undefined;
         const lbConfig = isSenderMode ? senderLbConfig : receiverLbConfig;
         return (
           <LetterBalanceGame
@@ -397,7 +472,13 @@ export function GamePlayArea({
       ) : isUntimed && slug === "word-scramble" ? (
         <WordScrambleGame isUntimed locked={isSenderMode || isReceiverMode} livesCount={standardPlayConfig.livesCount ?? undefined} />
       ) : isUntimed && slug === "no-repeats" ? (
-        <NoRepeatsGame isUntimed groupSeed={receiverChallenge?.seed ?? undefined} locked={isSenderMode || isReceiverMode} wordTarget={standardPlayConfig.wordTarget ?? undefined} />
+        <NoRepeatsGame
+          isUntimed
+          groupSeed={receiverChallenge?.seed ?? undefined}
+          locked={isSenderMode || isReceiverMode}
+          wordTarget={standardPlayConfig.wordTarget ?? undefined}
+          onLeaderboardModeChange={onLeaderboardModeChange}
+        />
       ) : isUntimed && slug === "ladder-rush" ? (
         <LadderRushGame isUntimed locked={isSenderMode || isReceiverMode} />
       ) : isUntimed && slug === "ladder-rush-double" ? (
@@ -439,6 +520,7 @@ export function GamePlayArea({
           initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed={isUntimed}
+          onLeaderboardModeChange={onLeaderboardModeChange}
         />
       ) : slug === "word-roots" ? (
         <WordRootsGame
@@ -475,6 +557,7 @@ export function GamePlayArea({
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
           livesCount={standardPlayConfig.livesCount ?? undefined}
+          onLeaderboardModeChange={onLeaderboardModeChange}
         />
       ) : slug === "progressive-reveal" ? (
         <ProgressiveRevealGame
@@ -500,6 +583,7 @@ export function GamePlayArea({
         <LetterHuntGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
+          onLeaderboardModeChange={onLeaderboardModeChange}
           initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
@@ -521,6 +605,8 @@ export function GamePlayArea({
         <LetterDodgeGame
           groupSeed={effectiveGroupSeed}
           locked={isSenderMode || isReceiverMode}
+          initialDifficulty={challengeDodgeDifficulty as LetterDodgeDifficulty | undefined}
+          initialSurvival={challengeDodgeSurvival}
           initialTimeLimit={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
         />
@@ -563,6 +649,7 @@ export function GamePlayArea({
           locked={isSenderMode || isReceiverMode}
           timeLimitSeconds={!isUntimed ? (standardPlayConfig.timeLimitSeconds ?? undefined) : undefined}
           isUntimed={isUntimed}
+          onLeaderboardModeChange={onLeaderboardModeChange}
         />
       ) : slug === "word-fusion" ? (
         <WordFusionGame
@@ -584,6 +671,18 @@ export function GamePlayArea({
           locked={isSenderMode || isReceiverMode}
           wordTarget={standardPlayConfig.wordTarget ?? undefined}
           isUntimed={isUntimed}
+        />
+      ) : slug === "word-stack" ? (
+        <WordStackGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
+          onLeaderboardModeChange={onLeaderboardModeChange}
+        />
+      ) : slug === "word-split" ? (
+        <WordSplitGame
+          groupSeed={effectiveGroupSeed}
+          locked={isSenderMode || isReceiverMode}
+          onLeaderboardModeChange={onLeaderboardModeChange}
         />
       ) : GameComponent ? (
         <GameComponent groupSeed={effectiveGroupSeed} locked={isSenderMode || isReceiverMode} />

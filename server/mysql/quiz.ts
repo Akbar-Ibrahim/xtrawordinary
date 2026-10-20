@@ -55,6 +55,10 @@ export async function getQuizSessionsByCreator(db: any, creatorId: number): Prom
   return rows.map((r: any) => mapQuizSession(r));
 }
 
+export async function updateQuizSessionParams(db: any, id: number, params: Record<string, unknown>): Promise<void> {
+  await db.update(schema.quizSessions).set({ params }).where(eq(schema.quizSessions.id, id));
+}
+
 export async function addQuizSessionScore(db: any, sessionId: number, userId: number, score: number, guestName?: string | null): Promise<QuizSessionScore> {
   const existing = await db.select().from(schema.quizSessionScores).where(and(eq(schema.quizSessionScores.sessionId, sessionId), eq(schema.quizSessionScores.userId, userId))).limit(1);
   if (existing[0]) return mapQuizScore(existing[0]);

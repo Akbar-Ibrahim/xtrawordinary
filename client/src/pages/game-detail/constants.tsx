@@ -24,6 +24,7 @@ import { WordBloomGame } from "@/components/games/word-bloom";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { WordExtensionGame } from "@/components/games/word-extension";
 import { WordFusionGame } from "@/components/games/word-fusion";
+import { SpokenWordTransformationsGame } from "@/components/games/spoken-word-transformations";
 
 export const difficultyColors: Record<string, string> = {
   easy: "bg-accent text-accent-foreground",
@@ -62,6 +63,7 @@ export const gameComponents: Record<string, React.ComponentType<{ groupSeed?: nu
   "letter-dodge": LetterDodgeGame,
   "word-extension": WordExtensionGame,
   "word-fusion": WordFusionGame,
+  "spoken-word-transformations": SpokenWordTransformationsGame,
 };
 
 export const CUSTOM_PLAY_SLUGS = new Set([

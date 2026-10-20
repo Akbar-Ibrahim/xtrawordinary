@@ -19,6 +19,9 @@ import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
+
+const MAX_ROUNDS_PER_SESSION = 5;
+
 export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locked?: boolean } = {}) {
   const { playSound } = useSound();
   const [, navigate] = useLocation();
@@ -64,7 +67,13 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
     return true;
   };
 
-  const selectNewWord = useCallback(() => {
+  const selectNewWord = useCallback((completedRounds = roundsCompleted) => {
+    if (completedRounds >= MAX_ROUNDS_PER_SESSION) {
+      playSound("win");
+      setCompletionMessage(getCompletionMessage(true));
+      setGameStatus("won");
+      return;
+    }
     const availableWords = activeWords.filter((w) => !usedBaseWords.has(w.baseWord));
     if (availableWords.length === 0) {
       playSound("win");
@@ -79,7 +88,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
     setUserInput("");
     setUsedBaseWords((prev) => new Set(Array.from(prev).concat(randomWord.baseWord)));
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedBaseWords, activeWords]);
+  }, [usedBaseWords, activeWords, roundsCompleted, playSound]);
 
   const lastWordRef = useRef<(typeof words)[0] | null>(null);
 
@@ -158,10 +167,11 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
       setUserInput("");
 
       if (newFoundWords.size >= currentWord.maxWords) {
-        setRoundsCompleted((prev) => prev + 1);
+        const completedRounds = roundsCompleted + 1;
+        setRoundsCompleted(completedRounds);
         setTimeout(() => {
           setFeedback(null);
-          selectNewWord();
+          selectNewWord(completedRounds);
         }, 1000);
       } else {
         setTimeout(() => setFeedback(null), 500);
@@ -220,7 +230,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
           <StreakIndicator streak={streak} />
           <Badge className="bg-primary text-primary-foreground gap-1.5" data-testid="badge-rounds">
             <Sparkles className="h-3.5 w-3.5" />
-            {roundsCompleted} rounds
+            {roundsCompleted} / {Math.min(activeWords.length, MAX_ROUNDS_PER_SESSION)} rounds
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -385,7 +395,7 @@ export function WordMakerGame({ groupSeed, locked }: { groupSeed?: number; locke
                 </motion.div>
                 <h3 className="text-2xl font-bold">Word Maker Champion!</h3>
                 <p className="text-muted-foreground">
-                  You completed all the word challenges!
+                  You completed all {Math.min(activeWords.length, MAX_ROUNDS_PER_SESSION)} rounds in this session!
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="space-y-1">

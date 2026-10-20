@@ -17,9 +17,12 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { getWordLengthLeaderboardSlug, WORD_LENGTH_VARIANTS } from "@shared/word-length";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -91,13 +94,11 @@ const variationDescriptions = [
   "Form {length}-letter words ending with '{endsWith}' with '{contains}' inside (not at start)"
 ];
 
-const variationOptions = [
-  { id: 1, name: "Length Only", description: "Form words of a specific length" },
-  { id: 2, name: "Starts With", description: "Same length + must start with a specific letter" },
-  { id: 3, name: "Ends With", description: "Same length + must end with a specific letter" },
-  { id: 4, name: "Starts & Contains", description: "Same length + starts with letter + contains letter" },
-  { id: 5, name: "Ends & Contains", description: "Same length + ends with letter + contains letter" },
-];
+const variationOptions = WORD_LENGTH_VARIANTS.map(({ variation, label, description }) => ({
+  id: variation,
+  name: label,
+  description,
+}));
 
 function formatConstraint(variation: number, constraint: LevelConstraint): string {
   let desc = variationDescriptions[variation - 1];
@@ -149,12 +150,21 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
+  const [variation, setVariation] = useState<number>(1);
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival && !customConstraint;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival && initialWordCount === undefined;
+  const leaderboardSlug = customConstraint
+    ? isSurvival ? "word-length-survival" : "word-length"
+    : getWordLengthLeaderboardSlug(variation, isSurvival);
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "word-length-survival" : "word-length",
+    slug: leaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? leaderboardSlug : undefined,
     quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "word-length-survival" : "word-length");
+  const personalBest = usePersonalBest(leaderboardSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -165,7 +175,6 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     },
   });
 
-  const [variation, setVariation] = useState<number>(1);
   const [constraint, setConstraint] = useState<LevelConstraint | null>(null);
   const [userInput, setUserInput] = useState("");
   const [score, setScore] = useState(0);
@@ -180,6 +189,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(false);
 
@@ -187,6 +197,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const timePerVariation = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -195,12 +206,15 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const timerGeneration = timerGenerationRef.current;
     const initialTime = survivalMode ? survivalTime : timePerVariation;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
+      if (timerGeneration !== timerGenerationRef.current) return;
       setTimeLeft((prev) => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
         if (prev <= 1) {
-          clearInterval(timerRef.current!);
+          stopTimer();
           playSound("lose");
           setCompletionMessage(getCompletionMessage(false));
           setTimedOut(true);
@@ -312,7 +326,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
 
       setTimeout(() => {
         setFeedback(null);
-        if (newWordsCompleted >= wordsPerVariation) {
+        if (!isOpenEndedClassic && newWordsCompleted >= wordsPerVariation) {
           stopTimer();
           playSound("win");
           setCompletionMessage(getCompletionMessage(true));
@@ -384,6 +398,15 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                 </p>
               </>
             )}
+            {canSuggestSurvival && !isSurvival &&
+              getBestWordsFoundForGame("word-length") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD && (
+                <div className="mb-4">
+                  <SurvivalSuggestion
+                    placement="replay"
+                    onTrySurvival={() => setIsSurvival(true)}
+                  />
+                </div>
+              )}
             <div className="grid gap-3">
               {variationOptions.map((option) => (
                 <motion.div
@@ -628,6 +651,19 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                     : `You completed ${wordsCompleted} words`}
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                {canSuggestSurvival && !isSurvival && (
+                  wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="completion"
+                      onTrySurvival={() => startGame(variation, true)}
+                    />
+                  ) : getBestWordsFoundForGame("word-length") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => startGame(variation, true)}
+                    />
+                  ) : null
+                )}
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   {personalBest > 0 && (

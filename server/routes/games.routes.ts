@@ -3,24 +3,18 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "../auth";
 import { seededShuffle } from "../games/seeded-rng";
+import { getLockedBalanceAvailability } from "../games/letter-balance-availability";
 import { wordDictionary, wordDictSet } from "../game-data";
 
 // ── Ladder Rush hint helpers ──────────────────────────────────────────────────
 
 function _lrIsNLetterDiff(a: string, b: string, n: number): boolean {
   if (a.length !== b.length) return false;
-  const freqA: Record<string, number> = {};
-  const freqB: Record<string, number> = {};
-  for (const c of a) freqA[c] = (freqA[c] || 0) + 1;
-  for (const c of b) freqB[c] = (freqB[c] || 0) + 1;
-  let added = 0, removed = 0;
-  const allLetters = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
-  for (const c of allLetters) {
-    const diff = (freqB[c] || 0) - (freqA[c] || 0);
-    if (diff > 0) added += diff;
-    else removed -= diff;
+  let changed = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) changed++;
   }
-  return added === n && removed === n;
+  return changed === n;
 }
 
 function _lrFindNeighbors(word: string, swapCount: number, used: Set<string>): string[] {
@@ -89,6 +83,27 @@ export function registerGamesRoutes(app: Express): void {
       res.json(merged);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch games" });
+    }
+  });
+
+  app.get("/api/games/spoken-word-transformations/words", async (req, res) => {
+    let seed: number | undefined;
+    if (req.query.seed !== undefined) {
+      if (typeof req.query.seed !== "string" || !Number.isSafeInteger(Number(req.query.seed))) {
+        return res.status(400).json({ message: "seed must be a safe integer" });
+      }
+      seed = Number(req.query.seed);
+    }
+
+    try {
+      const words = await storage.getSpokenWordWords(seed);
+      if (words.length < 10) {
+        return res.status(503).json({ message: "Not enough eligible words are available to start this game." });
+      }
+      return res.json(words);
+    } catch (error) {
+      console.error("[Games] Failed to load Spoken Word words:", error);
+      return res.status(503).json({ message: "Unable to load Spoken Word words from the active storage source." });
     }
   });
 
@@ -569,6 +584,16 @@ export function registerGamesRoutes(app: Express): void {
       res.json(config);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch letter balance config" });
+    }
+  });
+
+  app.get("/api/games/letter-balance/locked-balance-availability", async (_req, res) => {
+    try {
+      const dictionary = await storage.getWordDictionary();
+      res.json({ availability: getLockedBalanceAvailability(dictionary) });
+    } catch (error) {
+      console.error("[Games] Failed to check Locked Balance word availability:", error);
+      res.status(503).json({ message: "Unable to check Locked Balance word availability" });
     }
   });
 

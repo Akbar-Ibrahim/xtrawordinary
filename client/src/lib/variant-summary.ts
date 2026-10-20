@@ -94,8 +94,8 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
       return level !== undefined ? `${catName} · ${level === "advanced" ? "Advanced" : `Level ${level}`}${survival}` : `${catName}${survival}`;
     }
     case "letter-pool": {
-      const v = p.variant ?? (seed % 2 === 0 ? "with-pool" : "without-pool");
-      const modeLabel = v === "with-pool" ? "With Pool" : "Without Pool";
+      const decoyCount = Number(p.decoyCount ?? 1);
+      const modeLabel = `With Pool · ${decoyCount} Decoy${decoyCount === 1 ? "" : "s"}`;
       const lpWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
       return lpWords.length > 0 ? `${modeLabel} · ${lpWords.length} word${lpWords.length !== 1 ? "s" : ""}` : modeLabel;
     }

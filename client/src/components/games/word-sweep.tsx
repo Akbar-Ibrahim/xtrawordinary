@@ -15,6 +15,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useGameSession } from "@/hooks/use-game-session";
 import { apiRequest } from "@/lib/queryClient";
 import type { WordValidationResponse, WordSweepGrid, WordUnpackPuzzle } from "@shared/schema";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
@@ -62,6 +63,13 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   const [authOpen, setAuthOpen] = useState(false);
   const [totalLetters, setTotalLetters] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    isSessionActive,
+  } = useGameSession();
+  const hasInitializedGridRef = useRef(false);
 
   const selectedCells = grid.filter(c => c.selected && !c.cleared).sort((a, b) => a.selectionOrder - b.selectionOrder);
   const currentWord = selectedCells.map(c => c.letter).join("");
@@ -91,13 +99,17 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   }, []);
 
   useEffect(() => {
-    if (gridData && gameStatus === "loading") {
+    if (gridData && gameStatus === "loading" && !hasInitializedGridRef.current) {
+      hasInitializedGridRef.current = true;
+      startSession();
       lastGridDataRef.current = gridData;
       buildGrid(gridData);
     }
-  }, [gridData, gameStatus, buildGrid]);
+  }, [gridData, gameStatus, buildGrid, startSession]);
 
   const initGame = useCallback(async () => {
+    const activeSession = startSession();
+    hasInitializedGridRef.current = true;
     resetRecorded();
     setScore(0);
     setWordsFound([]);
@@ -107,14 +119,15 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
     setCompletionMessage("");
     setIsSubmitting(false);
     const result = await refetch();
-    if (result.data) {
+    if (result.data && isSessionActive(activeSession)) {
       lastGridDataRef.current = result.data;
       buildGrid(result.data);
     }
-  }, [refetch, buildGrid, resetRecorded]);
+  }, [refetch, buildGrid, resetRecorded, startSession, isSessionActive]);
 
   const replayGame = useCallback(() => {
     if (!lastGridDataRef.current) return;
+    startSession();
     resetRecorded();
     setScore(0);
     setWordsFound([]);
@@ -123,7 +136,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
     setCompletionMessage("");
     setIsSubmitting(false);
     buildGrid(lastGridDataRef.current);
-  }, [buildGrid, resetRecorded]);
+  }, [buildGrid, resetRecorded, startSession]);
 
   useEffect(() => {
     if (gameStatus === "ended") reportResult(score, remainingLetters === 0, wordsFound.length);
@@ -175,6 +188,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   }, [GRID_SIZE]);
 
   const handleSubmit = useCallback(async () => {
+    if (gameStatus !== "playing" || !isSessionActive(sessionId)) return;
     if (currentWord.length < 3) {
       setFeedback({ type: "short", message: "Words must be at least 3 letters" });
       playSound("wrong");
@@ -186,40 +200,44 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
       return;
     }
     setIsSubmitting(true);
+    const activeSession = sessionId;
     try {
       const result = await validateMutation.mutateAsync(currentWord);
+      if (!isSessionActive(activeSession)) return;
       if (result.valid) {
         playSound("correct");
         const wordScore = calculateWordScore(currentWord.length);
         setScore(prev => prev + wordScore);
         setWordsFound(prev => [...prev, currentWord]);
         setFeedback({ type: "correct", message: `+${wordScore} points!` });
-        setGrid(prev => {
-          const afterClear = prev.map(c => c.selected ? { ...c, cleared: true, selected: false, selectionOrder: 0 } : c);
-          const afterGravity = applyGravity(afterClear);
-          const remaining = afterGravity.filter(c => !c.cleared).length;
-          if (remaining === 0) {
-            setTimeout(() => {
-              setScore(s => s + 500);
-              playSound("win");
-              setCompletionMessage(getCompletionMessage(true));
-              setGameStatus("ended");
-            }, 600);
-          }
-          return afterGravity;
-        });
+        const afterClear = grid.map(c => c.selected ? { ...c, cleared: true, selected: false, selectionOrder: 0 } : c);
+        const afterGravity = applyGravity(afterClear);
+        setGrid(afterGravity);
+        if (afterGravity.every(c => c.cleared)) {
+          setTimeout(() => {
+            if (!endSession(activeSession)) return;
+            setScore(s => s + 500);
+            playSound("win");
+            setCompletionMessage(getCompletionMessage(true));
+            setGameStatus("ended");
+          }, 600);
+        }
       } else {
         playSound("wrong");
         setFeedback({ type: "wrong", message: "Not a valid word" });
         clearSelection();
       }
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setFeedback(null);
+      }, 1500);
     } catch {
+      if (!isSessionActive(activeSession)) return;
       setFeedback({ type: "wrong", message: "Validation failed" });
       clearSelection();
+    } finally {
+      if (isSessionActive(activeSession)) setIsSubmitting(false);
     }
-    setIsSubmitting(false);
-    setTimeout(() => setFeedback(null), 1500);
-  }, [currentWord, wordsFound, validateMutation, playSound, applyGravity, clearSelection]);
+  }, [gameStatus, sessionId, isSessionActive, currentWord, wordsFound, validateMutation, playSound, grid, applyGravity, clearSelection, endSession]);
 
   const handleShuffle = useCallback(() => {
     if (shufflesLeft <= 0) return;
@@ -238,11 +256,12 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
   }, [shufflesLeft, playSound]);
 
   const handleGiveUp = useCallback(() => {
+    if (!endSession(sessionId)) return;
     const isWin = remainingLetters === 0;
     setCompletionMessage(getCompletionMessage(isWin));
     setGameStatus("ended");
     if (!isWin) playSound("lose");
-  }, [remainingLetters, playSound]);
+  }, [sessionId, endSession, remainingLetters, playSound]);
 
   if (isLoading || gameStatus === "loading") {
     return (
@@ -404,13 +423,13 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                   {isPerfectClear ? (
                     <Sparkles className="h-16 w-16 mx-auto text-accent" />
                   ) : wordsFound.length > 0 ? (
-                    <Trophy className="h-16 w-16 mx-auto text-chart-3" />
+                    <Grid3X3 className="h-16 w-16 mx-auto text-muted-foreground" />
                   ) : (
                     <XCircle className="h-16 w-16 mx-auto text-destructive" />
                   )}
                 </motion.div>
                 <h3 className="text-2xl font-bold" data-testid="text-result-title">
-                  {isPerfectClear ? "Perfect Clear!" : wordsFound.length > 0 ? "Great Job!" : "Game Over"}
+                  {isPerfectClear ? "Perfect Clear!" : wordsFound.length > 0 ? "Partial Clear" : "Game Over"}
                 </h3>
                 <p className="text-muted-foreground" data-testid="text-result-detail">
                   {isPerfectClear
@@ -437,7 +456,7 @@ function WordSweepClassic({ groupSeed, locked }: { groupSeed?: number; locked?: 
                     ))}
                   </div>
                 )}
-                <ShareResults gameName="Word Sweep" gameSlug="word-sweep" score={score} wordsCompleted={wordsFound.length} isWin={wordsFound.length > 0} />
+                <ShareResults gameName="Word Sweep" gameSlug="word-sweep" score={score} wordsCompleted={wordsFound.length} isWin={isPerfectClear} />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

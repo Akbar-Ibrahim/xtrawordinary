@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult } from "@/hooks/use-game-result";
+import { useGameSession } from "@/hooks/use-game-session";
 import type { LadderRushPuzzle, LeaderboardEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
@@ -93,16 +94,25 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
   const inputRef = useRef<HTMLInputElement>(null);
   const chainEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    isSessionActive,
+  } = useGameSession();
+  const activeSessionRef = useRef<number | null>(null);
   const recordedRef = useRef(false);
   const chainRef = useRef<string[]>([]);
   const isSurvivalRef = useRef(isSurvival);
   const [hintsUsed, setHintsUsed] = useState(0);
   const hintsUsedRef = useRef(0);
+  const [hintedWordIndices, setHintedWordIndices] = useState<number[]>([]);
   const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState("");
 
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
-    queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
+    queryFn: () => fetch(`/api/leaderboard/${encodeURIComponent(slug)}`).then(r => r.json()),
     staleTime: 60_000,
   });
 
@@ -115,85 +125,100 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
     return pool[Math.floor(Math.random() * pool.length)].start;
   }, [puzzles, wordLength]);
 
-  const endGame = useCallback((finalChain: string[]) => {
+  const endGame = useCallback((activeSession: number, finalChain: string[]) => {
+    if (!endSession(activeSession)) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
     const wordsChained = finalChain.length - 1;
     const wordsChainedByPlayer = wordsChained - hintsUsedRef.current;
     const deductions = hintsUsedRef.current * hintPenalty;
     const score = calcScore(wordsChainedByPlayer, deductions);
     setFinalScore(score);
     setGameStatus("ended");
+  }, [endSession, hintPenalty]);
+
+  useEffect(() => {
+    if (gameStatus !== "ended" || recordedRef.current) return;
+    recordedRef.current = true;
+    const wordsChained = chainRef.current.length - 1;
     setCompletionMessage(getCompletionMessage(wordsChained > 3));
     playSound(wordsChained > 3 ? "win" : "wrong");
     const isCompetitive = !isSurvivalRef.current || effectiveSurvivalTime === SURVIVAL_TIME_PER_WORD;
-    if (!recordedRef.current && isCompetitive) {
-      recordedRef.current = true;
-      reportResult(score, wordsChained > 0, wordsChained);
+    if (isCompetitive) {
+      reportResult(finalScore, wordsChained > 0, wordsChained);
     }
-  }, [playSound, reportResult, effectiveSurvivalTime, hintPenalty]);
+  }, [gameStatus, finalScore, playSound, reportResult, effectiveSurvivalTime]);
 
-  const startSurvivalTimer = useCallback(() => {
+  const startSurvivalTimer = useCallback((activeSession: number) => {
+    if (!isSessionActive(activeSession)) return;
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(effectiveSurvivalTime);
-    timerRef.current = setInterval(() => {
+    const timer = setInterval(() => {
+      if (timerRef.current !== timer || !isSessionActive(activeSession)) return;
       setTimeLeft(prev => {
+        if (!isSessionActive(activeSession)) return prev;
         if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          endGame(chainRef.current);
+          clearInterval(timer);
+          timerRef.current = null;
+          endGame(activeSession, chainRef.current);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [endGame]);
+    timerRef.current = timer;
+  }, [effectiveSurvivalTime, endGame, isSessionActive]);
 
   const lastStartWordRef = useRef<string>("");
 
+  // This keyed component represents one run; initialize it once when mounted.
   useEffect(() => {
     const startWord = initialStartWord || pickStartWord();
     if (!startWord) return;
+    const activeSession = startSession();
+    activeSessionRef.current = activeSession;
     lastStartWordRef.current = startWord;
     recordedRef.current = false;
     const initialChain = [startWord];
     chainRef.current = initialChain;
     setChain(initialChain);
+    setHintedWordIndices([]);
     setCurrentInput("");
     setTimeLeft(isSurvivalRef.current ? effectiveSurvivalTime : effectiveGameDuration);
     setErrorMsg("");
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 100);
   }, []);
 
+  useEffect(() => () => {
+    const activeSession = activeSessionRef.current;
+    if (activeSession !== null) endSession(activeSession);
+  }, [endSession]);
+
   useEffect(() => {
-    if (isUntimed) return;
-    if (isSurvivalRef.current) {
-      // Survival timer started in startSurvivalTimer after each word
-      // but we need to start the initial timer too
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            endGame(chainRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            endGame(chainRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    if (isUntimed || !isSessionActive(sessionId)) return;
+    // Survival mode resets this interval after each word; this interval starts
+    // the first survival countdown and the classic countdown.
+    const timer = setInterval(() => {
+      if (timerRef.current !== timer || !isSessionActive(sessionId)) return;
+      setTimeLeft(prev => {
+        if (!isSessionActive(sessionId)) return prev;
+        if (prev <= 1) {
+          clearInterval(timer);
+          timerRef.current = null;
+          endGame(sessionId, chainRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    timerRef.current = timer;
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
     };
-  }, [endGame, isUntimed]);
+  }, [endGame, isUntimed, sessionId, isSessionActive]);
 
   useEffect(() => {
     if (chain.length > 1) {
@@ -202,7 +227,8 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
   }, [chain]);
 
   const submitWord = useCallback(async () => {
-    if (validating || gameStatus !== "playing") return;
+    if (validating || gameStatus !== "playing" || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     const word = currentInput.toUpperCase().trim();
     if (!word) return;
 
@@ -210,7 +236,9 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
       setErrorMsg(`Word must be ${wordLength} letters`);
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
@@ -219,7 +247,9 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
       setErrorMsg(swapCount === 1 ? "Change exactly one letter" : `Change exactly ${swapCount} letters`);
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
@@ -227,14 +257,18 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
       setErrorMsg("Word already used in this chain");
       setShake(true);
       playSound("wrong");
-      setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+      }, 1500);
       return;
     }
 
     setValidating(true);
     try {
       const response = await apiRequest("POST", "/api/games/validate-word", { word });
+      if (!isSessionActive(activeSession)) return;
       const data = await response.json();
+      if (!isSessionActive(activeSession)) return;
 
       if (!data.valid) {
         flushSync(() => {
@@ -243,8 +277,10 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
           setValidating(false);
         });
         playSound("wrong");
-        setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-        inputRef.current?.focus();
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) { setShake(false); setErrorMsg(""); }
+        }, 1500);
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
         return;
       }
 
@@ -258,50 +294,66 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
       playSound("correct");
 
       if (isSurvivalRef.current) {
-        startSurvivalTimer();
+        startSurvivalTimer(activeSession);
       }
 
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
+      }, 50);
     } catch {
+      if (!isSessionActive(activeSession)) return;
       flushSync(() => {
         setErrorMsg("Validation failed, try again");
         setValidating(false);
       });
-      setTimeout(() => setErrorMsg(""), 2000);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) setErrorMsg("");
+      }, 2000);
     }
-  }, [currentInput, wordLength, validating, gameStatus, playSound, startSurvivalTimer]);
+  }, [currentInput, wordLength, validating, gameStatus, sessionId, isSessionActive, playSound, startSurvivalTimer]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); submitWord(); }
   }, [submitWord]);
 
   const useHint = useCallback(async () => {
-    if (hintsUsedRef.current >= maxHints || gameStatus !== "playing" || hintLoading) return;
+    if (hintsUsedRef.current >= maxHints || gameStatus !== "playing" || hintLoading || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     setHintLoading(true);
+    setHintError("");
     try {
       const response = await apiRequest("POST", "/api/games/ladder-rush/hint", {
         currentWord: chainRef.current[chainRef.current.length - 1],
         usedWords: chainRef.current,
         doubleSwap: doubleSwap ?? false,
       });
+      if (!isSessionActive(activeSession)) return;
       const data = await response.json();
-      if (data.word) {
+      if (!isSessionActive(activeSession)) return;
+      if (typeof data?.word === "string" && data.word) {
         const newChain = [...chainRef.current, data.word];
         chainRef.current = newChain;
         hintsUsedRef.current += 1;
+        setHintedWordIndices(indices => [...indices, newChain.length - 1]);
         setChain(newChain);
         setHintsUsed(hintsUsedRef.current);
         setCurrentInput("");
+        setHintError("");
         playSound("correct");
-        if (isSurvivalRef.current) startSurvivalTimer();
-        setTimeout(() => inputRef.current?.focus(), 50);
+        if (isSurvivalRef.current) startSurvivalTimer(activeSession);
+        setTimeout(() => {
+          if (isSessionActive(activeSession)) inputRef.current?.focus();
+        }, 50);
+      } else {
+        setHintError("Hint unavailable. Try again.");
       }
     } catch {
-      // silently ignore — player can try again
+      if (!isSessionActive(activeSession)) return;
+      setHintError("Hint unavailable. Try again.");
     } finally {
-      setHintLoading(false);
+      if (isSessionActive(activeSession)) setHintLoading(false);
     }
-  }, [gameStatus, hintLoading, maxHints, doubleSwap, playSound, startSurvivalTimer]);
+  }, [gameStatus, hintLoading, maxHints, doubleSwap, sessionId, isSessionActive, playSound, startSurvivalTimer]);
 
   const wordsChained = chain.length - 1;
   // Hint words don't count toward score; penalty applied separately
@@ -367,14 +419,21 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Your chain</p>
                 <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
                   {chain.map((word, i) => (
-                    <Badge
-                      key={i}
-                      variant={i === 0 ? "default" : "secondary"}
-                      className="font-mono"
-                      data-testid={`chain-word-${i}`}
-                    >
-                      {word}
-                    </Badge>
+                    <span key={i} className="inline-flex items-center gap-1">
+                      <Badge
+                        variant={i === 0 ? "default" : "secondary"}
+                        className={`font-mono ${hintedWordIndices.includes(i) ? "border-amber-500 bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/40 dark:text-amber-300" : ""}`}
+                        data-testid={`chain-word-${i}`}
+                        data-hinted-word={hintedWordIndices.includes(i) ? "true" : "false"}
+                      >
+                        {word}
+                      </Badge>
+                      {hintedWordIndices.includes(i) && (
+                        <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                          Hint
+                        </span>
+                      )}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -482,7 +541,14 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
         </div>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">Score</p>
-          <AnimatedNumber value={liveScore} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+          <div className="flex items-center justify-center gap-2">
+            <AnimatedNumber value={liveScore} className="text-2xl font-bold text-primary" data-testid="badge-score" />
+            {hintsUsed > 0 && (
+              <span className="text-xs text-muted-foreground" data-testid="text-live-hint-deduction">
+                {hintsUsed} hint{hintsUsed !== 1 ? "s" : ""} used · −{hintDeductions} pts
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -619,6 +685,8 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
                 size="sm"
                 onClick={() => {
                   if (timerRef.current) clearInterval(timerRef.current);
+                  timerRef.current = null;
+                  endSession(sessionId);
                   onExit();
                 }}
                 data-testid="button-menu"
@@ -626,29 +694,44 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
                 Menu
               </Button>
               {maxHints > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={useHint}
-                  disabled={hintsRemaining <= 0 || hintLoading || gameStatus !== "playing"}
-                  className="gap-1.5"
-                  data-testid="button-hint"
-                >
-                  {hintLoading
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    : <Lightbulb className="h-3.5 w-3.5" />}
-                  Hint ({hintsRemaining})
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={useHint}
+                    disabled={hintsRemaining <= 0 || hintLoading || gameStatus !== "playing"}
+                    className="gap-1.5"
+                    data-testid="button-hint"
+                  >
+                    {hintLoading
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Lightbulb className="h-3.5 w-3.5" />}
+                    Hint ({hintsRemaining})
+                  </Button>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap" data-testid="text-hint-cost">
+                    −{hintPenalty} pts / hint
+                  </span>
+                </div>
               )}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => endGame(chainRef.current)}
+                onClick={() => endGame(sessionId, chainRef.current)}
                 data-testid="button-end-game"
               >
                 End Game
               </Button>
             </div>
+          )}
+          {hintError && (
+            <p
+              className="text-sm text-destructive text-center font-medium"
+              role="status"
+              aria-live="polite"
+              data-testid="text-hint-error"
+            >
+              {hintError}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -673,14 +756,17 @@ function LadderRushPlay({ wordLength, puzzles, isSurvival, survivalTime, timeLim
 
 interface LadderRushGameProps {
   groupSeed?: number;
+  dailyChallengeSeed?: number;
   locked?: boolean;
   doubleSwap?: boolean;
   isUntimed?: boolean;
   timeLimitSeconds?: number;
 }
 
-export function LadderRushGame({ groupSeed, locked, doubleSwap, isUntimed, timeLimitSeconds }: LadderRushGameProps) {
-  const [selectedLength, setSelectedLength] = useState<number | null>(null);
+export function LadderRushGame({ groupSeed, dailyChallengeSeed, locked, doubleSwap, isUntimed, timeLimitSeconds }: LadderRushGameProps) {
+  const [selectedLength, setSelectedLength] = useState<number | null>(() =>
+    dailyChallengeSeed === undefined ? null : 4 + (Math.abs(dailyChallengeSeed) % 3),
+  );
   const [isSurvival, setIsSurvival] = useState(false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
   const [playing, setPlaying] = useState(false);
@@ -694,10 +780,34 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap, isUntimed, timeL
       const r = await fetch(`/api/games/ladder-rush/puzzles?wordLength=${selectedLength}`, {
         credentials: "include",
       });
+      if (!r.ok) throw new Error("Failed to fetch Ladder Rush puzzles");
       return r.json();
     },
     enabled: selectedLength !== null,
   });
+  const dailyStartWord = useMemo(() => {
+    if (dailyChallengeSeed === undefined || selectedLength === null) return undefined;
+    const starts = puzzles
+      .filter(puzzle => puzzle.wordLength === selectedLength)
+      .map(puzzle => puzzle.start)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return starts.length > 0
+      ? starts[Math.abs(dailyChallengeSeed) % starts.length]
+      : undefined;
+  }, [dailyChallengeSeed, selectedLength, puzzles]);
+
+  useEffect(() => {
+    if (
+      dailyChallengeSeed === undefined ||
+      selectedLength === null ||
+      isLoading ||
+      !dailyStartWord
+    ) {
+      return;
+    }
+    setReplayStartWord(dailyStartWord);
+    setPlaying(true);
+  }, [dailyChallengeSeed, selectedLength, isLoading, dailyStartWord]);
 
   if (playing && selectedLength) {
     return (
@@ -709,7 +819,7 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap, isUntimed, timeL
         survivalTime={survivalTime}
         timeLimitSeconds={!isUntimed ? timeLimitSeconds : undefined}
         doubleSwap={doubleSwap}
-        initialStartWord={replayStartWord}
+        initialStartWord={replayStartWord ?? dailyStartWord}
         onExit={() => {
           setPlaying(false);
           setSelectedLength(null);
@@ -720,6 +830,22 @@ export function LadderRushGame({ groupSeed, locked, doubleSwap, isUntimed, timeL
         locked={locked}
         isUntimed={isUntimed}
       />
+    );
+  }
+
+  if (dailyChallengeSeed !== undefined) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          {isLoading || dailyStartWord ? (
+            <p className="text-muted-foreground" role="status">Preparing today&apos;s Ladder Rush challenge…</p>
+          ) : (
+            <p className="text-muted-foreground" role="alert">
+              Unable to load today&apos;s Ladder Rush challenge. Please refresh and try again.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     );
   }
 

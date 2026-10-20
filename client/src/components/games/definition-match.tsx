@@ -19,6 +19,7 @@ import { makeSeededRng } from "@/lib/seeded-rng";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { useLocation } from "wouter";
+import { isCompleteTargetSet } from "./fixed-answer-outcome";
 
 const POINTS_BY_HINTS = [100, 75, 50] as const;
 
@@ -54,6 +55,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [wordsCompleted, setWordsCompleted] = useState(0);
+  const [solvedWords, setSolvedWords] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState<"playing" | "won" | "lost">("playing");
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
@@ -64,14 +66,19 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
   const { user } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const solvedWordsRef = useRef<string[]>([]);
+  const gameStatusRef = useRef(gameStatus);
+  gameStatusRef.current = gameStatus;
 
   const selectNewWord = useCallback(() => {
+    if (gameStatusRef.current !== "playing") return;
     const availableWords = activeWords.filter((w) => !usedWords.has(w.word));
     if (availableWords.length === 0) {
+      const didWin = isCompleteTargetSet(solvedWordsRef.current.length, activeWords.length);
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      playSound("win");
-      setGameStatus("won");
-      setCompletionMessage(getCompletionMessage(true));
+      playSound(didWin ? "win" : "lose");
+      setGameStatus(didWin ? "won" : "lost");
+      setCompletionMessage(getCompletionMessage(didWin));
       return;
     }
     const rng = seedRngRef.current ?? Math.random;
@@ -122,6 +129,8 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
     setScore(0);
     setStreak(0);
     setWordsCompleted(0);
+    setSolvedWords([]);
+    solvedWordsRef.current = [];
     setGameStatus("playing");
     setTimedOut(false);
     setUsedWords(new Set());
@@ -154,14 +163,18 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
   }, [gameStatus, score, reportResult]);
 
   const checkAnswer = () => {
-    if (!currentWord || answerRevealed) return;
+    if (!currentWord || answerRevealed || feedback === "correct" || gameStatus !== "playing"
+      || solvedWordsRef.current.includes(currentWord.word)) return;
     if (userInput.toUpperCase().trim() === currentWord.word.toUpperCase()) {
       playSound("correct");
       setFeedback("correct");
+      const nextSolvedWords = [...solvedWordsRef.current, currentWord.word];
+      solvedWordsRef.current = nextSolvedWords;
+      setSolvedWords(nextSolvedWords);
       const points = POINTS_BY_HINTS[hintsUsed as 0 | 1 | 2] + streak * 10;
       setScore((prev) => prev + points);
       setStreak((prev) => prev + 1);
-      setWordsCompleted((prev) => prev + 1);
+      setWordsCompleted(nextSolvedWords.length);
       setTimeout(() => {
         setFeedback(null);
         selectNewWord();
@@ -497,11 +510,11 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   wordsCompleted={wordsCompleted}
                   isWin={true}
                 />
-                {usedWords.size > 0 && (
+                {solvedWords.length > 0 && (
                   <div className="text-left">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({usedWords.size}):</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({solvedWords.length}):</p>
                     <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
-                      {Array.from(usedWords).map((word) => (
+                      {solvedWords.map((word) => (
                         <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
                       ))}
                     </div>
@@ -564,9 +577,7 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   <h3 className="text-2xl font-bold">Game Over</h3>
                 )}
                 <p className="text-muted-foreground">
-                  {wordsCompleted > 0
-                    ? `You matched ${wordsCompleted} definition${wordsCompleted !== 1 ? "s" : ""} before ${timedOut ? "time ran out." : "ending."}`
-                    : timedOut ? "Time ran out before you matched any definitions." : "You ended the game early."}
+                  {`${wordsCompleted} of ${activeWords.length} definitions matched${timedOut ? " before time ran out." : "."}`}
                 </p>
                 <p className="text-sm italic text-muted-foreground" data-testid="text-completion-message">{completionMessage}</p>
                 <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
@@ -582,11 +593,11 @@ export function DefinitionMatchGame({ groupSeed, locked, quizMode, customWords: 
                   wordsCompleted={wordsCompleted}
                   isWin={false}
                 />
-                {usedWords.size > 0 && (
+                {solvedWords.length > 0 && (
                   <div className="text-left">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({usedWords.size}):</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Words matched ({solvedWords.length}):</p>
                     <div className="flex flex-wrap gap-1.5 justify-center max-h-48 overflow-y-auto">
-                      {Array.from(usedWords).map((word) => (
+                      {solvedWords.map((word) => (
                         <Badge key={word} variant="secondary" className="text-sm">{word}</Badge>
                       ))}
                     </div>

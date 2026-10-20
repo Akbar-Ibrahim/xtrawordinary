@@ -17,9 +17,16 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import {
+  getLetterFrequencyLeaderboardSlug,
+  LETTER_FREQUENCY_VARIANTS,
+  type LetterFrequencyChallenge,
+} from "@shared/letter-frequency";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const SURVIVAL_TIME_OPTIONS = [
@@ -37,7 +44,7 @@ const MULTI_LETTER_POOL = "ABCDEFGHILMNOPRSTUWY".split("");
 const MULTI_TIER3_LETTERS = ["E", "A", "I", "O"]; // high-frequency vowels: can realistically appear 3× in a word
 const MULTI_TIER2_LETTERS = ["C", "D", "L", "M", "N", "P", "R", "S", "T", "U"]; // common consonants/less-common vowels that regularly double
 
-type Challenge = 1 | 2 | 3 | 4 | "random" | "multi";
+type Challenge = LetterFrequencyChallenge;
 
 type FrequencyConstraint = {
   letter: string;
@@ -177,12 +184,21 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const { playSound } = useSound();
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const [survivalTime, setSurvivalTime] = useState(SURVIVAL_TIME_PER_WORD);
+  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
+  const leaderboardSlug = getLetterFrequencyLeaderboardSlug(challenge, isSurvival);
+  const canSuggestSurvival =
+    !locked && groupSeed === undefined && !quizMode && !customPlay &&
+    !isUntimed && !initialSurvival && initialChallenge === undefined &&
+    initialWordCount === undefined && initialLetter === undefined &&
+    initialLetters === undefined;
+  const isOpenEndedClassic = canSuggestSurvival && !isSurvival;
   const { reportResult, resetRecorded } = useGameResult({
-    slug: isSurvival ? "letter-frequency-survival" : "letter-frequency",
+    slug: leaderboardSlug,
+    survivalSuggestionSlug: isOpenEndedClassic ? leaderboardSlug : undefined,
     quizMode,
     isUntimed,
   });
-  const personalBest = usePersonalBest(isSurvival ? "letter-frequency-survival" : "letter-frequency");
+  const personalBest = usePersonalBest(leaderboardSlug);
   const seedRngRef = useRef<(() => number) | undefined>(
     groupSeed !== undefined ? makeSeededRng(groupSeed) : undefined
   );
@@ -193,7 +209,6 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     },
   });
 
-  const [challenge, setChallenge] = useState<Challenge>(initialChallenge ?? 1);
   const [gameStatus, setGameStatus] = useState<"menu" | "playing" | "won" | "lost">(() =>
     initialChallenge !== undefined ? "playing" : "menu"
   );
@@ -221,6 +236,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const isSurvivalRef = useRef(initialSurvival ?? false);
   const initialLetterRef = useRef<string | undefined>(initialLetter);
@@ -244,6 +260,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const timePerChallenge = initialTimeLimit ?? 600;
 
   const stopTimer = useCallback(() => {
+    timerGenerationRef.current += 1;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -252,10 +269,13 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
 
   const startTimer = useCallback((survivalMode: boolean) => {
     stopTimer();
+    const timerGeneration = timerGenerationRef.current;
     const initialTime = survivalMode ? survivalTime : timePerChallenge;
     setTimeLeft(initialTime);
     timerRef.current = setInterval(() => {
+      if (timerGeneration !== timerGenerationRef.current) return;
       setTimeLeft((prev) => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
         if (prev <= 1) {
           stopTimer();
           playSound("lose");
@@ -386,7 +406,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
 
-      if (newWordsCompleted >= wordsPerChallenge) {
+      if (!isOpenEndedClassic && newWordsCompleted >= wordsPerChallenge) {
         stopTimer();
         playSound("win");
         setCompletionMessage(getCompletionMessage(true));
@@ -496,6 +516,13 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                       </p>
                     </>
                   )}
+                  {canSuggestSurvival && !isSurvival &&
+                    getBestWordsFoundForGame("letter-frequency") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD && (
+                      <SurvivalSuggestion
+                        placement="replay"
+                        onTrySurvival={() => setIsSurvival(true)}
+                      />
+                    )}
                 </div>
 
                 <div className="grid gap-3">
@@ -599,7 +626,9 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                       {wordsCompleted}
                     </motion.span>
                     <span className="text-sm text-muted-foreground leading-none">
-                      {isSurvival ? `word${wordsCompleted !== 1 ? "s" : ""}` : `/ ${wordsPerChallenge} words`}
+                      {isSurvival || isOpenEndedClassic
+                        ? `word${wordsCompleted !== 1 ? "s" : ""}`
+                        : `/ ${wordsPerChallenge} words`}
                     </span>
                     <span className="text-muted-foreground/40 leading-none">·</span>
                     <span className="text-sm text-muted-foreground leading-none">
@@ -607,7 +636,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                     </span>
                   </div>
 
-                  {!isSurvival && (
+                  {!isSurvival && !isOpenEndedClassic && (
                     <Progress value={(wordsCompleted / wordsPerChallenge) * 100} data-testid="progress-bar" />
                   )}
 
@@ -865,6 +894,19 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                   You found {wordsCompleted} words
                 </p>
                 <p className="text-sm italic text-muted-foreground mt-2" data-testid="text-completion-message">{completionMessage}</p>
+                {canSuggestSurvival && !isSurvival && (
+                  wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="completion"
+                      onTrySurvival={() => startGame(challenge, true)}
+                    />
+                  ) : getBestWordsFoundForGame("letter-frequency") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD ? (
+                    <SurvivalSuggestion
+                      placement="replay"
+                      onTrySurvival={() => startGame(challenge, true)}
+                    />
+                  ) : null
+                )}
                 <div className="space-y-1">
                   <div className="text-3xl font-bold text-primary"><AnimatedNumber value={score} /> points</div>
                   {personalBest > 0 && (

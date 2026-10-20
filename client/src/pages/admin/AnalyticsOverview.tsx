@@ -8,6 +8,7 @@ import { AnalyticsToolbar } from "./analytics";
 import { AnalyticsSections } from "./analytics/AnalyticsSections";
 import type { AdminOverviewStats } from "./analytics/AnalyticsSiteTotals";
 import { buildAnalyticsQuery } from "./analytics/query";
+import { formatAnalyticsCount } from "./analytics/format";
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -107,7 +108,7 @@ export function AnalyticsOverview({
               </p>
             </div>
             <strong className="shrink-0 text-3xl tabular-nums" data-testid="total-retained-unique-visitors">
-              {data.uniqueVisitorsInRetainedHistory.toLocaleString()}
+              {formatAnalyticsCount(data.uniqueVisitorsInRetainedHistory)}
             </strong>
           </CardContent>
         </Card>

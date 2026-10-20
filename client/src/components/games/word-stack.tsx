@@ -19,9 +19,15 @@ import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
 import { usePuzzleHistory } from "@/hooks/use-puzzle-history";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
+import { isCompleteTargetSet } from "./fixed-answer-outcome";
+import { useGameSession } from "@/hooks/use-game-session";
+import {
+  getWordStackLeaderboardSlug,
+  type WordStackChallenge,
+} from "@shared/word-stack";
 
 type WordValidationResponse = { valid: boolean; message?: string };
-type ChallengeType = "build-up" | "break-down" | null;
+type ChallengeType = WordStackChallenge | null;
 
 const challenges = [
   {
@@ -38,10 +44,22 @@ const challenges = [
   },
 ];
 
-export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSeed?: number } = {}) {
+export function WordStackGame({ locked, groupSeed, onLeaderboardModeChange }: {
+  locked?: boolean;
+  groupSeed?: number;
+  onLeaderboardModeChange?: (modeSlug: string) => void;
+} = {}) {
   const { playSound } = useSound();
-  const { reportResult, resetRecorded } = useGameResult({ slug: "word-stack" });
-  const personalBest = usePersonalBest("word-stack");
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeType>(null);
+  const leaderboardSlug = selectedChallenge
+    ? getWordStackLeaderboardSlug(selectedChallenge)
+    : "word-stack";
+  const { reportResult, resetRecorded } = useGameResult({
+    slug: leaderboardSlug,
+    statsSlug: "word-stack",
+    personalBestSlug: leaderboardSlug,
+  });
+  const personalBest = usePersonalBest(leaderboardSlug);
   const { markSeen, filterUnseen } = usePuzzleHistory("word-stack");
   const { data: puzzles = [], isLoading, error } = useQuery<WordStackPuzzle[]>({
     queryKey: ["/api/games/word-stack/puzzles"],
@@ -56,7 +74,6 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     },
   });
 
-  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeType>(null);
   const [activePuzzles, setActivePuzzles] = useState<WordStackPuzzle[]>([]);
   const [currentPuzzle, setCurrentPuzzle] = useState<WordStackPuzzle | null>(null);
   const [stack, setStack] = useState<string[]>([]);
@@ -73,6 +90,13 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   const [authOpen, setAuthOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const seededQueueRef = useRef<WordStackPuzzle[]>([]);
+  const {
+    sessionId,
+    startSession,
+    endSession,
+    invalidateSession,
+    isSessionActive,
+  } = useGameSession();
 
   const isBuildUp = selectedChallenge === "build-up";
 
@@ -106,7 +130,8 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     return prevLetters.length === 1;
   };
 
-  const selectNewPuzzle = useCallback(() => {
+  const selectNewPuzzle = useCallback((activeSession: number) => {
+    if (!isSessionActive(activeSession)) return;
     let nextPuzzle: WordStackPuzzle | undefined;
 
     if (seededQueueRef.current.length > 0) {
@@ -114,6 +139,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     } else {
       const availablePuzzles = activePuzzles.filter((p) => !usedPuzzles.has(p.targetWord));
       if (availablePuzzles.length === 0) {
+        endSession(activeSession);
         setCompletionMessage(getCompletionMessage(true));
         setGameStatus("complete");
         return;
@@ -122,6 +148,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     }
 
     if (!nextPuzzle) {
+      endSession(activeSession);
       setCompletionMessage(getCompletionMessage(true));
       setGameStatus("complete");
       return;
@@ -138,14 +165,18 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     if (groupSeed === undefined) {
       markSeen(nextPuzzle.targetWord, selectedChallenge ?? undefined);
     }
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [usedPuzzles, activePuzzles, isBuildUp, groupSeed, markSeen, selectedChallenge]);
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 100);
+  }, [usedPuzzles, activePuzzles, isBuildUp, groupSeed, markSeen, selectedChallenge, endSession, isSessionActive]);
 
   const initGame = useCallback((challenge: ChallengeType) => {
     if (!challenge || puzzles.length === 0) return;
+    const activeSession = startSession();
     seededQueueRef.current = [];
     resetRecorded();
     setSelectedChallenge(challenge);
+    onLeaderboardModeChange?.(getWordStackLeaderboardSlug(challenge));
     const puzzlePool = groupSeed === undefined
       ? filterUnseen(puzzles, (p) => p.targetWord, challenge)
       : puzzles;
@@ -169,11 +200,14 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     if (groupSeed === undefined) {
       markSeen(randomPuzzle.targetWord, challenge);
     }
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }, [puzzles, groupSeed, resetRecorded, filterUnseen, markSeen]);
+    setTimeout(() => {
+      if (isSessionActive(activeSession)) inputRef.current?.focus();
+    }, 100);
+  }, [puzzles, groupSeed, resetRecorded, filterUnseen, markSeen, onLeaderboardModeChange, startSession, isSessionActive]);
 
   useEffect(() => {
     if (groupSeed !== undefined && puzzles.length > 0 && gameStatus === "selecting") {
+      const activeSession = startSession();
       const rng = makeSeededRng(groupSeed);
       const challengeType: ChallengeType = rng() < 0.5 ? "build-up" : "break-down";
 
@@ -188,6 +222,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
 
       resetRecorded();
       setSelectedChallenge(challengeType);
+      onLeaderboardModeChange?.(getWordStackLeaderboardSlug(challengeType));
       setActivePuzzles(puzzles);
       setScore(0);
       setStreak(0);
@@ -202,17 +237,20 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
         setStack([seededPuzzle.targetWord.toUpperCase()]);
       }
       setUserInput("");
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => {
+        if (isSessionActive(activeSession)) inputRef.current?.focus();
+      }, 100);
     }
-  }, [puzzles, groupSeed]);
+  }, [puzzles, groupSeed, onLeaderboardModeChange, startSession, isSessionActive]);
 
   useEffect(() => {
     if (gameStatus === "complete") {
-      reportResult(score, true);
+      reportResult(score, isCompleteTargetSet(puzzlesCompleted, activePuzzles.length));
     }
-  }, [gameStatus, score, reportResult]);
+  }, [gameStatus, score, reportResult, puzzlesCompleted, activePuzzles.length]);
 
   const backToSelection = () => {
+    invalidateSession();
     setSelectedChallenge(null);
     setGameStatus("selecting");
     setCurrentPuzzle(null);
@@ -227,11 +265,14 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
     setStack(stack.slice(0, levelIndex));
     setUserInput("");
     setFeedback(null);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    setTimeout(() => {
+      if (isSessionActive(sessionId)) inputRef.current?.focus();
+    }, 100);
   };
 
   const checkAnswer = async () => {
-    if (!currentPuzzle || !userInput.trim() || validateMutation.isPending) return;
+    if (!currentPuzzle || !userInput.trim() || validateMutation.isPending || !isSessionActive(sessionId)) return;
+    const activeSession = sessionId;
     
     const upperInput = userInput.toUpperCase().trim();
     const previousWord = stack[stack.length - 1];
@@ -243,6 +284,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
       setStreak(0);
       setFeedback({ type: "wrong", message: `Word must be ${requiredLength} letters` });
       setTimeout(() => {
+        if (!isSessionActive(activeSession)) return;
         setFeedback(null);
         inputRef.current?.focus();
       }, 1500);
@@ -255,6 +297,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
         setStreak(0);
         setFeedback({ type: "wrong", message: `Must contain all letters from "${previousWord}"` });
         setTimeout(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback(null);
           inputRef.current?.focus();
         }, 1500);
@@ -266,6 +309,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
         setStreak(0);
         setFeedback({ type: "wrong", message: `Must be "${previousWord}" with one letter removed` });
         setTimeout(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback(null);
           inputRef.current?.focus();
         }, 1500);
@@ -275,11 +319,13 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
 
     try {
       const result = await validateMutation.mutateAsync(upperInput);
+      if (!isSessionActive(activeSession)) return;
       if (!result.valid) {
         playSound("wrong");
         setStreak(0);
         setFeedback({ type: "invalid", message: "Not a valid word!" });
         setTimeout(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback(null);
           inputRef.current?.focus();
         }, 1500);
@@ -304,21 +350,25 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
         setPuzzlesCompleted((prev) => prev + 1);
         setScore((prev) => prev + 100);
         setTimeout(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback(null);
-          selectNewPuzzle();
+          selectNewPuzzle(activeSession);
         }, 1500);
       } else {
         playSound("correct");
         setFeedback({ type: "correct", message: isBuildUp ? "Added to stack!" : "Removed a letter!" });
         setTimeout(() => {
+          if (!isSessionActive(activeSession)) return;
           setFeedback(null);
           inputRef.current?.focus();
         }, 800);
       }
     } catch {
+      if (!isSessionActive(activeSession)) return;
       playSound("wrong");
       setFeedback({ type: "invalid", message: "Validation failed" });
       setTimeout(() => {
+        if (!isSessionActive(activeSession)) return;
         setFeedback(null);
         inputRef.current?.focus();
       }, 1500);
@@ -391,6 +441,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
   }
 
   if (gameStatus === "complete") {
+    const didCompleteAll = isCompleteTargetSet(puzzlesCompleted, activePuzzles.length);
     return (
       <Card>
         <CardContent className="p-8">
@@ -399,11 +450,15 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
             animate={{ scale: 1, opacity: 1 }}
             className="text-center space-y-6"
           >
-            <Trophy className="h-16 w-16 mx-auto text-yellow-500" />
-            <h2 className="text-3xl font-bold">All Puzzles Complete!</h2>
+            {didCompleteAll
+              ? <Trophy className="h-16 w-16 mx-auto text-yellow-500" />
+              : <Layers className="h-16 w-16 mx-auto text-muted-foreground" />}
+            <h2 className="text-3xl font-bold">
+              {didCompleteAll ? "All Puzzles Complete!" : "Session Ended"}
+            </h2>
             <div className="space-y-2">
               <p className="text-xl">Final Score: <span className="font-bold text-primary"><AnimatedNumber value={score} /></span></p>
-              <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted}</p>
+              <p className="text-muted-foreground">Puzzles Completed: {puzzlesCompleted} of {activePuzzles.length}</p>
               {personalBest > 0 && (
                 <p className="text-sm text-muted-foreground" data-testid="text-personal-best">
                   Personal Best: {personalBest} pts
@@ -416,7 +471,7 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
               gameSlug="word-stack"
               score={score}
               challengeName={selectedChallenge === "build-up" ? "Build Up" : "Break Down"}
-              isWin={true}
+              isWin={didCompleteAll}
             />
             {wordHistory.length > 0 && (
               <div className="text-left">
@@ -502,7 +557,13 @@ export function WordStackGame({ locked, groupSeed }: { locked?: boolean; groupSe
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setGameStatus("complete")}
+                onClick={() => {
+                  if (!endSession(sessionId)) return;
+                  setCompletionMessage(isCompleteTargetSet(puzzlesCompleted, activePuzzles.length)
+                    ? getCompletionMessage(true)
+                    : "You ended the session before completing every puzzle.");
+                  setGameStatus("complete");
+                }}
                 data-testid="button-end-game"
               >
                 End Game

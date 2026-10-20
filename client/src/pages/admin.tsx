@@ -41,7 +41,8 @@ export default function Admin() {
           <Shield className="h-8 w-8" /> Admin Dashboard
         </h1>
         <Tabs defaultValue="overview" data-testid="admin-tabs">
-          <TabsList className="mb-6 h-auto flex-wrap">
+          <div className="mb-6 max-w-full overflow-x-auto pb-1 scrollbar-none" data-testid="admin-tabs-scroll">
+          <TabsList aria-label="Admin sections" className="h-auto min-w-max flex-nowrap justify-start">
             <TabsTrigger value="overview" data-testid="tab-overview"><BarChart3 className="h-4 w-4 mr-1" />Overview</TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users"><Users className="h-4 w-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="leaderboard" data-testid="tab-leaderboard"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
@@ -54,6 +55,7 @@ export default function Admin() {
             <TabsTrigger value="guild-wars" data-testid="tab-guild-wars"><Swords className="h-4 w-4 mr-1" />Guild Wars</TabsTrigger>
             <TabsTrigger value="site" data-testid="tab-site"><Shield className="h-4 w-4 mr-1" />Site</TabsTrigger>
           </TabsList>
+          </div>
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="users"><UsersTab /></TabsContent>
           <TabsContent value="leaderboard"><LeaderboardTab gameFilter={gameFilter} setGameFilter={setGameFilter} /></TabsContent>

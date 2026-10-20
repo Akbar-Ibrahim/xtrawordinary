@@ -67,6 +67,7 @@ export const leaderboardEntries = mysqlTable("leaderboard_entries", {
   userId: int("user_id").notNull(),
   gameSlug: varchar("game_slug", { length: 100 }).notNull(),
   score: int("score").notNull(),
+  hintsUsed: int("hints_used"),
   playerName: varchar("player_name", { length: 255 }).notNull(),
   playedAt: timestamp("played_at").notNull().defaultNow(),
 }, (table) => [

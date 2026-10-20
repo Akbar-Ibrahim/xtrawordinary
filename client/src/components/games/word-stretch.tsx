@@ -91,6 +91,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerGenerationRef = useRef(0);
   const recordedRef = useRef(false);
   const gameStatusRef = useRef<GameStatus>("playing");
   const foundRef = useRef<FoundEntry[]>([]);
@@ -98,6 +99,25 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
   const accumulatedScoreRef = useRef(0);
   const survivalSolvedCountRef = useRef(0);
   const sessionSeedRef = useRef<number>(initialSeed);
+  const runIdRef = useRef(1);
+  const activeRunRef = useRef(true);
+
+  const isActiveRun = useCallback((runId: number) =>
+    activeRunRef.current && runIdRef.current === runId && gameStatusRef.current === "playing",
+  []);
+
+  const focusInputForRun = useCallback((runId: number, delay: number) => {
+    setTimeout(() => {
+      if (isActiveRun(runId)) inputRef.current?.focus();
+    }, delay);
+  }, [isActiveRun]);
+
+  const leaveGame = useCallback(() => {
+    activeRunRef.current = false;
+    runIdRef.current += 1;
+    if (timerRef.current) clearInterval(timerRef.current);
+    onExit();
+  }, [onExit]);
 
   const { data: solutions } = useQuery<string[]>({
     queryKey: ["/api/games/word-stretch/solutions", finalSeed],
@@ -112,7 +132,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
 
   const { data: modeLeaderboard } = useQuery<LeaderboardEntry[]>({
     queryKey: ["/api/leaderboard", slug],
-    queryFn: () => fetch(`/api/leaderboard?game=${slug}&limit=5`).then(r => r.json()),
+    queryFn: () => fetch(`/api/leaderboard/${encodeURIComponent(slug)}`).then(r => r.json()),
     enabled: gameStatus === "ended" && !isUntimed,
     staleTime: 10_000,
   });
@@ -123,20 +143,25 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
     return base + bonus;
   };
 
-  const endGame = useCallback((finalFound: FoundEntry[], total: number, survivedScore: number, survivedCount: number, endedSeed: number) => {
+  const endGame = useCallback((finalFound: FoundEntry[], total: number, survivedScore: number, survivedCount: number, endedSeed: number, runId: number) => {
+    if (!isActiveRun(runId)) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    activeRunRef.current = false;
     gameStatusRef.current = "ended";
     const score = mode === "survival" ? survivedScore : calcClassicScore(finalFound, total);
     setFinalScore(score);
     setFinalSeed(endedSeed);
     setGameStatus("ended");
-    setCompletionMessage(getCompletionMessage(mode === "survival" ? survivedCount > 3 : finalFound.length > 2));
+    const allFound = total > 0 && finalFound.length >= total;
+    setCompletionMessage(mode === "survival"
+      ? getCompletionMessage(survivedCount > 3)
+      : allFound ? getCompletionMessage(true) : `You found ${finalFound.length} of ${total} words before the run ended.`);
     if (!recordedRef.current) {
       recordedRef.current = true;
       const count = mode === "survival" ? survivedCount : finalFound.length;
-      reportResult(score, count > 0, count);
+      reportResult(score, mode === "classic" ? allFound : count > 0, count);
     }
-  }, [mode, reportResult]);
+  }, [isActiveRun, mode, reportResult]);
 
   const fetchPuzzle = useCallback(async (s: number): Promise<PuzzleData | null> => {
     try {
@@ -148,57 +173,71 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
     }
   }, []);
 
-  const startTimer = useCallback((currentSeed: number) => {
+  const startTimer = useCallback((currentSeed: number, runId: number) => {
+    if (!isActiveRun(runId)) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    const timerGeneration = ++timerGenerationRef.current;
     const duration = mode === "classic" ? CLASSIC_TIME : SURVIVAL_TIME;
     setTimeLeft(duration);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
+        if (timerGeneration !== timerGenerationRef.current) return prev;
+        if (!isActiveRun(runId)) return prev;
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          if (gameStatusRef.current === "playing") {
-            const total = puzzleRef.current?.totalSolutions ?? 0;
-            endGame(foundRef.current, total, accumulatedScoreRef.current, survivalSolvedCountRef.current, currentSeed);
-          }
+          const total = puzzleRef.current?.totalSolutions ?? 0;
+          endGame(foundRef.current, total, accumulatedScoreRef.current, survivalSolvedCountRef.current, currentSeed, runId);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [mode, endGame]);
+  }, [endGame, isActiveRun, mode]);
 
   useEffect(() => {
+    const runId = runIdRef.current;
+    activeRunRef.current = true;
     (async () => {
       const p = await fetchPuzzle(initialSeed);
-      if (!p) return;
+      if (!p || !isActiveRun(runId)) return;
       setPuzzle(p);
       puzzleRef.current = p;
-      if (!isUntimed) startTimer(initialSeed);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      if (!isUntimed) startTimer(initialSeed, runId);
+      focusInputForRun(runId, 100);
     })();
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      activeRunRef.current = false;
+      runIdRef.current += 1;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
-  const showError = useCallback((msg: string) => {
+  const showError = useCallback((msg: string, runId: number) => {
+    if (!isActiveRun(runId)) return;
     setErrorMsg(msg);
     setShake(true);
-    setTimeout(() => { setShake(false); setErrorMsg(""); }, 1500);
-  }, []);
+    setTimeout(() => {
+      if (!isActiveRun(runId)) return;
+      setShake(false);
+      setErrorMsg("");
+    }, 1500);
+  }, [isActiveRun]);
 
   const handleSubmit = useCallback(async () => {
     if (validating || gameStatusRef.current !== "playing" || !puzzle) return;
+    const runId = runIdRef.current;
     const word = input.toUpperCase().trim();
     if (!word) return;
 
     if (!isValidInsertion(word, puzzle.word)) {
-      showError(`Must be ${puzzle.word.length + 1} letters with ${puzzle.word} inside`);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      showError(`Must be ${puzzle.word.length + 1} letters with ${puzzle.word} inside`, runId);
+      focusInputForRun(runId, 50);
       return;
     }
 
     if (foundRef.current.some(e => e.word === word)) {
-      showError("Already found!");
-      setTimeout(() => inputRef.current?.focus(), 50);
+      showError("Already found!", runId);
+      focusInputForRun(runId, 50);
       return;
     }
 
@@ -209,11 +248,12 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
         { credentials: "include" }
       );
       const data = await r.json();
+      if (!isActiveRun(runId)) return;
 
       if (!data.valid) {
-        showError("Not a valid word");
+        showError("Not a valid word", runId);
         setValidating(false);
-        setTimeout(() => inputRef.current?.focus(), 50);
+        focusInputForRun(runId, 50);
         return;
       }
 
@@ -235,30 +275,32 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
         survivalSolvedCountRef.current = newCount;
         setSurvivalSolvedCount(newCount);
 
+        timerGenerationRef.current += 1;
         if (timerRef.current) clearInterval(timerRef.current);
         const nextSeed = seed + 1;
         setSeed(nextSeed);
         foundRef.current = [];
         setFound([]);
         const nextPuzzle = await fetchPuzzle(nextSeed);
-        if (nextPuzzle && gameStatusRef.current === "playing") {
+        if (nextPuzzle && isActiveRun(runId)) {
           setPuzzle(nextPuzzle);
           puzzleRef.current = nextPuzzle;
-          if (!isUntimed) startTimer(nextSeed);
+          if (!isUntimed) startTimer(nextSeed, runId);
         }
       } else {
         if (newFound.length >= puzzle.totalSolutions) {
-          endGame(newFound, puzzle.totalSolutions, 0, 0, seed);
+          endGame(newFound, puzzle.totalSolutions, 0, 0, seed, runId);
         }
       }
 
-      setTimeout(() => inputRef.current?.focus(), 50);
+      focusInputForRun(runId, 50);
     } catch {
-      showError("Validation failed, try again");
+      if (!isActiveRun(runId)) return;
+      showError("Validation failed, try again", runId);
       setValidating(false);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      focusInputForRun(runId, 50);
     }
-  }, [input, puzzle, validating, seed, mode, fetchPuzzle, startTimer, endGame, showError]);
+  }, [input, puzzle, validating, seed, mode, fetchPuzzle, startTimer, endGame, showError, isActiveRun, focusInputForRun]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); handleSubmit(); }
@@ -374,7 +416,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
               gameSlug={slug}
               score={finalScore}
               wordsCompleted={mode === "survival" ? survivalSolvedCount : found.length}
-              isWin={found.length > 0 || survivalSolvedCount > 0}
+              isWin={mode === "classic" ? total > 0 && found.length >= total : survivalSolvedCount > 0}
             />
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
@@ -392,6 +434,9 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                   className="bg-sky-500 hover:bg-sky-600 text-white border-0"
                   onClick={() => {
                     resetRecorded();
+                    const runId = ++runIdRef.current;
+                    activeRunRef.current = true;
+                    if (timerRef.current) clearInterval(timerRef.current);
                     foundRef.current = [];
                     accumulatedScoreRef.current = 0;
                     survivalSolvedCountRef.current = 0;
@@ -399,6 +444,11 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                     gameStatusRef.current = "playing";
                     setFound([]);
                     setInput("");
+                    setPuzzle(null);
+                    puzzleRef.current = null;
+                    setValidating(false);
+                    setErrorMsg("");
+                    setShake(false);
                     setFinalScore(0);
                     setAccumulatedScore(0);
                     setSurvivalSolvedCount(0);
@@ -406,9 +456,11 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                     const replaySeed = sessionSeedRef.current;
                     setSeed(replaySeed);
                     fetchPuzzle(replaySeed).then(p => {
-                      if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      if (!isUntimed) startTimer(replaySeed);
-                      setTimeout(() => inputRef.current?.focus(), 100);
+                      if (!p || !isActiveRun(runId)) return;
+                      setPuzzle(p);
+                      puzzleRef.current = p;
+                      if (!isUntimed) startTimer(replaySeed, runId);
+                      focusInputForRun(runId, 100);
                     });
                   }}
                   data-testid="button-replay"
@@ -420,6 +472,9 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                   className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
                   onClick={() => {
                     resetRecorded();
+                    const runId = ++runIdRef.current;
+                    activeRunRef.current = true;
+                    if (timerRef.current) clearInterval(timerRef.current);
                     foundRef.current = [];
                     accumulatedScoreRef.current = 0;
                     survivalSolvedCountRef.current = 0;
@@ -427,6 +482,11 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                     gameStatusRef.current = "playing";
                     setFound([]);
                     setInput("");
+                    setPuzzle(null);
+                    puzzleRef.current = null;
+                    setValidating(false);
+                    setErrorMsg("");
+                    setShake(false);
                     setFinalScore(0);
                     setAccumulatedScore(0);
                     setSurvivalSolvedCount(0);
@@ -435,9 +495,11 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                     sessionSeedRef.current = newSeed;
                     setSeed(newSeed);
                     fetchPuzzle(newSeed).then(p => {
-                      if (p) { setPuzzle(p); puzzleRef.current = p; }
-                      if (!isUntimed) startTimer(newSeed);
-                      setTimeout(() => inputRef.current?.focus(), 100);
+                      if (!p || !isActiveRun(runId)) return;
+                      setPuzzle(p);
+                      puzzleRef.current = p;
+                      if (!isUntimed) startTimer(newSeed, runId);
+                      focusInputForRun(runId, 100);
                     });
                   }}
                   data-testid="button-play-again"
@@ -622,6 +684,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                         accumulatedScoreRef.current,
                         survivalSolvedCountRef.current,
                         seed,
+                        runIdRef.current,
                       )}
                       data-testid="button-finish-session"
                     >
@@ -631,10 +694,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (timerRef.current) clearInterval(timerRef.current);
-                      onExit();
-                    }}
+                    onClick={leaveGame}
                     data-testid="button-menu"
                   >
                     Menu
@@ -642,10 +702,7 @@ function WordStretchPlay({ mode, initialSeed, onExit, locked, isUntimed }: WordS
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (timerRef.current) clearInterval(timerRef.current);
-                      onExit();
-                    }}
+                    onClick={leaveGame}
                     data-testid="button-quit"
                   >
                     Quit

@@ -81,14 +81,16 @@ export async function backfillGameConfigFromSeed(db: any): Promise<void> {
   for (const g of newGames) {
     await db.execute(sql`
       INSERT INTO games
-        (id, slug, name, description, long_description, rules, difficulty, estimated_time, icon, color, play_count, is_active, has_survival, time_limit_seconds)
+        (id, slug, name, description, long_description, rules, difficulty, estimated_time, icon, color, play_count, is_active, has_survival, time_limit_seconds, modes)
       VALUES
         (${g.id}, ${g.slug}, ${g.name}, ${g.description ?? ""}, ${g.longDescription ?? ""},
          ${JSON.stringify(g.rules ?? [])}, ${g.difficulty ?? "medium"}, ${g.estimatedTime ?? ""},
-         ${g.icon ?? ""}, ${g.color ?? ""}, 0, 1, 0, ${g.timeLimitSeconds ?? null})
+         ${g.icon ?? ""}, ${g.color ?? ""}, 0, 1, 0, ${g.timeLimitSeconds ?? null},
+         ${JSON.stringify(g.modes ?? [])})
       ON DUPLICATE KEY UPDATE
         name            = VALUES(name),
-        time_limit_seconds = COALESCE(time_limit_seconds, VALUES(time_limit_seconds))
+        time_limit_seconds = COALESCE(time_limit_seconds, VALUES(time_limit_seconds)),
+        modes = CASE WHEN modes IS NULL OR JSON_LENGTH(modes) = 0 THEN VALUES(modes) ELSE modes END
     `);
   }
 
@@ -111,4 +113,4 @@ export async function backfillGameConfigFromSeed(db: any): Promise<void> {
 }
 
 /** Slugs for games added after the initial DB seed; these receive an explicit upsert on startup. */
-const NEW_GAME_SLUGS = new Set(["word-extension", "word-fusion"]);
+const NEW_GAME_SLUGS = new Set(["word-extension", "word-fusion", "spoken-word-transformations"]);

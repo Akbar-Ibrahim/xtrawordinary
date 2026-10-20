@@ -124,7 +124,7 @@ export function registerLeaderboardRoutes(app: Express): void {
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
-      const { gameSlug, score } = parsed.data;
+      const { gameSlug, score, hintsUsed } = parsed.data;
 
       // Snapshot leaderboard before saving so we can detect displacement
       const topBefore = await storage.getLeaderboard(gameSlug, 50);
@@ -135,6 +135,7 @@ export function registerLeaderboardRoutes(app: Express): void {
         userId: req.user!.id,
         gameSlug,
         score,
+        hintsUsed: gameSlug === "word-ladder" ? hintsUsed ?? null : null,
         playerName: req.user!.name,
         playedAt: new Date().toISOString(),
       });

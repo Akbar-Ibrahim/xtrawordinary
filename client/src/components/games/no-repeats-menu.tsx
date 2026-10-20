@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Timer, Flame, Fingerprint, Shuffle, Lock } from "lucide-react";
 import { type Challenge, CHALLENGE_CONFIG, SURVIVAL_TIME_OPTIONS } from "./no-repeats-helpers";
+import { SurvivalSuggestion } from "./survival-suggestion";
 
 interface NoRepeatsMenuProps {
   isSurvival: boolean;
@@ -14,6 +15,8 @@ interface NoRepeatsMenuProps {
   playMode: "free" | "restricted";
   onPlayModeChange: (m: "free" | "restricted") => void;
   showModeToggle: boolean;
+  showSurvivalSuggestion?: boolean;
+  onTrySurvival?: () => void;
 }
 
 export function NoRepeatsMenu({
@@ -26,6 +29,8 @@ export function NoRepeatsMenu({
   playMode,
   onPlayModeChange,
   showModeToggle,
+  showSurvivalSuggestion = false,
+  onTrySurvival,
 }: NoRepeatsMenuProps) {
   return (
     <div className="space-y-6">
@@ -119,6 +124,12 @@ export function NoRepeatsMenu({
                   {survivalTime}s per word — timer resets on each correct answer!
                 </p>
               </>
+            )}
+            {showSurvivalSuggestion && !isSurvival && onTrySurvival && (
+              <SurvivalSuggestion
+                placement="replay"
+                onTrySurvival={onTrySurvival}
+              />
             )}
           </div>
         </CardContent>

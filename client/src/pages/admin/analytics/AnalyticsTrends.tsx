@@ -3,6 +3,7 @@ import type { AnalyticsReport } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { formatAnalyticsCount } from "./format";
 
 const series = [
   { key: "uniqueVisitors", label: "Visitors", color: "#e07a5f", icon: Users },
@@ -27,8 +28,8 @@ export function AnalyticsTrends({ report }: { report: AnalyticsReport }) {
             <defs>{series.map((item) => <linearGradient key={item.key} id={`fill-${item.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={item.color} stopOpacity={0.24} /><stop offset="100%" stopColor={item.color} stopOpacity={0} /></linearGradient>)}</defs>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-            <ChartTooltip content={<ChartTooltipContent />} />
+            <YAxis tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={formatAnalyticsCount} />
+            <ChartTooltip content={<ChartTooltipContent valueFormatter={formatAnalyticsCount} />} />
             {series.map((item) => <Area key={item.key} type="monotone" dataKey={item.key} stroke={item.color} fill={`url(#fill-${item.key})`} strokeWidth={2} activeDot={{ r: 4 }} />)}
           </AreaChart>
         </ChartContainer> : <EmptyState label="No daily activity in this range." />}
