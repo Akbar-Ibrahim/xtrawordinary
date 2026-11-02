@@ -1,0 +1,2 @@
+ALTER TABLE games
+  ADD COLUMN IF NOT EXISTS similar_game_slugs JSON NULL;
