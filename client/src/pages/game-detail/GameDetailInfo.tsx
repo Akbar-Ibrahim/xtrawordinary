@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { getGameDetailDescription, getGameDetailRules, type Game } from "@shared/schema";
 import { difficultyColors } from "./constants";
+import { RelatedGamesSection } from "./RelatedGamesSection";
 
 interface MyGameStat {
   gameSlug: string;
@@ -166,41 +167,7 @@ export function GameDetailInfo({ game, allGames, isAuthenticated, myGameStat, la
         </CardContent>
       </Card>
 
-      {allGames.length > 1 && (() => {
-        const otherGames = allGames.filter(g => g.slug !== game.slug);
-        return (
-          <section className="min-w-0" aria-labelledby="more-games-heading">
-            <h2 id="more-games-heading" className="text-lg font-semibold mb-3">More Games</h2>
-            <div
-              className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-2 snap-x snap-mandatory scrollbar-none"
-              data-testid="related-games-carousel"
-            >
-              {otherGames.map(g => {
-                const GIcon = ((LucideIcons as any)[g.icon] ?? LucideIcons.Gamepad2) as React.ElementType;
-                return (
-                  <Link key={g.slug} href={`/game/${g.slug}`} className="snap-start shrink-0 w-56">
-                    <Card className="hover-elevate cursor-pointer h-full" data-testid={`card-more-game-${g.slug}`}>
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: g.color }}
-                        >
-                          <GIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate mb-0.5">{g.name}</h3>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{g.description}</p>
-                        </div>
-                        <LucideIcons.ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
+      <RelatedGamesSection game={game} allGames={allGames} />
 
       <FriendsWhoPlay slug={game.slug} />
       <CommentSection targetType="game" targetId={game.slug} headingLevel={2} />

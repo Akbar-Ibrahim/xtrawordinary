@@ -426,6 +426,7 @@ export function GamePlayArea({
           onPlayAgain={onCustomPlayAgain}
           onLeaderboardModeChange={onLeaderboardModeChange}
           locked
+          quizMode
           customPlay
         />
       ) : (isSenderMode || isReceiverMode) && slug === "letter-balance" ? (() => {

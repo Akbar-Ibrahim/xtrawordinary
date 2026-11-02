@@ -42,7 +42,7 @@ export default function NoRepeatsExplore() {
     <div className="container mx-auto min-w-0 max-w-7xl px-4 py-8">
       <PageSEO
         title="Explore No Repeats"
-        description="Browse dictionary words with no repeated letters or check an answer someone says aloud."
+        description="Browse dictionary words with no repeated letters."
         path="/explore/no-repeats"
       />
       <Link href="/game/no-repeats" className="mb-7 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -53,7 +53,7 @@ export default function NoRepeatsExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">No Repeats · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Find words with no repeated letters.</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Browse isograms in the dictionary or check a word someone says aloud. Explore is for discovery and hosting; it does not change game validation or scoring.
+          Browse dictionary isograms or check whether a word has no repeated letters and matches your selected filters.
         </p>
       </header>
 

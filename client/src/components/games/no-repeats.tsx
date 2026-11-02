@@ -18,6 +18,8 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { useAuth } from "@/lib/auth-context";
@@ -33,6 +35,7 @@ import {
 } from "./no-repeats-helpers";
 import { NoRepeatsMenu }   from "./no-repeats-menu";
 import { NoRepeatsResult } from "./no-repeats-result";
+import { CustomFreshAnswerControls } from "./custom-fresh-answers-controls";
 import { SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
 import {
   getNoRepeatsLeaderboardSlug,
@@ -117,6 +120,11 @@ export function NoRepeatsGame({
   const [timeLeft, setTimeLeft]             = useState(timePerChallenge);
   const [feedback, setFeedback]             = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords]           = useState<Set<string>>(new Set());
+  const freshAnswers = useCustomFreshAnswers({
+    game: "no-repeats",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const [completionMessage, setCompletionMessage] = useState("");
 
   // ── Required letters state ─────────────────────────────────────────────────
@@ -176,6 +184,7 @@ export function NoRepeatsGame({
       setStreak(0);
       setWordsCompleted(0);
       setUsedWords(new Set());
+      freshAnswers.resetCurrentRun();
       setUserInput("");
       setFeedback(null);
       setRerollsUsed(0);
@@ -215,6 +224,7 @@ export function NoRepeatsGame({
       isUntimed,
       playMode,
       onLeaderboardModeChange,
+      freshAnswers.resetCurrentRun,
     ],
   );
 
@@ -233,11 +243,12 @@ export function NoRepeatsGame({
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
     setRequiredLetters([]);
     setRerollsUsed(0);
-  }, [stopTimer]);
+  }, [stopTimer, freshAnswers.resetCurrentRun]);
 
   // ── Auto-start when initialChallenge / groupSeed provided ─────────────────
   useEffect(() => {
@@ -260,6 +271,21 @@ export function NoRepeatsGame({
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime, onGameEnd]);
 
+  useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      (gameStatus === "won" || gameStatus === "lost") &&
+      freshAnswers.isEnabled
+    ) {
+      freshAnswers.appendCurrentRunAnswers();
+    }
+  }, [
+    freshAnswers.isAvailable,
+    gameStatus,
+    freshAnswers.isEnabled,
+    freshAnswers.appendCurrentRunAnswers,
+  ]);
+
   useEffect(() => () => stopTimer(), [stopTimer]);
 
   // ── Submit handler ─────────────────────────────────────────────────────────
@@ -268,6 +294,16 @@ export function NoRepeatsGame({
     const word   = userInput.trim().toUpperCase();
     const config = CHALLENGE_CONFIG[challenge];
     if (!word) return;
+
+    if (freshAnswers.isBlocked(word)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      return;
+    }
 
     // 1. Length
     if (word.length !== config.wordLength) {
@@ -324,6 +360,7 @@ export function NoRepeatsGame({
         setStreak((prev) => prev + 1);
         setWordsCompleted(newCompleted);
         setUsedWords((prev) => new Set([...prev, word]));
+        freshAnswers.recordAcceptedAnswer(word);
         playSound("correct");
         setFeedback({ type: "correct", message: `+${wordScore} points!` });
         setUserInput("");
@@ -382,35 +419,53 @@ export function NoRepeatsGame({
     const next = getNextChallenge(challenge);
     return (
       <>
-        <NoRepeatsResult
-          gameStatus={gameStatus}
-          isSurvival={isSurvival}
-          playMode={playMode}
-          wordsCompleted={wordsCompleted}
-          score={score}
-          personalBest={personalBest}
-          usedWords={usedWords}
-          completionMessage={completionMessage}
-          challenge={challenge}
-          nextChallenge={next}
-          requiredLetters={requiredLetters}
-          locked={locked}
-          isSignedIn={!!user}
-          survivalSuggestion={
-            canSuggestSurvival && !isSurvival
-              ? wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
-                ? "completion"
-                : getBestWordsFoundForGame("no-repeats") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
-                  ? "replay"
-                  : undefined
-              : undefined
-          }
-          onTrySurvival={() => startGame(challenge, true)}
-          onPlayAgain={customPlay ? () => onPlayAgain?.() : () => startGame(challenge, isSurvival)}
-          onMenu={returnToMenu}
-          onNextChallenge={() => next && startGame(next, isSurvival)}
-          onSignIn={() => setAuthOpen(true)}
-        />
+        <div className="space-y-4">
+          <NoRepeatsResult
+            gameStatus={gameStatus}
+            isSurvival={isSurvival}
+            playMode={playMode}
+            wordsCompleted={wordsCompleted}
+            score={score}
+            personalBest={personalBest}
+            usedWords={usedWords}
+            completionMessage={completionMessage}
+            challenge={challenge}
+            nextChallenge={next}
+            requiredLetters={requiredLetters}
+            locked={locked}
+            isSignedIn={!!user}
+            survivalSuggestion={
+              canSuggestSurvival && !isSurvival
+                ? wordsCompleted >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
+                  ? "completion"
+                  : getBestWordsFoundForGame("no-repeats") >= SURVIVAL_SUGGESTION_WORD_THRESHOLD
+                    ? "replay"
+                    : undefined
+                : undefined
+            }
+            onTrySurvival={() => startGame(challenge, true)}
+            onPlayAgain={customPlay ? () => onPlayAgain?.() : () => startGame(challenge, isSurvival)}
+            onMenu={returnToMenu}
+            onNextChallenge={() => next && startGame(next, isSurvival)}
+            onSignIn={() => setAuthOpen(true)}
+          />
+          <CustomFreshAnswerControls
+            game="No Repeats"
+            gameSlug="no-repeats"
+            isCustomPlay={Boolean(customPlay)}
+            answerCount={freshAnswers.currentRunAnswers.size}
+            snapshot={freshAnswers.snapshot}
+            isAvailable={freshAnswers.isAvailable}
+            isEnabled={freshAnswers.isEnabled}
+            optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+            storageError={freshAnswers.storageError}
+            pendingAppendCount={freshAnswers.pendingAppendCount}
+            onRetryAppend={freshAnswers.retryPendingAppend}
+            allowOptIn
+            onEnabledChange={freshAnswers.setEnabled}
+            onEnable={freshAnswers.optInWithCurrentRunAnswers}
+          />
+        </div>
         <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
       </>
     );
@@ -461,6 +516,22 @@ export function NoRepeatsGame({
           </div>
         </div>
       </div>
+
+      <CustomFreshAnswerControls
+        game="No Repeats"
+        gameSlug="no-repeats"
+        isCustomPlay={Boolean(customPlay)}
+        answerCount={freshAnswers.currentRunAnswers.size}
+        snapshot={freshAnswers.snapshot}
+        isAvailable={freshAnswers.isAvailable}
+        isEnabled={freshAnswers.isEnabled}
+        optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+        storageError={freshAnswers.storageError}
+        pendingAppendCount={freshAnswers.pendingAppendCount}
+        onRetryAppend={freshAnswers.retryPendingAppend}
+        onEnabledChange={freshAnswers.setEnabled}
+        onEnable={freshAnswers.optInWithCurrentRunAnswers}
+      />
 
       <Card>
         <CardContent className="p-6 space-y-5">

@@ -53,7 +53,7 @@ export default function LetterPositionExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Letter Position · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Find words with a letter in place.</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Choose a letter and position to browse dictionary matches, or check an answer someone says aloud.
+          Choose a letter and position to browse dictionary matches, or check whether a word fits those settings.
         </p>
       </header>
 

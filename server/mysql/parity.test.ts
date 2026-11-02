@@ -13,12 +13,20 @@
  *
  * Run:  npx tsx server/mysql/parity.test.ts
  *  or:  npm run test:mysql-parity
+ *
+ * Real-driver integration tests are opt-in via MYSQL_ACHIEVEMENT_TEST_URL.
+ * They require loopback MySQL and a database name containing a standalone
+ * "test" segment, and create/drop scratch databases.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/mysql2";
 
-import { getAllUsers } from "./admin.js";
+import { deleteUser, getAllUsers } from "./admin.js";
 import { getDuelChallengesForUser, getOpenDuelChallenges, getDuelLeaderboard } from "./duels.js";
 import { getHuddleChallengesForGroup } from "./huddle.js";
 import { getTeamRaceChallengesForGroup } from "./team-race.js";
@@ -30,7 +38,18 @@ import {
 import { listGuildWarsTournaments, createGuildWarsRegistration } from "./guild-wars.js";
 import { addGroupReaction, submitGroupRoundScore } from "./groups.js";
 import { countWordsAtLetterPosition } from "./words.js";
-import { mapDbRowToGame, updateGameConfig } from "./games.js";
+import {
+  getGameBySlug,
+  mapDbRowToGame,
+  setGameCreatorId,
+  setGameSimilarGameSlugs,
+  updateGameConfig,
+} from "./games.js";
+import { saveUserAchievement } from "./stats.js";
+import { getUserById, recordUserActivity } from "./users.js";
+import { getCommentsPage as getMySqlCommentsPage, setCommentPinned as setMySqlCommentPinned } from "./comments.js";
+import { MemStorage } from "../mem-storage";
+import * as schema from "../db-schema";
 
 // ── Mock DB infrastructure ─────────────────────────────────────────────────
 
@@ -59,6 +78,7 @@ class ChainRecorder {
   set(...a: unknown[])                  { this.calls.push({ method: "set",                  args: a }); return this; }
   values(...a: unknown[])               { this.calls.push({ method: "values",               args: a }); return this; }
   onDuplicateKeyUpdate(...a: unknown[]) { this.calls.push({ method: "onDuplicateKeyUpdate", args: a }); return this; }
+  ignore(...a: unknown[])              { this.calls.push({ method: "ignore",              args: a }); return this; }
   innerJoin(...a: unknown[])            { this.calls.push({ method: "innerJoin",            args: a }); return this; }
   leftJoin(...a: unknown[])             { this.calls.push({ method: "leftJoin",             args: a }); return this; }
 }
@@ -160,6 +180,69 @@ function firstInsert(db: MockDb): ChainRecorder {
   return op.recorder;
 }
 
+/**
+ * Run an integration assertion against a uniquely named database on a
+ * loopback-only test server. The configured base database is never modified.
+ */
+async function withDisposableMysqlDatabase(
+  label: string,
+  run: (pool: mysql.Pool) => Promise<void>,
+): Promise<void> {
+  const connectionUrl = new URL(process.env.MYSQL_ACHIEVEMENT_TEST_URL!);
+  assert.equal(connectionUrl.protocol, "mysql:", "test URL must use the mysql:// protocol");
+  assert.equal(connectionUrl.search, "", "test URL must not contain connection options");
+  assert.equal(connectionUrl.hash, "", "test URL must not contain a fragment");
+
+  const host = connectionUrl.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  assert.ok(
+    ["localhost", "127.0.0.1", "::1"].includes(host),
+    "integration tests are restricted to a loopback MySQL server",
+  );
+
+  const baseDatabase = decodeURIComponent(connectionUrl.pathname.replace(/^\/+/, ""));
+  assert.match(baseDatabase, /^[a-zA-Z0-9_]+$/, "test database name must contain only letters, numbers, and underscores");
+  assert.match(baseDatabase, /(^|_)test($|_)/i, "test database name must include a standalone 'test' segment");
+  assert.doesNotMatch(baseDatabase, /prod|production|live/i, "test database name must not resemble production");
+  assert.ok(connectionUrl.username, "test URL must include a MySQL username");
+
+  const disposableDatabase = `${baseDatabase.slice(0, 18)}_${label}_${randomUUID().replaceAll("-", "")}`;
+  const connectionConfig = {
+    host,
+    port: connectionUrl.port ? Number(connectionUrl.port) : 3306,
+    user: decodeURIComponent(connectionUrl.username),
+    password: decodeURIComponent(connectionUrl.password),
+    timezone: "Z" as const,
+  };
+  const adminPool = mysql.createPool({
+    ...connectionConfig,
+    database: baseDatabase,
+    connectionLimit: 1,
+  });
+
+  let disposablePool: mysql.Pool | undefined;
+  let databaseCreated = false;
+  try {
+    await adminPool.query(`CREATE DATABASE \`${disposableDatabase}\``);
+    databaseCreated = true;
+    disposablePool = mysql.createPool({
+      ...connectionConfig,
+      database: disposableDatabase,
+      connectionLimit: 10,
+    });
+    await run(disposablePool);
+  } finally {
+    try {
+      if (disposablePool) await disposablePool.end();
+    } finally {
+      try {
+        if (databaseCreated) await adminPool.query(`DROP DATABASE \`${disposableDatabase}\``);
+      } finally {
+        await adminPool.end();
+      }
+    }
+  }
+}
+
 // ── No-limit + table-target + sort-order tests ─────────────────────────────
 
 test("getAllUsers: no limit, targets users table, ordered by created_at desc", async () => {
@@ -172,7 +255,7 @@ test("getAllUsers: no limit, targets users table, ordered by created_at desc", a
 });
 
 test("mapDbRowToGame maps persisted standard-play config", () => {
-  const game = mapDbRowToGame({
+  const gameRow = {
     id: 1,
     slug: "no-repeats",
     name: "No Repeats",
@@ -187,15 +270,47 @@ test("mapDbRowToGame maps persisted standard-play config", () => {
     isActive: true,
     hasSurvival: false,
     modes: null,
+    similarGameSlugs: null,
     timeLimitSeconds: 90,
     wordTarget: 12,
     livesCount: null,
     survivalSecondsPerWord: 8,
-  });
+    creatorId: 17,
+  };
+  const game = mapDbRowToGame(gameRow);
   assert.equal(game.timeLimitSeconds, 90);
   assert.equal(game.wordTarget, 12);
   assert.equal(game.livesCount, undefined);
   assert.equal("survivalSecondsPerWord" in game, false);
+  assert.equal(game.creatorId, 17);
+  assert.equal(mapDbRowToGame({ ...gameRow, creatorId: null }).creatorId, null);
+  assert.deepEqual(
+    mapDbRowToGame({ ...gameRow, similarGameSlugs: ["word-maker"] }).similarGameSlugs,
+    ["word-maker"],
+  );
+});
+
+test("setGameCreatorId persists creator ownership and supports legacy unowned games", async () => {
+  const assignDb = new MockDb();
+  await setGameCreatorId(assignDb, "word-chain", 23);
+  assert.deepEqual(
+    assignDb.ops[0].recorder.calls.find(call => call.method === "set")?.args[0],
+    { creatorId: 23 },
+  );
+
+  const clearDb = new MockDb();
+  await setGameCreatorId(clearDb, "word-chain", null);
+  assert.deepEqual(
+    clearDb.ops[0].recorder.calls.find(call => call.method === "set")?.args[0],
+    { creatorId: null },
+  );
+});
+
+test("setGameSimilarGameSlugs persists the ordered recommendation list", async () => {
+  const db = new MockDb();
+  await setGameSimilarGameSlugs(db, "word-sweep", ["word-maker", "word-split"]);
+  const setCall = db.ops[0].recorder.calls.find((call) => call.method === "set");
+  assert.deepEqual(setCall?.args[0], { similarGameSlugs: ["word-maker", "word-split"] });
 });
 
 test("updateGameConfig persists only standard-play config fields", async () => {
@@ -208,6 +323,402 @@ test("updateGameConfig persists only standard-play config fields", async () => {
   assert.deepEqual(setCall?.args[0], {
     timeLimitSeconds: 120,
     wordTarget: 7,
+  });
+});
+
+test("saveUserAchievement reports a new MySQL insert and ignores a duplicate", async () => {
+  const unlockedAt = "2026-10-21T12:00:00.000Z";
+  const savedRow = {
+    id: 42,
+    userId: 7,
+    achievementId: "games_bronze",
+    unlockedAt: new Date(unlockedAt),
+  };
+  const firstDb = new MockDb([{ affectedRows: 1 }], [savedRow]);
+  const first = await saveUserAchievement(firstDb, 7, "games_bronze", unlockedAt);
+
+  assert.equal(first.newlyEarned, true, "an affected row means the achievement is new");
+  assert.equal(first.id, savedRow.id);
+  assert.equal(first.userId, savedRow.userId);
+  assert.equal(first.achievementId, savedRow.achievementId);
+  assert.ok(firstInsert(firstDb).calls.some(call => call.method === "ignore"), "must use INSERT IGNORE");
+  assert.ok(fromTable(firstDb.ops.find(op => op.op === "select")!.recorder, "user_achievements"));
+
+  const duplicateDb = new MockDb([{ affectedRows: 0 }], [savedRow]);
+  const duplicate = await saveUserAchievement(duplicateDb, 7, "games_bronze", unlockedAt);
+
+  assert.equal(duplicate.newlyEarned, false, "an ignored duplicate must not be considered new");
+  assert.equal(duplicate.id, savedRow.id, "must return the already-saved achievement");
+  assert.ok(firstInsert(duplicateDb).calls.some(call => call.method === "ignore"), "duplicate attempts must also use INSERT IGNORE");
+});
+
+test("saveUserAchievement reports concurrent duplicate inserts using the MySQL2 driver", {
+  skip: !process.env.MYSQL_ACHIEVEMENT_TEST_URL,
+}, async () => {
+  await withDisposableMysqlDatabase("achievement", async disposablePool => {
+    await disposablePool.query(`
+      CREATE TABLE user_achievements (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        achievement_id VARCHAR(100) NOT NULL,
+        unlocked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY ua_user_achievement_idx (user_id, achievement_id),
+        KEY ua_user_id_idx (user_id)
+      ) ENGINE=InnoDB
+    `);
+
+    const db = drizzle(disposablePool, { schema, mode: "default" });
+    const unlockedAt = "2026-10-21T12:00:00.000Z";
+    const first = await saveUserAchievement(db, 7, "games_bronze", unlockedAt);
+    assert.equal(first.newlyEarned, true, "the first insert must be reported as new");
+
+    const concurrentDuplicates = await Promise.all(
+      Array.from({ length: 8 }, () => saveUserAchievement(db, 7, "games_bronze", unlockedAt)),
+    );
+    assert.ok(
+      concurrentDuplicates.every(result => result.newlyEarned === false),
+      "all concurrent duplicate inserts must be reported as existing",
+    );
+    assert.ok(
+      concurrentDuplicates.every(result => result.id === first.id),
+      "all duplicate attempts must return the original achievement row",
+    );
+
+    const rows = await db.select().from(schema.userAchievements);
+    assert.equal(rows.length, 1, "concurrent duplicate attempts must leave one achievement row");
+  });
+});
+
+test("recordUserActivity preserves the UTC instant through the MySQL2 driver", {
+  skip: !process.env.MYSQL_ACHIEVEMENT_TEST_URL,
+}, async () => {
+  await withDisposableMysqlDatabase("activity", async disposablePool => {
+    await disposablePool.query(`
+      CREATE TABLE users (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(255) NOT NULL,
+        username VARCHAR(20) NOT NULL,
+        username_normalized VARCHAR(20) NOT NULL UNIQUE,
+        password_hash TEXT NULL,
+        google_id VARCHAR(255) NULL UNIQUE,
+        email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        avatar_url TEXT NULL,
+        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+        is_banned BOOLEAN NOT NULL DEFAULT FALSE,
+        is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+        bio TEXT NULL,
+        hide_activity BOOLEAN NOT NULL DEFAULT FALSE,
+        last_active_at TIMESTAMP NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB
+    `);
+    const [insertResult] = await disposablePool.query(
+      `INSERT INTO users (email, name, username, username_normalized)
+       VALUES (?, ?, ?, ?)`,
+      ["mysql-activity@example.test", "Activity test", "activity-test", "activity-test"],
+    );
+    const userId = (insertResult as mysql.ResultSetHeader).insertId;
+    const db = drizzle(disposablePool, { schema, mode: "default" });
+    const activityAt = "2026-10-22T18:42:13.000Z";
+
+    await recordUserActivity(db, userId, activityAt);
+
+    const user = await getUserById(db, userId);
+    assert.equal(
+      user?.lastActiveAt,
+      activityAt,
+      "the MySQL timestamp column and configured driver must preserve the UTC instant at seconds precision",
+    );
+  });
+});
+
+test("game creator migration preserves legacy ownership and clears deleted creators using MySQL", {
+  skip: !process.env.MYSQL_ACHIEVEMENT_TEST_URL,
+}, async () => {
+  await withDisposableMysqlDatabase("game_creators", async disposablePool => {
+    await disposablePool.query(`
+      CREATE TABLE users (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY
+      ) ENGINE=InnoDB
+    `);
+    await disposablePool.query(`
+      CREATE TABLE games (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        long_description TEXT NOT NULL,
+        rules JSON NOT NULL,
+        difficulty VARCHAR(20) NOT NULL,
+        estimated_time VARCHAR(50) NOT NULL,
+        icon VARCHAR(100) NOT NULL,
+        color VARCHAR(100) NOT NULL,
+        play_count INT NOT NULL DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        has_survival BOOLEAN NOT NULL DEFAULT FALSE,
+        modes JSON NULL,
+        time_limit_seconds INT NULL,
+        word_target INT NULL,
+        lives_count INT NULL,
+        survival_seconds_per_word INT NULL
+      ) ENGINE=InnoDB
+    `);
+    await disposablePool.query(`
+      INSERT INTO games
+        (slug, name, description, long_description, rules, difficulty, estimated_time, icon, color)
+      VALUES
+        ('legacy-game', 'Legacy Game', 'Description', 'Long description', JSON_ARRAY(), 'medium', '2 minutes', 'Gamepad2', '#000000')
+    `);
+
+    const migration = await readFile(
+      new URL("../../migrations/20261026_add_game_creators.sql", import.meta.url),
+      "utf8",
+    );
+    await disposablePool.query(migration);
+
+    // deleteUser removes the user's related rows before deleting the account.
+    // Keep these cleanup targets minimal; the creator FK is the behavior under test.
+    const cleanupTables = [
+      ["leaderboard_entries", "user_id INT NOT NULL"],
+      ["user_achievements", "user_id INT NOT NULL"],
+      ["user_streaks", "user_id INT NOT NULL"],
+      ["user_game_stats", "user_id INT NOT NULL"],
+      ["friendships", "requester_id INT NOT NULL, addressee_id INT NOT NULL"],
+      ["user_blocks", "blocker_id INT NOT NULL, blocked_user_id INT NOT NULL"],
+      ["friend_challenges", "sender_id INT NOT NULL, receiver_id INT NOT NULL"],
+      ["notifications", "user_id INT NOT NULL"],
+      ["comments", "user_id INT NOT NULL"],
+      ["likes", "user_id INT NOT NULL"],
+      ["notification_preferences", "user_id INT NOT NULL"],
+      ["email_verification_tokens", "user_id INT NOT NULL"],
+      ["password_reset_tokens", "user_id INT NOT NULL"],
+    ] as const;
+    for (const [table, columns] of cleanupTables) {
+      await disposablePool.query(
+        `CREATE TABLE \`${table}\` (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, ${columns}) ENGINE=InnoDB`,
+      );
+    }
+
+    const [userInsert] = await disposablePool.query("INSERT INTO users () VALUES ()");
+    const creatorId = (userInsert as mysql.ResultSetHeader).insertId;
+    const db = drizzle(disposablePool, { schema, mode: "default" });
+
+    const legacyGame = await getGameBySlug(db, "legacy-game");
+    assert.equal(legacyGame?.creatorId, null, "pre-existing games must remain unowned after migration");
+    assert.notEqual(legacyGame?.creatorId, creatorId, "legacy games must not gain a non-admin owner");
+
+    await setGameCreatorId(db, "legacy-game", creatorId);
+    assert.equal(
+      (await getGameBySlug(db, "legacy-game"))?.creatorId,
+      creatorId,
+      "assigning a creator must persist through the MySQL driver",
+    );
+
+    await setGameCreatorId(db, "legacy-game", null);
+    assert.equal(
+      (await getGameBySlug(db, "legacy-game"))?.creatorId,
+      null,
+      "clearing a creator must persist through the MySQL driver",
+    );
+
+    await setGameCreatorId(db, "legacy-game", creatorId);
+    await deleteUser(db, creatorId);
+    assert.equal(
+      (await getGameBySlug(db, "legacy-game"))?.creatorId,
+      null,
+      "deleting the creator through the account-removal path must leave the game unowned",
+    );
+    const [remainingUsers] = await disposablePool.query("SELECT id FROM users");
+    assert.equal((remainingUsers as unknown[]).length, 0, "creator deletion must complete successfully");
+  });
+});
+
+test("commenter filtering and reply context match between MySQL and memory", {
+  skip: !process.env.MYSQL_ACHIEVEMENT_TEST_URL,
+}, async () => {
+  await withDisposableMysqlDatabase("comments", async disposablePool => {
+    await disposablePool.query(`
+      CREATE TABLE users (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        username VARCHAR(20) NOT NULL,
+        avatar_url TEXT NULL
+      ) ENGINE=InnoDB
+    `);
+    await disposablePool.query(`
+      CREATE TABLE comments (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        target_type VARCHAR(20) NOT NULL,
+        target_id VARCHAR(100) NOT NULL,
+        user_id INT NOT NULL,
+        parent_id INT NULL,
+        content TEXT NOT NULL,
+        is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP NULL
+      ) ENGINE=InnoDB
+    `);
+    await disposablePool.query(`
+      CREATE TABLE likes (
+        id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        target_type VARCHAR(20) NOT NULL,
+        target_id VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB
+    `);
+
+    const db = drizzle(disposablePool, { schema, mode: "default" });
+    const memory = new MemStorage();
+    const selectedUser = await memory.createUser({
+      email: "comment-selected@example.test",
+      name: "Selected Commenter",
+      username: "selected",
+      usernameNormalized: "selected",
+      passwordHash: null,
+      googleId: null,
+      emailVerified: true,
+      avatarUrl: null,
+      isAdmin: false,
+      isBanned: false,
+      isPremium: false,
+    });
+    const otherUser = await memory.createUser({
+      email: "comment-other@example.test",
+      name: "Other Commenter",
+      username: "other",
+      usernameNormalized: "other",
+      passwordHash: null,
+      googleId: null,
+      emailVerified: true,
+      avatarUrl: null,
+      isAdmin: false,
+      isBanned: false,
+      isPremium: false,
+    });
+    await disposablePool.query(
+      `INSERT INTO users (id, name, username) VALUES
+        (?, ?, ?), (?, ?, ?)`,
+      [selectedUser.id, selectedUser.name, selectedUser.username, otherUser.id, otherUser.name, otherUser.username],
+    );
+
+    const targetId = "commenter-filter-parity";
+    const rows = [
+      { userId: otherUser.id, parentId: null, content: "Parent by another commenter" },
+      { userId: selectedUser.id, parentId: 1, content: "The comet phrase appears in selected reply" },
+      { userId: otherUser.id, parentId: 1, content: "A context reply that matches neither filter" },
+      { userId: selectedUser.id, parentId: null, content: "Top-level selected commenter mentions bright star" },
+      { userId: otherUser.id, parentId: 4, content: "Another unmatched reply remains in context" },
+      { userId: otherUser.id, parentId: null, content: "Unmatched thread discusses comet too" },
+      { userId: selectedUser.id, parentId: 6, content: "Selected commenter reply to the pinned comment" },
+      { userId: otherUser.id, parentId: 6, content: "Another reply to the pinned comment" },
+      { userId: selectedUser.id, parentId: null, content: "Selected author mentions quiet moon" },
+    ];
+
+    for (const row of rows) {
+      await memory.createComment({
+        targetType: "game",
+        targetId,
+        userId: row.userId,
+        parentId: row.parentId,
+        content: row.content,
+      });
+    }
+    for (const [index, row] of rows.entries()) {
+      await disposablePool.query(
+        `INSERT INTO comments
+          (id, target_type, target_id, user_id, parent_id, content, created_at)
+         VALUES (?, 'game', ?, ?, ?, ?, ?)`,
+        [
+          index + 1,
+          targetId,
+          row.userId,
+          row.parentId,
+          row.content,
+          new Date(Date.UTC(2026, 0, 1, 0, 0, index + 1)),
+        ],
+      );
+    }
+    assert.ok(await memory.setCommentPinned(6, "game", targetId, true));
+    assert.ok(await setMySqlCommentPinned(db, 6, "game", targetId, true));
+
+    const summarizeComment = (comment: any) => ({
+      id: comment.id,
+      userId: comment.userId,
+      parentId: comment.parentId,
+      content: comment.content,
+      isDeleted: comment.isDeleted,
+      replies: (comment.replies ?? []).map(summarizeComment),
+    });
+    const summarizePage = (result: Awaited<ReturnType<typeof memory.getCommentsPage>>) => ({
+      page: result.page,
+      pageSize: result.pageSize,
+      totalCount: result.totalCount,
+      hasMore: result.hasMore,
+      commenters: result.commenters?.map(({ id, name, username, avatarUrl }) => ({ id, name, username, avatarUrl })),
+      pinnedComment: result.pinnedComment ? summarizeComment(result.pinnedComment) : null,
+      comments: result.comments.map(summarizeComment),
+    });
+    const compareCase = async (
+      label: string,
+      page: number,
+      searchTerm?: string,
+    ) => {
+      const memoryResult = await memory.getCommentsPage(
+        "game", targetId, undefined, page, 1, "oldest", searchTerm, selectedUser.id,
+      );
+      const mysqlResult = await getMySqlCommentsPage(
+        db, "game", targetId, undefined, page, 1, "oldest", searchTerm, selectedUser.id,
+      );
+      assert.deepEqual(
+        summarizePage(mysqlResult),
+        summarizePage(memoryResult),
+        label,
+      );
+      return summarizePage(mysqlResult);
+    };
+
+    const firstPage = await compareCase("commenter-only page one preserves full reply context", 1);
+    const secondPage = await compareCase("commenter-only page two preserves full reply context", 2);
+    const thirdPage = await compareCase("commenter-only final page has the same boundary", 3);
+    assert.equal(firstPage.totalCount, 4, "count matching comments, not matching threads");
+    assert.equal(firstPage.hasMore, true);
+    assert.equal(firstPage.pinnedComment?.id, 6, "the pinned comment by another commenter stays in the separate pinned section");
+    assert.equal(firstPage.pinnedComment?.userId, otherUser.id, "the pinned comment is authored by someone other than the filtered commenter");
+    assert.deepEqual(
+      firstPage.pinnedComment?.replies.map(reply => reply.id),
+      [7, 8],
+      "the pinned comment retains its complete reply context despite the commenter filter",
+    );
+    assert.ok(
+      !firstPage.comments.some(comment =>
+        [6, 7, 8].includes(comment.id) || comment.replies.some(reply => [6, 7, 8].includes(reply.id))),
+      "the pinned comment and its replies must not appear in the regular filtered comments",
+    );
+    assert.equal(secondPage.hasMore, true);
+    assert.equal(thirdPage.hasMore, false);
+    assert.deepEqual(firstPage.comments.map(comment => comment.id), [1]);
+    assert.deepEqual(firstPage.comments[0].replies.map(reply => reply.id), [2, 3]);
+    assert.deepEqual(secondPage.comments.map(comment => comment.id), [4]);
+    assert.deepEqual(secondPage.comments[0].replies.map(reply => reply.id), [5]);
+    assert.deepEqual(thirdPage.comments.map(comment => comment.id), [9]);
+
+    const combinedMatch = await compareCase("combined commenter and case-insensitive text search", 1, "COMET PHRASE");
+    assert.equal(combinedMatch.totalCount, 1, "search and commenter conditions must both match");
+    assert.equal(combinedMatch.hasMore, false);
+    assert.deepEqual(combinedMatch.comments.map(comment => comment.id), [1]);
+    assert.deepEqual(
+      combinedMatch.comments[0].replies.map(reply => reply.id),
+      [2, 3],
+      "search results must retain all replies in the matching thread",
+    );
+
+    const combinedNonMatch = await compareCase("combined filters exclude another author's text match", 1, "unmatched thread");
+    assert.equal(combinedNonMatch.totalCount, 0);
+    assert.equal(combinedNonMatch.hasMore, false);
+    assert.deepEqual(combinedNonMatch.comments, []);
   });
 });
 

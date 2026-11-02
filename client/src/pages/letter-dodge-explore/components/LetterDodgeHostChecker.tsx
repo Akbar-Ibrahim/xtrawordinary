@@ -7,15 +7,6 @@ interface Props {
   forbiddenLetters: string;
 }
 
-function checkMessage(result: LetterDodgeCheckResponse): string {
-  if (!result.dictionaryMatch) return "This word was not found in the dictionary.";
-  if (!result.constraintMatch) return "This dictionary word contains one or more selected forbidden letters.";
-  if (result.gameplayExclusion) {
-    return `This is a valid dictionary match for Explore, but ${result.gameplayExclusion.toLowerCase()}`;
-  }
-  return "This dictionary word avoids the selected letters and meets Letter Dodge's gameplay length rule.";
-}
-
 export function LetterDodgeHostChecker({ forbiddenLetters }: Props) {
   const [answer, setAnswer] = useState("");
   const checkMutation = useMutation({
@@ -29,18 +20,17 @@ export function LetterDodgeHostChecker({ forbiddenLetters }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="dodge-host-heading">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-destructive">For the host</p>
-      <h2 id="dodge-host-heading" className="mt-1 text-xl font-semibold">Check a spoken word</h2>
-      <p className="mt-1 text-sm text-muted-foreground">A word is an Explore match if it is in the dictionary and avoids every selected letter. The four-letter gameplay minimum is reported separately.</p>
+    <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="dodge-word-check-heading">
+      <h2 id="dodge-word-check-heading" className="text-xl font-semibold">Check a word</h2>
+      <p className="mt-1 text-sm text-muted-foreground">See whether a word avoids the selected letters and exists in the dictionary.</p>
       <form onSubmit={submit} className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <label className="sr-only" htmlFor="dodge-host-answer">Spoken answer</label>
+        <label className="sr-only" htmlFor="dodge-word-check">Word to check</label>
         <input
-          id="dodge-host-answer"
+          id="dodge-word-check"
           value={answer}
           onChange={(event) => setAnswer(event.target.value.replace(/[^a-z]/gi, "").toUpperCase())}
           className="min-w-0 flex-1 rounded-lg border bg-background px-3 py-2.5 font-mono uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          placeholder="Enter the word"
+          placeholder="Enter a word"
           autoCapitalize="characters"
           autoComplete="off"
           maxLength={100}
@@ -53,7 +43,10 @@ export function LetterDodgeHostChecker({ forbiddenLetters }: Props) {
       {checkMutation.data && (
         <div className={`mt-4 rounded-lg border p-3 ${checkMutation.data.dictionaryMatch && checkMutation.data.constraintMatch ? "border-emerald-500/40 bg-emerald-500/10" : "border-destructive/30 bg-destructive/5"}`} role="status">
           <p className="font-semibold">{checkMutation.data.word}</p>
-          <p className="mt-1 text-sm">{checkMessage(checkMutation.data)}</p>
+          <ul className="mt-2 space-y-1 text-sm">
+            <li>Avoids selected letters: {checkMutation.data.constraintMatch ? "✅" : "❌"}</li>
+            <li>Exists in dictionary: {checkMutation.data.dictionaryMatch ? "✅" : "❌"}</li>
+          </ul>
           {checkMutation.data.source === "preview" && (
             <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">Checked against the small preview dictionary, not the full connected dictionary.</p>
           )}

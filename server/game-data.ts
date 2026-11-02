@@ -10,6 +10,7 @@ import { WORD_STACK_GAME_MODES } from "@shared/word-stack";
 import { NO_REPEATS_GAME_MODES } from "@shared/no-repeats";
 import { WORD_EXTENSION_GAME_MODES } from "@shared/word-extension";
 import { WORD_SPLIT_GAME_MODES } from "@shared/word-split";
+import { DEFAULT_SIMILAR_GAME_SLUGS } from "@shared/similar-games";
 
 export const wordLadderPuzzlesData: WordLadderPuzzle[] = [
   {
@@ -775,7 +776,7 @@ export const wordStretchPuzzles: WordStretchPuzzle[] = (() => {
   return result;
 })();
 
-export const gamesData: Game[] = [
+const baseGamesData: Game[] = [
   {
     id: 1,
     slug: "word-ladder",
@@ -1007,13 +1008,11 @@ export const gamesData: Game[] = [
     description: "Form words based on vowel and consonant requirements across many variations.",
     longDescription: "Master the art of balancing vowels and consonants! Choose your challenge from multiple variations - form words with specific numbers of vowels or consonants, or words that start/end with certain letter types. Each variation offers a unique puzzle!",
     rules: [
-      "Choose from 5 different challenge variations",
-      "Consonant Count: Words with exactly 2, 3, or 4 consonants",
-      "Vowel Count: Words with exactly 2, 3, or 4 vowels",
-      "Start & End Consonant: Words beginning and ending with consonants",
-      "Start Vowel, End Consonant: Words starting with a vowel, ending with a consonant",
-      "Start Consonant, End Vowel: Words starting with a consonant, ending with a vowel",
-      "Complete 20 words per round across 5 rounds"
+      "Enter valid dictionary words that meet the letter constraint shown for each answer.",
+      "Consonant Count and Vowel Count require the exact number shown.",
+      "Word-position challenges require the shown word length and vowel/consonant pattern at the beginning or end.",
+      "Locked Balance requires the chosen word length and consonant count; all remaining letters must be vowels.",
+      "Advanced challenges change the constraint after each correct word."
     ],
     difficulty: "medium",
     estimatedTime: "8-12 min",
@@ -1466,3 +1465,10 @@ export const gamesData: Game[] = [
     })),
   }
 ];
+
+export const gamesData: Game[] = baseGamesData.map((game) => ({
+  ...game,
+  similarGameSlugs: DEFAULT_SIMILAR_GAME_SLUGS[game.slug]
+    ? [...DEFAULT_SIMILAR_GAME_SLUGS[game.slug]]
+    : null,
+}));

@@ -42,22 +42,22 @@ export function LetterBalanceHostChecker({ filters }: Props) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Check a spoken answer</CardTitle>
+          <CardTitle className="text-lg">Check a word</CardTitle>
       </CardHeader>
       <CardContent>
         <p className="mb-4 text-sm text-muted-foreground">
-          Enter the word someone says aloud. The check uses the pattern selected above.
+          See whether a word exists in the dictionary and matches the pattern selected above.
         </p>
         <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submit}>
           <Input
-            aria-label="Spoken answer"
+            aria-label="Word to check"
             autoComplete="off"
             value={answer}
             onChange={(event) => setAnswer(event.target.value.replace(/[^A-Za-z]/g, "").toUpperCase())}
             placeholder="ENTER A WORD"
           />
           <Button type="submit" disabled={!answer.trim() || checkMutation.isPending} className="shrink-0">
-            {checkMutation.isPending ? "Checking…" : "Check answer"}
+            {checkMutation.isPending ? "Checking…" : "Check word"}
           </Button>
         </form>
         {checkMutation.error && (

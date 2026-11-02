@@ -15,6 +15,8 @@ export const users = mysqlTable("users", {
   isBanned: boolean("is_banned").notNull().default(false),
   isPremium: boolean("is_premium").notNull().default(false),
   bio: text("bio"),
+  hideActivity: boolean("hide_activity").notNull().default(false),
+  lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("users_username_normalized_idx").on(table.usernameNormalized),
@@ -125,12 +127,24 @@ export const friendships = mysqlTable("friendships", {
   id: int("id").primaryKey().autoincrement(),
   requesterId: int("requester_id").notNull(),
   addresseeId: int("addressee_id").notNull(),
+  note: varchar("note", { length: 200 }),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("fr_requester_idx").on(table.requesterId),
   index("fr_addressee_idx").on(table.addresseeId),
   index("fr_status_addressee_idx").on(table.status, table.addresseeId),
+]);
+
+export const userBlocks = mysqlTable("user_blocks", {
+  id: int("id").primaryKey().autoincrement(),
+  blockerId: int("blocker_id").notNull(),
+  blockedUserId: int("blocked_user_id").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("user_block_pair_idx").on(table.blockerId, table.blockedUserId),
+  index("user_block_blocker_idx").on(table.blockerId),
+  index("user_block_blocked_idx").on(table.blockedUserId),
 ]);
 
 export const friendChallenges = mysqlTable("friend_challenges", {
@@ -427,11 +441,15 @@ export const games = mysqlTable("games", {
   isActive: boolean("is_active").notNull().default(true),
   hasSurvival: boolean("has_survival").notNull().default(false),
   modes: json("modes").$type<GameMode[]>(),
+  similarGameSlugs: json("similar_game_slugs").$type<string[]>(),
   timeLimitSeconds: int("time_limit_seconds"),
   wordTarget: int("word_target"),
   livesCount: int("lives_count"),
   survivalSecondsPerWord: int("survival_seconds_per_word"),
-});
+  creatorId: int("creator_id").references(() => users.id, { onDelete: "set null" }),
+}, (table) => [
+  index("games_creator_idx").on(table.creatorId),
+]);
 
 export const wordCategories = mysqlTable("word_categories", {
   id: int("id").primaryKey().autoincrement(),
@@ -449,6 +467,7 @@ export const comments = mysqlTable("comments", {
   parentId: int("parent_id"),
   content: text("content").notNull(),
   isDeleted: boolean("is_deleted").notNull().default(false),
+  isPinned: boolean("is_pinned").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at"),
 }, (table) => [
@@ -456,6 +475,7 @@ export const comments = mysqlTable("comments", {
   index("cmt_user_idx").on(table.userId),
   index("cmt_parent_idx").on(table.parentId),
   index("cmt_created_at_idx").on(table.createdAt),
+  index("cmt_pinned_idx").on(table.targetType, table.targetId, table.isPinned),
 ]);
 
 export const commentReports = mysqlTable("comment_reports", {
@@ -467,6 +487,21 @@ export const commentReports = mysqlTable("comment_reports", {
 }, (table) => [
   index("cr_comment_idx").on(table.commentId),
   index("cr_user_idx").on(table.reportingUserId),
+]);
+
+export const userReports = mysqlTable("user_reports", {
+  id: int("id").primaryKey().autoincrement(),
+  reportingUserId: int("reporting_user_id").notNull(),
+  reportedUserId: int("reported_user_id").notNull(),
+  reason: varchar("reason", { length: 40 }).notNull(),
+  details: text("details"),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("user_reports_reporter_idx").on(table.reportingUserId),
+  index("user_reports_reported_idx").on(table.reportedUserId),
+  index("user_reports_created_idx").on(table.createdAt),
+  index("user_reports_read_idx").on(table.readAt),
 ]);
 
 export const likes = mysqlTable("likes", {

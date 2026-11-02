@@ -3,7 +3,7 @@ import type { Friendship, InsertFriendship, FriendChallenge, InsertFriendChallen
 import * as schema from "../db-schema";
 
 function toFriendship(r: any): Friendship {
-  return { id: r.id, requesterId: r.requesterId, addresseeId: r.addresseeId, status: r.status as Friendship["status"], createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) };
+  return { id: r.id, requesterId: r.requesterId, addresseeId: r.addresseeId, note: r.note ?? null, status: r.status as Friendship["status"], createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt) };
 }
 
 function toChallenge(r: any): FriendChallenge {
@@ -15,8 +15,8 @@ export async function getFriendshipById(db: any, id: number): Promise<Friendship
   return rows[0] ? toFriendship(rows[0]) : undefined;
 }
 
-export async function sendFriendRequest(db: any, requesterId: number, addresseeId: number): Promise<Friendship> {
-  const result = await db.insert(schema.friendships).values({ requesterId, addresseeId, status: "pending" });
+export async function sendFriendRequest(db: any, requesterId: number, addresseeId: number, note?: string | null): Promise<Friendship> {
+  const result = await db.insert(schema.friendships).values({ requesterId, addresseeId, note: note ?? null, status: "pending" });
   return (await getFriendshipById(db, result[0].insertId))!;
 }
 
@@ -30,20 +30,77 @@ export async function declineFriendRequest(db: any, id: number): Promise<Friends
   return getFriendshipById(db, id);
 }
 
+export async function cancelFriendRequest(db: any, id: number, requesterId: number): Promise<boolean> {
+  const result = await db.delete(schema.friendships).where(and(
+    eq(schema.friendships.id, id),
+    eq(schema.friendships.requesterId, requesterId),
+    eq(schema.friendships.status, "pending"),
+  ));
+  return (result[0]?.affectedRows ?? 0) > 0;
+}
+
 export async function removeFriend(db: any, id: number): Promise<void> {
   await db.delete(schema.friendships).where(eq(schema.friendships.id, id));
 }
 
-export async function getFriends(db: any, userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
+export async function getFriends(db: any, userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null; lastActiveAt: string | null } }>> {
   const rows = await db.select().from(schema.friendships).where(and(eq(schema.friendships.status, "accepted"), or(eq(schema.friendships.requesterId, userId), eq(schema.friendships.addresseeId, userId))));
   if (rows.length === 0) return [];
   const friendIds = rows.map((r: any) => r.requesterId === userId ? r.addresseeId : r.requesterId);
-  const friendUsers = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, friendIds));
-  const userMap = new Map(friendUsers.map((u: any) => [u.id, { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  const friendUsers = await db.select({
+    id: schema.users.id,
+    username: schema.users.username,
+    name: schema.users.name,
+    avatarUrl: schema.users.avatarUrl,
+    hideActivity: schema.users.hideActivity,
+    lastActiveAt: schema.users.lastActiveAt,
+  }).from(schema.users).where(inArray(schema.users.id, friendIds));
+  const userMap = new Map(friendUsers.map((u: any) => [u.id, {
+    id: u.id,
+    username: u.username,
+    name: u.name,
+    avatarUrl: u.avatarUrl || null,
+    lastActiveAt: u.hideActivity || !u.lastActiveAt ? null : u.lastActiveAt instanceof Date ? u.lastActiveAt.toISOString() : String(u.lastActiveAt),
+  }]));
   return rows.map((row: any) => {
     const friendId = row.requesterId === userId ? row.addresseeId : row.requesterId;
-    return { ...toFriendship(row), friendUser: userMap.get(friendId) || { id: friendId, username: "unknown", name: "Unknown", avatarUrl: null } };
+    return { ...toFriendship(row), friendUser: userMap.get(friendId) || { id: friendId, username: "unknown", name: "Unknown", avatarUrl: null, lastActiveAt: null } };
   });
+}
+
+export async function getFriendActivity(db: any, viewerId: number, candidateUserIds: number[]): Promise<Record<number, string>> {
+  if (candidateUserIds.length === 0) return {};
+  const candidateIds = [...new Set<number>(candidateUserIds)].filter((id) => id !== viewerId);
+  if (candidateIds.length === 0) return {};
+  const friendshipRows = await db.select({
+    requesterId: schema.friendships.requesterId,
+    addresseeId: schema.friendships.addresseeId,
+  }).from(schema.friendships).where(and(
+    eq(schema.friendships.status, "accepted"),
+    or(
+      and(eq(schema.friendships.requesterId, viewerId), inArray(schema.friendships.addresseeId, candidateIds)),
+      and(eq(schema.friendships.addresseeId, viewerId), inArray(schema.friendships.requesterId, candidateIds)),
+    ),
+  ));
+  const friendIds = [...new Set<number>(friendshipRows.map((row: any) =>
+    row.requesterId === viewerId ? row.addresseeId : row.requesterId,
+  ))];
+  if (friendIds.length === 0) return {};
+  const userRows = await db.select({
+    id: schema.users.id,
+    lastActiveAt: schema.users.lastActiveAt,
+  }).from(schema.users).where(and(
+    inArray(schema.users.id, friendIds),
+    eq(schema.users.hideActivity, false),
+  ));
+  const visibleActivity: Record<number, string> = {};
+  for (const user of userRows) {
+    if (!user.lastActiveAt) continue;
+    visibleActivity[user.id] = user.lastActiveAt instanceof Date
+      ? user.lastActiveAt.toISOString()
+      : String(user.lastActiveAt);
+  }
+  return visibleActivity;
 }
 
 export async function getPendingFriendRequests(db: any, userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
@@ -53,6 +110,15 @@ export async function getPendingFriendRequests(db: any, userId: number): Promise
   const requesterUsers = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, requesterIds));
   const userMap = new Map(requesterUsers.map((u: any) => [u.id, { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl || null }]));
   return rows.map((row: any) => ({ ...toFriendship(row), requesterUser: userMap.get(row.requesterId) || { id: row.requesterId, username: "unknown", name: "Unknown", avatarUrl: null } }));
+}
+
+export async function getOutgoingPendingFriendRequests(db: any, userId: number): Promise<Array<Friendship & { addresseeUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
+  const rows = await db.select().from(schema.friendships).where(and(eq(schema.friendships.status, "pending"), eq(schema.friendships.requesterId, userId)));
+  if (rows.length === 0) return [];
+  const addresseeIds = rows.map((r: any) => r.addresseeId);
+  const addresseeUsers = await db.select({ id: schema.users.id, username: schema.users.username, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, addresseeIds));
+  const userMap = new Map(addresseeUsers.map((u: any) => [u.id, { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl || null }]));
+  return rows.map((row: any) => ({ ...toFriendship(row), addresseeUser: userMap.get(row.addresseeId) || { id: row.addresseeId, username: "unknown", name: "Unknown", avatarUrl: null } }));
 }
 
 export async function getFriendship(db: any, userId1: number, userId2: number): Promise<Friendship | undefined> {

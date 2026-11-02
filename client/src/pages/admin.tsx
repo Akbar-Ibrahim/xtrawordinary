@@ -15,6 +15,7 @@ import { WordWarsTab } from "./admin/WordWarsTab";
 import { SiteTab } from "./admin/SiteTab";
 import { ContactMessagesTab } from "./admin/ContactMessagesTab";
 import { GameReportsTab } from "./admin/GameReportsTab";
+import { UserReportsTab } from "./admin/UserReportsTab";
 
 export default function Admin() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -51,6 +52,7 @@ export default function Admin() {
             <TabsTrigger value="comments" data-testid="tab-comments"><MessageSquare className="h-4 w-4 mr-1" />Comments</TabsTrigger>
             <TabsTrigger value="contact" data-testid="tab-contact"><Inbox className="h-4 w-4 mr-1" />Contact</TabsTrigger>
             <TabsTrigger value="game-reports" data-testid="tab-game-reports"><Flag className="h-4 w-4 mr-1" />Game Reports</TabsTrigger>
+            <TabsTrigger value="user-reports" data-testid="tab-user-reports"><Flag className="h-4 w-4 mr-1" />User Reports</TabsTrigger>
             <TabsTrigger value="word-wars" data-testid="tab-word-wars"><Swords className="h-4 w-4 mr-1" />Word Wars</TabsTrigger>
             <TabsTrigger value="guild-wars" data-testid="tab-guild-wars"><Swords className="h-4 w-4 mr-1" />Guild Wars</TabsTrigger>
             <TabsTrigger value="site" data-testid="tab-site"><Shield className="h-4 w-4 mr-1" />Site</TabsTrigger>
@@ -64,6 +66,7 @@ export default function Admin() {
           <TabsContent value="comments"><CommentsTab /></TabsContent>
           <TabsContent value="contact"><ContactMessagesTab /></TabsContent>
           <TabsContent value="game-reports"><GameReportsTab /></TabsContent>
+          <TabsContent value="user-reports"><UserReportsTab /></TabsContent>
           <TabsContent value="word-wars"><WordWarsTab /></TabsContent>
           <TabsContent value="guild-wars"><GuildWarsTab /></TabsContent>
           <TabsContent value="site"><SiteTab /></TabsContent>

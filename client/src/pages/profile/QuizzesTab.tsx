@@ -1,10 +1,12 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GraduationCap, ChevronRight, Copy, CheckCheck, Play, Trash2, Users } from "lucide-react";
+import { GraduationCap, ChevronRight, Copy, CheckCheck, Play, Trash2, Users, CopyPlus } from "lucide-react";
 import type { Game } from "@shared/schema";
 import type { QuizSessionWithCount } from "./types";
+import { QuizReuseDialog } from "@/pages/game-detail/QuizReuseDialog";
 
 interface Props {
   isOwnProfile: boolean;
@@ -27,6 +29,8 @@ export function QuizzesTab({
   onCopyLink,
   onDeleteClick,
 }: Props) {
+  const [reusingQuiz, setReusingQuiz] = useState<QuizSessionWithCount | null>(null);
+
   return (
     <>
       {isOwnProfile && !quizzesLoading && (
@@ -101,6 +105,19 @@ export function QuizzesTab({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
+                      onClick={() => setReusingQuiz(quiz)}
+                      title="Reuse quiz settings"
+                      aria-label="Reuse quiz settings"
+                      data-testid={`button-reuse-quiz-${quiz.id}`}
+                    >
+                      <CopyPlus className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  )}
+                  {isOwnProfile && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={(event) => onCopyLink(quiz.shareCode, event.currentTarget)}
                       disabled={copyPending}
                       title="Copy play link"
@@ -141,6 +158,11 @@ export function QuizzesTab({
           })}
         </div>
       )}
+      <QuizReuseDialog
+        session={reusingQuiz}
+        open={!!reusingQuiz}
+        onOpenChange={(open) => { if (!open) setReusingQuiz(null); }}
+      />
     </>
   );
 }

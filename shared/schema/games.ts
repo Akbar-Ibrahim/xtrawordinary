@@ -24,10 +24,12 @@ export const gameSchema = z.object({
   isActive: z.boolean().optional(),
   hasSurvival: z.boolean().optional(),
   modes: z.array(gameModeSchema).optional(),
+  similarGameSlugs: z.array(z.string()).nullable().optional(),
   timeLimitSeconds: z.number().int().positive().nullable().optional(),
   wordTarget: z.number().int().positive().nullable().optional(),
   livesCount: z.number().int().positive().nullable().optional(),
   ogImage: z.string().optional(),
+  creatorId: z.number().int().positive().nullable().optional(),
 });
 
 export type Game = z.infer<typeof gameSchema>;

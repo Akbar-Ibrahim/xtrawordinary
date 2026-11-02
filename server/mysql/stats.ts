@@ -247,14 +247,22 @@ export async function getUserAchievements(db: any, userId: number): Promise<User
   return rows.map((r: any) => ({ id: r.id, userId: r.userId, achievementId: r.achievementId, unlockedAt: r.unlockedAt instanceof Date ? r.unlockedAt.toISOString() : String(r.unlockedAt) }));
 }
 
-export async function saveUserAchievement(db: any, userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement> {
-  const existing = await db.select().from(schema.userAchievements).where(and(eq(schema.userAchievements.userId, userId), eq(schema.userAchievements.achievementId, achievementId))).limit(1);
-  if (existing[0]) {
-    const r = existing[0];
-    return { id: r.id, userId: r.userId, achievementId: r.achievementId, unlockedAt: r.unlockedAt instanceof Date ? r.unlockedAt.toISOString() : String(r.unlockedAt) };
-  }
-  const result = await db.insert(schema.userAchievements).values({ userId, achievementId, unlockedAt: new Date(unlockedAt) });
-  return { id: result[0].insertId, userId, achievementId, unlockedAt };
+export async function saveUserAchievement(db: any, userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement & { newlyEarned: boolean }> {
+  const result = await db.insert(schema.userAchievements)
+    .values({ userId, achievementId, unlockedAt: new Date(unlockedAt) })
+    .ignore();
+  const rows = await db.select().from(schema.userAchievements)
+    .where(and(eq(schema.userAchievements.userId, userId), eq(schema.userAchievements.achievementId, achievementId)))
+    .limit(1);
+  const row = rows[0];
+  if (!row) throw new Error("Achievement was not saved");
+  return {
+    id: row.id,
+    userId: row.userId,
+    achievementId: row.achievementId,
+    unlockedAt: row.unlockedAt instanceof Date ? row.unlockedAt.toISOString() : String(row.unlockedAt),
+    newlyEarned: Number(result[0]?.affectedRows ?? 0) > 0,
+  };
 }
 
 export async function getAchievementRarities(db: any): Promise<Record<string, number>> {

@@ -16,6 +16,7 @@ import { GuildWarsCard } from "./profile/GuildWarsCard";
 import { WordWarsCard } from "./profile/WordWarsCard";
 import { EditProfileDialog } from "./profile/EditProfileDialog";
 import { ProfileTabs } from "./profile/ProfileTabs";
+import { useAvatarUpload } from "./profile/useAvatarUpload";
 
 const PROFILE_TABS = ["stats", "quizzes", "rankings", "achievements", "duels", "social", "settings"] as const;
 type ProfileTab = typeof PROFILE_TABS[number];
@@ -70,7 +71,7 @@ export default function Profile() {
   const [deleteQuizCode, setDeleteQuizCode] = useState<string | null>(null);
 
   const {
-    profile, isLoading, isOwnProfile, isAuthenticated,
+    profile, isLoading, lastActiveAt, isOwnProfile, isAuthenticated, hideActivity,
     gameMap, formatGameName,
     friendship, sendRequest, downgradePremium, updateProfile, deleteAccount, deleteQuiz,
     duelRating, hasDuelActivity, duelRank, totalDuelPlayers,
@@ -82,6 +83,7 @@ export default function Profile() {
     unlockedIds, achievementPoints, maxPoints,
     localStats, localStreak, localDuelStats,
   } = useProfileData(userId);
+  const { uploadAvatar, cancelAvatarUpload, isUploadingAvatar, avatarUploadProgress } = useAvatarUpload(userId);
 
   function copyQuizLink(shareCode: string, source: HTMLButtonElement) {
     void linkCopy.copy(`${window.location.origin}/quiz/${shareCode}`, source);
@@ -120,13 +122,14 @@ export default function Profile() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
         <ProfileHeader
           profile={profile}
+          lastActiveAt={lastActiveAt}
           isOwnProfile={isOwnProfile}
           isAuthenticated={isAuthenticated}
           championships={championships}
           guildWarsChampionships={guildWarsChampionships}
           friendship={friendship}
           sendRequestPending={sendRequest.isPending}
-          onSendFriendRequest={() => sendRequest.mutate()}
+          onSendFriendRequest={(note) => sendRequest.mutate(note)}
           downgradePremiumPending={downgradePremium.isPending}
           onDowngradePremium={() => downgradePremium.mutate()}
           onOpenEdit={() => setEditOpen(true)}
@@ -181,9 +184,20 @@ export default function Profile() {
       <EditProfileDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        profileUser={{ username: profile.user.username, name: profile.user.name, avatarUrl: profile.user.avatarUrl, bio: (profile.user as any).bio ?? null }}
-        onSave={(data) => updateProfile.mutate(data, { onSuccess: () => setEditOpen(false) })}
-        isPending={updateProfile.isPending}
+        profileUser={{ username: profile.user.username, name: profile.user.name, avatarUrl: profile.user.avatarUrl, bio: (profile.user as any).bio ?? null, hideActivity }}
+        onSave={async (data, avatarFile) => {
+          try {
+            if (Object.keys(data).length > 0) await updateProfile.mutateAsync(data);
+            if (avatarFile) await uploadAvatar(avatarFile);
+            setEditOpen(false);
+          } catch {
+            // The profile and avatar mutations show their own failure messages.
+          }
+        }}
+        onCancelUpload={cancelAvatarUpload}
+        isPending={updateProfile.isPending || isUploadingAvatar}
+        isUploadingAvatar={isUploadingAvatar}
+        avatarUploadProgress={avatarUploadProgress}
       />
 
       {isAuthenticated && !isOwnProfile && (

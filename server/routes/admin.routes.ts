@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../auth";
-import { notificationTypeSchema } from "@shared/schema";
+import { notificationPreferenceTypeSchema } from "@shared/schema";
 import { registerNotifSSE, unregisterNotifSSE } from "../realtime/notification-sse";
 import { parseGameConfigUpdate } from "../game-config";
 
@@ -138,6 +138,61 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  app.patch("/api/admin/games/:slug/creator", requireAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { creatorId } = req.body;
+      if (creatorId !== null && (!Number.isSafeInteger(creatorId) || creatorId <= 0)) {
+        return res.status(400).json({ error: "creatorId must be a positive integer or null" });
+      }
+      const game = await storage.getGameBySlug(slug);
+      if (!game) return res.status(404).json({ error: "Game not found" });
+      if (creatorId !== null && !await storage.getUserById(creatorId)) {
+        return res.status(404).json({ error: "Creator not found" });
+      }
+      await storage.setGameCreatorId(slug, creatorId);
+      const updated = await storage.getGameBySlug(slug);
+      if (!updated) return res.status(500).json({ error: "Failed to update game creator" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update game creator" });
+    }
+  });
+
+  app.patch("/api/admin/games/:slug/similar-games", requireAdmin, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const similarGameSlugs: unknown = req.body?.similarGameSlugs;
+      if (
+        !Array.isArray(similarGameSlugs) ||
+        !similarGameSlugs.every((item) => typeof item === "string" && item.length > 0)
+      ) {
+        return res.status(400).json({ error: "similarGameSlugs must be an array of game slugs" });
+      }
+      if (similarGameSlugs.includes(slug)) {
+        return res.status(400).json({ error: "A game cannot recommend itself" });
+      }
+      if (new Set(similarGameSlugs).size !== similarGameSlugs.length) {
+        return res.status(400).json({ error: "Similar game slugs must be unique" });
+      }
+
+      const games = await storage.getAllGames();
+      const validSlugs = new Set(games.map((game) => game.slug));
+      const unknownSlugs = similarGameSlugs.filter((gameSlug) => !validSlugs.has(gameSlug));
+      if (unknownSlugs.length > 0) {
+        return res.status(400).json({ error: `Unknown game slug(s): ${unknownSlugs.join(", ")}` });
+      }
+      if (!validSlugs.has(slug)) return res.status(404).json({ error: "Game not found" });
+
+      await storage.setGameSimilarGameSlugs(slug, similarGameSlugs);
+      const updated = await storage.getGameBySlug(slug);
+      if (!updated) return res.status(500).json({ error: "Failed to update Similar Games" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update Similar Games" });
+    }
+  });
+
   app.patch("/api/admin/games/:slug/config", requireAdmin, async (req, res) => {
     try {
       const { slug } = req.params;
@@ -211,7 +266,7 @@ export function registerAdminRoutes(app: Express): void {
   app.patch("/api/notification-preferences/:type", requireAuth, async (req, res) => {
     try {
       const type = req.params.type;
-      const parsed = notificationTypeSchema.safeParse(type);
+      const parsed = notificationPreferenceTypeSchema.safeParse(type);
       if (!parsed.success) return res.status(400).json({ error: "Invalid notification type" });
       const { enabled } = req.body;
       if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled must be a boolean" });
@@ -283,6 +338,14 @@ export function registerAdminRoutes(app: Express): void {
 
     registerNotifSSE(userId, res);
 
+    let testDisconnectTimeout: ReturnType<typeof setTimeout> | undefined;
+    if (process.env.NODE_ENV !== "production") {
+      const requestedDelay = Number(req.query.testDisconnectAfterMs);
+      if (Number.isInteger(requestedDelay) && requestedDelay >= 0 && requestedDelay <= 1000) {
+        testDisconnectTimeout = setTimeout(() => res.end(), requestedDelay);
+      }
+    }
+
     const pingInterval = setInterval(() => {
       try {
         res.write(": ping\n\n");
@@ -293,6 +356,7 @@ export function registerAdminRoutes(app: Express): void {
 
     res.on("close", () => {
       clearInterval(pingInterval);
+      if (testDisconnectTimeout) clearTimeout(testDisconnectTimeout);
       unregisterNotifSSE(userId, res);
     });
   });

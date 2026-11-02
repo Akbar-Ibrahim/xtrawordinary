@@ -17,12 +17,16 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { FreshAnswerOptIn, FreshAnswerToggle } from "./custom-fresh-answers-controls";
 import { getLetterHuntLeaderboardSlug, type LetterHuntChallenge } from "@shared/letter-hunt";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 
 const SURVIVAL_TIME_PER_WORD = 8;
 const HUNT_EXAMPLES_THRESHOLD = 5;
@@ -191,9 +195,15 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
   const [gameStatus, setGameStatus] = useState<"menu" | "mode-select" | "playing" | "won" | "lost">("menu");
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
+  const freshAnswers = useCustomFreshAnswers({
+    game: "letter-hunt",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const [authOpen, setAuthOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const [runAcceptedWords, setRunAcceptedWords] = useState<Set<string>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -277,6 +287,7 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    setRunAcceptedWords(new Set());
     setUserInput("");
     setFeedback(null);
 
@@ -320,6 +331,10 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
     setGameStatus("menu");
   }, [stopTimer]);
 
+  const enableFreshAnswers = useCallback(() => {
+    freshAnswers.optInWithAnswers(runAcceptedWords);
+  }, [freshAnswers.optInWithAnswers, runAcceptedWords]);
+
   useEffect(() => {
     if (gameStatus === "won" || gameStatus === "lost") {
       const isCompetitive = !isSurvivalRef.current || survivalTime === SURVIVAL_TIME_PER_WORD;
@@ -329,6 +344,22 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
       onGameEnd?.();
     }
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
+
+  useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      freshAnswers.isEnabled &&
+      (gameStatus === "won" || gameStatus === "lost")
+    ) {
+      freshAnswers.appendAnswersFromRun(runAcceptedWords);
+    }
+  }, [
+    gameStatus,
+    freshAnswers.isAvailable,
+    freshAnswers.isEnabled,
+    freshAnswers.appendAnswersFromRun,
+    runAcceptedWords,
+  ]);
 
   useEffect(() => {
     return () => stopTimer();
@@ -376,6 +407,18 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
       }
     }
 
+    if (freshAnswers.isBlocked(upperWord)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
+      return;
+    }
+
     try {
       const result = await validateMutation.mutateAsync(upperWord);
       if (!result.valid) {
@@ -390,8 +433,9 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
       }
 
       playSound("correct");
-        setFeedback({ type: "correct", message: "Correct!" });
+      setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      setRunAcceptedWords((prev) => new Set(prev).add(upperWord));
       setStreak(prev => prev + 1);
       
       const challengeBonus = challenge === "advanced" ? 50 : (challenge as number) * 25;
@@ -563,6 +607,11 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                 <div className="text-xs text-muted-foreground font-normal">
                   Letters can appear anywhere in the word — order doesn't matter
                 </div>
+                <PersonalBestPair
+                  classicSlug={getLetterHuntLeaderboardSlug(pendingChallenge, false)}
+                  survivalSlug={getLetterHuntLeaderboardSlug(pendingChallenge, false, true)}
+                  testId={`personal-bests-letter-hunt-${pendingChallenge}-unordered`}
+                />
               </div>
             </Button>
 
@@ -580,6 +629,11 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                 <div className="text-xs text-muted-foreground font-normal">
                   Letters must appear in the given order as a sequence
                 </div>
+                <PersonalBestPair
+                  classicSlug={getLetterHuntLeaderboardSlug(pendingChallenge, true)}
+                  survivalSlug={getLetterHuntLeaderboardSlug(pendingChallenge, true, true)}
+                  testId={`personal-bests-letter-hunt-${pendingChallenge}-ordered`}
+                />
               </div>
             </Button>
           </div>
@@ -704,6 +758,20 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                     PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
                   </span>
                 </div>
+
+                {freshAnswers.isAvailable && freshAnswers.snapshot && (
+                  <FreshAnswerToggle
+                    game="Letter Hunt"
+                    gameSlug="letter-hunt"
+                    isCustomPlay={Boolean(customPlay)}
+                    words={freshAnswers.snapshot.words}
+                    enabled={freshAnswers.isEnabled}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                  />
+                )}
 
                 <div className="max-w-sm mx-auto space-y-4">
                   <div className="relative">
@@ -875,6 +943,29 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                     </div>
                   </div>
                 )}
+                {freshAnswers.isAvailable && freshAnswers.snapshot && (
+                  <FreshAnswerToggle
+                    game="Letter Hunt"
+                    gameSlug="letter-hunt"
+                    isCustomPlay={Boolean(customPlay)}
+                    words={freshAnswers.snapshot.words}
+                    enabled={freshAnswers.isEnabled}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                  />
+                )}
+                {freshAnswers.isAvailable && !freshAnswers.snapshot && !freshAnswers.optedOutForCurrentRun && (
+                  <FreshAnswerOptIn
+                    game="Letter Hunt"
+                    gameSlug="letter-hunt"
+                    isCustomPlay={Boolean(customPlay)}
+                    answerCount={runAcceptedWords.size}
+                    storageError={freshAnswers.storageError}
+                    onSave={enableFreshAnswers}
+                  />
+                )}
                 {customPlay && (
                   <div className="flex justify-center">
                     <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">
@@ -994,6 +1085,29 @@ export function LetterHuntGame({ initialChallenge, initialLetter, initialLetters
                       ))}
                     </div>
                   </div>
+                )}
+                {freshAnswers.isAvailable && freshAnswers.snapshot && (
+                  <FreshAnswerToggle
+                    game="Letter Hunt"
+                    gameSlug="letter-hunt"
+                    isCustomPlay={Boolean(customPlay)}
+                    words={freshAnswers.snapshot.words}
+                    enabled={freshAnswers.isEnabled}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                  />
+                )}
+                {freshAnswers.isAvailable && !freshAnswers.snapshot && !freshAnswers.optedOutForCurrentRun && (
+                  <FreshAnswerOptIn
+                    game="Letter Hunt"
+                    gameSlug="letter-hunt"
+                    isCustomPlay={Boolean(customPlay)}
+                    answerCount={runAcceptedWords.size}
+                    storageError={freshAnswers.storageError}
+                    onSave={enableFreshAnswers}
+                  />
                 )}
                 {wordsCompleted < HUNT_EXAMPLES_THRESHOLD && (
                   <WordExamplesPanel

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { getExploreGame } from "@/lib/explore-games";
 import type { Game, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, QUIZ_MASTER_GAME_SLUGS, DUEL_GAME_SLUGS } from "@shared/schema";
 import { CUSTOM_PLAY_SLUGS, UNTIMED_GAME_SLUGS } from "./constants";
+import { PremiumFeaturePrompt, type PremiumFeatureName } from "./PremiumFeaturePrompt";
 
 type OpenDuel = DuelChallenge & {
   challengerName: string | null | undefined;
@@ -51,6 +53,15 @@ export function GameDetailSidebar({
 }: Props) {
   const [, navigate] = useLocation();
   const hasExplore = Boolean(getExploreGame(slug));
+  const [premiumPromptFeature, setPremiumPromptFeature] = useState<PremiumFeatureName | null>(null);
+
+  const runPremiumAction = (feature: PremiumFeatureName, action: () => void) => {
+    if (isPremium) {
+      action();
+      return;
+    }
+    setPremiumPromptFeature(feature);
+  };
 
   return (
     <aside aria-label="Play" className="min-w-0 max-w-full lg:sticky lg:top-24 h-fit space-y-4">
@@ -152,29 +163,29 @@ export function GameDetailSidebar({
             <Button
               variant="outline"
               className="w-full gap-2"
-              onClick={onQuiz}
+              onClick={() => runPremiumAction("Create Quiz", onQuiz)}
               data-testid="button-create-quiz"
             >
               <GraduationCap className="h-4 w-4" />
-              Create Quiz Session
+              Create Quiz
             </Button>
           )}
-          {isAuthenticated && isPremium && CUSTOM_PLAY_SLUGS.has(slug) && (
+          {isAuthenticated && CUSTOM_PLAY_SLUGS.has(slug) && (
             <Button
               variant="outline"
               className="w-full gap-2 border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
-              onClick={onCustomPlay}
+              onClick={() => runPremiumAction("Custom Play", onCustomPlay)}
               data-testid="button-custom-play"
             >
               <Sparkles className="h-4 w-4" />
               Custom Play
             </Button>
           )}
-          {isAuthenticated && isPremium && UNTIMED_GAME_SLUGS.has(slug) && (
+          {isAuthenticated && UNTIMED_GAME_SLUGS.has(slug) && (
             <Button
               variant="outline"
               className="w-full gap-2 border-blue-400 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-              onClick={onUntimed}
+              onClick={() => runPremiumAction("Untimed Mode", onUntimed)}
               data-testid="button-untimed-mode"
             >
               <span className="text-base leading-none">∞</span>
@@ -183,6 +194,12 @@ export function GameDetailSidebar({
           )}
         </CardContent>
       </Card>
+      <PremiumFeaturePrompt
+        feature={premiumPromptFeature}
+        onOpenChange={(open) => {
+          if (!open) setPremiumPromptFeature(null);
+        }}
+      />
       <Button variant="outline" className="w-full gap-2" onClick={onReport} data-testid="button-report-game">
         <Flag className="h-4 w-4" />
         Report an Issue

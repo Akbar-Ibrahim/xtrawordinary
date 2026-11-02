@@ -1,6 +1,8 @@
-import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply } from "@shared/schema";
+import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, InsertGroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, CommentAuthor, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge, Notification, InsertNotification, NotificationType, NotificationPreferenceType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsTournamentStatus, WordWarsMatchStatus, WordWarsMatchGameStatus, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, PartOfSpeech, InsertPartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply } from "@shared/schema";
 
 import { isMySQLStorageEnabled } from "./storage-config";
+import type { FriendSuggestion } from "./friends/discovery";
+import type { AdminUserReport, BlockedUser, UserReportInput } from "@shared/schema";
 import type { AnalyticsReportFilters } from "@shared/schema";
 import type { GameReport, InsertGameReport } from "@shared/schema";
 
@@ -24,7 +26,9 @@ export interface IStorage {
   getGames(): Promise<Game[]>;
   getAllGames(): Promise<Game[]>;
   setGameActive(slug: string, isActive: boolean): Promise<void>;
+  setGameCreatorId(slug: string, creatorId: number | null): Promise<void>;
   updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void>;
+  setGameSimilarGameSlugs(slug: string, similarGameSlugs: string[] | null): Promise<void>;
   getGameBySlug(slug: string): Promise<Game | undefined>;
   getWordLadderPuzzles(): Promise<WordLadderPuzzle[]>;
   getLadderRushPuzzles(wordLength: number): Promise<LadderRushPuzzle[]>;
@@ -86,7 +90,10 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUsersByUsernames(usernames: string[]): Promise<Array<Pick<User, "id" | "username">>>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined>;
+  recordUserActivity(userId: number, lastActiveAt: string): Promise<void>;
+  getFriendActivity(viewerId: number, candidateUserIds: number[]): Promise<Record<number, string>>;
 
   createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken>;
   getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined>;
@@ -118,7 +125,7 @@ export interface IStorage {
   getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }>;
 
   getUserAchievements(userId: number): Promise<UserAchievement[]>;
-  saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement>;
+  saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement & { newlyEarned: boolean }>;
 
   deleteUser(id: number): Promise<void>;
   getAllUsers(): Promise<User[]>;
@@ -139,15 +146,27 @@ export interface IStorage {
 
   getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>>;
   searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>>;
-  getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
+  getMutualFriendCounts(userId: number, candidateUserIds: number[]): Promise<Record<number, number>>;
+  getFriendSuggestions(userId: number, limit?: number): Promise<FriendSuggestion[]>;
+  isBlockedBetween(userId1: number, userId2: number): Promise<boolean>;
+  getBlockedUserIds(userId: number, candidateUserIds: number[]): Promise<number[]>;
+  getBlockedUsers(userId: number): Promise<BlockedUser[]>;
+  blockUser(blockerId: number, blockedUserId: number): Promise<void>;
+  unblockUser(blockerId: number, blockedUserId: number): Promise<void>;
+  createUserReport(reportingUserId: number, reportedUserId: number, input: UserReportInput): Promise<void>;
+  getUserReports(): Promise<AdminUserReport[]>;
+  markUserReportRead(id: number): Promise<boolean>;
+  getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null; lastActiveAt: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null>;
 
   getFriendshipById(id: number): Promise<Friendship | undefined>;
-  sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship>;
+  sendFriendRequest(requesterId: number, addresseeId: number, note?: string | null): Promise<Friendship>;
   acceptFriendRequest(id: number): Promise<Friendship | undefined>;
   declineFriendRequest(id: number): Promise<Friendship | undefined>;
+  cancelFriendRequest(id: number, requesterId: number): Promise<boolean>;
   removeFriend(id: number): Promise<void>;
-  getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>>;
+  getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null; lastActiveAt: string | null } }>>;
   getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>>;
+  getOutgoingPendingFriendRequests(userId: number): Promise<Array<Friendship & { addresseeUser: { id: number; username: string; name: string; avatarUrl: string | null } }>>;
   getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined>;
 
   expireFriendChallenges(): Promise<number>;
@@ -208,7 +227,19 @@ export interface IStorage {
   // Comments
   createComment(comment: InsertComment): Promise<Comment>;
   getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]>;
+  getCommentAuthors(targetType: CommentTargetType, targetId: string): Promise<CommentAuthor[]>;
+  getCommentsPage(
+    targetType: CommentTargetType,
+    targetId: string,
+    userId: number | undefined,
+    page: number,
+    pageSize: number,
+    sortOrder: import("@shared/schema").CommentSortOrder,
+    searchTerm?: string,
+    commenterId?: number,
+  ): Promise<import("@shared/schema").CommentPage>;
   getCommentById(id: number): Promise<Comment | null>;
+  setCommentPinned(id: number, targetType: CommentTargetType, targetId: string, isPinned: boolean): Promise<Comment | null>;
   updateComment(id: number, userId: number, content: string): Promise<Comment | null>;
   deleteComment(id: number, userId: number, isAdmin?: boolean): Promise<boolean>;
   reportComment(commentId: number, reportingUserId: number, reason: string): Promise<CommentReport>;
@@ -291,8 +322,8 @@ export interface IStorage {
   pruneNotifications(): Promise<number>;
 
   // Notification Preferences
-  getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>>;
-  setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void>;
+  getNotificationPreferences(userId: number): Promise<Record<NotificationPreferenceType, boolean>>;
+  setNotificationPreference(userId: number, type: NotificationPreferenceType, enabled: boolean): Promise<void>;
   setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void>;
 
   // Word Wars

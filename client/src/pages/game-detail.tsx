@@ -270,6 +270,14 @@ export default function GameDetail() {
     refetchOnMount: "always",
   });
 
+  useEffect(() => {
+    if (!game || window.location.hash !== "#comments") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("comments")?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [game]);
+
   const { data: allGames = [] } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
@@ -504,6 +512,7 @@ export default function GameDetail() {
         onOpenChange={setShowQuizDialog}
         slug={slug}
         game={game}
+        isPremium={!!user?.isPremium}
         navigate={navigate}
       />
       <CustomPlayDialog

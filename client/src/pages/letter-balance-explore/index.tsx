@@ -40,7 +40,7 @@ export default function LetterBalanceExplore() {
     <div className="container mx-auto min-w-0 max-w-7xl px-4 py-8">
       <PageSEO
         title="Explore Vowel & Consonant"
-        description="Browse words by vowel and consonant patterns, or check an answer during a game night."
+        description="Browse dictionary words by vowel and consonant patterns."
         path="/explore/letter-balance"
       />
       <Link href="/game/letter-balance" className="mb-7 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -51,7 +51,7 @@ export default function LetterBalanceExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Vowel & Consonant · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Explore the shape of words.</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Browse dictionary words by vowel and consonant patterns, or check an answer someone says aloud.
+          Browse dictionary words by vowel and consonant patterns, or check whether a word fits your selected pattern.
           Y counts as a consonant. Explore includes short words and does not change game validation or scoring.
         </p>
       </header>

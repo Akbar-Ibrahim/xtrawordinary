@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, Trophy, CheckCircle, XCircle, Loader2, Layers, Pencil, ArrowUp, ArrowDown, LogIn } from "lucide-react";
-import { makeSeededRng } from "@/lib/seeded-rng";
 import { ShareResults } from "@/components/share-results";
 import { useAuth } from "@/lib/auth-context";
 import { AuthModal } from "@/components/auth-modal";
@@ -25,6 +24,7 @@ import {
   getWordStackLeaderboardSlug,
   type WordStackChallenge,
 } from "@shared/word-stack";
+import { createWordStackQuizPlan, type WordStackQuizLength } from "@/lib/word-stack-quiz";
 
 type WordValidationResponse = { valid: boolean; message?: string };
 type ChallengeType = WordStackChallenge | null;
@@ -44,9 +44,12 @@ const challenges = [
   },
 ];
 
-export function WordStackGame({ locked, groupSeed, onLeaderboardModeChange }: {
+export function WordStackGame({ locked, groupSeed, quizMode, initialChallenge, initialQuizLength, onLeaderboardModeChange }: {
   locked?: boolean;
   groupSeed?: number;
+  quizMode?: boolean;
+  initialChallenge?: WordStackChallenge;
+  initialQuizLength?: WordStackQuizLength;
   onLeaderboardModeChange?: (modeSlug: string) => void;
 } = {}) {
   const { playSound } = useSound();
@@ -58,6 +61,7 @@ export function WordStackGame({ locked, groupSeed, onLeaderboardModeChange }: {
     slug: leaderboardSlug,
     statsSlug: "word-stack",
     personalBestSlug: leaderboardSlug,
+    quizMode,
   });
   const personalBest = usePersonalBest(leaderboardSlug);
   const { markSeen, filterUnseen } = usePuzzleHistory("word-stack");
@@ -208,22 +212,15 @@ export function WordStackGame({ locked, groupSeed, onLeaderboardModeChange }: {
   useEffect(() => {
     if (groupSeed !== undefined && puzzles.length > 0 && gameStatus === "selecting") {
       const activeSession = startSession();
-      const rng = makeSeededRng(groupSeed);
-      const challengeType: ChallengeType = rng() < 0.5 ? "build-up" : "break-down";
-
-      const shuffled = [...puzzles];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(rng() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
-      const [seededPuzzle, ...rest] = shuffled;
+      const { challengeType, orderedPuzzles } = createWordStackQuizPlan(puzzles, groupSeed, initialChallenge, initialQuizLength);
+      const [seededPuzzle, ...rest] = orderedPuzzles;
+      if (!seededPuzzle) return;
       seededQueueRef.current = rest;
 
       resetRecorded();
       setSelectedChallenge(challengeType);
       onLeaderboardModeChange?.(getWordStackLeaderboardSlug(challengeType));
-      setActivePuzzles(puzzles);
+      setActivePuzzles(orderedPuzzles);
       setScore(0);
       setStreak(0);
       setPuzzlesCompleted(0);
@@ -241,7 +238,7 @@ export function WordStackGame({ locked, groupSeed, onLeaderboardModeChange }: {
         if (isSessionActive(activeSession)) inputRef.current?.focus();
       }, 100);
     }
-  }, [puzzles, groupSeed, onLeaderboardModeChange, startSession, isSessionActive]);
+  }, [puzzles, groupSeed, initialChallenge, initialQuizLength, onLeaderboardModeChange, startSession, isSessionActive]);
 
   useEffect(() => {
     if (gameStatus === "complete") {

@@ -1,5 +1,5 @@
-import { eq, desc, asc, and, or, inArray, sql } from "drizzle-orm";
-import type { Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
+import { eq, desc, asc, and, or, inArray, isNull, sql } from "drizzle-orm";
+import type { Comment, CommentPage, CommentSortOrder, InsertComment, CommentReport, CommentTargetType, LikeTargetType } from "@shared/schema";
 import * as schema from "../db-schema";
 
 function mapDbRowToComment(r: typeof schema.comments.$inferSelect, user?: { id: number; name: string; avatarUrl: string | null }): Comment {
@@ -11,6 +11,7 @@ function mapDbRowToComment(r: typeof schema.comments.$inferSelect, user?: { id: 
     parentId: r.parentId ?? null,
     content: r.isDeleted ? "" : r.content,
     isDeleted: r.isDeleted,
+    isPinned: r.isPinned,
     createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt ? String(r.updatedAt) : null),
     user,
@@ -26,8 +27,7 @@ export async function createComment(db: any, comment: InsertComment): Promise<Co
   return mapDbRowToComment(r, user);
 }
 
-export async function getComments(db: any, targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> {
-  const rows = await db.select().from(schema.comments).where(and(eq(schema.comments.targetType, targetType), eq(schema.comments.targetId, targetId))).orderBy(asc(schema.comments.createdAt));
+async function hydrateComments(db: any, rows: typeof schema.comments.$inferSelect[], userId?: number): Promise<Comment[]> {
   if (rows.length === 0) return [];
   const userIds = [...new Set(rows.map((r: any) => r.userId))] as number[];
   const userRows = await db.select({ id: schema.users.id, name: schema.users.name, avatarUrl: schema.users.avatarUrl }).from(schema.users).where(inArray(schema.users.id, userIds));
@@ -46,17 +46,177 @@ export async function getComments(db: any, targetType: CommentTargetType, target
   return roots.map((root: any) => ({ ...root, replies: replies.filter((r: any) => r.parentId === root.id) }));
 }
 
+export async function getComments(db: any, targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> {
+  const rows = await db.select().from(schema.comments)
+    .where(and(eq(schema.comments.targetType, targetType), eq(schema.comments.targetId, targetId)))
+    .orderBy(asc(schema.comments.createdAt), asc(schema.comments.id));
+  return hydrateComments(db, rows, userId);
+}
+
+export async function getCommentAuthors(db: any, targetType: CommentTargetType, targetId: string): Promise<import("@shared/schema").CommentAuthor[]> {
+  const rows = await db.select({
+    id: schema.users.id,
+    name: schema.users.name,
+    username: schema.users.username,
+    avatarUrl: schema.users.avatarUrl,
+  }).from(schema.comments)
+    .innerJoin(schema.users, eq(schema.comments.userId, schema.users.id))
+    .where(and(
+      eq(schema.comments.targetType, targetType),
+      eq(schema.comments.targetId, targetId),
+    ))
+    .groupBy(schema.users.id, schema.users.name, schema.users.avatarUrl)
+    .orderBy(asc(schema.users.name), asc(schema.users.id));
+  return rows.map((row: any) => ({ id: row.id, name: row.name, username: row.username, avatarUrl: row.avatarUrl || null }));
+}
+
+export async function getCommentsPage(
+  db: any,
+  targetType: CommentTargetType,
+  targetId: string,
+  userId: number | undefined,
+  page: number,
+  pageSize: number,
+  sortOrder: CommentSortOrder,
+  searchTerm?: string,
+  commenterId?: number,
+): Promise<CommentPage> {
+  const targetFilter = and(
+    eq(schema.comments.targetType, targetType),
+    eq(schema.comments.targetId, targetId),
+  );
+  const pinnedRows = await db.select().from(schema.comments).where(and(
+    targetFilter,
+    isNull(schema.comments.parentId),
+    eq(schema.comments.isPinned, true),
+    eq(schema.comments.isDeleted, false),
+  )).limit(1);
+  const pinnedRow = pinnedRows[0];
+  const normalizedSearch = searchTerm?.trim();
+  const searchMatch = normalizedSearch
+    ? sql`LOCATE(LOWER(${normalizedSearch}), LOWER(${schema.comments.content})) > 0`
+    : undefined;
+  const authorMatch = commenterId === undefined
+    ? undefined
+    : eq(schema.comments.userId, commenterId);
+  const matchingCommentFilter = searchMatch && authorMatch
+    ? and(searchMatch, authorMatch)
+    : searchMatch ?? authorMatch;
+  const countQuery = db.select({
+    totalCount: sql<number>`COUNT(*)`,
+  }).from(schema.comments);
+  const [{ totalCount }] = await countQuery.where(matchingCommentFilter
+    ? and(targetFilter, matchingCommentFilter)
+    : targetFilter);
+
+  const rootFilter = and(targetFilter, isNull(schema.comments.parentId));
+  const likeCount = sql<number>`(
+    SELECT COUNT(*) FROM ${schema.likes}
+    WHERE ${schema.likes.targetType} = 'comment'
+      AND ${schema.likes.targetId} = CAST(${schema.comments.id} AS CHAR)
+  )`;
+  const matchingRootFilter = matchingCommentFilter
+    ? and(
+        rootFilter,
+        or(
+          matchingCommentFilter,
+          sql`${schema.comments.id} IN (
+            SELECT parent_id FROM comments
+            WHERE target_type = ${targetType}
+              AND target_id = ${targetId}
+              AND parent_id IS NOT NULL
+              ${commenterId === undefined ? sql`` : sql`AND user_id = ${commenterId}`}
+              ${normalizedSearch ? sql`AND LOCATE(LOWER(${normalizedSearch}), LOWER(content)) > 0` : sql``}
+          )`,
+        ),
+      )
+    : rootFilter;
+  const unpinnedRootFilter = pinnedRow
+    ? and(matchingRootFilter, sql`${schema.comments.id} <> ${pinnedRow.id}`)
+    : matchingRootFilter;
+  const rootQuery = db.select().from(schema.comments).where(unpinnedRootFilter);
+  const orderedRootQuery = sortOrder === "oldest"
+    ? rootQuery.orderBy(asc(schema.comments.createdAt), asc(schema.comments.id))
+    : sortOrder === "most-liked"
+      ? rootQuery.orderBy(desc(likeCount), desc(schema.comments.createdAt), desc(schema.comments.id))
+      : rootQuery.orderBy(desc(schema.comments.createdAt), desc(schema.comments.id));
+  const rootRows = await orderedRootQuery
+    .limit(pageSize + 1)
+    .offset((page - 1) * pageSize);
+  const hasMore = rootRows.length > pageSize;
+  const pageRoots = rootRows.slice(0, pageSize);
+  const rootIds = [...pageRoots, ...(pinnedRow ? [pinnedRow] : [])].map((row: typeof schema.comments.$inferSelect) => row.id);
+  const replies = rootIds.length
+    ? await db.select().from(schema.comments)
+      .where(and(
+        targetFilter,
+        inArray(schema.comments.parentId, rootIds),
+      ))
+      .orderBy(asc(schema.comments.createdAt), asc(schema.comments.id))
+    : [];
+  const hydrated = await hydrateComments(db, [...pageRoots, ...(pinnedRow ? [pinnedRow] : []), ...replies], userId);
+  const pinnedComment = pinnedRow ? hydrated.find((comment) => comment.id === pinnedRow.id) ?? null : null;
+  const comments = hydrated.filter((comment) => comment.id !== pinnedRow?.id);
+
+  const commenters = page === 1 ? await getCommentAuthors(db, targetType, targetId) : undefined;
+  return { comments, commenters, pinnedComment, page, pageSize, totalCount: Number(totalCount ?? 0), hasMore };
+}
+
 export async function getCommentById(db: any, id: number): Promise<Comment | null> {
   const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
   if (!rows[0]) return null;
   return mapDbRowToComment(rows[0], undefined);
 }
 
+export async function setCommentPinned(
+  db: any,
+  id: number,
+  targetType: CommentTargetType,
+  targetId: string,
+  isPinned: boolean,
+): Promise<Comment | null> {
+  const changed = await db.transaction(async (tx: any) => {
+    await tx.select({ id: schema.comments.id })
+      .from(schema.comments)
+      .where(and(
+        eq(schema.comments.targetType, targetType),
+        eq(schema.comments.targetId, targetId),
+      ))
+      .for("update");
+    const rows = await tx.select().from(schema.comments).where(and(
+      eq(schema.comments.id, id),
+      eq(schema.comments.targetType, targetType),
+      eq(schema.comments.targetId, targetId),
+      isNull(schema.comments.parentId),
+      ...(isPinned ? [eq(schema.comments.isDeleted, false)] : []),
+    )).limit(1);
+    if (!rows[0]) return false;
+
+    if (isPinned) {
+      await tx.update(schema.comments)
+        .set({ isPinned: false })
+        .where(and(
+          eq(schema.comments.targetType, targetType),
+          eq(schema.comments.targetId, targetId),
+          eq(schema.comments.isPinned, true),
+        ));
+    }
+    await tx.update(schema.comments).set({ isPinned }).where(and(
+      eq(schema.comments.id, id),
+      eq(schema.comments.targetType, targetType),
+      eq(schema.comments.targetId, targetId),
+      isNull(schema.comments.parentId),
+    ));
+    return true;
+  });
+  return changed ? getCommentById(db, id) : null;
+}
+
 export async function deleteComment(db: any, id: number, userId: number, isAdmin = false): Promise<boolean> {
   const rows = await db.select().from(schema.comments).where(eq(schema.comments.id, id)).limit(1);
   if (!rows[0]) return false;
   if (!isAdmin && rows[0].userId !== userId) return false;
-  await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
+  await db.update(schema.comments).set({ isDeleted: true, content: "", isPinned: false }).where(eq(schema.comments.id, id));
   return true;
 }
 
@@ -72,7 +232,7 @@ export async function updateComment(db: any, id: number, userId: number, content
 }
 
 export async function deleteCommentAdmin(db: any, id: number): Promise<void> {
-  await db.update(schema.comments).set({ isDeleted: true, content: "" }).where(eq(schema.comments.id, id));
+  await db.update(schema.comments).set({ isDeleted: true, content: "", isPinned: false }).where(eq(schema.comments.id, id));
 }
 
 export async function reportComment(db: any, commentId: number, reportingUserId: number, reason: string): Promise<CommentReport> {

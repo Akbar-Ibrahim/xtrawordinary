@@ -1,6 +1,6 @@
 import { eq, desc, and, isNull, or, sql } from "drizzle-orm";
-import type { Notification, InsertNotification, NotificationType } from "@shared/schema";
-import { notificationTypeSchema } from "@shared/schema";
+import type { Notification, InsertNotification, NotificationType, NotificationPreferenceType } from "@shared/schema";
+import { NOTIFICATION_PREFERENCE_TYPES, notificationTypeSchema } from "@shared/schema";
 import * as schema from "../db-schema";
 
 function mapNotification(row: any): Notification {
@@ -89,10 +89,10 @@ export async function pruneNotifications(db: any): Promise<number> {
   return result[0].affectedRows ?? 0;
 }
 
-export async function getNotificationPreferences(db: any, userId: number): Promise<Record<NotificationType, boolean>> {
+export async function getNotificationPreferences(db: any, userId: number): Promise<Record<NotificationPreferenceType, boolean>> {
   const rows = await db.select().from(schema.notificationPreferences).where(eq(schema.notificationPreferences.userId, userId));
-  const types = notificationTypeSchema.options as NotificationType[];
-  const result = {} as Record<NotificationType, boolean>;
+  const types = NOTIFICATION_PREFERENCE_TYPES;
+  const result = {} as Record<NotificationPreferenceType, boolean>;
   const prefMap = new Map<string, boolean>(rows.map((r: any): [string, boolean] => [r.type, r.enabled === 1 || r.enabled === true]));
   for (const type of types) {
     result[type] = prefMap.has(type) ? prefMap.get(type)! : true;
@@ -100,7 +100,7 @@ export async function getNotificationPreferences(db: any, userId: number): Promi
   return result;
 }
 
-export async function setNotificationPreference(db: any, userId: number, type: NotificationType, enabled: boolean): Promise<void> {
+export async function setNotificationPreference(db: any, userId: number, type: NotificationPreferenceType, enabled: boolean): Promise<void> {
   await db.insert(schema.notificationPreferences).values({ userId, type, enabled })
     .onDuplicateKeyUpdate({ set: { enabled } });
 }

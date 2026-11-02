@@ -17,11 +17,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { CustomFreshAnswerControls } from "./custom-fresh-answers-controls";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 import { getWordLengthLeaderboardSlug, WORD_LENGTH_VARIANTS } from "@shared/word-length";
 
 const SURVIVAL_TIME_PER_WORD = 8;
@@ -188,6 +192,11 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   const [authOpen, setAuthOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const freshAnswers = useCustomFreshAnswers({
+    game: "word-length",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -239,6 +248,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
     const chosenConstraint = pinnedConstraint ?? generateConstraint(varId, seedRngRef.current);
@@ -247,7 +257,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     setGameStatus("playing");
     if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [stopTimer, startTimer, resetRecorded, isUntimed]);
+  }, [stopTimer, startTimer, resetRecorded, isUntimed, freshAnswers.resetCurrentRun]);
 
   useEffect(() => {
     if (customConstraint) {
@@ -268,6 +278,21 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      (gameStatus === "won" || gameStatus === "lost") &&
+      freshAnswers.isEnabled
+    ) {
+      freshAnswers.appendCurrentRunAnswers();
+    }
+  }, [
+    freshAnswers.isAvailable,
+    gameStatus,
+    freshAnswers.isEnabled,
+    freshAnswers.appendCurrentRunAnswers,
+  ]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -277,6 +302,16 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
     if (!userInput.trim() || !constraint || validateMutation.isPending) return;
 
     const upperWord = userInput.toUpperCase();
+
+    if (freshAnswers.isBlocked(upperWord)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      return;
+    }
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
@@ -318,6 +353,7 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
       setStreak(prev => prev + 1);
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      freshAnswers.recordAcceptedAnswer(upperWord);
       setScore((prev) => prev + 100 + variation * 20);
       const newWordsCompleted = wordsCompleted + 1;
       setWordsCompleted(newWordsCompleted);
@@ -424,6 +460,11 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                     <span className="text-sm text-muted-foreground font-normal">
                       {option.description}
                     </span>
+                    <PersonalBestPair
+                      classicSlug={getWordLengthLeaderboardSlug(option.id)}
+                      survivalSlug={getWordLengthLeaderboardSlug(option.id, true)}
+                      testId={`personal-bests-word-length-${option.id}`}
+                    />
                   </Button>
                 </motion.div>
               ))}
@@ -508,6 +549,21 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                       PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
                     </span>
                   </div>
+                  <CustomFreshAnswerControls
+                    game="Length Challenge"
+                    gameSlug="word-length"
+                    isCustomPlay={Boolean(customPlay)}
+                    answerCount={freshAnswers.currentRunAnswers.size}
+                    snapshot={freshAnswers.snapshot}
+                    isAvailable={freshAnswers.isAvailable}
+                    isEnabled={freshAnswers.isEnabled}
+                    optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                    onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                  />
                   {isSurvival && (
                     <p className="text-xs text-muted-foreground">Correct answer resets the {survivalTime}s timer!</p>
                   )}
@@ -715,6 +771,22 @@ export function WordLengthGame({ initialChallenge, initialVariation, customConst
                     </div>
                   </div>
                 )}
+                <CustomFreshAnswerControls
+                  game="Length Challenge"
+                  gameSlug="word-length"
+                  isCustomPlay={Boolean(customPlay)}
+                  answerCount={freshAnswers.currentRunAnswers.size}
+                  snapshot={freshAnswers.snapshot}
+                  isAvailable={freshAnswers.isAvailable}
+                  isEnabled={freshAnswers.isEnabled}
+                  optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                  storageError={freshAnswers.storageError}
+                  pendingAppendCount={freshAnswers.pendingAppendCount}
+                  onRetryAppend={freshAnswers.retryPendingAppend}
+                  allowOptIn
+                  onEnabledChange={freshAnswers.setEnabled}
+                  onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                />
                 {customPlay && (
                   <div className="flex justify-center">
                     <Button onClick={() => onPlayAgain?.()} className="bg-emerald-500 hover:bg-emerald-600 text-white border-0" data-testid="button-play-again">

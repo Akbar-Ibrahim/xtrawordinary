@@ -3,6 +3,7 @@ import { z } from "zod";
 export const notificationTypeSchema = z.enum([
   "group_join",
   "comment_reply",
+  "comment_mention",
   "group_round_start",
   "duel_accepted",
   "duel_challenge_received",
@@ -25,11 +26,22 @@ export const notificationTypeSchema = z.enum([
   "guild_war_match_ready",
   "friend_request_received",
   "achievement_unlocked",
+  "friend_achievement_unlocked",
   "comment_liked",
   "streak_at_risk",
   "leaderboard_overtaken",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const notificationPreferenceTypeSchema = z.union([
+  notificationTypeSchema,
+  z.literal("share_achievement_unlocked"),
+]);
+export type NotificationPreferenceType = z.infer<typeof notificationPreferenceTypeSchema>;
+export const NOTIFICATION_PREFERENCE_TYPES = [
+  ...notificationTypeSchema.options,
+  "share_achievement_unlocked",
+] as const;
 
 export const notificationSchema = z.object({
   id: z.number(),
@@ -49,7 +61,7 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export const notificationPreferenceSchema = z.object({
   id: z.number(),
   userId: z.number(),
-  type: notificationTypeSchema,
+  type: notificationPreferenceTypeSchema,
   enabled: z.boolean(),
 });
 export type NotificationPreference = z.infer<typeof notificationPreferenceSchema>;
@@ -57,6 +69,7 @@ export type NotificationPreference = z.infer<typeof notificationPreferenceSchema
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   group_join: "New member joined your group",
   comment_reply: "Replies to your comments",
+  comment_mention: "When someone mentions you in a comment",
   group_round_start: "New group round started",
   duel_accepted: "Duel challenge accepted",
   duel_challenge_received: "You've been challenged to a duel",
@@ -79,6 +92,7 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   guild_war_match_ready: "Guild Wars — Your next match is ready",
   friend_request_received: "Someone sent you a friend request",
   achievement_unlocked: "You unlocked a new achievement",
+  friend_achievement_unlocked: "Friend achievement updates",
   comment_liked: "Someone liked your comment",
   streak_at_risk: "Your streak is at risk",
   leaderboard_overtaken: "Someone passed you on the leaderboard",

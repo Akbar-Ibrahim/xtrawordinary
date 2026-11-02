@@ -11,9 +11,21 @@ function generateShareCode(): string {
   return code;
 }
 
+function isRequestBodyObject(req: any): boolean {
+  const contentLength = Number(req.headers["content-length"]);
+  const hasBody = contentLength > 0 || req.headers["transfer-encoding"] !== undefined;
+  return hasBody
+    && typeof req.body === "object"
+    && req.body !== null
+    && !Array.isArray(req.body);
+}
+
 export function registerQuizRoutes(app: Express): void {
   app.post("/api/quiz-sessions", requireAuth, async (req: any, res) => {
     try {
+      if (!isRequestBodyObject(req)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       if (!req.user.isPremium) return res.status(403).json({ error: "Quiz Master requires a Premium account." });
       const { gameSlug, title, description, params, closesAt } = req.body;
       if (!gameSlug || !title) return res.status(400).json({ error: "gameSlug and title are required" });
@@ -49,6 +61,59 @@ export function registerQuizRoutes(app: Express): void {
       res.json(session);
     } catch {
       res.status(500).json({ error: "Failed to create quiz session" });
+    }
+  });
+
+  app.post("/api/quiz-sessions/:code/duplicate", requireAuth, async (req: any, res) => {
+    try {
+      if (!isRequestBodyObject(req)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
+      if (!req.user.isPremium) return res.status(403).json({ error: "Quiz Master requires a Premium account." });
+      const source = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
+      if (!source) return res.status(404).json({ error: "Quiz session not found" });
+      if (source.creatorId !== req.user.id) {
+        return res.status(403).json({ error: "Only the creator can reuse this quiz's settings" });
+      }
+
+      const title = typeof req.body.title === "string" ? req.body.title.trim().slice(0, 200) : "";
+      if (!title) return res.status(400).json({ error: "A title is required" });
+      if (
+        req.body.description !== undefined
+        && req.body.description !== null
+        && typeof req.body.description !== "string"
+      ) {
+        return res.status(400).json({ error: "Description must be text" });
+      }
+
+      let closesAt: string | null = null;
+      if (req.body.closesAt !== undefined && req.body.closesAt !== null && req.body.closesAt !== "") {
+        if (typeof req.body.closesAt !== "string") {
+          return res.status(400).json({ error: "Close date must be a valid date" });
+        }
+        const parsedClosesAt = new Date(req.body.closesAt);
+        if (Number.isNaN(parsedClosesAt.getTime())) {
+          return res.status(400).json({ error: "Close date must be a valid date" });
+        }
+        closesAt = parsedClosesAt.toISOString();
+      }
+
+      const duplicate = await storage.createQuizSession({
+        creatorId: req.user.id,
+        gameSlug: source.gameSlug,
+        title,
+        description: req.body.description === undefined
+          ? source.description ?? null
+          : typeof req.body.description === "string" && req.body.description.trim()
+            ? req.body.description.trim().slice(0, 500)
+            : null,
+        shareCode: generateShareCode(),
+        params: structuredClone(source.params ?? {}),
+        closesAt,
+      });
+      res.json(duplicate);
+    } catch {
+      res.status(500).json({ error: "Failed to reuse quiz settings" });
     }
   });
 
@@ -98,6 +163,9 @@ export function registerQuizRoutes(app: Express): void {
 
   app.patch("/api/quiz-sessions/:code", requireAuth, async (req: any, res) => {
     try {
+      if (!isRequestBodyObject(req)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
       if (session.creatorId !== req.user.id) return res.status(403).json({ error: "Only the creator can update this session" });
@@ -147,6 +215,9 @@ export function registerQuizRoutes(app: Express): void {
 
   app.post("/api/quiz-sessions/:code/scores", requireAuth, async (req: any, res) => {
     try {
+      if (!isRequestBodyObject(req)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const session = await storage.getQuizSessionByCode(req.params.code.toUpperCase());
       if (!session) return res.status(404).json({ error: "Quiz session not found" });
       if (session.closesAt && new Date(session.closesAt) < new Date()) {

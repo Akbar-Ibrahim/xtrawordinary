@@ -23,6 +23,7 @@ import { registerShareRoutes } from "./share.routes";
 import { registerAnalyticsRoutes } from "./analytics.routes";
 import { registerContactRoutes } from "./contact.routes";
 import { registerGameReportRoutes } from "./game-reports.routes";
+import { registerUserSafetyRoutes } from "./user-safety.routes";
 import { registerExploreRoutes } from "./explore.routes";
 import { registerAnagramExploreRoutes } from "./anagram-explore.routes";
 import { registerUnscrambleExploreRoutes } from "./unscramble-explore.routes";
@@ -100,6 +101,7 @@ export function registerAllRoutes(httpServer: Server, app: Express): Server {
   registerAnalyticsRoutes(app);
   registerContactRoutes(app);
   registerGameReportRoutes(app);
+  registerUserSafetyRoutes(app);
   registerWordExamplesRoutes(app);
   registerGamesRoutes(app);
   registerExploreRoutes(app);

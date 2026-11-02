@@ -65,7 +65,7 @@ export default function LetterFrequencyExplore() {
     <div className="container mx-auto min-w-0 max-w-7xl px-4 py-8">
       <PageSEO
         title="Explore Letter Frequency"
-        description="Browse words by letter counts or check spoken answers for a word game."
+        description="Browse dictionary words by selected letter counts."
         path="/explore/letter-frequency"
       />
       <Link href="/game/letter-frequency" className="mb-7 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -76,7 +76,7 @@ export default function LetterFrequencyExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Letter Frequency · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Find words by letter count.</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Browse the dictionary or check a word someone says aloud. Explore checks the selected letter counts without changing the game’s scoring or rules.
+          Browse dictionary words by their letter counts, or check whether a word meets the selected counts.
         </p>
       </header>
 

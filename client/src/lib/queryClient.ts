@@ -55,3 +55,8 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export function refreshNotificationQueries() {
+  queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+}

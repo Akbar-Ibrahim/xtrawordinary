@@ -1,20 +1,16 @@
-import { ArrowRight, ArrowUpRight, BookOpenText } from "lucide-react";
+import { ArrowUpRight, BookOpenText } from "lucide-react";
 import { Link } from "wouter";
 import { PageSEO } from "@/components/page-seo";
 import { Card } from "@/components/ui/card";
 import { EXPLORE_GAMES } from "@/lib/explore-games";
 
-function LetterTile({ title, featured = false }: { title: string; featured?: boolean }) {
-  const letters = title.replace(/[^a-z]/gi, "").slice(0, featured ? 3 : 2).toUpperCase();
+function LetterTile({ title }: { title: string }) {
+  const letters = title.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase();
 
   return (
     <div
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-2xl font-mono font-bold tracking-tight ${
-        featured
-          ? "h-[92px] w-[108px] bg-[#f2b84b] text-[#402d1b] text-3xl shadow-[inset_0_-4px_0_rgba(64,45,27,0.12)]"
-          : "h-14 w-14 bg-[#f3e8d7] text-[#765e45] text-lg dark:bg-[#343229] dark:text-[#e7c27f]"
-      }`}
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#f3e8d7] font-mono text-lg font-bold tracking-tight text-[#765e45] dark:bg-[#343229] dark:text-[#e7c27f]"
     >
       {letters}
     </div>
@@ -22,13 +18,11 @@ function LetterTile({ title, featured = false }: { title: string; featured?: boo
 }
 
 export default function ExploreDirectory() {
-  const [featuredGame, ...otherGames] = EXPLORE_GAMES;
-
   return (
     <div className="relative isolate min-h-[70dvh] overflow-hidden bg-[#f8f5ed] text-[#282c28] dark:bg-[#171916] dark:text-[#f1eee5]">
       <PageSEO
         title="Explore word patterns"
-        description="Explore word patterns, find dictionary answers, and keep your next game night moving."
+        description="Explore word patterns and dictionary entries, with useful references for your next game night."
         path="/explore"
       />
 
@@ -45,7 +39,7 @@ export default function ExploreDirectory() {
             <br className="hidden sm:block" /> of a word.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#686b61] dark:text-[#b0b3aa] sm:text-lg">
-            A handy set of word tools for curious minds—and for that one answer everyone is debating around the table.
+            Tools for exploring words and patterns, also handy when a group is debating an answer around the table.
           </p>
           <div className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-[#78684e] dark:text-[#d6c39a]">
             <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#e9dfca] px-1.5 font-mono text-xs font-bold text-[#5b4b32] dark:bg-[#34342b] dark:text-[#e7c27f]">
@@ -55,51 +49,14 @@ export default function ExploreDirectory() {
           </div>
         </header>
 
-        {featuredGame && (
+        {EXPLORE_GAMES.length > 0 && (
           <section aria-labelledby="explore-tools-heading" className="mt-12 sm:mt-16">
             <h2 id="explore-tools-heading" className="sr-only">Explore word tools</h2>
-            <div className="grid gap-4 lg:grid-cols-12">
-              <Link
-                href={featuredGame.path}
-                aria-label={`Explore ${featuredGame.title}: ${featuredGame.description}`}
-                className="group block rounded-[1.6rem] outline-none focus-visible:ring-4 focus-visible:ring-[#c58831]/40 dark:focus-visible:ring-[#f2b84b]/40 lg:col-span-7"
-              >
-                <Card className="relative flex h-full min-h-[240px] flex-col justify-between overflow-hidden rounded-[1.6rem] border-[#e3d7c2] bg-[#fffdf7] p-6 shadow-[0_14px_40px_rgba(73,57,32,0.07)] transition-transform duration-200 group-hover:-translate-y-1 group-focus-visible:-translate-y-1 dark:border-[#4a4b43] dark:bg-[#22231e] dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)] sm:p-8">
-                  <div aria-hidden="true" className="absolute -right-10 -top-14 h-56 w-56 rounded-full border-[1px] border-[#eee4d2] dark:border-[#3b3a31] sm:h-64 sm:w-64" />
-                  <div aria-hidden="true" className="absolute -right-2 top-2 h-40 w-40 rounded-full border-[1px] border-[#f1e7d5] dark:border-[#3b3a31] sm:h-48 sm:w-48" />
-                  <div className="relative flex items-start justify-between gap-5">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#a27b3f] dark:text-[#d6ad63]">Start exploring</p>
-                      <h3 className="mt-3 font-serif text-3xl font-semibold tracking-[-0.03em] text-[#292c26] dark:text-[#f1eee5] sm:text-4xl">
-                        {featuredGame.title}
-                      </h3>
-                      <p className="mt-3 max-w-md text-sm leading-6 text-[#707166] dark:text-[#b0b3aa] sm:text-base">
-                        {featuredGame.description}
-                      </p>
-                    </div>
-                    <LetterTile title={featuredGame.title} featured />
-                  </div>
-                  <div className="relative mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[#72522c] dark:text-[#e7c27f]">
-                    Open tool
-                    <ArrowRight size={16} aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1" />
-                  </div>
-                </Card>
-              </Link>
-
-              <div className="grid gap-4 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1">
-                {otherGames.slice(0, 2).map((game, index) => (
-                  <ToolCard key={game.gameSlug} game={game} number={index + 2} />
-                ))}
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {EXPLORE_GAMES.map((game, index) => (
+                <ToolCard key={game.gameSlug} game={game} number={index + 1} />
+              ))}
             </div>
-
-            {otherGames.length > 2 && (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {otherGames.slice(2).map((game, index) => (
-                  <ToolCard key={game.gameSlug} game={game} number={index + 4} />
-                ))}
-              </div>
-            )}
           </section>
         )}
 

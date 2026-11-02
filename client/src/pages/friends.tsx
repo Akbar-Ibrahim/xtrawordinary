@@ -1,9 +1,9 @@
 import { PageSEO } from "@/components/page-seo";
 import { useLinkCopy } from "@/hooks/use-link-copy";
 import { ManualCopyDialog } from "@/components/manual-copy-dialog";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link, Redirect, useLocation } from "wouter";
+import { Link, Redirect, useLocation, useSearch } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +15,16 @@ import { useAuth } from "@/lib/auth-context";
 import { AuthLoadingState } from "@/components/auth-loading-state";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, UserPlus, Search, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Share2 } from "lucide-react";
+import { Users, UserPlus, Check, X, Trash2, Swords, Gamepad2, Clock, Loader2, Share2, Ban } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
+import { UserActivityStatus } from "@/components/user-activity-status";
 import { FriendChallengeGameLabel } from "@/components/friend-challenge-game-label";
 import { motion } from "framer-motion";
 import type { Game, FriendChallenge, DuelChallenge } from "@shared/schema";
 import { SEEDED_GAME_SLUGS, DUEL_GAME_SLUGS, DUEL_TURN_SLUGS, DUEL_RACE_SLUGS } from "@shared/schema";
 import { formatDuelVariation } from "@/lib/duel-variation";
+import { FriendDiscoveryPanel } from "./friends/FriendDiscoveryPanel";
+import { BlockedUsersTab } from "./friends/BlockedUsersTab";
 
 type EnrichedDuelChallenge = DuelChallenge & {
   challengerName: string | null;
@@ -31,23 +34,23 @@ type EnrichedDuelChallenge = DuelChallenge & {
 
 interface FriendEntry {
   id: number;
-  friendUser: { id: number; username: string; name: string; avatarUrl: string | null };
+  friendUser: { id: number; username: string; name: string; avatarUrl: string | null; lastActiveAt: string | null };
 }
 
 interface FriendRequest {
   id: number;
   requesterUser: { id: number; username: string; name: string; avatarUrl: string | null };
+  note: string | null;
   createdAt: string;
 }
 
-interface SearchResult {
+interface SentFriendRequest {
   id: number;
-  username: string;
-  name: string;
-  avatarUrl: string | null;
+  addresseeUser: { id: number; username: string; name: string; avatarUrl: string | null };
+  createdAt: string;
 }
 
-const VALID_TABS = ["friends", "requests", "challenges", "duels"] as const;
+const VALID_TABS = ["friends", "requests", "challenges", "duels", "blocked"] as const;
 type TabValue = typeof VALID_TABS[number];
 
 function getTabFromSearch(): TabValue {
@@ -68,15 +71,13 @@ export default function Friends() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [location, navigate] = useLocation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const latestQueryRef = useRef("");
+  const search = useSearch();
   const [activeTab, setActiveTab] = useState<TabValue>(getTabFromSearch);
   const resultChallengeId = getChallengeIdFromSearch();
 
   useEffect(() => {
     setActiveTab(getTabFromSearch());
-  }, [location]);
+  }, [location, search]);
 
   const [friendSort, setFriendSort] = useState<"az" | "za">("az");
   const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
@@ -118,11 +119,19 @@ export default function Friends() {
   const { data: friends = [], isLoading: friendsLoading } = useQuery<FriendEntry[]>({
     queryKey: ["/api/friends"],
     enabled: isAuthenticated,
+    refetchInterval: 60_000,
   });
 
   const { data: requests = [] } = useQuery<FriendRequest[]>({
     queryKey: ["/api/friends/requests"],
     enabled: isAuthenticated,
+    refetchInterval: 60_000,
+  });
+
+  const { data: sentRequests = [] } = useQuery<SentFriendRequest[]>({
+    queryKey: ["/api/friends/requests/sent"],
+    enabled: isAuthenticated,
+    refetchInterval: 60_000,
   });
 
   const { data: challenges = [], isSuccess: challengesLoaded } = useQuery<FriendChallenge[]>({
@@ -232,34 +241,6 @@ export default function Friends() {
 
   const { data: games = [] } = useQuery<Game[]>({ queryKey: ["/api/games"] });
 
-  const searchMutation = useMutation({
-    mutationFn: async (q: string) => {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { credentials: "include" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Search failed" }));
-        throw new Error(err.error || "Search failed");
-      }
-      return res.json();
-    },
-    onSuccess: (data, variables) => {
-      if (variables === latestQueryRef.current) {
-        setSearchResults(data);
-      }
-    },
-    onError: (err: Error) => toast({ title: "Search failed", description: err.message, variant: "destructive" }),
-  });
-
-  const sendRequestMutation = useMutation({
-    mutationFn: (userId: number) => apiRequest("POST", "/api/friends/request", { userId }),
-    onSuccess: () => {
-      toast({ title: "Friend request sent!" });
-      setSearchResults([]);
-      setSearchQuery("");
-      queryClient.invalidateQueries({ queryKey: ["/api/friends"] });
-    },
-    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
   const acceptMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/friends/${id}/accept`),
     onSuccess: () => {
@@ -275,6 +256,16 @@ export default function Friends() {
       toast({ title: "Request declined" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/requests"] });
     },
+  });
+
+  const cancelFriendRequestMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/friends/requests/${id}`),
+    onSuccess: () => {
+      toast({ title: "Friend request cancelled" });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests/sent"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/friends/requests"] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not cancel friend request.", variant: "destructive" }),
   });
 
   const cancelChallengeMutation = useMutation({
@@ -326,18 +317,6 @@ export default function Friends() {
     }
   }, [activeTab, unseenCompletedIds]);
 
-  useEffect(() => {
-    latestQueryRef.current = searchQuery;
-    if (searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(() => {
-      searchMutation.mutate(searchQuery);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
   if (authLoading) {
     return <AuthLoadingState />;
   }
@@ -383,68 +362,17 @@ export default function Friends() {
           <p className="text-muted-foreground">Manage friends and challenges</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <UserPlus className="h-5 w-5" /> Add Friend
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative flex items-center">
-              <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search by username or display name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9"
-                data-testid="input-search-friends"
-              />
-              <div className="absolute right-3">
-                {searchMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" data-testid="icon-search-loading" />
-                ) : searchQuery.length > 0 ? (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    data-testid="button-clear-search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {searchResults.map((u) => (
-                  <div key={u.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50" data-testid={`row-search-result-${u.id}`}>
-                      <Link href={`/u/${u.username}`}>
-                      <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
-                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-6 w-6 text-[9px]" />
-                        <span>{u.name}<span className="block text-xs font-normal text-muted-foreground">@{u.username}</span></span>
-                      </span>
-                    </Link>
-                    <Button size="sm" onClick={() => sendRequestMutation.mutate(u.id)} disabled={sendRequestMutation.isPending} data-testid={`button-add-${u.id}`}>
-                      <UserPlus className="h-4 w-4 mr-1" /> Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {searchMutation.isSuccess && searchQuery.length >= 2 && !searchMutation.isPending && searchResults.length === 0 && (
-              <p className="mt-3 text-sm text-muted-foreground text-center" data-testid="text-no-search-results">
-                No users found for "{searchQuery}"
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <FriendDiscoveryPanel games={games} />
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-          <TabsList className="grid w-full grid-cols-4">
+          <div className="max-w-full overflow-x-auto pb-1 scrollbar-none" data-testid="friends-tabs-scroll">
+          <TabsList className="h-auto min-w-max flex-nowrap justify-start">
             <TabsTrigger value="friends" data-testid="tab-friends">
               Friends {friends.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{friends.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="requests" data-testid="tab-requests">
               Requests {requests.length > 0 && <Badge variant="destructive" className="ml-1 text-xs">{requests.length}</Badge>}
+              {sentRequests.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{sentRequests.length} sent</Badge>}
             </TabsTrigger>
             <TabsTrigger value="challenges" data-testid="tab-challenges">
               Challenges {pendingForMe.length > 0 && (
@@ -460,7 +388,11 @@ export default function Friends() {
                 <Badge variant="destructive" className="ml-1 text-xs">{incomingDuels.filter((d) => !dismissedDuelChallengeIds.has(d.id)).length}</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="blocked" data-testid="tab-blocked" className="flex-none">
+              <Ban className="mr-1 h-4 w-4" />Blocked
+            </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="friends">
             <Card>
@@ -500,7 +432,11 @@ export default function Friends() {
                         <Link href={`/u/${f.friendUser.username}`}>
                           <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
                             <UserAvatar name={f.friendUser.name} avatarUrl={f.friendUser.avatarUrl} className="h-8 w-8 text-xs" />
-                            <span>{f.friendUser.name}<span className="block text-xs font-normal text-muted-foreground">@{f.friendUser.username}</span></span>
+                            <span>
+                              {f.friendUser.name}
+                              <span className="block text-xs font-normal text-muted-foreground">@{f.friendUser.username}</span>
+                              <UserActivityStatus lastActiveAt={f.friendUser.lastActiveAt} className="mt-0.5" />
+                            </span>
                           </span>
                         </Link>
                         <div className="flex gap-2">
@@ -542,36 +478,81 @@ export default function Friends() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="blocked">
+            <BlockedUsersTab />
+          </TabsContent>
+
           <TabsContent value="requests">
             <Card>
               <CardContent className="pt-6">
-                {requests.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground" data-testid="text-no-requests">
-                    <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>No pending friend requests</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {requests.map((r) => (
-                      <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50" data-testid={`row-request-${r.id}`}>
-                        <Link href={`/u/${r.requesterUser.username}`}>
-                          <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
-                            <UserAvatar name={r.requesterUser.name} avatarUrl={r.requesterUser.avatarUrl} className="h-8 w-8 text-xs" />
-                            <span>{r.requesterUser.name}<span className="block text-xs font-normal text-muted-foreground">@{r.requesterUser.username}</span></span>
-                          </span>
-                        </Link>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => acceptMutation.mutate(r.id)} data-testid={`button-accept-${r.id}`}>
-                            <Check className="h-4 w-4 mr-1" /> Accept
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => declineMutation.mutate(r.id)} data-testid={`button-decline-${r.id}`}>
-                            <X className="h-4 w-4" />
+                <section aria-labelledby="incoming-friend-requests-heading">
+                  <h2 id="incoming-friend-requests-heading" className="font-semibold mb-3">Incoming requests</h2>
+                  {requests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground" data-testid="text-no-requests">
+                      <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>No incoming friend requests</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {requests.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50" data-testid={`row-request-${r.id}`}>
+                          <div className="min-w-0 flex-1">
+                            <Link href={`/u/${r.requesterUser.username}`}>
+                              <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
+                                <UserAvatar name={r.requesterUser.name} avatarUrl={r.requesterUser.avatarUrl} className="h-8 w-8 text-xs" />
+                                <span>{r.requesterUser.name}<span className="block text-xs font-normal text-muted-foreground">@{r.requesterUser.username}</span></span>
+                              </span>
+                            </Link>
+                            {r.note && (
+                              <p className="ml-10 mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words" data-testid={`text-request-note-${r.id}`}>
+                                “{r.note}”
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={() => acceptMutation.mutate(r.id)} data-testid={`button-accept-${r.id}`}>
+                              <Check className="h-4 w-4 mr-1" /> Accept
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => declineMutation.mutate(r.id)} data-testid={`button-decline-${r.id}`}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+                <section aria-labelledby="sent-friend-requests-heading" className="mt-8">
+                  <h2 id="sent-friend-requests-heading" className="font-semibold mb-3">Sent requests</h2>
+                  {sentRequests.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-muted-foreground" data-testid="text-no-sent-requests">
+                      No pending sent requests
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sentRequests.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50" data-testid={`row-sent-request-${r.id}`}>
+                          <Link href={`/u/${r.addresseeUser.username}`}>
+                            <span className="font-medium hover:underline cursor-pointer flex items-center gap-2">
+                              <UserAvatar name={r.addresseeUser.name} avatarUrl={r.addresseeUser.avatarUrl} className="h-8 w-8 text-xs" />
+                              <span>{r.addresseeUser.name}<span className="block text-xs font-normal text-muted-foreground">@{r.addresseeUser.username}</span></span>
+                            </span>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => cancelFriendRequestMutation.mutate(r.id)}
+                            disabled={cancelFriendRequestMutation.isPending}
+                            data-testid={`button-cancel-friend-request-${r.id}`}
+                          >
+                            {cancelFriendRequestMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
+                            Cancel
                           </Button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </section>
               </CardContent>
             </Card>
           </TabsContent>

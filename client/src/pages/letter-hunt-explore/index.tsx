@@ -52,7 +52,7 @@ export default function LetterHuntExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Letter Hunt · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Find words that meet your pattern.</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Explore dictionary matches for required letters. Set repeated letters and decide whether their order matters, then use the checker for spoken answers.
+          Explore dictionary matches for required letters. Set repeated letters and decide whether their order matters, then check whether any word fits your pattern.
         </p>
       </header>
 

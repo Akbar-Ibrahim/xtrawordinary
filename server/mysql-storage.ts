@@ -12,7 +12,7 @@ import type {
   DailyChallengeAttempt, GroupActivityEntry, Comment, InsertComment, CommentReport,
   CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore,
   DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession,
-  DuelRating, Notification, InsertNotification, NotificationType, DailyLeaderboardEntry,
+  DuelRating, Notification, InsertNotification, NotificationType, NotificationPreferenceType, DailyLeaderboardEntry,
   HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, InsertTeamRaceChallenge,
   WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch,
   WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament,
@@ -28,6 +28,7 @@ import * as SpokenWord from "./mysql/spoken-word";
 import * as Users from "./mysql/users";
 import * as Stats from "./mysql/stats";
 import * as Friends from "./mysql/friends";
+import * as FriendDiscovery from "./mysql/friend-discovery";
 import * as Groups from "./mysql/groups";
 import * as Comments from "./mysql/comments";
 import * as Notifications from "./mysql/notifications";
@@ -42,6 +43,7 @@ import * as WordDefs from "./mysql/word-definitions";
 import * as Analytics from "./mysql/analytics";
 import * as ContactMessages from "./mysql/contact-messages";
 import * as GameReports from "./mysql/game-reports";
+import * as UserSafety from "./mysql/user-safety";
 import { getMySQLConnectionConfig } from "./mysql-config";
 
 export class MySQLStorage implements IStorage {
@@ -101,6 +103,8 @@ export class MySQLStorage implements IStorage {
   async getGames(): Promise<Game[]> { return Games.getGames(await this.getDb()); }
   async getAllGames(): Promise<Game[]> { return Games.getAllGames(await this.getDb()); }
   async setGameActive(slug: string, isActive: boolean): Promise<void> { return Games.setGameActive(await this.getDb(), slug, isActive); }
+  async setGameCreatorId(slug: string, creatorId: number | null): Promise<void> { return Games.setGameCreatorId(await this.getDb(), slug, creatorId); }
+  async setGameSimilarGameSlugs(slug: string, similarGameSlugs: string[] | null): Promise<void> { return Games.setGameSimilarGameSlugs(await this.getDb(), slug, similarGameSlugs); }
   async updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void> { return Games.updateGameConfig(await this.getDb(), slug, config); }
   async getGameBySlug(slug: string): Promise<Game | undefined> { return Games.getGameBySlug(await this.getDb(), slug); }
 
@@ -240,7 +244,10 @@ export class MySQLStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> { return Users.getUserByEmail(await this.getDb(), email); }
   async getUserByGoogleId(googleId: string): Promise<User | undefined> { return Users.getUserByGoogleId(await this.getDb(), googleId); }
   async getUserByUsername(username: string): Promise<User | undefined> { return Users.getUserByUsername(await this.getDb(), username); }
+  async getUsersByUsernames(usernames: string[]): Promise<Array<Pick<User, "id" | "username">>> { return Users.getUsersByUsernames(await this.getDb(), usernames); }
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> { return Users.updateUser(await this.getDb(), id, updates); }
+  async recordUserActivity(userId: number, lastActiveAt: string): Promise<void> { return Users.recordUserActivity(await this.getDb(), userId, lastActiveAt); }
+  async getFriendActivity(viewerId: number, candidateUserIds: number[]): Promise<Record<number, string>> { return Friends.getFriendActivity(await this.getDb(), viewerId, candidateUserIds); }
   async createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken> { return Users.createEmailVerificationToken(await this.getDb(), userId, token, expiresAt); }
   async getEmailVerificationToken(token: string): Promise<EmailVerificationToken | undefined> { return Users.getEmailVerificationToken(await this.getDb(), token); }
   async deleteEmailVerificationToken(token: string): Promise<void> { return Users.deleteEmailVerificationToken(await this.getDb(), token); }
@@ -267,7 +274,7 @@ export class MySQLStorage implements IStorage {
   async updateDailyChallengeStreak(userId: number, date: string): Promise<{ streak: number; longest: number; alreadyDone: boolean }> { return Stats.updateDailyChallengeStreak(await this.getDb(), userId, date); }
   async getLeaderboardPercentile(gameSlug: string, score: number): Promise<{ percentile: number; totalPlayers: number }> { return Stats.getLeaderboardPercentile(await this.getDb(), gameSlug, score); }
   async getUserAchievements(userId: number): Promise<UserAchievement[]> { return Stats.getUserAchievements(await this.getDb(), userId); }
-  async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement> { return Stats.saveUserAchievement(await this.getDb(), userId, achievementId, unlockedAt); }
+  async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement & { newlyEarned: boolean }> { return Stats.saveUserAchievement(await this.getDb(), userId, achievementId, unlockedAt); }
   async getAchievementRarities(): Promise<Record<string, number>> { return Stats.getAchievementRarities(await this.getDb()); }
   async getUsersWithStreakAtRisk(): Promise<Array<{ userId: number; currentStreak: number }>> { return Stats.getUsersWithStreakAtRisk(await this.getDb()); }
   async getFriendsWhoPlayGame(gameSlug: string, userId: number): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null; gamesPlayed: number }>> { return Stats.getFriendsWhoPlayGame(await this.getDb(), gameSlug, userId); }
@@ -291,19 +298,31 @@ export class MySQLStorage implements IStorage {
   async createGameReport(data: import("@shared/schema").InsertGameReport): Promise<import("@shared/schema").GameReport> { return GameReports.createGameReport(await this.getDb(), data); }
   async getGameReports(): Promise<import("@shared/schema").GameReport[]> { return GameReports.getGameReports(await this.getDb()); }
   async markGameReportRead(id: number): Promise<boolean> { return GameReports.markGameReportRead(await this.getDb(), id); }
+  async isBlockedBetween(userId1: number, userId2: number): Promise<boolean> { return UserSafety.isBlockedBetween(await this.getDb(), userId1, userId2); }
+  async getBlockedUserIds(userId: number, candidateUserIds: number[]): Promise<number[]> { return UserSafety.getBlockedUserIds(await this.getDb(), userId, candidateUserIds); }
+  async getBlockedUsers(userId: number): Promise<import("@shared/schema").BlockedUser[]> { return UserSafety.getBlockedUsers(await this.getDb(), userId); }
+  async blockUser(blockerId: number, blockedUserId: number): Promise<void> { return UserSafety.blockUser(await this.getDb(), blockerId, blockedUserId); }
+  async unblockUser(blockerId: number, blockedUserId: number): Promise<void> { return UserSafety.unblockUser(await this.getDb(), blockerId, blockedUserId); }
+  async createUserReport(reportingUserId: number, reportedUserId: number, input: import("@shared/schema").UserReportInput): Promise<void> { return UserSafety.createUserReport(await this.getDb(), reportingUserId, reportedUserId, input); }
+  async getUserReports(): Promise<import("@shared/schema").AdminUserReport[]> { return UserSafety.getUserReports(await this.getDb()); }
+  async markUserReportRead(id: number): Promise<boolean> { return UserSafety.markUserReportRead(await this.getDb(), id); }
   async searchUsers(query: string): Promise<Array<{ id: number; username: string; name: string; avatarUrl: string | null }>> { return Admin.searchUsers(await this.getDb(), query); }
-  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
+  async getMutualFriendCounts(userId: number, candidateUserIds: number[]): Promise<Record<number, number>> { return FriendDiscovery.getMutualFriendCounts(await this.getDb(), userId, candidateUserIds); }
+  async getFriendSuggestions(userId: number, limit = 8) { return FriendDiscovery.getFriendSuggestions(await this.getDb(), userId, limit); }
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null; lastActiveAt: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> { return Admin.getPublicProfile(await this.getDb(), userId); }
   async getSiteSetting(key: string): Promise<string | null> { return Admin.getSiteSetting(await this.getDb(), key); }
   async setSiteSetting(key: string, value: string | null): Promise<void> { return Admin.setSiteSetting(await this.getDb(), key, value); }
 
   // ── Friends ─────────────────────────────────────────────────────────────────
   async getFriendshipById(id: number): Promise<Friendship | undefined> { return Friends.getFriendshipById(await this.getDb(), id); }
-  async sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship> { return Friends.sendFriendRequest(await this.getDb(), requesterId, addresseeId); }
+  async sendFriendRequest(requesterId: number, addresseeId: number, note?: string | null): Promise<Friendship> { return Friends.sendFriendRequest(await this.getDb(), requesterId, addresseeId, note); }
   async acceptFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.acceptFriendRequest(await this.getDb(), id); }
   async declineFriendRequest(id: number): Promise<Friendship | undefined> { return Friends.declineFriendRequest(await this.getDb(), id); }
+  async cancelFriendRequest(id: number, requesterId: number): Promise<boolean> { return Friends.cancelFriendRequest(await this.getDb(), id, requesterId); }
   async removeFriend(id: number): Promise<void> { return Friends.removeFriend(await this.getDb(), id); }
-  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Friends.getFriends(await this.getDb(), userId); }
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null; lastActiveAt: string | null } }>> { return Friends.getFriends(await this.getDb(), userId); }
   async getPendingFriendRequests(userId: number): Promise<Array<Friendship & { requesterUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Friends.getPendingFriendRequests(await this.getDb(), userId); }
+  async getOutgoingPendingFriendRequests(userId: number): Promise<Array<Friendship & { addresseeUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> { return Friends.getOutgoingPendingFriendRequests(await this.getDb(), userId); }
   async getFriendship(userId1: number, userId2: number): Promise<Friendship | undefined> { return Friends.getFriendship(await this.getDb(), userId1, userId2); }
   async createFriendChallenge(challenge: InsertFriendChallenge): Promise<FriendChallenge> { return Friends.createFriendChallenge(await this.getDb(), challenge); }
   async getFriendChallenges(userId: number): Promise<FriendChallenge[]> { return Friends.getFriendChallenges(await this.getDb(), userId); }
@@ -366,7 +385,16 @@ export class MySQLStorage implements IStorage {
   // ── Comments & Likes ────────────────────────────────────────────────────────
   async createComment(comment: InsertComment): Promise<Comment> { return Comments.createComment(await this.getDb(), comment); }
   async getComments(targetType: CommentTargetType, targetId: string, userId?: number): Promise<Comment[]> { return Comments.getComments(await this.getDb(), targetType, targetId, userId); }
+  async getCommentAuthors(targetType: CommentTargetType, targetId: string): Promise<import("@shared/schema").CommentAuthor[]> {
+    return Comments.getCommentAuthors(await this.getDb(), targetType, targetId);
+  }
+  async getCommentsPage(targetType: CommentTargetType, targetId: string, userId: number | undefined, page: number, pageSize: number, sortOrder: import("@shared/schema").CommentSortOrder, searchTerm?: string, commenterId?: number): Promise<import("@shared/schema").CommentPage> {
+    return Comments.getCommentsPage(await this.getDb(), targetType, targetId, userId, page, pageSize, sortOrder, searchTerm, commenterId);
+  }
   async getCommentById(id: number): Promise<Comment | null> { return Comments.getCommentById(await this.getDb(), id); }
+  async setCommentPinned(id: number, targetType: CommentTargetType, targetId: string, isPinned: boolean): Promise<Comment | null> {
+    return Comments.setCommentPinned(await this.getDb(), id, targetType, targetId, isPinned);
+  }
   async deleteComment(id: number, userId: number, isAdmin?: boolean): Promise<boolean> { return Comments.deleteComment(await this.getDb(), id, userId, isAdmin); }
   async updateComment(id: number, userId: number, content: string): Promise<Comment | null> { return Comments.updateComment(await this.getDb(), id, userId, content); }
   async deleteCommentAdmin(id: number): Promise<void> { return Comments.deleteCommentAdmin(await this.getDb(), id); }
@@ -385,8 +413,8 @@ export class MySQLStorage implements IStorage {
   async markNotificationRead(id: number, userId: number): Promise<void> { return Notifications.markNotificationRead(await this.getDb(), id, userId); }
   async markAllNotificationsRead(userId: number): Promise<void> { return Notifications.markAllNotificationsRead(await this.getDb(), userId); }
   async pruneNotifications(): Promise<number> { return Notifications.pruneNotifications(await this.getDb()); }
-  async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> { return Notifications.getNotificationPreferences(await this.getDb(), userId); }
-  async setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void> { return Notifications.setNotificationPreference(await this.getDb(), userId, type, enabled); }
+  async getNotificationPreferences(userId: number): Promise<Record<NotificationPreferenceType, boolean>> { return Notifications.getNotificationPreferences(await this.getDb(), userId); }
+  async setNotificationPreference(userId: number, type: NotificationPreferenceType, enabled: boolean): Promise<void> { return Notifications.setNotificationPreference(await this.getDb(), userId, type, enabled); }
   async setAllNotificationPreferences(userId: number, enabled: boolean): Promise<void> { return Notifications.setAllNotificationPreferences(await this.getDb(), userId, enabled); }
 
   // ── Quiz ────────────────────────────────────────────────────────────────────

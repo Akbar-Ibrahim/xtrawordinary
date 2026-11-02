@@ -1,3 +1,6 @@
+import { makeSeededRng } from "@/lib/seeded-rng";
+import { getWordStackQuizLengthLabel, normalizeWordStackQuizLength } from "@/lib/word-stack-quiz";
+
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
   "start_vowel_end_consonant", "start_consonant_end_vowel", "locked_balance",
@@ -130,6 +133,14 @@ export function getVariantSummary(slug: string, seed: number, params?: Record<st
     }
     case "word-roots":
       return params?.wrSeed !== undefined ? "5 puzzles • seeded set" : "Word roots & etymology";
+    case "word-stack": {
+      const randomChallenge = makeSeededRng(seed)() < 0.5 ? "build-up" : "break-down";
+      const challenge = p.challenge === "build-up" || p.challenge === "break-down"
+        ? p.challenge
+        : randomChallenge;
+      const length = getWordStackQuizLengthLabel(normalizeWordStackQuizLength(p.puzzleCount));
+      return `${challenge === "build-up" ? "Build Up" : "Break Down"} · ${length} · Shared puzzle order`;
+    }
     case "progressive-reveal": {
       const prWords = Array.isArray(params?.words) ? params!.words as Array<{ word: string }> : [];
       return prWords.length > 0 ? `${prWords.length} word${prWords.length !== 1 ? "s" : ""} to guess` : "Progressive letter reveal";

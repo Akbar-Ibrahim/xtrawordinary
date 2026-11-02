@@ -24,7 +24,7 @@ const checkSchema = z.object({
 function sendAnagramExploreError(res: import("express").Response, error: unknown, action: string) {
   if (error instanceof InvalidExploreCursorError) return res.status(400).json({ message: error.message });
   if (error instanceof AnagramBaseWordNotFoundError) {
-    return res.status(404).json({ message: "No anagram matches are available for that base word" });
+    return res.status(404).json({ message: "That word is not in the dictionary" });
   }
   console.error(`[Explore:Anagrams] Failed to ${action}`, error);
   return res.status(500).json({ message: `Failed to ${action}` });

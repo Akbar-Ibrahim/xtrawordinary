@@ -4,26 +4,22 @@ import { ArrowLeft } from "lucide-react";
 import { PageSEO } from "@/components/page-seo";
 import { AnagramResults } from "./components/AnagramResults";
 import { BaseWordPicker } from "./components/BaseWordPicker";
-import { HostAnswerDesk } from "./components/HostAnswerDesk";
 import type { GameSlug } from "./types";
 import "../word-maker-explore/styles.css";
 
 const GAME_COPY: Record<GameSlug, { name: string; description: string }> = {
   "anagram-solver": {
     name: "Anagram Solver",
-    description: "Browse exact-letter anagrams or check spoken answers at game night.",
+    description: "Explore dictionary words with the exact same letters.",
   },
 };
 
 function AnagramExplorePage({ gameSlug }: { gameSlug: GameSlug }) {
   const game = GAME_COPY[gameSlug];
-  const [mode, setMode] = useState<"browse" | "host">("browse");
   const [selectedBase, setSelectedBase] = useState("");
-  const [revealed, setRevealed] = useState(false);
 
   function selectBase(baseWord: string) {
     setSelectedBase(baseWord);
-    setRevealed(false);
   }
 
   return (
@@ -42,7 +38,7 @@ function AnagramExplorePage({ gameSlug }: { gameSlug: GameSlug }) {
             <div className="wmx-eyebrow">{game.name} · Explore</div>
             <h1 className="wmx-heading">Find every<br /><em>letter match.</em></h1>
             <p className="wmx-intro">
-              Browse exact-letter anagrams, or use the list to check friends’ spoken answers at game night.
+              Explore exact-letter anagrams and dictionary matches. This reference can also be useful when hosting a word game in person or over a call.
             </p>
           </div>
         </header>
@@ -51,24 +47,11 @@ function AnagramExplorePage({ gameSlug }: { gameSlug: GameSlug }) {
           <BaseWordPicker
             selectedBase={selectedBase}
             onSelectBase={selectBase}
-            mode={mode}
-            onModeChange={setMode}
           />
           <main className="wmx-main">
-            {mode === "host" && selectedBase && (
-              <HostAnswerDesk key={selectedBase} baseWord={selectedBase} />
-            )}
             <AnagramResults
               selectedBase={selectedBase}
-              mode={mode}
-              revealed={revealed}
-              onReveal={setRevealed}
             />
-            {mode === "host" && (
-              <p className="wmx-note" style={{ textAlign: "center" }}>
-                Keep this screen with the host. Players answer aloud; use the checker for verification and handle scorekeeping yourself.
-              </p>
-            )}
           </main>
         </div>
       </div>

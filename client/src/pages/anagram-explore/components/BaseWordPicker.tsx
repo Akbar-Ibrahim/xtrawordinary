@@ -10,11 +10,9 @@ const normalize = (word: string) => word.trim().toUpperCase();
 interface Props {
   selectedBase: string;
   onSelectBase: (baseWord: string) => void;
-  mode: "browse" | "host";
-  onModeChange: (mode: "browse" | "host") => void;
 }
 
-export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange }: Props) {
+export function BaseWordPicker({ selectedBase, onSelectBase }: Props) {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -32,7 +30,11 @@ export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange 
     staleTime: 30_000,
     retry: 1,
   });
-  const suggestions = baseQuery.data?.items ?? [];
+  const suggestions = normalize(debouncedSearch) === normalize(searchText)
+    ? (baseQuery.data?.items ?? []).filter((item) => normalize(item.baseWord) === normalize(searchText))
+    : [];
+  const lookupVisible = showSuggestions && debouncedSearch && normalize(debouncedSearch) === normalize(searchText)
+    && normalize(searchText) !== selectedBase;
   const randomMutation = useMutation({
     mutationFn: () => readExploreJson<{ baseWord: string }>(`${BASE_WORDS_URL}/random`),
     onSuccess: ({ baseWord }) => selectBase(baseWord),
@@ -64,8 +66,8 @@ export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange 
       event.preventDefault();
       if (activeSuggestion >= 0 && suggestions[activeSuggestion]) {
         selectBase(suggestions[activeSuggestion].baseWord);
-      } else if (suggestions.length === 1) {
-        selectBase(suggestions[0].baseWord);
+      } else {
+        selectBase(searchText);
       }
     } else if (event.key === "Escape") {
       setShowSuggestions(false);
@@ -74,12 +76,6 @@ export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange 
 
   return (
     <aside className="wmx-panel wmx-controls" aria-label="Explore controls">
-      <p className="wmx-section-label">Choose your way to play</p>
-      <div className="wmx-mode" role="group" aria-label="Explore mode">
-        <button type="button" aria-pressed={mode === "browse"} onClick={() => onModeChange("browse")}>Browse words</button>
-        <button type="button" aria-pressed={mode === "host"} onClick={() => onModeChange("host")}>Host a game night</button>
-      </div>
-
       <label className="wmx-section-label" htmlFor="ax-base-word">Base word</label>
       <div className="wmx-search-wrap">
         <Search className="wmx-search-icon" size={17} aria-hidden="true" />
@@ -104,7 +100,7 @@ export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange 
           </button>
         )}
       </div>
-      {showSuggestions && debouncedSearch && (
+      {lookupVisible && (
         baseQuery.isLoading ? (
           <div className="wmx-note" role="status">Looking up base words…</div>
         ) : baseQuery.isError ? (
@@ -128,7 +124,12 @@ export function BaseWordPicker({ selectedBase, onSelectBase, mode, onModeChange 
               </li>
             ))}
           </ul>
-        ) : !baseQuery.isFetching ? <div className="wmx-note">No matching base words found.</div> : null
+        ) : !baseQuery.isFetching ? <div className="wmx-note">No exact match in the dictionary.</div> : null
+      )}
+      {searchText && normalize(searchText) !== selectedBase && (
+        <button type="button" className="wmx-random" onClick={() => selectBase(searchText)}>
+          <Search size={16} aria-hidden="true" /> Find anagrams of {normalize(searchText)}
+        </button>
       )}
       <button type="button" className="wmx-random" disabled={randomMutation.isPending} onClick={() => randomMutation.mutate()}>
         <Dices size={16} aria-hidden="true" />

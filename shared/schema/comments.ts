@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const commentTargetTypeSchema = z.enum(["game", "group_round"]);
 export type CommentTargetType = z.infer<typeof commentTargetTypeSchema>;
+export type CommentSortOrder = "newest" | "oldest" | "most-liked";
 
 export type Comment = {
   id: number;
@@ -11,12 +12,35 @@ export type Comment = {
   parentId: number | null;
   content: string;
   isDeleted: boolean;
+  isPinned?: boolean;
   createdAt: string;
   updatedAt?: string | null;
   user?: { id: number; name: string; avatarUrl: string | null };
   replies?: Comment[];
+  mentionedUsers?: CommentMention[];
   likeCount?: number;
   likedByMe?: boolean;
+};
+
+export type CommentAuthor = {
+  id: number;
+  name: string;
+  username: string;
+  avatarUrl: string | null;
+};
+
+export type CommentMention = Pick<CommentAuthor, "id" | "username">;
+
+export type CommentPage = {
+  comments: Comment[];
+  commenters?: CommentAuthor[];
+  mentionedUsers?: CommentMention[];
+  pinnedComment?: Comment | null;
+  canManagePins?: boolean;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
 };
 
 export const commentSchema: z.ZodType<Comment> = z.object({
@@ -27,6 +51,7 @@ export const commentSchema: z.ZodType<Comment> = z.object({
   parentId: z.number().nullable(),
   content: z.string(),
   isDeleted: z.boolean(),
+  isPinned: z.boolean().optional(),
   createdAt: z.string(),
   updatedAt: z.string().nullable().optional(),
   user: z.object({ id: z.number(), name: z.string(), avatarUrl: z.string().nullable() }).optional(),

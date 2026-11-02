@@ -15,11 +15,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { FreshAnswerOptIn, FreshAnswerToggle } from "./custom-fresh-answers-controls";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 import {
   getLetterDodgeLeaderboardSlug,
   type LetterDodgeDifficulty,
@@ -121,6 +125,12 @@ export function LetterDodgeGame({
   isUntimed?: boolean;
 } = {}) {
   const { playSound } = useSound();
+  const { user } = useAuth();
+  const freshAnswers = useCustomFreshAnswers({
+    game: "letter-dodge",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const [isSurvival, setIsSurvival] = useState(initialSurvival ?? false);
   const isSurvivalRef = useRef(false);
   const [difficulty, setDifficulty] = useState<DodgeDifficulty>(initialDifficulty ?? 1);
@@ -160,7 +170,6 @@ export function LetterDodgeGame({
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [completionMessage, setCompletionMessage] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
-  const { user } = useAuth();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -254,6 +263,12 @@ export function LetterDodgeGame({
   }, [gameStatus]);
 
   useEffect(() => {
+    if (gameStatus === "finished" && freshAnswers.isAvailable && freshAnswers.isEnabled) {
+      freshAnswers.appendAnswersFromRun(foundWordsRef.current.map(({ word }) => word));
+    }
+  }, [gameStatus, freshAnswers.isAvailable, freshAnswers.isEnabled, freshAnswers.appendAnswersFromRun]);
+
+  useEffect(() => {
     return () => stopTimer();
   }, [stopTimer]);
 
@@ -291,6 +306,17 @@ export function LetterDodgeGame({
       setFeedback({
         type: "wrong",
         message: `Contains forbidden letter${offenders.length > 1 ? "s" : ""}: ${offenders.join(", ")}`,
+      });
+      setTimeout(() => setFeedback(null), 1500);
+      inputRef.current?.focus();
+      return;
+    }
+
+    if (freshAnswers.isBlocked(upper)) {
+      playSound("wrong");
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
       });
       setTimeout(() => setFeedback(null), 1500);
       inputRef.current?.focus();
@@ -350,6 +376,10 @@ export function LetterDodgeGame({
 
   const typedOffenders = getForbiddenInWord(userInput, forbiddenLetters);
   const currentSlug = isSurvivalRef.current ? "letter-dodge-survival" : "letter-dodge";
+  const enableFreshAnswers = useCallback(() => {
+    const words = foundWords.map(({ word }) => word);
+    freshAnswers.optInWithAnswers(words);
+  }, [foundWords, freshAnswers.optInWithAnswers]);
 
   // ─── MENU ────────────────────────────────────────────────────────────────────
   if (gameStatus === "menu") {
@@ -424,18 +454,16 @@ export function LetterDodgeGame({
                         ? `${config.description} · ${SURVIVAL_TIME}s/word`
                         : config.description}
                     </div>
+                    <PersonalBestPair
+                      classicSlug={getLetterDodgeLeaderboardSlug(d)}
+                      survivalSlug={getLetterDodgeLeaderboardSlug(d, true)}
+                      testId={`personal-bests-letter-dodge-${d}`}
+                    />
                   </div>
                 </Button>
               );
             })}
           </div>
-
-          {personalBest > 0 && (
-            <p className="text-center text-sm text-muted-foreground">
-              Personal best:{" "}
-              <span className="font-semibold text-foreground">{personalBest} pts</span>
-            </p>
-          )}
         </CardContent>
       </Card>
     );
@@ -513,6 +541,20 @@ export function LetterDodgeGame({
             </div>
           </CardContent>
         </Card>
+
+        {freshAnswers.isAvailable && freshAnswers.snapshot && (
+          <FreshAnswerToggle
+            game="Letter Dodge"
+            gameSlug="letter-dodge"
+            isCustomPlay={Boolean(customPlay)}
+            words={freshAnswers.snapshot.words}
+            enabled={freshAnswers.isEnabled}
+            storageError={freshAnswers.storageError}
+            pendingAppendCount={freshAnswers.pendingAppendCount}
+            onRetryAppend={freshAnswers.retryPendingAppend}
+            onEnabledChange={freshAnswers.setEnabled}
+          />
+        )}
 
         {/* Live word count strip */}
         <div className="flex items-center justify-center gap-2.5 py-1.5 border-t border-b border-border/50" data-testid="word-count-strip">
@@ -736,6 +778,30 @@ export function LetterDodgeGame({
               ))}
             </div>
           </div>
+        )}
+
+        {freshAnswers.isAvailable && freshAnswers.snapshot && (
+          <FreshAnswerToggle
+            game="Letter Dodge"
+            gameSlug="letter-dodge"
+            isCustomPlay={Boolean(customPlay)}
+            words={freshAnswers.snapshot.words}
+            enabled={freshAnswers.isEnabled}
+            storageError={freshAnswers.storageError}
+            pendingAppendCount={freshAnswers.pendingAppendCount}
+            onRetryAppend={freshAnswers.retryPendingAppend}
+            onEnabledChange={freshAnswers.setEnabled}
+          />
+        )}
+        {freshAnswers.isAvailable && !freshAnswers.snapshot && !freshAnswers.optedOutForCurrentRun && (
+          <FreshAnswerOptIn
+            game="Letter Dodge"
+            gameSlug="letter-dodge"
+            isCustomPlay={Boolean(customPlay)}
+            answerCount={foundWords.length}
+            storageError={freshAnswers.storageError}
+            onSave={enableFreshAnswers}
+          />
         )}
 
         {foundWords.length < DODGE_EXAMPLES_THRESHOLD && (

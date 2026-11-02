@@ -7,12 +7,15 @@ export const friendshipSchema = z.object({
   id: z.number(),
   requesterId: z.number(),
   addresseeId: z.number(),
+  note: z.string().nullable(),
   status: friendshipStatusSchema,
   createdAt: z.string(),
 });
 export type Friendship = z.infer<typeof friendshipSchema>;
 
-export const insertFriendshipSchema = friendshipSchema.omit({ id: true, createdAt: true });
+export const insertFriendshipSchema = friendshipSchema.omit({ id: true, createdAt: true }).extend({
+  note: z.string().max(200).nullable().optional(),
+});
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 
 export const challengeStatusSchema = z.enum(["pending", "completed", "declined", "cancelled"]);

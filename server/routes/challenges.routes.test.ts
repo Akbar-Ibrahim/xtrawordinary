@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import express from "express";
 import {
   getChallengeCompletionConfigSummary,
   getChallengeInvitationNotificationBody,
@@ -11,6 +12,10 @@ import { parseSavedLetterBalanceChallengeConfig } from "@shared/letter-balance-c
 import { initStorage } from "../storage";
 import { MemStorage } from "../mem-storage";
 import { getLockedBalanceAvailability, getLockedBalancePairKey } from "../games/letter-balance-availability";
+import {
+  configureErrorHandling,
+  configureRequestPipeline,
+} from "../middleware/request-pipeline";
 
 function getCompleteChallengeHandler(): (req: any, res: any) => Promise<void> {
   let handler: ((req: any, res: any) => Promise<void>) | undefined;
@@ -377,4 +382,121 @@ test("POST /api/challenges rejects a Locked Balance setting with no dictionary a
 
   assert.equal(statusCode, 400);
   assert.equal(responseBody?.error, "No valid dictionary words match this Locked Balance setting");
+});
+
+test("POST /api/challenges refuses direct challenges between blocked users", async () => {
+  const testStorage = await initStorage();
+  const blocker = await testStorage.createUser({
+    email: "blocked-challenge-sender@example.com",
+    name: "Blocked Challenge Sender",
+    username: "blocked_challenge_sender",
+    usernameNormalized: "blocked_challenge_sender",
+    passwordHash: null,
+    googleId: null,
+    emailVerified: true,
+    avatarUrl: null,
+    isAdmin: false,
+    isBanned: false,
+    isPremium: false,
+  });
+  const blocked = await testStorage.createUser({
+    email: "blocked-challenge-target@example.com",
+    name: "Blocked Challenge Target",
+    username: "blocked_challenge_target",
+    usernameNormalized: "blocked_challenge_target",
+    passwordHash: null,
+    googleId: null,
+    emailVerified: true,
+    avatarUrl: null,
+    isAdmin: false,
+    isBanned: false,
+    isPremium: false,
+  });
+  await testStorage.blockUser(blocker.id, blocked.id);
+
+  const handler = getCreateChallengeHandler();
+  let statusCode = 200;
+  let responseBody: { error?: string } | undefined;
+  await handler(
+    {
+      user: { id: blocker.id, username: blocker.username },
+      body: { friendId: blocked.id, gameSlug: "letter-hunt", score: 100 },
+    },
+    {
+      status(code: number) {
+        statusCode = code;
+        return this;
+      },
+      json(body: { error?: string }) {
+        responseBody = body;
+        return this;
+      },
+    },
+  );
+
+  assert.equal(statusCode, 403);
+  assert.deepEqual(responseBody, { error: "You cannot challenge this user" });
+});
+
+test("malformed JSON on challenge creation returns 400 without creating a challenge", async () => {
+  const testStorage = await initStorage();
+  assert.ok(testStorage instanceof MemStorage, "route test uses in-memory storage");
+  const suffix = String(Date.now());
+  const sender = await testStorage.createUser({
+    email: `malformed-challenge-sender-${suffix}@example.com`,
+    name: "Malformed Challenge Sender",
+    username: `malformed_challenge_sender_${suffix}`,
+    usernameNormalized: `malformed_challenge_sender_${suffix}`,
+    passwordHash: null,
+    googleId: null,
+    emailVerified: true,
+    avatarUrl: null,
+    isAdmin: false,
+    isBanned: false,
+    isPremium: false,
+  });
+  await testStorage.createUser({
+    email: `malformed-challenge-target-${suffix}@example.com`,
+    name: "Malformed Challenge Target",
+    username: `malformed_challenge_target_${suffix}`,
+    usernameNormalized: `malformed_challenge_target_${suffix}`,
+    passwordHash: null,
+    googleId: null,
+    emailVerified: true,
+    avatarUrl: null,
+    isAdmin: false,
+    isBanned: false,
+    isPremium: false,
+  });
+  const challengesBefore = await testStorage.getFriendChallenges(sender.id);
+
+  const app = express();
+  configureRequestPipeline(app);
+  app.use((req: any, _res, next) => {
+    req.isAuthenticated = () => true;
+    req.user = { id: sender.id, username: sender.username };
+    next();
+  });
+  registerChallengesRoutes(app);
+  configureErrorHandling(app);
+  const server = app.listen(0);
+
+  try {
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("No test server port");
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/challenges`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"malformed":',
+    });
+
+    assert.equal(response.status, 400);
+    assert.match(response.headers.get("content-type") ?? "", /application\/json/);
+    assert.deepEqual(await response.json(), { error: "Invalid JSON request body" });
+    assert.deepEqual(await testStorage.getFriendChallenges(sender.id), challengesBefore);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
 });

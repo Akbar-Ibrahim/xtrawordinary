@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { anagramMemorySource } from "./anagram-memory";
-import { anagramExplorePreviewRows } from "./anagram-preview-data";
+import { anagramWordSets } from "../game-data";
 
 test("preview bases have alphabetized answers and Host accepts exactly those answers", async () => {
   const bases = await anagramMemorySource.searchBaseWords("", 100);
@@ -28,7 +28,7 @@ test("preview supports short words without changing regular game fixtures", asyn
     valid: true,
     source: "preview",
   });
-  assert.ok(!anagramExplorePreviewRows.slice(0, -1).some(({ original }) => original === "NO"));
+  assert.ok(!anagramWordSets.some(({ original }) => original === "NO"));
 });
 
 test("preview rejects unlinked answers and paginates base-word search", async () => {
@@ -43,4 +43,13 @@ test("preview rejects unlinked answers and paginates base-word search", async ()
 test("random preview selection has linked anagrams", async () => {
   const { baseWord } = await anagramMemorySource.randomBaseWord();
   assert.ok((await anagramMemorySource.getWords(baseWord, 100)).items.length > 0);
+});
+
+test("preview searches exact words and distinguishes a known word with no anagrams", async () => {
+  assert.deepEqual((await anagramMemorySource.searchBaseWords("range", 20)).items, [{ baseWord: "RANGE" }]);
+  assert.deepEqual((await anagramMemorySource.searchBaseWords("rang", 20)).items, []);
+  assert.deepEqual((await anagramMemorySource.getWords("NOTE", 20)).items, [{ word: "TONE" }]);
+  assert.deepEqual((await anagramMemorySource.searchBaseWords("earth", 20)).items, [{ baseWord: "EARTH" }]);
+  assert.ok((await anagramMemorySource.getWords("EARTH", 20)).items.some(({ word }) => word === "HEART"));
+  assert.deepEqual((await anagramMemorySource.getWords("QUIZ", 20)).items, []);
 });

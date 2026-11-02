@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import type { GroupRound } from "@shared/schema";
 import { storage } from "../storage";
+import { pushUserEvent, pushUserEventToAllExcept } from "../realtime/notification-sse";
 import { requireAuth } from "../auth";
 import { createNotificationIfEnabled } from "./helpers";
 import { QUIZ_MASTER_GAME_SLUGS } from "@shared/schema";
@@ -254,6 +255,8 @@ export function registerGroupsRoutes(app: Express): void {
       const userId = req.user!.id;
       const groupId = parseInt(req.params.id);
       if (isNaN(groupId)) return res.status(400).json({ error: "Invalid group ID" });
+      const groupBeforeUpdate = await storage.getGroup(groupId);
+      const wasPublic = groupBeforeUpdate?.isPublic === true;
       const membership = await storage.getGroupMember(groupId, userId);
       if (!membership || !["owner", "admin"].includes(membership.role)) {
         return res.status(403).json({ error: "Not authorized" });
@@ -267,6 +270,13 @@ export function registerGroupsRoutes(app: Express): void {
       if (tags !== undefined) updates.tags = Array.isArray(tags) ? tags.filter((t: any) => ALLOWED_TAGS.includes(t)).slice(0, 3) : [];
       if (pinnedAnnouncement !== undefined) updates.pinnedAnnouncement = pinnedAnnouncement?.trim() || null;
       const updated = await storage.updateGroup(groupId, updates);
+      if (wasPublic && updates.isPublic === false) {
+        const memberIds = (await storage.getGroupMembers(groupId)).map(member => member.userId);
+        pushUserEventToAllExcept(memberIds, {
+          type: "group_discussion_access_revoked",
+          groupId,
+        });
+      }
       res.json(updated);
     } catch {
       res.status(500).json({ error: "Failed to update group" });
@@ -311,6 +321,10 @@ export function registerGroupsRoutes(app: Express): void {
       if (!membership) return res.status(400).json({ error: "Not a member" });
       if (membership.role === "owner") return res.status(400).json({ error: "Owner cannot leave. Delete the group instead." });
       await storage.removeGroupMember(groupId, userId);
+      const group = await storage.getGroup(groupId);
+      if (group && !group.isPublic) {
+        pushUserEvent(userId, { type: "group_discussion_access_revoked", groupId });
+      }
       await storage.logGroupActivity(groupId, userId, "left", { name: (req.user as any).name });
       res.json({ success: true });
     } catch {
@@ -375,6 +389,10 @@ export function registerGroupsRoutes(app: Express): void {
         return res.status(403).json({ error: "Admins cannot remove other admins; only the owner can" });
       }
       await storage.removeGroupMember(groupId, targetUserId);
+      const group = await storage.getGroup(groupId);
+      if (targetMembershipForDelete && group && !group.isPublic) {
+        pushUserEvent(targetUserId, { type: "group_discussion_access_revoked", groupId });
+      }
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Failed to remove member" });

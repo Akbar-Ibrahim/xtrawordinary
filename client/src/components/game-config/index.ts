@@ -9,6 +9,7 @@ export * from "./LetterFrequencyConfig";
 export * from "./ProgressiveRevealConfig";
 export * from "./AnagramSolverConfig";
 export * from "./WordScrambleConfig";
+export * from "./WordStackConfig";
 export * from "./DefinitionMatchConfig";
 export * from "./WordRootsConfig";
 export * from "./LetterBalanceConfig";

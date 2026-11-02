@@ -32,6 +32,17 @@ export function useProfileData(userId: number) {
     enabled: userId > 0,
   });
 
+  const { data: lastActiveAt } = useQuery<{ lastActiveAt: string | null }>({
+    queryKey: ["/api/users", userId, "activity"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/activity`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch profile activity");
+      return res.json();
+    },
+    enabled: userId > 0 && isAuthenticated && !isOwnProfile,
+    refetchInterval: 60_000,
+  });
+
   const { data: games = [] } = useQuery<Game[]>({ queryKey: ["/api/games"] });
   const gameMap = new Map(games.map(g => [g.slug, g]));
 
@@ -61,7 +72,7 @@ export function useProfileData(userId: number) {
   });
 
   const sendRequest = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/friends/request", { userId }),
+    mutationFn: (note: string) => apiRequest("POST", "/api/friends/request", { userId, note: note.trim() || null }),
     onSuccess: () => {
       toast({ title: "Friend request sent!" });
       queryClient.invalidateQueries({ queryKey: ["/api/friends/check", userId] });
@@ -80,7 +91,7 @@ export function useProfileData(userId: number) {
   });
 
   const updateProfile = useMutation({
-    mutationFn: (data: { username?: string; name?: string; avatarUrl?: string | null; bio?: string | null }) =>
+    mutationFn: (data: { username?: string; name?: string; avatarUrl?: string | null; bio?: string | null; hideActivity?: boolean }) =>
       apiRequest("PATCH", "/api/users/me", data),
     onSuccess: async () => {
       toast({ title: "Profile updated!" });
@@ -214,6 +225,7 @@ export function useProfileData(userId: number) {
       return res.json();
     },
     enabled: isOwnProfile && isAuthenticated,
+    refetchInterval: 60_000,
   });
 
   const { data: groupsData } = useQuery<{ myGroups: GroupSummary[] }>({
@@ -238,8 +250,8 @@ export function useProfileData(userId: number) {
   const localDuelStats = useMemo(() => (isOwnProfile ? loadLocalDuelStats() : null), [isOwnProfile]);
 
   return {
-    profile, isLoading,
-    isOwnProfile, isAuthenticated,
+    profile, isLoading, lastActiveAt: lastActiveAt?.lastActiveAt,
+    isOwnProfile, isAuthenticated, hideActivity: currentUser?.hideActivity ?? false,
     gameMap, formatGameName,
     friendship,
     sendRequest, downgradePremium, updateProfile, deleteAccount, deleteQuiz,

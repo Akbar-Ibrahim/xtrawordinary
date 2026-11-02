@@ -28,6 +28,7 @@ function slugToTitle(slug: string): string {
 const NOTIF_ICONS: Record<string, React.ReactNode> = {
   group_join: <UserPlus className="h-4 w-4 text-emerald-500" />,
   comment_reply: <MessageSquare className="h-4 w-4 text-sky-500" />,
+  comment_mention: <MessageSquare className="h-4 w-4 text-violet-500" />,
   group_round_start: <PlayCircle className="h-4 w-4 text-violet-500" />,
   duel_accepted: <Swords className="h-4 w-4 text-orange-500" />,
   duel_challenge_received: <Swords className="h-4 w-4 text-violet-500" />,
@@ -55,6 +56,7 @@ const NOTIF_ICONS: Record<string, React.ReactNode> = {
 const NOTIF_BG: Record<string, string> = {
   group_join: "bg-emerald-500/10",
   comment_reply: "bg-sky-500/10",
+  comment_mention: "bg-violet-500/10",
   group_round_start: "bg-violet-500/10",
   duel_accepted: "bg-orange-500/10",
   duel_challenge_received: "bg-violet-500/10",
@@ -130,9 +132,11 @@ export function Navigation() {
 
   const markReadMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/notifications/${id}/read`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] }),
+      ]);
     },
   });
 
@@ -141,6 +145,13 @@ export function Navigation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't mark all notifications as read",
+        description: "Your notifications are still unread. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -389,8 +400,18 @@ export function Navigation() {
                                 <button
                                   key={notif.id}
                                   className={`w-full text-left px-4 py-2.5 hover:bg-muted/50 transition-colors flex items-start gap-3 ${isUnread ? "bg-muted/20" : ""}`}
-                                  onClick={() => {
-                                    if (isUnread) markReadMutation.mutate(notif.id);
+                                  onClick={async () => {
+                                    if (isUnread) {
+                                      try {
+                                        await markReadMutation.mutateAsync(notif.id);
+                                      } catch {
+                                        toast({
+                                          title: "Couldn't mark notification as read",
+                                          description: "Please try again.",
+                                        });
+                                        return;
+                                      }
+                                    }
                                     setBellOpen(false);
                                     if (notif.linkUrl) navigate(notif.linkUrl);
                                   }}

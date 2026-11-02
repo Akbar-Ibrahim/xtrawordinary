@@ -3,6 +3,26 @@ import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "../auth";
 import { createNotificationIfEnabled } from "./helpers";
 
+const COMMENT_PAGE_SIZE_DEFAULT = 20;
+const COMMENT_PAGE_SIZE_MAX = 50;
+const COMMENT_SEARCH_MAX_LENGTH = 100;
+const COMMENT_SORT_ORDERS = new Set(["newest", "oldest", "most-liked"]);
+const COMMENT_MENTION_REGEX = /(^|[^a-zA-Z0-9_])@([a-zA-Z0-9_]{3,20})(?![a-zA-Z0-9_])/g;
+
+function extractMentionUsernames(content: string): string[] {
+  return [...new Set(Array.from(content.matchAll(COMMENT_MENTION_REGEX), match => match[2].toLowerCase()))];
+}
+
+function parsePositiveInteger(value: unknown): number | null {
+  if (typeof value !== "string" && typeof value !== "number") return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isCommentRequestBody(value: unknown): boolean {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 const checkGroupRoundAccess = async (roundId: number, userId: number | null): Promise<boolean> => {
   const round = await storage.getGroupRound(roundId);
   if (!round) return false;
@@ -13,6 +33,19 @@ const checkGroupRoundAccess = async (roundId: number, userId: number | null): Pr
   const membership = await storage.getGroupMember(round.groupId, userId);
   return !!membership;
 };
+
+async function canManageCommentPins(targetType: "game" | "group_round", targetId: string, user: Express.User | undefined): Promise<boolean> {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (targetType === "game") {
+    const game = await storage.getGameBySlug(targetId);
+    return game?.creatorId === user.id;
+  }
+  const roundId = parsePositiveInteger(targetId);
+  if (roundId === null) return false;
+  const round = await storage.getGroupRound(roundId);
+  return round?.createdById === user.id;
+}
 
 const fetchComments = async (req: any, res: any) => {
   try {
@@ -31,8 +64,69 @@ const fetchComments = async (req: any, res: any) => {
       const hasAccess = await checkGroupRoundAccess(roundId, userId);
       if (!hasAccess) return res.status(403).json({ error: "Access denied" });
     }
-    const comments = await storage.getComments(targetType, targetId, req.user?.id);
-    res.json(comments);
+    const isPaginated = req.query.page !== undefined
+      || req.query.pageSize !== undefined
+      || req.query.sort !== undefined
+      || req.query.search !== undefined
+      || req.query.commenterId !== undefined;
+    if (!isPaginated) {
+      const comments = await storage.getComments(targetType, targetId, req.user?.id);
+      return res.json(comments);
+    }
+
+    const page = req.query.page === undefined ? 1 : parsePositiveInteger(req.query.page);
+    const requestedPageSize = req.query.pageSize === undefined
+      ? COMMENT_PAGE_SIZE_DEFAULT
+      : parsePositiveInteger(req.query.pageSize);
+    if (page === null || requestedPageSize === null) {
+      return res.status(400).json({ error: "page and pageSize must be positive integers" });
+    }
+    const sortOrder = req.query.sort === undefined ? "newest" : req.query.sort;
+    if (typeof sortOrder !== "string" || !COMMENT_SORT_ORDERS.has(sortOrder)) {
+      return res.status(400).json({ error: "Invalid comment sort order" });
+    }
+    const searchTerm = req.query.search === undefined ? undefined : req.query.search;
+    if (searchTerm !== undefined
+      && (typeof searchTerm !== "string" || searchTerm.length > COMMENT_SEARCH_MAX_LENGTH)) {
+      return res.status(400).json({ error: `search must be a string no longer than ${COMMENT_SEARCH_MAX_LENGTH} characters` });
+    }
+    const commenterId = req.query.commenterId === undefined
+      ? undefined
+      : parsePositiveInteger(req.query.commenterId);
+    if (req.query.commenterId !== undefined && commenterId === null) {
+      return res.status(400).json({ error: "commenterId must be a positive integer" });
+    }
+
+    const comments = await storage.getCommentsPage(
+      targetType,
+      targetId,
+      req.user?.id,
+      page,
+      Math.min(requestedPageSize, COMMENT_PAGE_SIZE_MAX),
+      sortOrder as import("@shared/schema").CommentSortOrder,
+      typeof searchTerm === "string" ? searchTerm.trim() || undefined : undefined,
+      commenterId ?? undefined,
+    );
+    const visibleComments = [
+      ...comments.comments,
+      ...(comments.pinnedComment ? [comments.pinnedComment] : []),
+    ];
+    const mentionedUsernames = new Set<string>();
+    const collectMentionUsernames = (comment: import("@shared/schema").Comment) => {
+      if (!comment.isDeleted) {
+        for (const username of extractMentionUsernames(comment.content)) {
+          mentionedUsernames.add(username);
+        }
+      }
+      comment.replies?.forEach(collectMentionUsernames);
+    };
+    visibleComments.forEach(collectMentionUsernames);
+    const mentionedUsers = await storage.getUsersByUsernames([...mentionedUsernames]);
+    res.json({
+      ...comments,
+      mentionedUsers,
+      canManagePins: await canManageCommentPins(targetType, targetId, req.user),
+    });
   } catch {
     res.status(500).json({ error: "Failed to fetch comments" });
   }
@@ -53,6 +147,9 @@ export function registerCommentsRoutes(app: Express): void {
 
   app.post("/api/comments", requireAuth, async (req, res) => {
     try {
+      if (!isCommentRequestBody(req.body)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const userId = req.user!.id;
       const { targetType, targetId, content, parentId } = req.body;
       if (!targetType || !targetId || !content || typeof content !== "string") {
@@ -127,6 +224,42 @@ export function registerCommentsRoutes(app: Express): void {
           }
         } catch {}
       }
+
+      try {
+        let discussionLink: string | null = null;
+        let roundId: number | null = null;
+        if (targetType === "game") {
+          discussionLink = `/game/${encodeURIComponent(String(targetId))}#comments`;
+        } else {
+          roundId = parsePositiveInteger(String(targetId));
+          const round = roundId ? await storage.getGroupRound(roundId) : undefined;
+          if (round) {
+            discussionLink = `/groups/${round.groupId}/rounds/${round.id}/play#comments`;
+          }
+        }
+
+        if (discussionLink) {
+          const usernames = extractMentionUsernames(trimmed);
+          const recipients = await Promise.all(usernames.map(username => storage.getUserByUsername(username)));
+          const mentionedUsers = recipients.filter((user): user is NonNullable<typeof user> => !!user && user.id !== userId && !user.isBanned);
+          const blockedIds = new Set(await storage.getBlockedUserIds(userId, mentionedUsers.map(user => user.id)));
+          await Promise.all(mentionedUsers
+            .filter(user => !blockedIds.has(user.id))
+            .map(async user => {
+              if (targetType === "group_round" && roundId !== null
+                && !await checkGroupRoundAccess(roundId, user.id)) return;
+              await createNotificationIfEnabled({
+                userId: user.id,
+                type: "comment_mention",
+                title: "Someone mentioned you in a comment",
+                body: `@${(req.user as any).username}: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? "…" : ""}"`,
+                linkUrl: discussionLink,
+              });
+            }));
+        }
+      } catch (error) {
+        console.error("[comment mention]", error);
+      }
       res.status(201).json(comment);
     } catch {
       res.status(500).json({ error: "Failed to create comment" });
@@ -135,12 +268,22 @@ export function registerCommentsRoutes(app: Express): void {
 
   app.patch("/api/comments/:id", requireAuth, async (req, res) => {
     try {
+      if (!isCommentRequestBody(req.body)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const userId = req.user!.id;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
       const { content } = req.body;
       if (!content || typeof content !== "string" || !content.trim() || content.length > 500) {
         return res.status(400).json({ error: "Content must be 1–500 characters" });
+      }
+      const existing = await storage.getCommentById(id);
+      if (existing?.targetType === "group_round") {
+        const roundId = parseInt(existing.targetId);
+        if (isNaN(roundId) || !await checkGroupRoundAccess(roundId, userId)) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
       const updated = await storage.updateComment(id, userId, content.trim());
       if (!updated) return res.status(403).json({ error: "Cannot edit this comment" });
@@ -150,12 +293,57 @@ export function registerCommentsRoutes(app: Express): void {
     }
   });
 
+  app.patch("/api/comments/:id/pin", requireAuth, async (req, res) => {
+    try {
+      if (!isCommentRequestBody(req.body)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
+      const id = parsePositiveInteger(req.params.id);
+      if (id === null) return res.status(400).json({ error: "Invalid comment ID" });
+      const { targetType, targetId, isPinned } = req.body;
+      if ((targetType !== "game" && targetType !== "group_round")
+        || typeof targetId !== "string"
+        || !targetId
+        || typeof isPinned !== "boolean") {
+        return res.status(400).json({ error: "targetType, targetId, and isPinned are required" });
+      }
+      if (targetType === "group_round") {
+        const roundId = parseInt(targetId);
+        if (isNaN(roundId) || !await checkGroupRoundAccess(roundId, req.user!.id)) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+      if (!await canManageCommentPins(targetType, targetId, req.user)) {
+        return res.status(403).json({ error: "Only an authorized discussion creator or an admin can pin comments" });
+      }
+      const comment = await storage.getCommentById(id);
+      if (!comment || comment.targetType !== targetType || comment.targetId !== targetId) {
+        return res.status(404).json({ error: "Comment not found in this discussion" });
+      }
+      if (comment.parentId !== null) {
+        return res.status(400).json({ error: "Only top-level comments can be pinned" });
+      }
+      const updated = await storage.setCommentPinned(id, targetType, targetId, isPinned);
+      if (!updated) return res.status(404).json({ error: "Comment cannot be pinned" });
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Failed to update pinned comment" });
+    }
+  });
+
   app.delete("/api/comments/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid comment ID" });
       const isAdmin = req.user!.isAdmin;
+      const comment = await storage.getCommentById(id);
+      if (comment?.targetType === "group_round") {
+        const roundId = parseInt(comment.targetId);
+        if (isNaN(roundId) || !await checkGroupRoundAccess(roundId, req.user!.id)) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
       const deleted = await storage.deleteComment(id, userId, isAdmin);
       if (!deleted) return res.status(403).json({ error: "Cannot delete this comment" });
       res.json({ success: true });
@@ -166,6 +354,9 @@ export function registerCommentsRoutes(app: Express): void {
 
   app.post("/api/comments/:id/report", requireAuth, async (req, res) => {
     try {
+      if (!isCommentRequestBody(req.body)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const reportingUserId = req.user!.id;
       const commentId = parseInt(req.params.id);
       if (isNaN(commentId)) return res.status(400).json({ error: "Invalid comment ID" });
@@ -191,6 +382,9 @@ export function registerCommentsRoutes(app: Express): void {
   app.post("/api/likes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
+      if (req.body === null || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be a JSON object" });
+      }
       const { targetType, targetId } = req.body;
       if (!targetType || !targetId) {
         return res.status(400).json({ error: "targetType and targetId are required" });
@@ -213,7 +407,7 @@ export function registerCommentsRoutes(app: Express): void {
       }
       const result = await storage.toggleLike(userId, targetType, String(targetId));
       if (result.liked && commentAuthorId !== null && commentAuthorId !== userId) {
-        createNotificationIfEnabled({
+        await createNotificationIfEnabled({
           userId: commentAuthorId,
           type: "comment_liked",
           title: "Someone liked your comment",
@@ -255,7 +449,40 @@ export function registerCommentsRoutes(app: Express): void {
   const fetchCommentReports = async (_req: any, res: any) => {
     try {
       const reports = await storage.getCommentReports();
-      res.json(reports);
+      const mentionedUsernames = new Set<string>();
+      for (const report of reports) {
+        if (report.comment && !report.comment.isDeleted) {
+          for (const username of extractMentionUsernames(report.comment.content)) {
+            mentionedUsernames.add(username);
+          }
+        }
+      }
+      const mentionedUsers = await storage.getUsersByUsernames([...mentionedUsernames]);
+      const usersByUsername = new Map(mentionedUsers.map((user) => [user.username.toLowerCase(), user]));
+      res.json(reports.map((report) => {
+        if (!report.comment) return report;
+        if (report.comment.isDeleted) {
+          return {
+            ...report,
+            comment: {
+              ...report.comment,
+              content: "",
+              mentionedUsers: [],
+            },
+          };
+        }
+        return {
+          ...report,
+          comment: {
+            ...report.comment,
+            mentionedUsers: extractMentionUsernames(report.comment.content)
+              .flatMap((username) => {
+                const user = usersByUsername.get(username);
+                return user ? [user] : [];
+              }),
+          },
+        };
+      }));
     } catch {
       res.status(500).json({ error: "Failed to fetch comment reports" });
     }

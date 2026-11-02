@@ -29,11 +29,13 @@ import {
   LogIn,
   Plus,
   Pencil,
+  CopyPlus,
 } from "lucide-react";
 import type { QuizSession } from "@shared/schema";
 import { useState } from "react";
 import { getVariantSummary } from "@/lib/variant-summary";
 import { useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
+import { QuizReuseDialog } from "@/pages/game-detail/QuizReuseDialog";
 
 type EnrichedSession = QuizSession & { playerCount: number };
 
@@ -59,6 +61,7 @@ export default function MyQuizzes() {
   const { toast } = useToast();
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [reusingSession, setReusingSession] = useState<EnrichedSession | null>(null);
   const [editingSession, setEditingSession] = useState<EnrichedSession | null>(null);
   const [editingLength, setEditingLength] = useState<number | null>(null);
   const [editingConsonantCount, setEditingConsonantCount] = useState<number | null>(null);
@@ -290,6 +293,16 @@ export default function MyQuizzes() {
                         )}
                       <Button
                         size="sm"
+                        variant="outline"
+                        className="w-full gap-1"
+                        onClick={() => setReusingSession(session)}
+                        data-testid={`button-reuse-quiz-${session.id}`}
+                      >
+                        <CopyPlus className="h-3 w-3" />
+                        Reuse settings
+                      </Button>
+                      <Button
+                        size="sm"
                         variant="ghost"
                         className="w-full gap-1 text-destructive hover:text-destructive"
                         onClick={() => handleDelete(session.shareCode)}
@@ -402,6 +415,11 @@ export default function MyQuizzes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <QuizReuseDialog
+        session={reusingSession}
+        open={!!reusingSession}
+        onOpenChange={(open) => { if (!open) setReusingSession(null); }}
+      />
     </div>
   );
 }

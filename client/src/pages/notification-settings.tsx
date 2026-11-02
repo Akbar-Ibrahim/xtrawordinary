@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useRef } from "react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +10,7 @@ import { AuthLoadingState } from "@/components/auth-loading-state";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Bell, Users, Swords, Trophy, ChevronLeft } from "lucide-react";
-import type { NotificationType } from "@shared/schema";
+import type { NotificationPreferenceType, NotificationType } from "@shared/schema";
 import { NOTIFICATION_TYPE_LABELS } from "@shared/schema";
 
 const FRIEND_CHALLENGE_TYPES: NotificationType[] = [
@@ -23,7 +24,7 @@ const NOTIFICATION_CATEGORIES: { label: string; icon: typeof Bell; types: Notifi
   {
     label: "Social",
     icon: Users,
-    types: ["group_join", "comment_reply", "group_round_start", "friend_request_received", "achievement_unlocked", "comment_liked", "streak_at_risk", "leaderboard_overtaken"],
+    types: ["group_join", "comment_reply", "comment_mention", "group_round_start", "friend_request_received", "achievement_unlocked", "comment_liked", "streak_at_risk", "leaderboard_overtaken"],
     subcategories: [
       {
         label: "Friend Challenges",
@@ -61,8 +62,11 @@ const ALL_TYPES: NotificationType[] = NOTIFICATION_CATEGORIES.flatMap((c) => [
 export default function NotificationSettings() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const preferenceRequestVersions = useRef(new Map<NotificationPreferenceType, number>());
+  const bulkPreferenceSave = useRef<Promise<unknown> | null>(null);
+  const preferencesChangedDuringBulkSave = useRef(new Set<NotificationPreferenceType>());
 
-  const { data: notifPrefs, isLoading } = useQuery<Record<NotificationType, boolean>>({
+  const { data: notifPrefs, isLoading } = useQuery<Record<NotificationPreferenceType, boolean>>({
     queryKey: ["/api/notification-preferences"],
     queryFn: async () => {
       const res = await fetch("/api/notification-preferences", { credentials: "include" });
@@ -73,24 +77,44 @@ export default function NotificationSettings() {
   });
 
   const updateNotifPref = useMutation({
-    mutationFn: ({ type, enabled }: { type: NotificationType; enabled: boolean }) =>
-      apiRequest("PATCH", `/api/notification-preferences/${type}`, { enabled }),
+    mutationFn: async ({ type, enabled }: { type: NotificationPreferenceType; enabled: boolean }) => {
+      const pendingBulkSave = bulkPreferenceSave.current;
+      if (pendingBulkSave) await pendingBulkSave;
+      return apiRequest("PATCH", `/api/notification-preferences/${type}`, { enabled });
+    },
     onMutate: async ({ type, enabled }) => {
+      const requestVersion = (preferenceRequestVersions.current.get(type) ?? 0) + 1;
+      preferenceRequestVersions.current.set(type, requestVersion);
+      const queuedBehindBulkSave = Boolean(bulkPreferenceSave.current);
+      if (queuedBehindBulkSave) preferencesChangedDuringBulkSave.current.add(type);
       await queryClient.cancelQueries({ queryKey: ["/api/notification-preferences"] });
-      const previous = queryClient.getQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"]);
-      queryClient.setQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"], (old) =>
+      const previous = queryClient.getQueryData<Record<NotificationPreferenceType, boolean>>(["/api/notification-preferences"]);
+      queryClient.setQueryData<Record<NotificationPreferenceType, boolean>>(["/api/notification-preferences"], (old) =>
         old ? { ...old, [type]: enabled } : old
       );
-      return { previous };
+      return { previousValue: previous?.[type], requestVersion, queuedBehindBulkSave };
     },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        queryClient.setQueryData(["/api/notification-preferences"], ctx.previous);
+    onError: (_err, vars, ctx) => {
+      const isLatestRequest = ctx?.requestVersion === preferenceRequestVersions.current.get(vars.type);
+      if (isLatestRequest) {
+        if (typeof ctx?.previousValue === "boolean") {
+          queryClient.setQueryData<Record<NotificationPreferenceType, boolean>>(
+            ["/api/notification-preferences"],
+            (current) => current ? { ...current, [vars.type]: ctx.previousValue! } : current,
+          );
+        }
+        toast({ title: "Failed to update preference", variant: "destructive" });
       }
-      toast({ title: "Failed to update preference", variant: "destructive" });
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+    onSettled: (_data, _error, vars, ctx) => {
+      if (ctx && ctx.requestVersion === preferenceRequestVersions.current.get(vars.type)) {
+        if (ctx.queuedBehindBulkSave) {
+          preferencesChangedDuringBulkSave.current.delete(vars.type);
+        }
+        if (preferencesChangedDuringBulkSave.current.size === 0) {
+          queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+        }
+      }
     },
   });
 
@@ -99,23 +123,42 @@ export default function NotificationSettings() {
       apiRequest("PATCH", "/api/notification-preferences", { enabled }),
     onMutate: async (enabled) => {
       await queryClient.cancelQueries({ queryKey: ["/api/notification-preferences"] });
-      const previous = queryClient.getQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"]);
-      queryClient.setQueryData<Record<NotificationType, boolean>>(["/api/notification-preferences"], (old) => {
+      const previous = queryClient.getQueryData<Record<NotificationPreferenceType, boolean>>(["/api/notification-preferences"]);
+      const previousRequestVersions = new Map(preferenceRequestVersions.current);
+      queryClient.setQueryData<Record<NotificationPreferenceType, boolean>>(["/api/notification-preferences"], (old) => {
         if (!old) return old;
         const updated = { ...old };
         for (const type of ALL_TYPES) updated[type] = enabled;
         return updated;
       });
-      return { previous };
+      return { previous, previousRequestVersions };
     },
     onError: (_err, _enabled, ctx) => {
-      if (ctx?.previous) {
-        queryClient.setQueryData(["/api/notification-preferences"], ctx.previous);
+      const previous = ctx?.previous;
+      if (previous) {
+        const previousRequestVersions = ctx.previousRequestVersions;
+        queryClient.setQueryData<Record<NotificationPreferenceType, boolean>>(
+          ["/api/notification-preferences"],
+          (current) => {
+            const restored: Record<NotificationPreferenceType, boolean> = { ...previous };
+            for (const type of ALL_TYPES) {
+              if (
+                preferenceRequestVersions.current.get(type) !== previousRequestVersions.get(type) &&
+                typeof current?.[type] === "boolean"
+              ) {
+                restored[type] = current[type];
+              }
+            }
+            return restored;
+          },
+        );
       }
       toast({ title: "Failed to update preferences", variant: "destructive" });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+      if (preferencesChangedDuringBulkSave.current.size === 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+      }
     },
   });
 
@@ -172,10 +215,45 @@ export default function NotificationSettings() {
             ) : (
               <Switch
                 checked={allEnabled}
-                onCheckedChange={(checked) => updateAllNotifPrefs.mutate(checked)}
+                onCheckedChange={(checked) => {
+                  const save = updateAllNotifPrefs.mutateAsync(checked);
+                  bulkPreferenceSave.current = save;
+                  const clearBulkSave = () => {
+                    if (bulkPreferenceSave.current === save) bulkPreferenceSave.current = null;
+                  };
+                  void save.then(clearBulkSave, clearBulkSave);
+                }}
                 disabled={updateAllNotifPrefs.isPending}
                 data-testid="switch-all-notifications"
                 aria-label="Toggle all notifications"
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="card-achievement-sharing">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            Achievement sharing
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+            <div className="pr-4">
+              <p className="text-sm font-medium">Share your achievement updates with friends</p>
+              <p className="text-sm text-muted-foreground">Friends will be notified when you unlock a new achievement.</p>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-6 w-11 rounded-full" />
+            ) : (
+              <Switch
+                checked={notifPrefs?.share_achievement_unlocked ?? true}
+                onCheckedChange={(enabled) => updateNotifPref.mutate({ type: "share_achievement_unlocked", enabled })}
+                disabled={updateNotifPref.isPending}
+                data-testid="switch-share-achievement-updates"
+                aria-label="Share your achievement updates with friends"
               />
             )}
           </div>

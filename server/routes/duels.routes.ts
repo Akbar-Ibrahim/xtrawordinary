@@ -126,6 +126,9 @@ export function registerDuelsRoutes(app: Express): void {
         if (!targetUser) {
           return res.status(404).json({ error: "Target player not found" });
         }
+        if (await storage.isBlockedBetween(challengerId, targetId)) {
+          return res.status(403).json({ error: "You cannot challenge this user" });
+        }
       }
       const { duelRegistry } = await import("../realtime/duel-ws");
       const { roomCode, seed: roomSeed, startWord: roomStartWord } = duelRegistry.createRoom(
@@ -180,6 +183,14 @@ export function registerDuelsRoutes(app: Express): void {
       const userId = req.user.id;
       const type = req.query.type as string | undefined;
       let challenges = await storage.getDuelChallengesForUser(userId);
+      const otherUserIds = challenges
+        .map((challenge) => challenge.challengerId === userId ? challenge.challengeeId : challenge.challengerId)
+        .filter((id): id is number => id !== null);
+      const blockedIds = new Set(await storage.getBlockedUserIds(userId, otherUserIds));
+      challenges = challenges.filter((challenge) => {
+        const otherUserId = challenge.challengerId === userId ? challenge.challengeeId : challenge.challengerId;
+        return otherUserId === null || !blockedIds.has(otherUserId);
+      });
       if (type === "incoming") {
         challenges = challenges.filter((c) => c.challengeeId === userId);
       } else if (type === "outgoing") {
@@ -211,7 +222,11 @@ export function registerDuelsRoutes(app: Express): void {
     try {
       const userId = req.user.id;
       const challenges = await storage.getOpenDuelChallenges(userId);
-      res.json({ count: challenges.length });
+      const blockedIds = new Set(await storage.getBlockedUserIds(
+        userId,
+        challenges.map((challenge) => challenge.challengerId),
+      ));
+      res.json({ count: challenges.filter((challenge) => !blockedIds.has(challenge.challengerId)).length });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to count open duel challenges" });
@@ -228,8 +243,13 @@ export function registerDuelsRoutes(app: Express): void {
       }
       const gameSlug = rawSlug;
       const challenges = await storage.getOpenDuelChallenges(userId, gameSlug);
+      const blockedIds = new Set(await storage.getBlockedUserIds(
+        userId,
+        challenges.map((challenge) => challenge.challengerId),
+      ));
+      const visibleChallenges = challenges.filter((challenge) => !blockedIds.has(challenge.challengerId));
       const enriched = await Promise.all(
-        challenges.map(async (c) => {
+        visibleChallenges.map(async (c) => {
           const challenger = await storage.getUserById(c.challengerId);
           return {
             ...c,
@@ -254,6 +274,9 @@ export function registerDuelsRoutes(app: Express): void {
       const isOpen = challenge.challengeeId === null;
       if (!isOpen && challenge.challengeeId !== userId) return res.status(403).json({ error: "Not your challenge" });
       if (isOpen && challenge.challengerId === userId) return res.status(400).json({ error: "Cannot accept your own open challenge" });
+      if (await storage.isBlockedBetween(challenge.challengerId, userId)) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
       if (challenge.status !== "pending") return res.status(409).json({ error: "Challenge is no longer pending" });
       if (isOpenChallengeExpired(challenge.createdAt, challenge.expiresAt)) {
         await storage.updateDuelChallengeStatus(id, "expired");

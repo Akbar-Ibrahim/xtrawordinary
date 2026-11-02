@@ -13,19 +13,15 @@ import {
   Copy,
   CheckCheck,
   Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  X,
-  Pencil,
   Play,
   Trophy,
-  RefreshCw,
   CheckCircle,
 } from "lucide-react";
 import type { Game, QuizSession } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { QuizReviewStep } from "./QuizReviewStep";
 import { getLockedBalancePair, useLockedBalanceAvailability } from "@/hooks/use-locked-balance-availability";
 import {
   LetterPoolConfig,
@@ -37,6 +33,7 @@ import {
   ProgressiveRevealConfig,
   AnagramSolverConfig,
   WordScrambleConfig,
+  WordStackConfig,
   DefinitionMatchConfig,
   WordRootsConfig,
   LetterBalanceConfig,
@@ -52,10 +49,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   slug: string;
   game: Game;
+  isPremium: boolean;
   navigate: (to: string, opts?: any) => void;
 }
 
-export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: Props) {
+export function QuizCreateDialog({ open, onOpenChange, slug, game, isPremium, navigate }: Props) {
   const { toast } = useToast();
   const [quizTitle, setQuizTitle] = useState("");
   const [quizDescription, setQuizDescription] = useState("");
@@ -63,7 +61,7 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
   const [quizParams, setQuizParams] = useState<Record<string, any>>({});
   const [createdQuiz, setCreatedQuiz] = useState<QuizSession | null>(null);
   const linkCopy = useLinkCopy("quiz");
-  const [dmReview, setDmReview] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const lockedBalancePair = getLockedBalancePair(quizParams);
   const lockedBalanceAvailability = useLockedBalanceAvailability(
     open && slug === "letter-balance" && quizParams.category === "locked_balance",
@@ -147,7 +145,7 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
       setQuizClosesAt("");
       setQuizTitle("");
       setQuizDescription("");
-      setDmReview(false);
+      setShowReview(false);
     }
   };
 
@@ -158,53 +156,36 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5" />
-            Create Quiz Session
+            Create Quiz
           </DialogTitle>
         </DialogHeader>
         {!createdQuiz ? (
           <div className="space-y-4 overflow-y-auto max-h-[65vh] pr-1">
-            {dmReview && slug === "definition-match" ? (() => {
-              const dmReviewEntries: Array<{ word: string; partOfSpeech: string; definitions: [string, string, string] }> = Array.isArray(quizParams.words) ? quizParams.words : [];
-              return (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setDmReview(false)} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 shrink-0" data-testid="button-dm-review-back">
-                      ← Back
-                    </button>
-                    <span className="text-sm font-semibold mx-auto">Review your quiz</span>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-3 space-y-0.5">
-                    <p className="font-semibold text-sm">{quizTitle || "Untitled Quiz"}</p>
-                    {quizDescription && <p className="text-xs text-muted-foreground">{quizDescription}</p>}
-                    <p className="text-xs text-muted-foreground">{dmReviewEntries.length} word{dmReviewEntries.length !== 1 ? "s" : ""} · {(() => { const tl = quizParams.timeLimitSeconds ?? 180; return tl < 60 ? `${tl}s` : `${tl / 60}min`; })()} per round</p>
-                  </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                    {dmReviewEntries.map((entry, idx) => (
-                      <div key={idx} className="rounded-lg border p-3 space-y-1.5" data-testid={`dm-review-entry-${idx}`}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold uppercase tracking-wide">{entry.word}</span>
-                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{entry.partOfSpeech}</span>
-                        </div>
-                        <div className="space-y-1">
-                          {entry.definitions.map((def: string, di: number) => (
-                            <div key={di} className={`text-xs px-2 py-1 rounded ${di === 0 ? "bg-primary/5 text-primary" : di === 1 ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400" : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400"}`}>
-                              <span className="font-semibold mr-1">C{di + 1}:</span>{def}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <Button className="w-full gap-2" onClick={() => createQuizMutation.mutate()} disabled={createQuizMutation.isPending} data-testid="button-dm-confirm-create">
-                    {createQuizMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
-                    Create Session
-                  </Button>
-                </div>
-              );
-            })() : (
+            {!isPremium ? (
+              <div className="space-y-3 text-center py-4">
+                <p className="font-semibold">Premium is required to create a quiz.</p>
+                <p className="text-sm text-muted-foreground">Players with the link can play, but they must sign in to submit a score.</p>
+                <Link href="/pricing">
+                  <Button variant="secondary">View Premium</Button>
+                </Link>
+              </div>
+            ) : showReview ? (
+              <QuizReviewStep
+                gameName={game.name}
+                gameSlug={slug}
+                title={quizTitle.trim()}
+                description={quizDescription.trim()}
+                closesAt={quizClosesAt}
+                params={quizParams}
+                definitionEntries={slug === "definition-match" && Array.isArray(quizParams.words) ? quizParams.words : undefined}
+                isCreating={createQuizMutation.isPending}
+                onBack={() => setShowReview(false)}
+                onCreate={() => createQuizMutation.mutate()}
+              />
+            ) : (
             <>
             <p className="text-sm text-muted-foreground">
-              Create a shareable quiz in <strong>{game.name}</strong>. Anyone with the link can play and submit their score.
+              Create a shareable quiz in <strong>{game.name}</strong>. Players can play from the link; they must sign in to submit a score.
             </p>
             <div>
               <label className="text-sm font-medium">Quiz title or name</label>
@@ -296,6 +277,9 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             {slug === "word-scramble" && (
               <WordScrambleConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
+            {slug === "word-stack" && (
+              <WordStackConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
+            )}
             {slug === "definition-match" && (
               <DefinitionMatchConfig params={quizParams} setParams={setQuizParams} dialogType="quiz" open={open} />
             )}
@@ -310,7 +294,7 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
             )}
             <Button
               className="w-full gap-2"
-              onClick={() => slug === "definition-match" ? setDmReview(true) : createQuizMutation.mutate()}
+              onClick={() => setShowReview(true)}
               disabled={
                 !quizTitle.trim() ||
                 (slug !== "definition-match" && createQuizMutation.isPending) ||
@@ -338,8 +322,8 @@ export function QuizCreateDialog({ open, onOpenChange, slug, game, navigate }: P
               }
               data-testid="button-create-quiz-submit"
             >
-              {createQuizMutation.isPending && slug !== "definition-match" ? <Loader2 className="h-4 w-4 animate-spin" /> : <GraduationCap className="h-4 w-4" />}
-              {slug === "definition-match" ? "Review & Create →" : "Create Session"}
+              <GraduationCap className="h-4 w-4" />
+              Review Quiz
             </Button>
             </>
             )}

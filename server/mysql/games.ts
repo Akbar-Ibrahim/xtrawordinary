@@ -2,6 +2,15 @@ import { eq, sql } from "drizzle-orm";
 import type { Game, GameConfigUpdate, GameMode } from "@shared/schema";
 import * as schema from "../db-schema";
 
+function parseSimilarGameSlugs(value: unknown): string[] | null {
+  if (value == null) return null;
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  if (!Array.isArray(parsed) || !parsed.every((slug) => typeof slug === "string")) {
+    throw new Error("Invalid JSON value in games.similar_game_slugs.");
+  }
+  return parsed;
+}
+
 export function mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
   let rules: string[];
   if (typeof row.rules === "string") {
@@ -36,9 +45,11 @@ export function mapDbRowToGame(row: typeof schema.games.$inferSelect): Game {
     isActive: row.isActive,
     hasSurvival: row.hasSurvival,
     ...(modes && modes.length > 0 ? { modes } : {}),
+    similarGameSlugs: parseSimilarGameSlugs(row.similarGameSlugs),
     ...(row.timeLimitSeconds != null ? { timeLimitSeconds: row.timeLimitSeconds } : {}),
     ...(row.wordTarget != null ? { wordTarget: row.wordTarget } : {}),
     ...(row.livesCount != null ? { livesCount: row.livesCount } : {}),
+    creatorId: row.creatorId ?? null,
   };
 }
 
@@ -64,6 +75,18 @@ export async function getAllGames(db: any): Promise<Game[]> {
 
 export async function setGameActive(db: any, slug: string, isActive: boolean): Promise<void> {
   await db.update(schema.games).set({ isActive }).where(eq(schema.games.slug, slug));
+}
+
+export async function setGameCreatorId(db: any, slug: string, creatorId: number | null): Promise<void> {
+  await db.update(schema.games).set({ creatorId }).where(eq(schema.games.slug, slug));
+}
+
+export async function setGameSimilarGameSlugs(
+  db: any,
+  slug: string,
+  similarGameSlugs: string[] | null,
+): Promise<void> {
+  await db.update(schema.games).set({ similarGameSlugs }).where(eq(schema.games.slug, slug));
 }
 
 export async function getGameBySlug(db: any, slug: string): Promise<Game | undefined> {

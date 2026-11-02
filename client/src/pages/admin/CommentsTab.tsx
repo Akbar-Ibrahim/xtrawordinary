@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Loader2, Flag } from "lucide-react";
 import type { CommentReport } from "@shared/schema/comments";
+import { CommentContent } from "@/components/comments/CommentContent";
 
 export function CommentsTab() {
   const { toast } = useToast();
@@ -59,7 +60,11 @@ export function CommentsTab() {
                       {r.comment.isDeleted ? (
                         <p className="text-sm text-muted-foreground italic">[Already deleted]</p>
                       ) : (
-                        <p className="text-sm break-words">{r.comment.content}</p>
+                        <CommentContent
+                          content={r.comment.content}
+                          mentionUsers={r.comment.mentionedUsers}
+                          className="text-sm"
+                        />
                       )}
                     </div>
                   )}

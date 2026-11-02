@@ -15,7 +15,9 @@ import {
   type Game,
   type GameConfigField,
   type GameConfigUpdate,
+  type User,
 } from "@shared/schema";
+import { SimilarGamesEditor } from "./SimilarGamesEditor";
 
 const CONFIG_FIELD_DETAILS: Record<GameConfigField, {
   label: string;
@@ -182,6 +184,7 @@ export function GamesTab() {
   const queryClient = useQueryClient();
 
   const { data: games, isLoading } = useQuery<Game[]>({ queryKey: ["/api/admin/games"] });
+  const { data: users = [] } = useQuery<User[]>({ queryKey: ["/api/admin/users"] });
 
   const toggleMutation = useMutation({
     mutationFn: ({ slug, isActive }: { slug: string; isActive: boolean }) =>
@@ -203,6 +206,17 @@ export function GamesTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
       queryClient.invalidateQueries({ queryKey: ["/api/games"] });
     },
+  });
+
+  const creatorMutation = useMutation({
+    mutationFn: ({ slug, creatorId }: { slug: string; creatorId: number | null }) =>
+      apiRequest("PATCH", `/api/admin/games/${slug}/creator`, { creatorId }),
+    onSuccess: () => {
+      toast({ title: "Game creator updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/games"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/games"] });
+    },
+    onError: () => toast({ title: "Failed to update game creator", variant: "destructive" }),
   });
 
   if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -266,6 +280,32 @@ export function GamesTab() {
                       />
                     </td>
                   </tr>
+                  <tr className="border-b bg-muted/20" data-testid={`game-creator-row-${g.slug}`}>
+                    <td colSpan={5} className="px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label htmlFor={`game-creator-${g.slug}`} className="text-xs font-medium text-muted-foreground">
+                          Game creator
+                        </label>
+                        <select
+                          id={`game-creator-${g.slug}`}
+                          value={g.creatorId?.toString() ?? ""}
+                          onChange={event => creatorMutation.mutate({
+                            slug: g.slug,
+                            creatorId: event.target.value ? Number(event.target.value) : null,
+                          })}
+                          disabled={creatorMutation.isPending}
+                          className="h-8 max-w-full rounded-md border border-input bg-background px-2 text-sm"
+                          data-testid={`select-game-creator-${g.slug}`}
+                        >
+                          <option value="">Unassigned (admins only)</option>
+                          {users.map(user => (
+                            <option key={user.id} value={user.id}>{user.name} (@{user.username})</option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                  <SimilarGamesEditor game={g} games={games} />
                   <ConfigRow game={g} />
                 </Fragment>
               ))}

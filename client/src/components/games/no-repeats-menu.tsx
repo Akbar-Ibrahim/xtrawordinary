@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Timer, Flame, Fingerprint, Shuffle, Lock } from "lucide-react";
 import { type Challenge, CHALLENGE_CONFIG, SURVIVAL_TIME_OPTIONS } from "./no-repeats-helpers";
 import { SurvivalSuggestion } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
+import { getNoRepeatsLeaderboardSlug } from "@shared/no-repeats";
 
 interface NoRepeatsMenuProps {
   isSurvival: boolean;
@@ -160,6 +162,11 @@ export function NoRepeatsMenu({
                       {config.name}
                     </h3>
                     <p className="text-sm text-muted-foreground">{config.description}</p>
+                    <PersonalBestPair
+                      classicSlug={getNoRepeatsLeaderboardSlug(c, playMode)}
+                      survivalSlug={getNoRepeatsLeaderboardSlug(c, playMode, true)}
+                      testId={`personal-bests-no-repeats-${playMode}-${c}`}
+                    />
                   </div>
                 </div>
               </CardContent>

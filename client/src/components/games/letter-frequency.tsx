@@ -17,11 +17,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { CustomFreshAnswerControls } from "./custom-fresh-answers-controls";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 import {
   getLetterFrequencyLeaderboardSlug,
   LETTER_FREQUENCY_VARIANTS,
@@ -235,6 +239,11 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   const [timedOut, setTimedOut] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const freshAnswers = useCustomFreshAnswers({
+    game: "letter-frequency",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -303,6 +312,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
     if (c === "multi") {
@@ -327,7 +337,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     setGameStatus("playing");
     if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, resetRecorded, isUntimed]);
+  }, [startTimer, stopTimer, resetRecorded, isUntimed, freshAnswers.resetCurrentRun]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -352,6 +362,21 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      (gameStatus === "won" || gameStatus === "lost") &&
+      freshAnswers.isEnabled
+    ) {
+      freshAnswers.appendCurrentRunAnswers();
+    }
+  }, [
+    freshAnswers.isAvailable,
+    gameStatus,
+    freshAnswers.isEnabled,
+    freshAnswers.appendCurrentRunAnswers,
+  ]);
+
+  useEffect(() => {
     return () => stopTimer();
   }, [stopTimer]);
 
@@ -360,6 +385,16 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
     if (challenge === "multi" ? !multiConstraint : !constraint) return;
 
     const upperWord = userInput.toUpperCase();
+
+    if (freshAnswers.isBlocked(upperWord)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      return;
+    }
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
@@ -397,6 +432,7 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
       setStreak(prev => prev + 1);
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      freshAnswers.recordAcceptedAnswer(upperWord);
       
       const countBonus = challenge === "multi" && multiConstraint
         ? multiConstraint.letters.reduce((sum, { count }) => sum + count, 0) * 15
@@ -549,6 +585,11 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                             <div className="text-sm text-muted-foreground">
                               {CHALLENGE_CONFIG[c].description}
                             </div>
+                            <PersonalBestPair
+                              classicSlug={getLetterFrequencyLeaderboardSlug(c)}
+                              survivalSlug={getLetterFrequencyLeaderboardSlug(c, true)}
+                              testId={`personal-bests-letter-frequency-${c}`}
+                            />
                           </div>
                         </div>
                       </CardContent>
@@ -635,6 +676,21 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                       PB: <span className="font-semibold text-foreground">{personalBest > 0 ? personalBest : "—"}</span>
                     </span>
                   </div>
+                  <CustomFreshAnswerControls
+                    game="Letter Frequency"
+                    gameSlug="letter-frequency"
+                    isCustomPlay={Boolean(customPlay)}
+                    answerCount={freshAnswers.currentRunAnswers.size}
+                    snapshot={freshAnswers.snapshot}
+                    isAvailable={freshAnswers.isAvailable}
+                    isEnabled={freshAnswers.isEnabled}
+                    optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                    onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                  />
 
                   {!isSurvival && !isOpenEndedClassic && (
                     <Progress value={(wordsCompleted / wordsPerChallenge) * 100} data-testid="progress-bar" />
@@ -819,6 +875,22 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                     </div>
                   </div>
                 )}
+                <CustomFreshAnswerControls
+                  game="Letter Frequency"
+                  gameSlug="letter-frequency"
+                  isCustomPlay={Boolean(customPlay)}
+                  answerCount={freshAnswers.currentRunAnswers.size}
+                  snapshot={freshAnswers.snapshot}
+                  isAvailable={freshAnswers.isAvailable}
+                  isEnabled={freshAnswers.isEnabled}
+                  optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                  storageError={freshAnswers.storageError}
+                  pendingAppendCount={freshAnswers.pendingAppendCount}
+                  onRetryAppend={freshAnswers.retryPendingAppend}
+                  allowOptIn
+                  onEnabledChange={freshAnswers.setEnabled}
+                  onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />
@@ -941,6 +1013,22 @@ export function LetterFrequencyGame({ initialChallenge, initialLetter, initialLe
                     </div>
                   </div>
                 )}
+                <CustomFreshAnswerControls
+                  game="Letter Frequency"
+                  gameSlug="letter-frequency"
+                  isCustomPlay={Boolean(customPlay)}
+                  answerCount={freshAnswers.currentRunAnswers.size}
+                  snapshot={freshAnswers.snapshot}
+                  isAvailable={freshAnswers.isAvailable}
+                  isEnabled={freshAnswers.isEnabled}
+                  optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                  storageError={freshAnswers.storageError}
+                  pendingAppendCount={freshAnswers.pendingAppendCount}
+                  onRetryAppend={freshAnswers.retryPendingAppend}
+                  allowOptIn
+                  onEnabledChange={freshAnswers.setEnabled}
+                  onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                />
                 {!user && (
                   <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                     <LogIn className="h-4 w-4 shrink-0" />

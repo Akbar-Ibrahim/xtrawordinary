@@ -1,5 +1,8 @@
-import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply, GameReport, InsertGameReport } from "@shared/schema";
+import type { Game, GameConfigUpdate, AnagramWordSet, ScrambleWord, DefinitionWord, LetterPoolWord, MakerWord, WordRootsPuzzle, WordLengthConfig, LetterPositionConfig, LetterHuntConfig, WordChainConfig, VowelConsonantConfig, WordStackPuzzle, WordSplitPuzzle, WordFusionPuzzle, WordFusionValidationResponse, ProgressiveRevealWord, WordSweepGrid, WordUnpackPuzzle, WordLadderPuzzle, LadderRushPuzzle, User, InsertUser, EmailVerificationToken, PasswordResetToken, UserGameStats, InsertUserGameStats, LeaderboardEntry, InsertLeaderboardEntry, UserStreak, UserAchievement, Friendship, InsertFriendship, FriendChallenge, InsertFriendChallenge, Group, InsertGroup, GroupMember, GroupRound, GroupRoundScore, GroupScoreReaction, GroupActivityEntry, GroupRoundAttempt, DailyChallengeAttempt, Comment, InsertComment, CommentReport, CommentTargetType, LikeTargetType, QuizSession, InsertQuizSession, QuizSessionScore, DuelChallenge, InsertDuelChallenge, DuelChallengeStatus, DuelSession, InsertDuelSession, DuelRating, HuddleChallenge, InsertHuddleChallenge, TeamRaceChallenge, Notification, InsertNotification, NotificationType, WordWarsTournament, InsertWordWarsTournament, WordWarsRegistration, WordWarsMatch, WordWarsMatchGame, WordWarsChampion, GuildWarsTournament, InsertGuildWarsTournament, GuildWarsRegistration, GuildWarsMatch, GuildWarsMatchGame, GuildWarsChampion, GroupSeason, InsertGroupSeason, PartOfSpeech, WordDefinition, InsertWordDefinition, AnalyticsEventInput, AnalyticsEventRecord, AnalyticsReport, ContactMessage, InsertContactMessage, ContactMessageReply, InsertContactMessageReply, GameReport, InsertGameReport, AdminUserReport, BlockedUser, UserBlock, UserReport, UserReportInput } from "@shared/schema";
 import { notificationTypeSchema } from "@shared/schema";
+import { NOTIFICATION_PREFERENCE_TYPES } from "@shared/schema";
+import type { NotificationPreferenceType } from "@shared/schema";
+import { getMutualFriendCountsFromEdges, rankFriendSuggestions, type FriendSuggestion } from "./friends/discovery";
 import { SPOKEN_WORD_BANK } from "@shared/spoken-word";
 import type { IStorage, LengthConstraint, PositionConstraint, ContainsConstraint } from "./storage";
 import { mulberry32 } from "./games/seeded-rng";
@@ -78,13 +81,17 @@ export class MemStorage implements IStorage {
   private contactMessageIdCounter = 1;
   private gameReports: GameReport[] = [];
   private gameReportIdCounter = 1;
+  private userBlocks: UserBlock[] = [];
+  private userBlockIdCounter = 1;
+  private userReports: UserReport[] = [];
+  private userReportIdCounter = 1;
 
   private partsOfSpeech: PartOfSpeech[] = [];
   private wordDefinitions: WordDefinition[] = [];
   private wordDefinitionIdCounter = 1;
 
   constructor(options: { analyticsFilePath?: string } = {}) {
-    this.games = gamesData;
+    this.games = gamesData.map(game => ({ ...game, creatorId: game.creatorId ?? null }));
     const posNames = ["noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", "interjection", "article", "determiner"];
     this.partsOfSpeech = posNames.map((name, i) => ({ id: i + 1, name }));
     if (options.analyticsFilePath) {
@@ -110,6 +117,16 @@ export class MemStorage implements IStorage {
 
   async setGameActive(_slug: string, _isActive: boolean): Promise<void> {
     // no-op for in-memory storage
+  }
+
+  async setGameCreatorId(slug: string, creatorId: number | null): Promise<void> {
+    const game = this.games.find(g => g.slug === slug);
+    if (game) game.creatorId = creatorId;
+  }
+
+  async setGameSimilarGameSlugs(slug: string, similarGameSlugs: string[] | null): Promise<void> {
+    const game = this.games.find(g => g.slug === slug);
+    if (game) game.similarGameSlugs = similarGameSlugs ? [...similarGameSlugs] : null;
   }
 
   async updateGameConfig(slug: string, config: GameConfigUpdate): Promise<void> {
@@ -827,6 +844,8 @@ export class MemStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
       ...user,
+      hideActivity: user.hideActivity ?? false,
+      lastActiveAt: user.lastActiveAt ?? null,
       id: this.userIdCounter++,
       createdAt: new Date().toISOString(),
     };
@@ -850,12 +869,43 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(u => u.usernameNormalized === username.trim().toLowerCase());
   }
 
+  async getUsersByUsernames(usernames: string[]): Promise<Array<Pick<User, "id" | "username">>> {
+    const normalizedUsernames = new Set(usernames.map((username) => username.trim().toLowerCase()));
+    return Array.from(this.users.values())
+      .filter((user) => normalizedUsernames.has(user.usernameNormalized))
+      .map(({ id, username }) => ({ id, username }));
+  }
+
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
     const updated = { ...user, ...updates };
     this.users.set(id, updated);
     return updated;
+  }
+
+  async recordUserActivity(userId: number, lastActiveAt: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) this.users.set(userId, { ...user, lastActiveAt });
+  }
+
+  async getFriendActivity(viewerId: number, candidateUserIds: number[]): Promise<Record<number, string>> {
+    if (candidateUserIds.length === 0) return {};
+    const candidates = new Set(candidateUserIds);
+    const visibleActivity: Record<number, string> = {};
+    for (const friendship of this.friendshipsStore) {
+      if (friendship.status !== "accepted") continue;
+      const friendId = friendship.requesterId === viewerId
+        ? friendship.addresseeId
+        : friendship.addresseeId === viewerId
+          ? friendship.requesterId
+          : null;
+      if (friendId === null || !candidates.has(friendId)) continue;
+      const friend = this.users.get(friendId);
+      if (!friend || friend.hideActivity || !friend.lastActiveAt) continue;
+      visibleActivity[friendId] = friend.lastActiveAt;
+    }
+    return visibleActivity;
   }
 
   async createEmailVerificationToken(userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken> {
@@ -1153,12 +1203,12 @@ export class MemStorage implements IStorage {
     return this.userAchievements.filter(a => a.userId === userId);
   }
 
-  async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement> {
+  async saveUserAchievement(userId: number, achievementId: string, unlockedAt: string): Promise<UserAchievement & { newlyEarned: boolean }> {
     const existing = this.userAchievements.find(a => a.userId === userId && a.achievementId === achievementId);
-    if (existing) return existing;
+    if (existing) return { ...existing, newlyEarned: false };
     const achievement: UserAchievement = { id: this.uaIdCounter++, userId, achievementId, unlockedAt };
     this.userAchievements.push(achievement);
-    return achievement;
+    return { ...achievement, newlyEarned: true };
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -1236,7 +1286,65 @@ export class MemStorage implements IStorage {
       .map(u => ({ id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl }));
   }
 
-  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
+  async getMutualFriendCounts(userId: number, candidateUserIds: number[]): Promise<Record<number, number>> {
+    return getMutualFriendCountsFromEdges(userId, candidateUserIds, this.friendshipsStore);
+  }
+
+  async getFriendSuggestions(userId: number, limit = 8): Promise<FriendSuggestion[]> {
+    const viewerGameSlugs = [...new Set(
+      Array.from(this.userGameStatsMap.values())
+        .filter((stats) => stats.userId === userId && stats.gamesPlayed > 0)
+        .map((stats) => stats.gameSlug),
+    )];
+    if (viewerGameSlugs.length === 0) return [];
+
+    const excludedUserIds = new Set([userId]);
+    for (const friendship of this.friendshipsStore) {
+      if (friendship.requesterId === userId) excludedUserIds.add(friendship.addresseeId);
+      if (friendship.addresseeId === userId) excludedUserIds.add(friendship.requesterId);
+    }
+    for (const block of this.userBlocks) {
+      if (block.blockerId === userId) excludedUserIds.add(block.blockedUserId);
+      if (block.blockedUserId === userId) excludedUserIds.add(block.blockerId);
+    }
+
+    const viewerGames = new Set(viewerGameSlugs);
+    const candidateGameSlugs = new Map<number, Set<string>>();
+    for (const stats of this.userGameStatsMap.values()) {
+      if (stats.userId === userId || stats.gamesPlayed <= 0 || !viewerGames.has(stats.gameSlug)) continue;
+      const games = candidateGameSlugs.get(stats.userId) ?? new Set<string>();
+      games.add(stats.gameSlug);
+      candidateGameSlugs.set(stats.userId, games);
+    }
+
+    const candidateUsers = [...candidateGameSlugs.entries()]
+      .map(([candidateId, gameSlugs]) => {
+        const candidate = this.users.get(candidateId);
+        return candidate ? {
+          id: candidate.id,
+          username: candidate.username,
+          name: candidate.name,
+          avatarUrl: candidate.avatarUrl,
+          playedGameSlugs: [...gameSlugs],
+        } : null;
+      })
+      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+    const candidateIds = candidateUsers
+      .filter((candidate) => !excludedUserIds.has(candidate.id))
+      .map((candidate) => candidate.id);
+    const mutualFriendCounts = await this.getMutualFriendCounts(userId, candidateIds);
+
+    return rankFriendSuggestions(
+      userId,
+      viewerGameSlugs,
+      candidateUsers,
+      excludedUserIds,
+      mutualFriendCounts,
+      limit,
+    );
+  }
+
+  async getPublicProfile(userId: number): Promise<{ user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null; lastActiveAt: string | null }; stats: UserGameStats[]; achievements: UserAchievement[]; leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }> } | null> {
     const user = this.users.get(userId);
     if (!user) return null;
     const stats = Array.from(this.userGameStatsMap.values()).filter(s => s.userId === userId);
@@ -1257,15 +1365,15 @@ export class MemStorage implements IStorage {
       const rank = sorted.findIndex(([uid]) => uid === userId) + 1;
       leaderboardRankings.push({ gameSlug: slug, rank, score });
     }
-    return { user: { id: user.id, username: user.username, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt, isPremium: user.isPremium ?? false, bio: user.bio || null }, stats, achievements, leaderboardRankings };
+    return { user: { id: user.id, username: user.username, name: user.name, avatarUrl: user.avatarUrl, createdAt: user.createdAt, isPremium: user.isPremium ?? false, bio: user.bio || null, lastActiveAt: user.lastActiveAt ?? null }, stats, achievements, leaderboardRankings };
   }
 
   async getFriendshipById(id: number): Promise<Friendship | undefined> {
     return this.friendshipsStore.find(f => f.id === id);
   }
 
-  async sendFriendRequest(requesterId: number, addresseeId: number): Promise<Friendship> {
-    const f: Friendship = { id: this.frIdCounter++, requesterId, addresseeId, status: "pending", createdAt: new Date().toISOString() };
+  async sendFriendRequest(requesterId: number, addresseeId: number, note?: string | null): Promise<Friendship> {
+    const f: Friendship = { id: this.frIdCounter++, requesterId, addresseeId, note: note ?? null, status: "pending", createdAt: new Date().toISOString() };
     this.friendshipsStore.push(f);
     return f;
   }
@@ -1282,17 +1390,26 @@ export class MemStorage implements IStorage {
     return f;
   }
 
+  async cancelFriendRequest(id: number, requesterId: number): Promise<boolean> {
+    const friendship = this.friendshipsStore.find(
+      (f) => f.id === id && f.requesterId === requesterId && f.status === "pending",
+    );
+    if (!friendship) return false;
+    this.friendshipsStore = this.friendshipsStore.filter((f) => f.id !== id);
+    return true;
+  }
+
   async removeFriend(id: number): Promise<void> {
     this.friendshipsStore = this.friendshipsStore.filter(f => f.id !== id);
   }
 
-  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
+  async getFriends(userId: number): Promise<Array<Friendship & { friendUser: { id: number; username: string; name: string; avatarUrl: string | null; lastActiveAt: string | null } }>> {
     return this.friendshipsStore
       .filter(f => f.status === "accepted" && (f.requesterId === userId || f.addresseeId === userId))
       .map(f => {
         const friendId = f.requesterId === userId ? f.addresseeId : f.requesterId;
         const friendUser = this.users.get(friendId);
-        return { ...f, friendUser: { id: friendId, username: friendUser?.username || "unknown", name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null } };
+        return { ...f, friendUser: { id: friendId, username: friendUser?.username || "unknown", name: friendUser?.name || "Unknown", avatarUrl: friendUser?.avatarUrl || null, lastActiveAt: friendUser?.hideActivity ? null : friendUser?.lastActiveAt ?? null } };
       });
   }
 
@@ -1302,6 +1419,15 @@ export class MemStorage implements IStorage {
       .map(f => {
         const requester = this.users.get(f.requesterId);
         return { ...f, requesterUser: { id: f.requesterId, username: requester?.username || "unknown", name: requester?.name || "Unknown", avatarUrl: requester?.avatarUrl || null } };
+      });
+  }
+
+  async getOutgoingPendingFriendRequests(userId: number): Promise<Array<Friendship & { addresseeUser: { id: number; username: string; name: string; avatarUrl: string | null } }>> {
+    return this.friendshipsStore
+      .filter(f => f.status === "pending" && f.requesterId === userId)
+      .map(f => {
+        const addressee = this.users.get(f.addresseeId);
+        return { ...f, addresseeUser: { id: f.addresseeId, username: addressee?.username || "unknown", name: addressee?.name || "Unknown", avatarUrl: addressee?.avatarUrl || null } };
       });
   }
 
@@ -1696,6 +1822,69 @@ export class MemStorage implements IStorage {
     }));
   }
 
+  async getCommentAuthors(targetType: CommentTargetType, targetId: string): Promise<import("@shared/schema").CommentAuthor[]> {
+    const authors = new Map<number, import("@shared/schema").CommentAuthor>();
+    for (const comment of this.commentsStore) {
+      if (comment.targetType !== targetType || comment.targetId !== targetId) continue;
+      const user = this.users.get(comment.userId);
+      if (user) authors.set(user.id, {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        avatarUrl: user.avatarUrl || null,
+      });
+    }
+    return [...authors.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  }
+
+  async getCommentsPage(
+    targetType: CommentTargetType,
+    targetId: string,
+    userId: number | undefined,
+    page: number,
+    pageSize: number,
+    sortOrder: import("@shared/schema").CommentSortOrder,
+    searchTerm?: string,
+    commenterId?: number,
+  ): Promise<import("@shared/schema").CommentPage> {
+    const all = await this.getComments(targetType, targetId, userId);
+    const normalizedSearch = searchTerm?.trim().toLocaleLowerCase();
+    const pinnedComment = all.find(comment => comment.isPinned && comment.parentId === null) ?? null;
+    const matchesFilter = (comment: Comment) => (
+      (commenterId === undefined || comment.userId === commenterId)
+      && (!normalizedSearch || (!comment.isDeleted && comment.content.toLocaleLowerCase().includes(normalizedSearch)))
+    );
+    const matched = normalizedSearch || commenterId !== undefined
+      ? all.filter(comment => matchesFilter(comment) || (comment.replies ?? []).some(matchesFilter))
+      : all;
+    const matchedWithoutPinned = matched.filter(comment => comment.id !== pinnedComment?.id);
+    const totalCount = normalizedSearch || commenterId !== undefined
+      ? all.reduce((count, comment) => count
+        + (matchesFilter(comment) ? 1 : 0)
+        + (comment.replies ?? []).filter(matchesFilter).length, 0)
+      : all.reduce((count, comment) => count + 1 + (comment.replies?.length ?? 0), 0);
+    const compareChronology = (a: Comment, b: Comment) =>
+      a.createdAt.localeCompare(b.createdAt) || a.id - b.id;
+    const sorted = [...matchedWithoutPinned].sort((a, b) => {
+      if (sortOrder === "oldest") return compareChronology(a, b);
+      if (sortOrder === "most-liked") {
+        return (b.likeCount ?? 0) - (a.likeCount ?? 0) || compareChronology(b, a);
+      }
+      return compareChronology(b, a);
+    });
+    const start = (page - 1) * pageSize;
+    const comments = sorted.slice(start, start + pageSize);
+    return {
+      comments,
+      commenters: page === 1 ? await this.getCommentAuthors(targetType, targetId) : undefined,
+      pinnedComment,
+      page,
+      pageSize,
+      totalCount,
+      hasMore: start + comments.length < sorted.length,
+    };
+  }
+
   async toggleLike(userId: number, targetType: LikeTargetType, targetId: string): Promise<{ liked: boolean; count: number }> {
     const idx = this.likesStore.findIndex(l => l.userId === userId && l.targetType === targetType && l.targetId === targetId);
     if (idx >= 0) {
@@ -1727,6 +1916,30 @@ export class MemStorage implements IStorage {
     return c ? this.commentToPublic(c) : null;
   }
 
+  async setCommentPinned(
+    id: number,
+    targetType: CommentTargetType,
+    targetId: string,
+    isPinned: boolean,
+  ): Promise<Comment | null> {
+    const comment = this.commentsStore.find(c =>
+      c.id === id
+      && c.targetType === targetType
+      && c.targetId === targetId
+      && c.parentId === null
+      && (!isPinned || !c.isDeleted));
+    if (!comment) return null;
+    if (isPinned) {
+      for (const candidate of this.commentsStore) {
+        if (candidate.targetType === targetType && candidate.targetId === targetId) {
+          candidate.isPinned = false;
+        }
+      }
+    }
+    comment.isPinned = isPinned;
+    return this.commentToPublic(comment);
+  }
+
   async updateComment(id: number, userId: number, content: string): Promise<Comment | null> {
     const c = this.commentsStore.find(c => c.id === id);
     if (!c || c.isDeleted || c.userId !== userId) return null;
@@ -1741,6 +1954,7 @@ export class MemStorage implements IStorage {
     if (!isAdmin && c.userId !== userId) return false;
     c.isDeleted = true;
     c.content = "";
+    c.isPinned = false;
     return true;
   }
 
@@ -1790,6 +2004,7 @@ export class MemStorage implements IStorage {
     if (c) {
       c.isDeleted = true;
       c.content = "";
+      c.isPinned = false;
     }
   }
 
@@ -2149,9 +2364,9 @@ export class MemStorage implements IStorage {
     return before - this.notifications.length;
   }
 
-  async getNotificationPreferences(userId: number): Promise<Record<NotificationType, boolean>> {
-    const types = notificationTypeSchema.options as NotificationType[];
-    const result = {} as Record<NotificationType, boolean>;
+  async getNotificationPreferences(userId: number): Promise<Record<NotificationPreferenceType, boolean>> {
+    const types = NOTIFICATION_PREFERENCE_TYPES;
+    const result = {} as Record<NotificationPreferenceType, boolean>;
     for (const type of types) {
       const key = `${userId}:${type}`;
       result[type] = this.notificationPrefsMap.has(key) ? this.notificationPrefsMap.get(key)! : true;
@@ -2159,7 +2374,7 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async setNotificationPreference(userId: number, type: NotificationType, enabled: boolean): Promise<void> {
+  async setNotificationPreference(userId: number, type: NotificationPreferenceType, enabled: boolean): Promise<void> {
     this.notificationPrefsMap.set(`${userId}:${type}`, enabled);
   }
 
@@ -2625,8 +2840,118 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  async isBlockedBetween(userId1: number, userId2: number): Promise<boolean> {
+    return this.userBlocks.some((block) =>
+      (block.blockerId === userId1 && block.blockedUserId === userId2)
+      || (block.blockerId === userId2 && block.blockedUserId === userId1),
+    );
+  }
+
+  async getBlockedUserIds(userId: number, candidateUserIds: number[]): Promise<number[]> {
+    const candidates = new Set(candidateUserIds);
+    const blockedIds = new Set<number>();
+    for (const block of this.userBlocks) {
+      if (block.blockerId === userId && candidates.has(block.blockedUserId)) blockedIds.add(block.blockedUserId);
+      if (block.blockedUserId === userId && candidates.has(block.blockerId)) blockedIds.add(block.blockerId);
+    }
+    return [...blockedIds];
+  }
+
+  async getBlockedUsers(userId: number): Promise<BlockedUser[]> {
+    return this.userBlocks
+      .filter((block) => block.blockerId === userId)
+      .map((block) => {
+        const user = this.users.get(block.blockedUserId);
+        return user ? {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.avatarUrl ?? null,
+          blockedAt: block.createdAt,
+        } : null;
+      })
+      .filter((user): user is BlockedUser => user !== null)
+      .sort((a, b) => b.blockedAt.localeCompare(a.blockedAt));
+  }
+
+  async blockUser(blockerId: number, blockedUserId: number): Promise<void> {
+    if (!this.userBlocks.some((block) => block.blockerId === blockerId && block.blockedUserId === blockedUserId)) {
+      this.userBlocks.push({
+        id: this.userBlockIdCounter++,
+        blockerId,
+        blockedUserId,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    this.friendshipsStore = this.friendshipsStore.filter((friendship) =>
+      !(
+        (friendship.requesterId === blockerId && friendship.addresseeId === blockedUserId)
+        || (friendship.requesterId === blockedUserId && friendship.addresseeId === blockerId)
+      ),
+    );
+    for (const challenge of this.friendChallengesStore) {
+      if (
+        challenge.status === "pending"
+        && ((challenge.senderId === blockerId && challenge.receiverId === blockedUserId)
+          || (challenge.senderId === blockedUserId && challenge.receiverId === blockerId))
+      ) {
+        challenge.status = "cancelled";
+      }
+    }
+    for (const challenge of this.duelChallenges) {
+      if (
+        challenge.status === "pending"
+        && challenge.challengeeId !== null
+        && ((challenge.challengerId === blockerId && challenge.challengeeId === blockedUserId)
+          || (challenge.challengerId === blockedUserId && challenge.challengeeId === blockerId))
+      ) {
+        challenge.status = "cancelled";
+      }
+    }
+  }
+
+  async unblockUser(blockerId: number, blockedUserId: number): Promise<void> {
+    this.userBlocks = this.userBlocks.filter((block) =>
+      block.blockerId !== blockerId || block.blockedUserId !== blockedUserId,
+    );
+  }
+
+  async createUserReport(reportingUserId: number, reportedUserId: number, input: UserReportInput): Promise<void> {
+    this.userReports.unshift({
+      id: this.userReportIdCounter++,
+      reportingUserId,
+      reportedUserId,
+      reason: input.reason,
+      details: input.details?.trim() || null,
+      readAt: null,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  async getUserReports(): Promise<AdminUserReport[]> {
+    return this.userReports.map((report) => {
+      const reporter = this.users.get(report.reportingUserId);
+      const reportedUser = this.users.get(report.reportedUserId);
+      return {
+        ...report,
+        reporter: reporter ? { id: reporter.id, username: reporter.username, name: reporter.name } : null,
+        reportedUser: reportedUser ? { id: reportedUser.id, username: reportedUser.username, name: reportedUser.name } : null,
+      };
+    });
+  }
+
+  async markUserReportRead(id: number): Promise<boolean> {
+    const report = this.userReports.find((item) => item.id === id);
+    if (!report) return false;
+    if (!report.readAt) report.readAt = new Date().toISOString();
+    return true;
+  }
+
   async deleteUser(id: number): Promise<void> {
     this.users.delete(id);
+    for (const game of this.games) {
+      if (game.creatorId === id) game.creatorId = null;
+    }
     this.leaderboardEntries = this.leaderboardEntries.filter(e => e.userId !== id);
     this.userAchievements = this.userAchievements.filter(a => a.userId !== id);
     this.userStreaks.delete(id);
@@ -2634,6 +2959,7 @@ export class MemStorage implements IStorage {
       if (key.startsWith(`${id}-`)) this.userGameStatsMap.delete(key);
     }
     this.friendshipsStore = this.friendshipsStore.filter(f => f.requesterId !== id && f.addresseeId !== id);
+    this.userBlocks = this.userBlocks.filter((block) => block.blockerId !== id && block.blockedUserId !== id);
     this.friendChallengesStore = this.friendChallengesStore.filter(c => c.senderId !== id && c.receiverId !== id);
     this.notifications = this.notifications.filter(n => n.userId !== id);
     this.commentsStore = this.commentsStore.filter(c => c.userId !== id);

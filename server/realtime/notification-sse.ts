@@ -13,14 +13,28 @@ export function unregisterNotifSSE(userId: number, res: Response): void {
 }
 
 export function pushNotifToUser(userId: number): void {
+  pushUserEvent(userId, { type: "new_notification" });
+}
+
+export function pushUserEvent(userId: number, event: Record<string, unknown>): void {
   const clients = notifClients.get(userId);
   if (!clients || clients.size === 0) return;
-  const data = `data: ${JSON.stringify({ type: "new_notification" })}\n\n`;
+  const data = `data: ${JSON.stringify(event)}\n\n`;
   for (const res of clients) {
     try {
       res.write(data);
     } catch {
       clients.delete(res);
     }
+  }
+}
+
+export function pushUserEventToAllExcept(
+  excludedUserIds: Iterable<number>,
+  event: Record<string, unknown>,
+): void {
+  const excluded = new Set(excludedUserIds);
+  for (const userId of notifClients.keys()) {
+    if (!excluded.has(userId)) pushUserEvent(userId, event);
   }
 }

@@ -17,11 +17,15 @@ import type { WordValidationResponse } from "@shared/schema";
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { CustomFreshAnswerControls } from "./custom-fresh-answers-controls";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 import {
   getLetterPositionLeaderboardSlug,
   type LetterPositionChallenge,
@@ -130,6 +134,11 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   const [timedOut, setTimedOut] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "correct" | "wrong" | "invalid"; message: string } | null>(null);
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
+  const freshAnswers = useCustomFreshAnswers({
+    game: "letter-position",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -181,6 +190,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
 
@@ -202,7 +212,15 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
     setGameStatus("playing");
     if (!isUntimed) startTimer(survival);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [startTimer, stopTimer, resetRecorded, initialLetter, initialPosition, isUntimed]);
+  }, [
+    startTimer,
+    stopTimer,
+    resetRecorded,
+    initialLetter,
+    initialPosition,
+    isUntimed,
+    freshAnswers.resetCurrentRun,
+  ]);
 
   useEffect(() => {
     if (initialChallenge !== undefined) {
@@ -226,6 +244,21 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
   }, [gameStatus, score, reportResult, wordsCompleted, survivalTime]);
 
   useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      (gameStatus === "won" || gameStatus === "lost") &&
+      freshAnswers.isEnabled
+    ) {
+      freshAnswers.appendCurrentRunAnswers();
+    }
+  }, [
+    freshAnswers.isAvailable,
+    gameStatus,
+    freshAnswers.isEnabled,
+    freshAnswers.appendCurrentRunAnswers,
+  ]);
+
+  useEffect(() => {
     return () => stopTimer();
   }, [stopTimer]);
 
@@ -233,6 +266,17 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
     if (!userInput.trim() || !constraint) return;
 
     const upperWord = userInput.toUpperCase();
+
+    if (freshAnswers.isBlocked(upperWord)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      inputRef.current?.focus();
+      return;
+    }
 
     if (usedWords.has(upperWord)) {
       playSound("wrong");
@@ -268,6 +312,7 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
       setStreak(prev => prev + 1);
         setFeedback({ type: "correct", message: "Correct!" });
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      freshAnswers.recordAcceptedAnswer(upperWord);
       
       const challengeBonus = challenge * 30;
       setScore((prev) => prev + 100 + challengeBonus);
@@ -394,6 +439,11 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     <div className="text-xs text-muted-foreground font-normal">
                       {config.description}
                     </div>
+                    <PersonalBestPair
+                      classicSlug={getLetterPositionLeaderboardSlug(c)}
+                      survivalSlug={getLetterPositionLeaderboardSlug(c, true)}
+                      testId={`personal-bests-letter-position-${c}`}
+                    />
                   </div>
                 </Button>
               );
@@ -505,6 +555,21 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                       PB: <span className="font-semibold text-foreground" data-testid="text-personal-best">{personalBest > 0 ? personalBest : "—"}</span>
                     </span>
                   </div>
+                  <CustomFreshAnswerControls
+                    game="Letter Position"
+                    gameSlug="letter-position"
+                    isCustomPlay={Boolean(customPlay)}
+                    answerCount={freshAnswers.currentRunAnswers.size}
+                    snapshot={freshAnswers.snapshot}
+                    isAvailable={freshAnswers.isAvailable}
+                    isEnabled={freshAnswers.isEnabled}
+                    optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                    storageError={freshAnswers.storageError}
+                    pendingAppendCount={freshAnswers.pendingAppendCount}
+                    onRetryAppend={freshAnswers.retryPendingAppend}
+                    onEnabledChange={freshAnswers.setEnabled}
+                    onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                  />
                   {CHALLENGE_CONFIG[challenge].changesPerWord && (
                     <Badge variant="secondary" className="text-xs">
                       Constraint changes after each word!
@@ -685,6 +750,22 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     </div>
                   </div>
                 )}
+                <CustomFreshAnswerControls
+                  game="Letter Position"
+                  gameSlug="letter-position"
+                  isCustomPlay={Boolean(customPlay)}
+                  answerCount={freshAnswers.currentRunAnswers.size}
+                  snapshot={freshAnswers.snapshot}
+                  isAvailable={freshAnswers.isAvailable}
+                  isEnabled={freshAnswers.isEnabled}
+                  optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                  storageError={freshAnswers.storageError}
+                  pendingAppendCount={freshAnswers.pendingAppendCount}
+                  onRetryAppend={freshAnswers.retryPendingAppend}
+                  allowOptIn
+                  onEnabledChange={freshAnswers.setEnabled}
+                  onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                />
                 {constraint && (
                   <WordExamplesPanel
                     game="letter-position"
@@ -802,6 +883,22 @@ export function LetterPositionGame({ initialChallenge, groupSeed, locked, initia
                     </div>
                   </div>
                 )}
+                <CustomFreshAnswerControls
+                  game="Letter Position"
+                  gameSlug="letter-position"
+                  isCustomPlay={Boolean(customPlay)}
+                  answerCount={freshAnswers.currentRunAnswers.size}
+                  snapshot={freshAnswers.snapshot}
+                  isAvailable={freshAnswers.isAvailable}
+                  isEnabled={freshAnswers.isEnabled}
+                  optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                  storageError={freshAnswers.storageError}
+                  pendingAppendCount={freshAnswers.pendingAppendCount}
+                  onRetryAppend={freshAnswers.retryPendingAppend}
+                  allowOptIn
+                  onEnabledChange={freshAnswers.setEnabled}
+                  onEnable={freshAnswers.optInWithCurrentRunAnswers}
+                />
                 {constraint && (
                   <WordExamplesPanel
                     game="letter-position"

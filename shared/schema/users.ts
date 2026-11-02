@@ -14,6 +14,8 @@ export const userSchema = z.object({
   isBanned: z.boolean(),
   isPremium: z.boolean(),
   bio: z.string().nullable().optional(),
+  hideActivity: z.boolean().optional(),
+  lastActiveAt: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type User = z.infer<typeof userSchema>;
@@ -36,6 +38,7 @@ export const authenticatedUserSchema = publicUserSchema.extend({
   email: z.string().email(),
   emailVerified: z.boolean(),
   isAdmin: z.boolean(),
+  hideActivity: z.boolean(),
 });
 export type AuthenticatedUser = z.infer<typeof authenticatedUserSchema>;
 

@@ -31,16 +31,15 @@ export function NoRepeatsHostChecker({ filters }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="no-repeats-host-heading">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">For the host</p>
-      <h2 id="no-repeats-host-heading" className="mt-1 text-xl font-semibold">Check a spoken answer</h2>
+    <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="no-repeats-word-check-heading">
+      <h2 id="no-repeats-word-check-heading" className="text-xl font-semibold">Check a word</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Check whether the word is in the dictionary, has no repeated letters, and matches your selected filters.
+        See whether a word exists in the dictionary, has no repeated letters, and matches your selected filters.
       </p>
       <form onSubmit={submit} className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <label className="sr-only" htmlFor="no-repeats-host-answer">Spoken answer</label>
+        <label className="sr-only" htmlFor="no-repeats-word-check">Word to check</label>
         <input
-          id="no-repeats-host-answer"
+          id="no-repeats-word-check"
           value={answer}
           onChange={(event) => setAnswer(event.target.value.replace(/[^a-z]/gi, "").toUpperCase())}
           className="min-w-0 flex-1 rounded-lg border bg-background px-3 py-2.5 font-mono uppercase outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -54,7 +53,7 @@ export function NoRepeatsHostChecker({ filters }: Props) {
           disabled={!answer.trim() || checkMutation.isPending}
           className="rounded-lg border px-4 py-2.5 font-medium disabled:opacity-50"
         >
-          {checkMutation.isPending ? "Checking…" : "Check answer"}
+          {checkMutation.isPending ? "Checking…" : "Check word"}
         </button>
       </form>
       {checkMutation.isError && (

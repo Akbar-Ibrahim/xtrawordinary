@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction, type ToastActionElement } from "@/components/ui/toast";
 import { recordGameResult, getPersonalBest, loadStats, loadStreak } from "@/lib/game-stats";
@@ -215,5 +215,18 @@ export function useGameResult({ slug, statsSlug, personalBestSlug, survivalSugge
 }
 
 export function usePersonalBest(slug: string): number {
-  return useMemo(() => getPersonalBest(slug), [slug]);
+  const [personalBest, setPersonalBest] = useState(() => getPersonalBest(slug));
+
+  useEffect(() => {
+    const refreshPersonalBest = () => setPersonalBest(getPersonalBest(slug));
+    refreshPersonalBest();
+    window.addEventListener("wordplay-game-result", refreshPersonalBest);
+    window.addEventListener("storage", refreshPersonalBest);
+    return () => {
+      window.removeEventListener("wordplay-game-result", refreshPersonalBest);
+      window.removeEventListener("storage", refreshPersonalBest);
+    };
+  }, [slug]);
+
+  return personalBest;
 }

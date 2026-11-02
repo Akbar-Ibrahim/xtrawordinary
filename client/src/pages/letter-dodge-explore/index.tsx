@@ -48,17 +48,20 @@ export default function LetterDodgeExplore() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-destructive">Letter Dodge · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Which letters should words avoid?</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Enter letters to keep out of the word. Browse matching dictionary entries, including short words, or check a spoken answer for your game night.
+          Enter letters to keep out of the word. Browse matching dictionary entries, including short words, or check whether a word avoids those letters.
         </p>
       </header>
 
-      <div className="mt-8 space-y-5">
-        <LetterDodgeControls
-          letters={forbiddenLetters}
-          isSearching={resultsQuery.isFetching}
-          onSetLetters={setForbiddenLetters}
-          onSearch={runSearch}
-        />
+      <div className="mt-8 grid min-w-0 gap-5 lg:grid-cols-[minmax(280px,350px)_minmax(0,1fr)]">
+        <div className="space-y-5">
+          <LetterDodgeControls
+            letters={forbiddenLetters}
+            isSearching={resultsQuery.isFetching}
+            onSetLetters={setForbiddenLetters}
+            onSearch={runSearch}
+          />
+          <LetterDodgeHostChecker key={forbiddenLetters} forbiddenLetters={forbiddenLetters} />
+        </div>
         <LetterDodgeResults
           letters={searchedLetters}
           isLoading={resultsQuery.isLoading}
@@ -70,7 +73,6 @@ export default function LetterDodgeExplore() {
           onRetry={() => { void resultsQuery.refetch(); }}
           onLoadMore={() => { if (resultsQuery.hasNextPage && !resultsQuery.isFetchingNextPage) void resultsQuery.fetchNextPage(); }}
         />
-        <LetterDodgeHostChecker key={forbiddenLetters} forbiddenLetters={forbiddenLetters} />
       </div>
     </div>
   );

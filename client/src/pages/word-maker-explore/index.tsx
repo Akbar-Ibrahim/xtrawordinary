@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowDown, ChevronDown, Dices, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Dices, Search, X } from "lucide-react";
 import { PageSEO } from "@/components/page-seo";
 import "./styles.css";
 
@@ -17,15 +17,6 @@ type WordsResponse = {
   page: { limit: number; nextCursor: string | null; hasMore: boolean };
   source: "preview" | "database";
 };
-type CheckResponse = {
-  dictionaryMatch: boolean;
-  playableInGame: boolean;
-  gameplayExclusion: string | null;
-  source: "preview" | "database";
-};
-type Mode = "browse" | "host";
-type CheckEntry = { word: string; result: CheckResponse };
-
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, credentials: "include" });
   if (!response.ok) {
@@ -59,31 +50,25 @@ function WordRows({ pages }: { pages: WordsResponse[] }) {
             <span className="wmx-word-name">{item.word.toUpperCase()}</span>
             <span
               className="wmx-status"
-              title={item.word.length < 3 ? "Valid in Explore. Normal Word Maker requires at least three letters." : "Valid in Explore and Host mode"}
+              title="Listed as a word that can be formed from this base word."
             >
               <span className="wmx-status-dot" aria-hidden="true" />
-              {item.word.length < 3 ? "Short word" : "Valid"}
+              {item.word.length < 3 ? "Short word" : "Explore match"}
             </span>
           </div>
         ))}
       </div>
-      <p className="wmx-letters">Alphabetical order · all listed words are valid in Host mode, including short words</p>
+      <p className="wmx-letters">Alphabetical order · words formed from the base word</p>
     </>
   );
 }
 
 export default function WordMakerExplore() {
-  const [mode, setMode] = useState<Mode>("browse");
   const [searchText, setSearchText] = useState("");
   const [selectedBase, setSelectedBase] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [lastCheck, setLastCheck] = useState<CheckEntry | null>(null);
-  const [checkedWords, setCheckedWords] = useState<CheckEntry[]>([]);
-  const [revealed, setRevealed] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const answerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchText.trim()), 220);
@@ -107,7 +92,7 @@ export default function WordMakerExplore() {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.page.hasMore ? lastPage.page.nextCursor : undefined,
-    enabled: Boolean(selectedBase) && (mode === "browse" || revealed),
+    enabled: Boolean(selectedBase),
     staleTime: 60_000,
     retry: 1,
   });
@@ -115,28 +100,10 @@ export default function WordMakerExplore() {
     mutationFn: () => readJson<{ baseWord: string }>("/api/explore/word-maker/base-words/random"),
     onSuccess: ({ baseWord }) => selectBase(baseWord),
   });
-  const checkMutation = useMutation({
-    mutationFn: (word: string) => readJson<CheckResponse>("/api/explore/word-maker/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseWord: selectedBase, answer: word }),
-    }),
-    onSuccess: (result, word) => {
-      const entry = { word, result };
-      setLastCheck(entry);
-      if (result.dictionaryMatch && !checkedWords.some((item) => item.word.toLowerCase() === word.toLowerCase())) {
-        setCheckedWords((previous) => [...previous, entry]);
-      }
-      setAnswer("");
-      answerRef.current?.focus();
-    },
-  });
-
   const displayedCount = useMemo(
     () => wordsQuery.data?.pages.reduce((sum, page) => sum + page.items.length, 0) ?? 0,
     [wordsQuery.data?.pages],
   );
-  const duplicate = checkedWords.some((item) => item.word.toLowerCase() === answer.trim().toLowerCase());
 
   function selectBase(value: string) {
     const normalized = value.trim();
@@ -145,24 +112,12 @@ export default function WordMakerExplore() {
     setSearchText(normalized);
     setShowSuggestions(false);
     setActiveSuggestion(-1);
-    setAnswer("");
-    setLastCheck(null);
-    setCheckedWords([]);
-    setRevealed(false);
   }
 
   function onSearchChange(value: string) {
     setSearchText(value.replace(/[^a-zA-Z]/g, ""));
     setShowSuggestions(true);
     setActiveSuggestion(-1);
-  }
-
-  function submitAnswer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const candidate = answer.trim().toUpperCase();
-    if (!selectedBase || candidate.length < 1 || checkMutation.isPending || duplicate) return;
-    setLastCheck(null);
-    checkMutation.mutate(candidate);
   }
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -187,7 +142,7 @@ export default function WordMakerExplore() {
     <div className="wmx-page">
       <PageSEO
         title="Explore Word Maker"
-        description="Browse words made from a base word or use xtraWordinary to host a spoken Word Maker game night."
+        description="Explore the dictionary word family that can be formed from a base word."
         path="/explore/word-maker"
       />
       <div className="wmx-shell">
@@ -197,19 +152,13 @@ export default function WordMakerExplore() {
             <div className="wmx-eyebrow">Word Maker · Explore</div>
             <h1 className="wmx-heading">Find the words<br /><em>in the letters.</em></h1>
             <p className="wmx-intro">
-              Look closer at a base word, or bring it to your next game night. You host the room and check suggestions as they are spoken — players never need to submit answers here.
+              Search a base word to explore its dictionary word family. This reference can also be useful when hosting a word game in person or over a call.
             </p>
           </div>
         </header>
 
         <div className="wmx-workspace">
           <aside className="wmx-panel wmx-controls" aria-label="Explore controls">
-            <p className="wmx-section-label">Choose your way to play</p>
-            <div className="wmx-mode" role="group" aria-label="Explore mode">
-              <button type="button" aria-pressed={mode === "browse"} onClick={() => setMode("browse")}>Browse words</button>
-              <button type="button" aria-pressed={mode === "host"} onClick={() => setMode("host")}>Host a game night</button>
-            </div>
-
             <label className="wmx-section-label" htmlFor="wmx-base-word">Base word</label>
             <div className="wmx-search-wrap">
               <Search className="wmx-search-icon" size={17} aria-hidden="true" />
@@ -254,85 +203,25 @@ export default function WordMakerExplore() {
 
             {selectedBase ? (
               <div className="wmx-current" aria-live="polite">
-                <div><small>Playing with</small><strong>{prettify(selectedBase)}</strong></div>
+                <div><small>Exploring</small><strong>{prettify(selectedBase)}</strong></div>
                 {wordsQuery.data && <div className="wmx-current-count">{displayedCount} loaded</div>}
               </div>
             ) : <p className="wmx-note">Search by the beginning of a word, pick a suggestion, or let chance choose one.</p>}
-            <p className="wmx-note">
-              Browse shows the word family. In host mode, the complete reference list stays hidden until you reveal it.
-            </p>
           </aside>
 
           <main className="wmx-main">
             <section className="wmx-panel wmx-content" aria-labelledby="wmx-results-heading">
-              {mode === "host" && selectedBase && (
-                <div className="wmx-host-card">
-                  <div className="wmx-host-top">
-                    <div>
-                      <h3>Host’s answer desk</h3>
-                      <p>Your players say words aloud. Enter each suggestion to check it against the same word list as Browse. One- and two-letter words count too. This page doesn’t track players or scores; keep points yourself.</p>
-                    </div>
-                    <span className="wmx-host-tag">HOST ONLY</span>
-                  </div>
-                  <form className="wmx-answer-form" onSubmit={submitAnswer}>
-                    <input
-                      ref={answerRef}
-                      value={answer}
-                      onChange={(event) => setAnswer(event.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())}
-                      placeholder="Type a spoken suggestion"
-                      aria-label="Check a spoken word suggestion"
-                      autoComplete="off"
-                    />
-                    <button type="submit" disabled={answer.trim().length < 1 || checkMutation.isPending || duplicate}>
-                      {checkMutation.isPending ? "Checking…" : "Check word"}
-                    </button>
-                  </form>
-                  <div className={`wmx-check-result${lastCheck ? (lastCheck.result.dictionaryMatch ? " good" : " bad") : checkMutation.isError ? " bad" : ""}`} role="status" aria-live="polite">
-                    {duplicate ? "Already checked as a valid answer in this session." : checkMutation.isPending ? "Checking the word list…" : lastCheck
-                      ? !lastCheck.result.dictionaryMatch
-                        ? lastCheck.result.gameplayExclusion === "letters_not_available"
-                          ? `${lastCheck.word} cannot be made from ${selectedBase.toUpperCase()}: there are not enough matching letters.`
-                          : lastCheck.result.gameplayExclusion === "base_word_not_a_subword"
-                            ? "Enter a word made from the base word, not the base word itself."
-                            : lastCheck.result.gameplayExclusion === "not_in_word_maker_derivatives"
-                              ? `${lastCheck.word} is not listed for ${selectedBase.toUpperCase()}${lastCheck.result.source === "preview" ? " in this small preview sample" : " in the database"}.`
-                              : `${lastCheck.word} was not found in ${lastCheck.result.source === "preview" ? "the preview dictionary" : "the dictionary"}.`
-                        : `${lastCheck.word} is a valid answer for this game night.`
-                      : checkMutation.isError ? "The check could not be completed. Try again." : "Any word listed in Browse is valid here, including one- and two-letter words."}
-                  </div>
-                  {checkedWords.length > 0 && (
-                    <div className="wmx-session">
-                      <h3>Valid answers checked · {checkedWords.length}</h3>
-                      <div className="wmx-session-list">
-                        {checkedWords.map(({ word }) => (
-                          <span className="wmx-session-word" key={word}>
-                            {word.toUpperCase()} <small>VALID</small>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="wmx-content-head">
                 <div>
-                  <h2 id="wmx-results-heading">{mode === "host" ? "Full word list" : "Word list"}</h2>
+                  <h2 id="wmx-results-heading">Word list</h2>
                   <p>{selectedBase
-                    ? mode === "host" && !revealed
-                      ? "The complete list is hidden so it won’t reveal possible answers to players. Reveal it when you’re ready."
-                      : `Words made from “${prettify(selectedBase)}”, in alphabetical order.`
+                    ? `Words made from “${prettify(selectedBase)}”, in alphabetical order.`
                     : "Choose a base word to see its word family."}</p>
                 </div>
-                {(mode === "browse" || revealed) && hasResults && <span className="wmx-count-pill">{displayedCount} loaded</span>}
-                {mode === "host" && revealed && (
-                  <button type="button" className="wmx-hide-answer" onClick={() => setRevealed(false)}>
-                    <X size={14} aria-hidden="true" /> Hide answer list
-                  </button>
-                )}
+                {hasResults && <span className="wmx-count-pill">{displayedCount} loaded</span>}
               </div>
 
-              {(mode === "browse" || revealed) && wordsQuery.data?.pages.some((page) => page.source === "preview") && (
+              {wordsQuery.data?.pages.some((page) => page.source === "preview") && (
                 <p className="wmx-preview-note">
                   Preview mode shows a small sample. The connected database can provide more words across additional pages.
                 </p>
@@ -340,10 +229,6 @@ export default function WordMakerExplore() {
 
               {!selectedBase ? (
                 <div className="wmx-empty"><div><strong>Start with a base word</strong>Search above or try a surprise pick to open its word family.</div></div>
-              ) : mode === "host" && !revealed ? (
-                <button type="button" className="wmx-reveal" onClick={() => setRevealed(true)}>
-                  Reveal all possible words <ArrowDown size={15} aria-hidden="true" />
-                </button>
               ) : wordsQuery.isLoading ? (
                 <LoadingGrid />
               ) : wordsQuery.isError && !hasResults ? (
@@ -363,11 +248,6 @@ export default function WordMakerExplore() {
                 </>
               )}
             </section>
-            {mode === "host" && (
-              <p className="wmx-note" style={{ textAlign: "center" }}>
-                Keep this screen with the host. Say the base word aloud, collect spoken suggestions, and use the checker to verify them; scorekeeping stays with you.
-              </p>
-            )}
           </main>
         </div>
       </div>

@@ -1,16 +1,13 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ArrowDown, ChevronDown } from "lucide-react";
-import { readExploreJson } from "./api";
+import { ChevronDown } from "lucide-react";
+import { ExploreRequestError, readExploreJson } from "./api";
 import type { WordsResponse } from "../types";
 
 interface Props {
   selectedBase: string;
-  mode: "browse" | "host";
-  revealed: boolean;
-  onReveal: (revealed: boolean) => void;
 }
 
-export function AnagramResults({ selectedBase, mode, revealed, onReveal }: Props) {
+export function AnagramResults({ selectedBase }: Props) {
   const wordsQuery = useInfiniteQuery<WordsResponse>({
     queryKey: ["/api/explore/anagrams/words", selectedBase],
     queryFn: ({ pageParam }) => {
@@ -20,7 +17,7 @@ export function AnagramResults({ selectedBase, mode, revealed, onReveal }: Props
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.page.hasMore ? lastPage.page.nextCursor : undefined,
-    enabled: Boolean(selectedBase) && (mode === "browse" || revealed),
+    enabled: Boolean(selectedBase),
     staleTime: 60_000,
     retry: 1,
   });
@@ -29,9 +26,6 @@ export function AnagramResults({ selectedBase, mode, revealed, onReveal }: Props
 
   return (
     <section className="wmx-panel wmx-content" aria-labelledby="ax-results-heading">
-      {mode === "host" && selectedBase && revealed && (
-        <button type="button" className="wmx-hide-answer" onClick={() => onReveal(false)}>Hide answer list</button>
-      )}
       <div className="wmx-content-head">
         <div>
           <h2 id="ax-results-heading">{selectedBase ? `Anagrams of ${selectedBase}` : "Your word family"}</h2>
@@ -41,33 +35,31 @@ export function AnagramResults({ selectedBase, mode, revealed, onReveal }: Props
               : "Choose a base word to browse its exact-letter matches."}
           </p>
         </div>
-        {selectedBase && mode === "browse" && (
+        {selectedBase && (
           <div className="wmx-count-pill">{words.length} loaded</div>
         )}
       </div>
 
-      {(mode === "browse" || revealed) && previewMode && (
+      {previewMode && (
         <p className="wmx-preview-note">Preview mode uses a small sample. The connected database can provide more words across additional pages.</p>
       )}
 
       {!selectedBase ? (
         <div className="wmx-empty"><div><strong>Start with a base word</strong>Search above or choose a random word to view its matches.</div></div>
-      ) : mode === "host" && !revealed ? (
-        <button type="button" className="wmx-reveal" onClick={() => onReveal(true)}>
-          Reveal all matching words <ArrowDown size={15} aria-hidden="true" />
-        </button>
       ) : wordsQuery.isLoading ? (
         <div className="wmx-busy" role="status" aria-label="Loading word list">
           <div className="wmx-skeletons" aria-hidden="true">
             {Array.from({ length: 8 }, (_, index) => <div className="wmx-skeleton" key={index} />)}
           </div>
         </div>
+      ) : wordsQuery.error instanceof ExploreRequestError && wordsQuery.error.status === 404 ? (
+        <div className="wmx-empty" role="status"><div><strong>{selectedBase} is not in the dictionary</strong>Check the spelling and try another word.</div></div>
       ) : wordsQuery.isError && words.length === 0 ? (
         <div className="wmx-error" role="alert">
           Could not load the anagram list. <button type="button" className="wmx-retry" onClick={() => wordsQuery.refetch()}>Try again</button>
         </div>
       ) : words.length === 0 ? (
-        <div className="wmx-empty"><div><strong>No linked anagrams found</strong>Try another base word.</div></div>
+        <div className="wmx-empty" role="status"><div><strong>No anagrams found for {selectedBase}</strong>This word is in the dictionary, but has no other exact-letter anagrams listed.</div></div>
       ) : (
         <>
           {wordsQuery.isError && (

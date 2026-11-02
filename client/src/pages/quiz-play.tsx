@@ -42,6 +42,8 @@ import { ProgressiveRevealGame } from "@/components/games/progressive-reveal";
 import { LetterDodgeGame } from "@/components/games/letter-dodge";
 import { AnagramSolverGame } from "@/components/games/anagram-solver";
 import { WordScrambleGame } from "@/components/games/word-scramble";
+import { WordStackGame } from "@/components/games/word-stack";
+import { normalizeWordStackQuizLength } from "@/lib/word-stack-quiz";
 
 const LETTER_BALANCE_CATEGORIES = [
   "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
@@ -165,6 +167,18 @@ function renderQuizGame(slug: string, seed: number, params?: Record<string, any>
     case "word-scramble": {
       const wsCustomWords = Array.isArray(params?.words) ? params!.words as import("@shared/schema").ScrambleWord[] : undefined;
       return <WordScrambleGame groupSeed={seed} locked quizMode customWords={wsCustomWords} />;
+    }
+    case "word-stack": {
+      const challenge = params?.challenge === "build-up" || params?.challenge === "break-down"
+        ? params.challenge
+        : undefined;
+      return <WordStackGame
+        groupSeed={seed}
+        locked
+        quizMode
+        initialChallenge={challenge}
+        initialQuizLength={normalizeWordStackQuizLength(params?.puzzleCount)}
+      />;
     }
     case "no-repeats": {
       const nrOptions: Array<3 | 4 | 5 | 6 | 7> = [3, 4, 5, 6, 7];
@@ -384,10 +398,12 @@ export default function QuizPlay() {
                   </div>
                 )}
 
-                {status === "unauthenticated" && (
+                {!alreadySubmitted && (
                   <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground flex items-center gap-2 justify-center">
                     <Lock className="h-4 w-4" />
-                    Sign in to submit your score to the leaderboard.
+                    {status === "unauthenticated"
+                      ? "You can play without signing in, but you must sign in to submit a score. Your first submitted score is kept."
+                      : "Your first submitted score is kept; replaying won't replace it."}
                   </div>
                 )}
 

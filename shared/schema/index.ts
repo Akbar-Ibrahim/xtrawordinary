@@ -15,4 +15,5 @@ export * from "./challenges";
 export * from "./analytics";
 export * from "./contact";
 export * from "./game-reports";
+export * from "./user-safety";
 export * from "../usernames";

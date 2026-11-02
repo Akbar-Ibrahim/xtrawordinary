@@ -25,6 +25,7 @@ function sanitizeUser(user: any) {
     bio: user.bio ?? null,
     isAdmin: user.isAdmin,
     isPremium: user.isPremium,
+    hideActivity: user.hideActivity ?? false,
     createdAt: user.createdAt,
   };
 }

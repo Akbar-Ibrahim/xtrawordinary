@@ -9,6 +9,7 @@ type CatalogGame = (typeof gamesData)[number];
 interface SeededGameRow extends RowDataPacket {
   slug: string;
   modes: unknown;
+  similar_game_slugs: unknown;
   has_survival: unknown;
 }
 
@@ -27,11 +28,12 @@ const INSERT_GAME_SQL = `
     is_active,
     has_survival,
     modes,
+    similar_game_slugs,
     time_limit_seconds,
     word_target,
     lives_count
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
   ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     description = VALUES(description),
@@ -42,7 +44,8 @@ const INSERT_GAME_SQL = `
     icon = VALUES(icon),
     color = VALUES(color),
     has_survival = VALUES(has_survival),
-    modes = VALUES(modes)
+    modes = VALUES(modes),
+    similar_game_slugs = COALESCE(similar_game_slugs, VALUES(similar_game_slugs))
 `;
 
 function validateCatalog(games: readonly CatalogGame[]): void {
@@ -61,6 +64,16 @@ function validateCatalog(games: readonly CatalogGame[]): void {
   if (!seen.has("spoken-word-transformations")) {
     throw new Error("Spoken Word Transformations is missing from the game catalogue.");
   }
+
+  for (const game of games) {
+    const similarSlugs = game.similarGameSlugs ?? [];
+    if (
+      new Set(similarSlugs).size !== similarSlugs.length ||
+      similarSlugs.some((similarSlug) => similarSlug === game.slug || !seen.has(similarSlug))
+    ) {
+      throw new Error(`Invalid Similar Games list for ${game.slug}.`);
+    }
+  }
 }
 
 function getInsertValues(game: CatalogGame): unknown[] {
@@ -77,24 +90,25 @@ function getInsertValues(game: CatalogGame): unknown[] {
     game.isActive ?? true,
     game.hasSurvival ?? false,
     game.modes ? JSON.stringify(game.modes) : null,
+    game.similarGameSlugs == null ? null : JSON.stringify(game.similarGameSlugs),
     game.timeLimitSeconds ?? null,
     game.wordTarget ?? null,
     game.livesCount ?? null,
   ];
 }
 
-function parseDatabaseJson(value: unknown): unknown {
+function parseDatabaseJson(value: unknown, fieldName: string): unknown {
   if (Buffer.isBuffer(value)) value = value.toString("utf8");
   if (typeof value !== "string") return value;
   try {
     return JSON.parse(value);
   } catch {
-    throw new Error("The database returned invalid JSON in games.modes.");
+    throw new Error(`The database returned invalid JSON in games.${fieldName}.`);
   }
 }
 
 function modesMatch(actualValue: unknown, expected: CatalogGame["modes"]): boolean {
-  const actual = parseDatabaseJson(actualValue);
+  const actual = parseDatabaseJson(actualValue, "modes");
   if (expected == null) return actual == null;
   if (!Array.isArray(actual) || actual.length !== expected.length) return false;
 
@@ -107,6 +121,18 @@ function modesMatch(actualValue: unknown, expected: CatalogGame["modes"]): boole
   );
 }
 
+function similarGameSlugsAreValid(
+  value: unknown,
+  currentSlug: string,
+): boolean {
+  const parsed = parseDatabaseJson(value, "similar_game_slugs");
+  if (parsed == null) return true;
+  if (!Array.isArray(parsed) || !parsed.every((slug) => typeof slug === "string")) return false;
+  const slugs = parsed as string[];
+  return new Set(slugs).size === slugs.length &&
+    slugs.every((slug) => slug !== currentSlug);
+}
+
 function hasSurvivalEnabled(value: unknown): boolean {
   if (Buffer.isBuffer(value)) value = value.toString("utf8");
   return value === true || value === 1 || value === "1";
@@ -116,7 +142,8 @@ function printDryRun(games: readonly CatalogGame[], replace: boolean): void {
   console.log(`Dry run: ${replace ? "replace" : "upsert"} ${games.length} catalogue games.`);
   for (const game of games) {
     const modes = game.modes?.map(({ slug }) => slug).join(", ") || "no variant modes";
-    console.log(`- ${game.slug}: ${game.name} [${modes}]`);
+    const similarGames = game.similarGameSlugs?.join(", ") || "no curated similar games";
+    console.log(`- ${game.slug}: ${game.name} [${modes}] {similar: ${similarGames}}`);
   }
 }
 
@@ -153,7 +180,7 @@ async function seedGames(): Promise<void> {
     const slugs = gamesData.map(({ slug }) => slug);
     const placeholders = slugs.map(() => "?").join(", ");
     const [rows] = await connection.execute<SeededGameRow[]>(
-      `SELECT slug, modes, has_survival
+      `SELECT slug, modes, similar_game_slugs, has_survival
        FROM games
        WHERE slug IN (${placeholders})`,
       slugs,
@@ -163,6 +190,7 @@ async function seedGames(): Promise<void> {
       const row = rowsBySlug.get(game.slug);
       return !row ||
         !modesMatch(row.modes, game.modes) ||
+        !similarGameSlugsAreValid(row.similar_game_slugs, game.slug) ||
         hasSurvivalEnabled(row.has_survival) !== (game.hasSurvival ?? false);
     });
 

@@ -4,4 +4,8 @@ import { anagramWordSets } from "../game-data";
 export const anagramExplorePreviewRows = [
   ...anagramWordSets,
   { original: "NO", anagrams: ["ON"] },
+  { original: "RANGE", anagrams: ["ANGER"] },
+  { original: "NOTE", anagrams: ["TONE"] },
+  { original: "PACE", anagrams: ["CAPE"] },
+  { original: "QUIZ", anagrams: [] },
 ];

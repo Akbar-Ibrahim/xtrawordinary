@@ -43,6 +43,8 @@ import { SpokenWordTransformationsGame } from "@/components/games/spoken-word-tr
 import { useNavigationGuard } from "@/hooks/use-navigation-guard";
 import { useResultSharing } from "@/hooks/use-result-sharing";
 import { ManualCopyDialog } from "@/components/manual-copy-dialog";
+import { DailyChallengeInstructions } from "@/pages/daily-challenge/DailyChallengeInstructions";
+import { getDailyLetterBalanceChallenge } from "@/pages/daily-challenge/letter-balance-challenge";
 
 interface DailyChallengeResponse {
   date: string;
@@ -72,22 +74,6 @@ function primarySlug(slug: string): string {
   return SLUG_TO_PRIMARY[slug] ?? ladderRushMode?.[1] ?? slug;
 }
 
-const LETTER_BALANCE_CATEGORIES = [
-  "consonant_count", "vowel_count", "start_end_vowel", "start_end_consonant",
-  "start_vowel_end_consonant", "start_consonant_end_vowel", "consonant_oblivion", "vowel_oblivion",
-] as const;
-
-const LETTER_BALANCE_LEVELS: Record<string, number[]> = {
-  consonant_count: [2, 3, 4, 5, 6, 7],
-  vowel_count: [2, 3, 4, 5, 6, 7],
-  start_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  start_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  start_vowel_end_consonant: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  start_consonant_end_vowel: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-  consonant_oblivion: [2, 3, 4, 5],
-  vowel_oblivion: [2, 3, 4, 5],
-};
-
 function renderDailyGame(slug: string, seed: number): React.ReactNode {
   switch (slug) {
     case "word-length": {
@@ -104,10 +90,7 @@ function renderDailyGame(slug: string, seed: number): React.ReactNode {
       return <LetterHuntGame initialChallenge={challenge} locked />;
     }
     case "letter-balance": {
-      const cat = LETTER_BALANCE_CATEGORIES[seed % LETTER_BALANCE_CATEGORIES.length];
-      const levels = LETTER_BALANCE_LEVELS[cat];
-      const level = levels[(seed >> 4) % levels.length];
-      return <LetterBalanceGame initialChallenge={{ category: cat, level }} locked />;
+      return <LetterBalanceGame initialChallenge={getDailyLetterBalanceChallenge(seed)} locked />;
     }
     case "letter-frequency": {
       const options: Array<1 | 2 | 3 | 4> = [1, 2, 3, 4];
@@ -393,6 +376,8 @@ export default function DailyChallenge() {
                     <p className="text-sm text-muted-foreground">{game.description}</p>
                   </div>
                 </div>
+
+                <DailyChallengeInstructions rules={game.rules ?? []} />
 
                 {showCompleted ? (
                   <div className="py-4 space-y-4">

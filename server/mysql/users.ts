@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { User, InsertUser, EmailVerificationToken, PasswordResetToken } from "@shared/schema";
 import * as schema from "../db-schema";
 
 export function toUser(row: any): User {
+  const lastActiveAt = row.lastActiveAt ?? null;
   return {
     id: row.id,
     email: row.email,
@@ -17,6 +18,12 @@ export function toUser(row: any): User {
     isBanned: !!row.isBanned,
     isPremium: !!row.isPremium,
     bio: row.bio || null,
+    hideActivity: !!row.hideActivity,
+    lastActiveAt: lastActiveAt == null
+      ? null
+      : lastActiveAt instanceof Date
+        ? lastActiveAt.toISOString()
+        : String(lastActiveAt),
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
@@ -34,6 +41,7 @@ export async function createUser(db: any, user: InsertUser): Promise<User> {
     isAdmin: user.isAdmin ?? false,
     isBanned: user.isBanned ?? false,
     isPremium: user.isPremium ?? false,
+    hideActivity: user.hideActivity ?? false,
   });
   return (await getUserById(db, result[0].insertId))!;
 }
@@ -60,6 +68,17 @@ export async function getUserByUsername(db: any, username: string): Promise<User
   return rows[0] ? toUser(rows[0]) : undefined;
 }
 
+export async function getUsersByUsernames(
+  db: any,
+  usernames: string[],
+): Promise<Array<Pick<User, "id" | "username">>> {
+  const normalizedUsernames = [...new Set(usernames.map((username) => username.trim().toLowerCase()))];
+  if (normalizedUsernames.length === 0) return [];
+  return db.select({ id: schema.users.id, username: schema.users.username })
+    .from(schema.users)
+    .where(inArray(schema.users.usernameNormalized, normalizedUsernames));
+}
+
 export async function updateUser(db: any, id: number, updates: Partial<InsertUser>): Promise<User | undefined> {
   const dbUpdates: any = {};
   if (updates.email !== undefined) dbUpdates.email = updates.email;
@@ -74,8 +93,16 @@ export async function updateUser(db: any, id: number, updates: Partial<InsertUse
   if (updates.isBanned !== undefined) dbUpdates.isBanned = updates.isBanned;
   if (updates.isPremium !== undefined) dbUpdates.isPremium = updates.isPremium;
   if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
+  if (updates.hideActivity !== undefined) dbUpdates.hideActivity = updates.hideActivity;
+  if (updates.lastActiveAt !== undefined) dbUpdates.lastActiveAt = updates.lastActiveAt ? new Date(updates.lastActiveAt) : null;
   await db.update(schema.users).set(dbUpdates).where(eq(schema.users.id, id));
   return getUserById(db, id);
+}
+
+export async function recordUserActivity(db: any, userId: number, lastActiveAt: string): Promise<void> {
+  await db.update(schema.users)
+    .set({ lastActiveAt: new Date(lastActiveAt) })
+    .where(eq(schema.users.id, userId));
 }
 
 export async function createEmailVerificationToken(db: any, userId: number, token: string, expiresAt: string): Promise<EmailVerificationToken> {

@@ -114,6 +114,18 @@ export function getChallengeInvitationNotificationBody(
   return `${senderName} wants you to beat their ${gameTitle} score of ${senderScore}${configSummary}`;
 }
 
+async function getVisibleFriendChallenges(userId: number): Promise<FriendChallenge[]> {
+  const challenges = await storage.getFriendChallenges(userId);
+  const otherUserIds = challenges.map((challenge) =>
+    challenge.senderId === userId ? challenge.receiverId : challenge.senderId,
+  );
+  const blockedIds = new Set(await storage.getBlockedUserIds(userId, otherUserIds));
+  return challenges.filter((challenge) => {
+    const otherUserId = challenge.senderId === userId ? challenge.receiverId : challenge.senderId;
+    return !blockedIds.has(otherUserId);
+  });
+}
+
 export function registerChallengesRoutes(app: Express): void {
   app.post("/api/challenges", requireAuth, async (req, res) => {
     try {
@@ -139,6 +151,9 @@ export function registerChallengesRoutes(app: Express): void {
       }
       const targetUser = await storage.getUserById(friendId);
       if (!targetUser) return res.status(404).json({ error: "User not found" });
+      if (await storage.isBlockedBetween(req.user!.id, friendId)) {
+        return res.status(403).json({ error: "You cannot challenge this user" });
+      }
       const existing = await storage.getPendingFriendChallenge(req.user!.id, friendId, gameSlug);
       if (existing) return res.status(409).json({ error: "You already have a pending challenge for this game with that player" });
       if (gameSlug === "letter-dodge" && gameConfig !== undefined) {
@@ -182,7 +197,7 @@ export function registerChallengesRoutes(app: Express): void {
 
   app.get("/api/challenges", requireAuth, async (req, res) => {
     try {
-      const challenges = await storage.getFriendChallenges(req.user!.id);
+      const challenges = await getVisibleFriendChallenges(req.user!.id);
       const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
       const filtered = challenges.filter((c) => {
         if (c.status !== "declined" && c.status !== "cancelled") return true;
@@ -197,7 +212,7 @@ export function registerChallengesRoutes(app: Express): void {
 
   app.get("/api/challenges/unread-count", requireAuth, async (req, res) => {
     try {
-      const challenges = await storage.getFriendChallenges(req.user!.id);
+      const challenges = await getVisibleFriendChallenges(req.user!.id);
       const resultCount = challenges.filter(
         (c) => c.status === "completed" && c.senderId === req.user!.id && !c.senderViewed
       ).length;
@@ -222,6 +237,9 @@ export function registerChallengesRoutes(app: Express): void {
       if (challenge.senderId !== req.user!.id && challenge.receiverId !== req.user!.id) {
         return res.status(403).json({ error: "Not your challenge" });
       }
+      if (await storage.isBlockedBetween(challenge.senderId, challenge.receiverId)) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
       if (challenge.receiverId === req.user!.id && !challenge.receiverViewed) {
         await storage.markChallengeReceiverViewed(id);
         challenge.receiverViewed = true;
@@ -240,6 +258,9 @@ export function registerChallengesRoutes(app: Express): void {
       if (score === undefined || typeof score !== "number" || score < 0) return res.status(400).json({ error: "Valid non-negative score is required" });
       const challenge = await storage.getFriendChallenge(id);
       if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+      if (await storage.isBlockedBetween(challenge.senderId, challenge.receiverId)) {
+        return res.status(404).json({ error: "Challenge not found" });
+      }
       if (challenge.receiverId !== req.user!.id) return res.status(403).json({ error: "Not your challenge" });
       if (challenge.status !== "pending") return res.status(400).json({ error: "Challenge is no longer pending" });
       const updated = await storage.completeFriendChallenge(id, score);

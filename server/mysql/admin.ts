@@ -16,6 +16,7 @@ export async function deleteUser(db: any, id: number): Promise<void> {
     db.delete(schema.userStreaks).where(eq(schema.userStreaks.userId, id)),
     db.delete(schema.userGameStats).where(eq(schema.userGameStats.userId, id)),
     db.delete(schema.friendships).where(or(eq(schema.friendships.requesterId, id), eq(schema.friendships.addresseeId, id))),
+    db.delete(schema.userBlocks).where(or(eq(schema.userBlocks.blockerId, id), eq(schema.userBlocks.blockedUserId, id))),
     db.delete(schema.friendChallenges).where(or(eq(schema.friendChallenges.senderId, id), eq(schema.friendChallenges.receiverId, id))),
     db.delete(schema.notifications).where(eq(schema.notifications.userId, id)),
     db.delete(schema.comments).where(eq(schema.comments.userId, id)),
@@ -44,7 +45,7 @@ export async function searchUsers(db: any, query: string): Promise<Array<{ id: n
 }
 
 export async function getPublicProfile(db: any, userId: number): Promise<{
-  user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null };
+  user: { id: number; username: string; name: string; avatarUrl: string | null; createdAt: string; isPremium: boolean; bio: string | null; lastActiveAt: string | null };
   stats: Awaited<ReturnType<typeof getAllUserGameStats>>;
   achievements: Awaited<ReturnType<typeof getUserAchievements>>;
   leaderboardRankings: Array<{ gameSlug: string; rank: number; score: number }>;
@@ -70,7 +71,7 @@ export async function getPublicProfile(db: any, userId: number): Promise<{
     leaderboardRankings.push({ gameSlug: slug, rank: Number(cnt) + 1, score });
   }
   return {
-    user: { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, createdAt: u.createdAt, isPremium: u.isPremium, bio: u.bio ?? null },
+    user: { id: u.id, username: u.username, name: u.name, avatarUrl: u.avatarUrl ?? null, createdAt: u.createdAt, isPremium: u.isPremium, bio: u.bio ?? null, lastActiveAt: u.lastActiveAt ?? null },
     stats,
     achievements,
     leaderboardRankings,

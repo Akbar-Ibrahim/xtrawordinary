@@ -93,14 +93,45 @@ export function registerStatsRoutes(app: Express): void {
     try {
       const { achievementId, unlockedAt } = req.body;
       if (!achievementId) return res.status(400).json({ error: "achievementId is required" });
-      const achievement = await storage.saveUserAchievement(req.user!.id, achievementId, unlockedAt || new Date().toISOString());
+      const userId = req.user!.id;
+      const { newlyEarned, ...achievement } = await storage.saveUserAchievement(
+        userId,
+        achievementId,
+        unlockedAt || new Date().toISOString(),
+      );
       createNotificationIfEnabled({
-        userId: req.user!.id,
+        userId,
         type: "achievement_unlocked",
         title: "Achievement unlocked!",
         body: `You earned the "${achievementId.split("_").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}" achievement`,
         linkUrl: "/badges",
       });
+      if (newlyEarned) {
+        try {
+          const preferences = await storage.getNotificationPreferences(userId);
+          if (preferences.share_achievement_unlocked) {
+            const achievementName = achievementId
+              .split("_")
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+            const friends = await storage.getFriends(userId);
+            const notifiedFriendIds = new Set<number>();
+            await Promise.all(friends.map(({ friendUser }) => {
+              if (friendUser.id === userId || notifiedFriendIds.has(friendUser.id)) return Promise.resolve();
+              notifiedFriendIds.add(friendUser.id);
+              return createNotificationIfEnabled({
+                userId: friendUser.id,
+                type: "friend_achievement_unlocked",
+                title: "A friend unlocked an achievement",
+                body: `@${req.user!.username} earned the "${achievementName}" achievement`,
+                linkUrl: `/u/${encodeURIComponent(req.user!.username)}`,
+              });
+            }));
+          }
+        } catch (error) {
+          console.error("[notification]", error);
+        }
+      }
       res.json(achievement);
     } catch (error) {
       res.status(500).json({ error: "Failed to save achievement" });

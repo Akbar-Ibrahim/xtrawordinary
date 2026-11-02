@@ -10,6 +10,7 @@ import {
 } from "../analytics/analytics-identity";
 import type { AnalyticsReportFilters } from "@shared/schema";
 import { analyticsReportToCsv } from "../analytics/analytics-export";
+import { findAnalyticsGame } from "../analytics/analytics-game";
 
 function isDateKey(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());
@@ -77,9 +78,14 @@ export function registerAnalyticsRoutes(app: Express): void {
         if (!parsed.data.gameSlug || !["timed", "untimed", "custom"].includes(parsed.data.gameMode ?? "")) {
           return res.status(400).json({ error: "Game events require a valid game and mode" });
         }
-        if (!await storage.getGameBySlug(parsed.data.gameSlug)) {
+        const requestedGame = await storage.getGameBySlug(parsed.data.gameSlug);
+        const analyticsGame =
+          requestedGame ??
+          findAnalyticsGame(await storage.getAllGames(), parsed.data.gameSlug);
+        if (!analyticsGame) {
           return res.status(400).json({ error: "Unknown game" });
         }
+        parsed.data.gameSlug = analyticsGame.slug;
       }
       const identity = getOrCreateAnalyticsIdentity(req, res);
       await recordAnalyticsEventSafely({

@@ -22,6 +22,7 @@ const QUIZ_GAME_DESCRIPTIONS: Record<string, string> = {
   "definition-match": "Match words to their definitions across three clue tiers.",
   "word-roots": "Guess words from their Latin or Greek root.",
   "progressive-reveal": "Uncover hidden letters one by one to guess the word.",
+  "word-stack": "Build up or break down words through the same shared puzzle set.",
 };
 
 function QuizGameCard({ game }: { game: Game }) {
@@ -57,7 +58,7 @@ export default function CreateQuiz() {
 
   const { data: allGames = [], isLoading: gamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !!user?.isPremium,
   });
 
   const quizGames = allGames.filter((g) => QUIZ_MASTER_GAME_SLUGS.has(g.slug));
@@ -72,13 +73,28 @@ export default function CreateQuiz() {
         <GraduationCap className="h-14 w-14 mx-auto mb-4 text-muted-foreground opacity-40" />
         <h2 className="text-xl font-semibold mb-2">Sign in to create quizzes</h2>
         <p className="text-muted-foreground mb-6 text-sm">
-          Quiz sessions are available to registered users. Sign in or create a free account to get started.
+          Quiz sessions can be created by Premium members. Sign in to continue.
         </p>
         <Link href="/">
           <Button variant="outline" className="gap-2">
             <LogIn className="h-4 w-4" />
             Go to Home
           </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (!user?.isPremium) {
+    return (
+      <div className="container mx-auto px-4 py-16 max-w-xl text-center">
+        <GraduationCap className="h-14 w-14 mx-auto mb-4 text-muted-foreground opacity-40" />
+        <h2 className="text-xl font-semibold mb-2">Premium required to create quizzes</h2>
+        <p className="text-muted-foreground mb-6 text-sm">
+          Quiz sessions can be created by Premium members. Players can join from a shared link, and must sign in to submit a score.
+        </p>
+        <Link href="/pricing">
+          <Button variant="secondary">View Premium</Button>
         </Link>
       </div>
     );
@@ -97,7 +113,7 @@ export default function CreateQuiz() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <GraduationCap className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold">Create a Quiz Session</h1>
+          <h1 className="text-2xl font-bold">Create Quiz</h1>
         </div>
         <p className="text-muted-foreground text-sm">
           Choose a game below to set up a shareable quiz. Players compete on the same puzzle and scores appear on your quiz leaderboard.

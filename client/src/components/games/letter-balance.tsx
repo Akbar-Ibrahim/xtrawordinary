@@ -17,12 +17,16 @@ import type { VowelConsonantConfig, WordValidationResponse } from "@shared/schem
 import { useSound } from "@/lib/sound-provider";
 import { getCompletionMessage } from "@/lib/completion-messages";
 import { useGameResult, usePersonalBest } from "@/hooks/use-game-result";
+import { useCustomFreshAnswers } from "@/hooks/use-custom-fresh-answers";
+import { isFreshAnswerRunEligible } from "@/lib/custom-fresh-answers";
 import { getBestWordsFoundForGame } from "@/lib/game-stats";
 import { makeSeededRng } from "@/lib/seeded-rng";
 import { TryAnotherGameButton } from "@/components/try-another-game-button";
 import { WordExamplesPanel } from "@/components/word-examples-panel";
+import { CustomFreshAnswerControls } from "./custom-fresh-answers-controls";
 import type { DatabaseWordExamplesRequest } from "@/hooks/use-word-examples";
 import { SurvivalSuggestion, SURVIVAL_SUGGESTION_WORD_THRESHOLD } from "./survival-suggestion";
+import { PersonalBestPair } from "./personal-best-pair";
 
 const VOWELS = new Set(["A", "E", "I", "O", "U"]);
 
@@ -502,6 +506,11 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set());
   const [completionMessage, setCompletionMessage] = useState("");
   const { user } = useAuth();
+  const freshAnswers = useCustomFreshAnswers({
+    game: "letter-balance",
+    userId: user?.id,
+    eligible: isFreshAnswerRunEligible({ customPlay: Boolean(customPlay), locked, groupSeed, quizMode, isUntimed }),
+  });
   const [authOpen, setAuthOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerGenerationRef = useRef(0);
@@ -609,6 +618,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
     
@@ -634,6 +644,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     lockedBalanceAvailabilityQuery.isError,
     lockedBalanceAvailabilityQuery.isLoading,
     isLockedPairAvailable,
+    freshAnswers.resetCurrentRun,
   ]);
 
   const replayGame = useCallback(() => {
@@ -644,12 +655,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
     setStreak(0);
     setWordsCompleted(0);
     setUsedWords(new Set());
+    freshAnswers.resetCurrentRun();
     setUserInput("");
     setFeedback(null);
     setCurrentConstraint(lastInitialConstraintRef.current);
     setGameState("playing");
     if (!isUntimed) startTimer(isSurvivalRef.current);
-  }, [resetRecorded, clearTimer, startTimer, isUntimed]);
+  }, [resetRecorded, clearTimer, startTimer, isUntimed, freshAnswers.resetCurrentRun]);
 
   useEffect(() => {
     if (customConstraint && (customConstraint.vowels !== undefined || customConstraint.consonants !== undefined || customConstraint.length !== undefined)) {
@@ -661,6 +673,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       setStreak(0);
       setWordsCompleted(0);
       setUsedWords(new Set());
+      freshAnswers.resetCurrentRun();
       setUserInput("");
       setFeedback(null);
       setCurrentConstraint(synth);
@@ -709,6 +722,21 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       onGameEnd?.();
     }
   }, [gameState, score, reportResult, wordsCompleted, selectedCategory, selectedLevel, lockedConsonantCount]);
+
+  useEffect(() => {
+    if (
+      freshAnswers.isAvailable &&
+      (gameState === "level_complete" || gameState === "game_over") &&
+      freshAnswers.isEnabled
+    ) {
+      freshAnswers.appendCurrentRunAnswers();
+    }
+  }, [
+    freshAnswers.isAvailable,
+    gameState,
+    freshAnswers.isEnabled,
+    freshAnswers.appendCurrentRunAnswers,
+  ]);
 
   // Generate next constraint (for advanced mode or next word)
   const generateNextConstraint = useCallback(() => {
@@ -796,6 +824,16 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
 
     const upperWord = userInput.toUpperCase();
 
+    if (freshAnswers.isBlocked(upperWord)) {
+      playSound("wrong");
+      setStreak(0);
+      setFeedback({
+        type: "invalid",
+        message: "That answer is in your saved Fresh Answers list. Turn off Fresh Answers to use it.",
+      });
+      return;
+    }
+
     // Check if already used
     if (usedWords.has(upperWord)) {
       playSound("wrong");
@@ -830,6 +868,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
       setFeedback({ type: "correct", message: "Correct!" });
       setStreak(prev => prev + 1);
       setUsedWords((prev) => new Set(Array.from(prev).concat(upperWord)));
+      freshAnswers.recordAcceptedAnswer(upperWord);
       
       // Score based on word length and level difficulty
       const levelBonus = selectedLevel === "advanced" ? 50 : (selectedLevel as number) * 10;
@@ -926,6 +965,12 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                   />
                 </div>
               )}
+            <PersonalBestPair
+              classicSlug="letter-balance"
+              survivalSlug="letter-balance-survival"
+              className="justify-center"
+              testId="personal-bests-letter-balance-overall"
+            />
             <div className="grid gap-3">
               {CATEGORIES.map((cat) => (
                 <motion.div
@@ -1048,6 +1093,13 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                               <Badge variant="secondary" className="bg-white/20 text-white">Random</Badge>
                             )}
                           </Button>
+                          {level === "advanced" && (
+                            <PersonalBestPair
+                              classicSlug={getEffectiveSlug(false, "locked_balance", "advanced", null)}
+                              survivalSlug={getEffectiveSlug(true, "locked_balance", "advanced", null)}
+                              testId="personal-bests-letter-balance-locked-advanced"
+                            />
+                          )}
                         </motion.div>
                       );
                     })}
@@ -1064,7 +1116,7 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                         <motion.div key={c} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Button
                             variant="outline"
-                            className="w-full h-auto py-3 px-6 flex items-center justify-between"
+                            className="w-full h-auto py-3 px-6 flex flex-col items-stretch"
                             onClick={() => startGame(pendingLockedLength, c)}
                             disabled={
                               lockedBalanceAvailabilityQuery.isLoading ||
@@ -1074,12 +1126,19 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                             }
                             data-testid={`button-consonant-count-${c}`}
                           >
-                            <span className="font-semibold">{c} consonant{c !== 1 ? "s" : ""}</span>
-                            <span className="text-sm text-muted-foreground">
-                              {isLockedPairAvailable(pendingLockedLength, c)
-                                ? `→ ${v} vowel${v !== 1 ? "s" : ""}`
-                                : "No valid words"}
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="font-semibold">{c} consonant{c !== 1 ? "s" : ""}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {isLockedPairAvailable(pendingLockedLength, c)
+                                  ? `→ ${v} vowel${v !== 1 ? "s" : ""}`
+                                  : "No valid words"}
+                              </span>
                             </span>
+                            <PersonalBestPair
+                              classicSlug={getEffectiveSlug(false, "locked_balance", pendingLockedLength, c)}
+                              survivalSlug={getEffectiveSlug(true, "locked_balance", pendingLockedLength, c)}
+                              testId={`personal-bests-letter-balance-locked-${pendingLockedLength}l${c}c`}
+                            />
                           </Button>
                         </motion.div>
                       );
@@ -1207,6 +1266,22 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 </div>
               </div>
             )}
+            <CustomFreshAnswerControls
+              game="Vowels & Consonants"
+              gameSlug="letter-balance"
+              isCustomPlay={Boolean(customPlay)}
+              answerCount={freshAnswers.currentRunAnswers.size}
+              snapshot={freshAnswers.snapshot}
+              isAvailable={freshAnswers.isAvailable}
+              isEnabled={freshAnswers.isEnabled}
+              optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+              storageError={freshAnswers.storageError}
+              pendingAppendCount={freshAnswers.pendingAppendCount}
+              onRetryAppend={freshAnswers.retryPendingAppend}
+              allowOptIn
+              onEnabledChange={freshAnswers.setEnabled}
+              onEnable={freshAnswers.optInWithCurrentRunAnswers}
+            />
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />
@@ -1312,6 +1387,22 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 </div>
               </div>
             )}
+            <CustomFreshAnswerControls
+              game="Vowels & Consonants"
+              gameSlug="letter-balance"
+              isCustomPlay={Boolean(customPlay)}
+              answerCount={freshAnswers.currentRunAnswers.size}
+              snapshot={freshAnswers.snapshot}
+              isAvailable={freshAnswers.isAvailable}
+              isEnabled={freshAnswers.isEnabled}
+              optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+              storageError={freshAnswers.storageError}
+              pendingAppendCount={freshAnswers.pendingAppendCount}
+              onRetryAppend={freshAnswers.retryPendingAppend}
+              allowOptIn
+              onEnabledChange={freshAnswers.setEnabled}
+              onEnable={freshAnswers.optInWithCurrentRunAnswers}
+            />
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />
@@ -1466,6 +1557,22 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                 </div>
               </div>
             )}
+            <CustomFreshAnswerControls
+              game="Vowels & Consonants"
+              gameSlug="letter-balance"
+              isCustomPlay={Boolean(customPlay)}
+              answerCount={freshAnswers.currentRunAnswers.size}
+              snapshot={freshAnswers.snapshot}
+              isAvailable={freshAnswers.isAvailable}
+              isEnabled={freshAnswers.isEnabled}
+              optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+              storageError={freshAnswers.storageError}
+              pendingAppendCount={freshAnswers.pendingAppendCount}
+              onRetryAppend={freshAnswers.retryPendingAppend}
+              allowOptIn
+              onEnabledChange={freshAnswers.setEnabled}
+              onEnable={freshAnswers.optInWithCurrentRunAnswers}
+            />
             {!user && (
               <div className="text-sm text-muted-foreground border rounded-lg p-3 flex items-center gap-2">
                 <LogIn className="h-4 w-4 shrink-0" />
@@ -1706,6 +1813,21 @@ export function LetterBalanceGame({ initialChallenge, customConstraint, groupSee
                   </div>
                 </div>
               )}
+              <CustomFreshAnswerControls
+                game="Vowels & Consonants"
+                gameSlug="letter-balance"
+                isCustomPlay={Boolean(customPlay)}
+                answerCount={freshAnswers.currentRunAnswers.size}
+                snapshot={freshAnswers.snapshot}
+                isAvailable={freshAnswers.isAvailable}
+                isEnabled={freshAnswers.isEnabled}
+                optedOutForCurrentRun={freshAnswers.optedOutForCurrentRun}
+                storageError={freshAnswers.storageError}
+                pendingAppendCount={freshAnswers.pendingAppendCount}
+                onRetryAppend={freshAnswers.retryPendingAppend}
+                onEnabledChange={freshAnswers.setEnabled}
+                onEnable={freshAnswers.optInWithCurrentRunAnswers}
+              />
               {!locked && (
                 <div className="flex items-center justify-center gap-3 pt-2 border-t border-border/40">
                   <Button

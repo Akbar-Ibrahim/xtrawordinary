@@ -4,17 +4,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Calendar, UserPlus, UserCheck, Crown, Swords } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
+import { UserActivityStatus } from "@/components/user-activity-status";
 import type { PublicProfile } from "./types";
+import { ProfileSafetyActions } from "./ProfileSafetyActions";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   profile: PublicProfile;
+  lastActiveAt?: string | null;
   isOwnProfile: boolean;
   isAuthenticated: boolean;
   championships: Array<{ id: number; tournamentId: number; createdAt: string; tournamentName: string }>;
   guildWarsChampionships: Array<{ id: number }>;
   friendship: any;
   sendRequestPending: boolean;
-  onSendFriendRequest: () => void;
+  onSendFriendRequest: (note: string) => void;
   downgradePremiumPending: boolean;
   onDowngradePremium: () => void;
   onOpenEdit: () => void;
@@ -23,6 +29,7 @@ interface Props {
 
 export function ProfileHeader({
   profile,
+  lastActiveAt,
   isOwnProfile,
   isAuthenticated,
   championships,
@@ -35,8 +42,44 @@ export function ProfileHeader({
   onOpenEdit,
   onOpenChallenge,
 }: Props) {
+  const [friendRequestDialogOpen, setFriendRequestDialogOpen] = useState(false);
+  const [friendRequestNote, setFriendRequestNote] = useState("");
+
   return (
     <Card>
+      <Dialog open={friendRequestDialogOpen} onOpenChange={setFriendRequestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send a friend request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label htmlFor="friend-request-note" className="text-sm font-medium">Add a note (optional)</label>
+            <Textarea
+              id="friend-request-note"
+              value={friendRequestNote}
+              onChange={(event) => setFriendRequestNote(event.target.value)}
+              placeholder="Let them know why you'd like to connect..."
+              maxLength={200}
+              rows={3}
+              data-testid="input-friend-request-note"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFriendRequestDialogOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  onSendFriendRequest(friendRequestNote);
+                  setFriendRequestNote("");
+                  setFriendRequestDialogOpen(false);
+                }}
+                disabled={sendRequestPending}
+                data-testid="button-send-friend-request"
+              >
+                Send request
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <CardContent className="pt-6">
         <div className="flex items-center gap-4">
           <UserAvatar name={profile.user.name} avatarUrl={profile.user.avatarUrl} className="h-16 w-16 text-xl" />
@@ -67,6 +110,12 @@ export function ProfileHeader({
               )}
             </div>
             <p className="text-sm text-muted-foreground" data-testid="text-profile-username">@{profile.user.username}</p>
+            {!isOwnProfile && (
+              <UserActivityStatus
+                lastActiveAt={lastActiveAt !== undefined ? lastActiveAt : profile.user.lastActiveAt}
+                className="mt-1"
+              />
+            )}
             {isOwnProfile && profile.user.isPremium && (
               <Button variant="ghost" size="sm" className="mt-1 h-7 px-2 text-xs text-muted-foreground hover:text-destructive" onClick={onDowngradePremium} disabled={downgradePremiumPending} data-testid="button-downgrade-premium">
                 Remove Premium (testing)
@@ -87,13 +136,14 @@ export function ProfileHeader({
                   <UserCheck className="h-3 w-3" /> Friends
                 </Badge>
               ) : (
-                <Button size="sm" onClick={onSendFriendRequest} disabled={sendRequestPending} data-testid="button-add-friend">
+                <Button size="sm" onClick={() => setFriendRequestDialogOpen(true)} disabled={sendRequestPending} data-testid="button-add-friend">
                   <UserPlus className="h-4 w-4 mr-1" /> Add Friend
                 </Button>
               )}
               <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white gap-1" onClick={onOpenChallenge} data-testid="button-open-challenge">
                 <Swords className="h-4 w-4" /> Challenge
               </Button>
+              <ProfileSafetyActions targetUser={profile.user} />
             </div>
           )}
         </div>

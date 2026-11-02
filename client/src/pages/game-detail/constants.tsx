@@ -73,6 +73,7 @@ export const CUSTOM_PLAY_SLUGS = new Set([
   "letter-balance",
   "word-length",
   "letter-dodge",
+  "no-repeats",
 ]);
 
 export const UNTIMED_GAME_SLUGS = new Set([

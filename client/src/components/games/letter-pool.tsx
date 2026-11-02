@@ -300,6 +300,7 @@ export function LetterPoolSession({ initialChallenge, initialDecoyCount, groupSe
     if (!clickedItem || clickedItem.used) return;
     playSound("click");
     processLetter(clickedItem.letter, poolId);
+    gameAreaRef.current?.focus();
   }, [currentWord, poolLetters, feedback, gameStatus, playSound, processLetter]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -345,6 +346,7 @@ export function LetterPoolSession({ initialChallenge, initialDecoyCount, groupSe
       setHintUsed(true);
     }
     playSound("click");
+    gameAreaRef.current?.focus();
   }, [
     hintUsed,
     currentWord,

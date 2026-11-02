@@ -91,6 +91,7 @@ declare global {
       isAdmin: boolean;
       isBanned: boolean;
       isPremium: boolean;
+      hideActivity?: boolean;
       createdAt: string;
     }
   }
@@ -292,9 +293,34 @@ export async function setupAuth(app: Express): Promise<void> {
 
 export function requireAuth(req: any, res: any, next: any) {
   if (req.isAuthenticated()) {
+    const userId = req.user?.id;
+    if (typeof userId === "number") {
+      recordAuthenticatedActivity(userId);
+    }
     return next();
   }
   res.status(401).json({ error: "Authentication required" });
+}
+
+const activityUpdateIntervalMs = 60_000;
+const lastActivityUpdates = new Map<number, number>();
+
+function recordAuthenticatedActivity(userId: number): void {
+  const now = Date.now();
+  const previousUpdate = lastActivityUpdates.get(userId) ?? 0;
+  if (now - previousUpdate < activityUpdateIntervalMs) return;
+
+  lastActivityUpdates.set(userId, now);
+  void storage.recordUserActivity(userId, new Date(now).toISOString()).catch((error) => {
+    if (lastActivityUpdates.get(userId) === now) lastActivityUpdates.delete(userId);
+    console.error("[Auth] Failed to record user activity", error);
+  });
+
+  if (lastActivityUpdates.size > 10_000) {
+    for (const [id, updatedAt] of lastActivityUpdates) {
+      if (now - updatedAt > activityUpdateIntervalMs * 60) lastActivityUpdates.delete(id);
+    }
+  }
 }
 
 export function requireAdmin(req: any, res: any, next: any) {

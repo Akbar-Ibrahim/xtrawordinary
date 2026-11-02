@@ -165,11 +165,25 @@ export default function GroupRoundPlay() {
   const [submitted, setSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [attemptStarted, setAttemptStarted] = useState(false);
+  const [discussionAccessRevoked, setDiscussionAccessRevoked] = useState(false);
   const startTimeRef = useRef<number | null>(null);
 
   const { ConfirmDialog, confirmExit } = useNavigationGuard(isPlaying && !submitted);
 
-  const { data, isLoading, error } = useQuery<RoundResponse>({
+  useEffect(() => {
+    const handleDiscussionAccessRevoked = (event: Event) => {
+      const revokedGroupId = (event as CustomEvent<{ groupId?: number }>).detail?.groupId;
+      if (revokedGroupId !== groupId) return;
+      setDiscussionAccessRevoked(true);
+      queryClient.removeQueries({
+        queryKey: ["/api/comments", "group_round", String(roundIdNum)],
+      });
+    };
+    window.addEventListener("group-discussion-access-revoked", handleDiscussionAccessRevoked);
+    return () => window.removeEventListener("group-discussion-access-revoked", handleDiscussionAccessRevoked);
+  }, [groupId, roundIdNum]);
+
+  const { data, isLoading, isFetching, error } = useQuery<RoundResponse>({
     queryKey: ["/api/groups", groupId, "rounds", roundIdNum],
     queryFn: async () => {
       const res = await fetch(`/api/groups/${groupId}/rounds/${roundIdNum}`, { credentials: "include" });
@@ -269,7 +283,7 @@ export default function GroupRoundPlay() {
     }
   };
 
-  if (isLoading || attemptLoading) {
+  if (isLoading || isFetching || attemptLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Skeleton className="h-8 w-48 mb-8" />
@@ -389,7 +403,6 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
-                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : hasAttempt ? (
                   <>
@@ -445,7 +458,6 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
-                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : round.status !== "active" ? (
                   <>
@@ -499,7 +511,6 @@ export default function GroupRoundPlay() {
                       </Button>
                     </Link>
                   </div>
-                  <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
                   </>
                 ) : (
                   <>
@@ -565,6 +576,13 @@ export default function GroupRoundPlay() {
           </motion.div>
         )}
       </AnimatePresence>
+      {!isPlaying && (discussionAccessRevoked ? (
+        <p className="mt-8 text-center text-sm text-muted-foreground" role="status" data-testid="group-round-discussion-revoked">
+          Your access to this private group discussion has been removed.
+        </p>
+      ) : (
+        <CommentSection targetType="group_round" targetId={String(roundIdNum)} />
+      ))}
     </div>
   );
 }
