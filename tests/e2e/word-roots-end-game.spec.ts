@@ -70,6 +70,10 @@ const STAT_TEST_PUZZLES = [
 async function startGame(page: Page) {
   await page.goto(ROUTE);
   await page.waitForLoadState("networkidle");
+  const announcementClose = page.getByTestId("button-whats-new-close");
+  if (await announcementClose.isVisible()) {
+    await announcementClose.click();
+  }
   const playBtn = page.getByTestId("button-play");
   if (await playBtn.isVisible()) {
     await playBtn.click();
@@ -155,6 +159,25 @@ test.describe("Word Roots end-game messages", () => {
   });
 });
 
+test("A wrong guess returns focus to the Word Roots input when it is ready", async ({ page }) => {
+  await page.route("**/api/games/word-roots/puzzles**", async route => {
+    await route.fulfill({ json: KNOWN_PUZZLES });
+  });
+  await page.route("**/api/games/validate-word**", async route => {
+    await route.fulfill({ json: { valid: false } });
+  });
+
+  await startGame(page);
+  const input = page.getByTestId("input-word");
+  await expect(input).toBeFocused();
+  await input.fill("FANTASTICS");
+  await input.press("Enter");
+
+  await expect(page.getByTestId("feedback-message")).toContainText("Not a valid dictionary word");
+  await expect(input).toBeEnabled();
+  await expect(input).toBeFocused();
+});
+
 test.describe("Word Roots result-screen stat accuracy", () => {
   /**
    * Completes 2 rounds then ends game early:
@@ -181,6 +204,8 @@ test.describe("Word Roots result-screen stat accuracy", () => {
     });
 
     await startGame(page);
+    const input = page.getByTestId("input-word");
+    await expect(input).toBeFocused();
 
     // ── Round 1: submit canonical word ──
     // "FANTASTIC" (F,A,N,T,A,S,T,I,C) covers FIST, CAST, FACT, STAIN, ANTICS
@@ -190,6 +215,7 @@ test.describe("Word Roots result-screen stat accuracy", () => {
     await expect(page.getByTestId("feedback-message")).toBeVisible({ timeout: 4000 });
     await expect(page.getByTestId("feedback-message")).toContainText("Exact match");
     await page.waitForTimeout(2000); // wait for auto-advance to round 2
+    await expect(input).toBeFocused();
 
     // ── Round 2: submit non-canonical valid word ──
     // "SEAPORT" (S,E,A,P,O,R,T) covers TRAP, STAR, PART, PORT — but ≠ "TRANSPORT"
