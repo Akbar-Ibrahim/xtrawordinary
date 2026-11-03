@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ??
+  process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -8,7 +12,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: "http://localhost:5000",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5000",
     trace: "on-first-retry",
   },
   webServer: {
@@ -20,7 +24,29 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(chromiumExecutablePath
+          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+          : {}),
+      },
+    },
+    {
+      name: "mobile-chromium",
+      testMatch: ["**/word-games-input-focus.spec.ts", "**/letter-dodge-variant-flows.spec.ts"],
+      grep: /focuses the answer after Play Again|keeps the replayed answer visible|keeps the answer visible and focused after replay in landscape|reduced mobile viewport|mobile Expert Survival replay|Fresh Answers stays keyboard and mobile accessible with enlarged text/,
+      use: {
+        ...devices["Pixel 7"],
+        ...(chromiumExecutablePath
+          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+          : {}),
+      },
+    },
+    {
+      name: "mobile-webkit",
+      testMatch: ["**/word-games-input-focus.spec.ts", "**/letter-dodge-variant-flows.spec.ts"],
+      grep: /focuses the answer after Play Again|keeps the replayed answer visible|keeps the answer visible and focused after replay in landscape|reduced mobile viewport|mobile Expert Survival replay|Fresh Answers stays keyboard and mobile accessible with enlarged text/,
+      use: { ...devices["iPhone 13"] },
     },
   ],
 });
