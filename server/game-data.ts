@@ -545,7 +545,7 @@ export const wordDictSet = _dictSet;
 export const shellWordSet: Set<string> = (() => {
   const result = new Set<string>();
   for (const word of wordDictionary) {
-    if (word.length >= 4 && _dictSet.has(word.slice(1, -1))) {
+    if (word.length >= 5 && _dictSet.has(word.slice(1, -1))) {
       result.add(word);
     }
   }

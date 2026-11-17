@@ -5,6 +5,10 @@ import type {
   ShellWordExploreDepth,
   ShellWordExploreDirection,
 } from "@shared/shell-word-explore";
+import {
+  SHELL_WORD_EXPLORE_DEFAULT_PAGE_SIZE,
+  SHELL_WORD_EXPLORE_MAX_PAGE_SIZE,
+} from "@shared/shell-word-explore";
 import { InvalidExploreCursorError } from "../explore/shared-types";
 import { withShellWordExploreSource } from "../explore/shell-word-explore-service";
 
@@ -22,7 +26,8 @@ function createBrowseSchema(depth: ShellWordExploreDepth) {
       .transform((value) => value.toUpperCase()).optional(),
     first: letterBoundarySchema(depth).optional(),
     last: letterBoundarySchema(depth).optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
+    limit: z.coerce.number().int().min(1).max(SHELL_WORD_EXPLORE_MAX_PAGE_SIZE)
+      .default(SHELL_WORD_EXPLORE_DEFAULT_PAGE_SIZE),
     cursor: z.string().max(512).optional(),
   });
 }

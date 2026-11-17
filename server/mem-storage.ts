@@ -542,7 +542,7 @@ export class MemStorage implements IStorage {
 
   async validateShellWord(word: string): Promise<{ valid: boolean; innerWord: string | null }> {
     const upper = word.toUpperCase().trim();
-    if (upper.length < 4) return { valid: false, innerWord: null };
+    if (upper.length < 5) return { valid: false, innerWord: null };
     const inner = upper.slice(1, -1);
     if (shellWordSet.has(upper)) {
       return { valid: true, innerWord: inner };

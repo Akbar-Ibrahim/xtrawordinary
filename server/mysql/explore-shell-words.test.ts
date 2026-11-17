@@ -50,6 +50,13 @@ test("MySQL cursors are bound to direction, boundaries, and shell depth", async 
   assert.equal(changed.queries.length, 0);
 });
 
+test("Shell Explore pages are capped at 100 results", async () => {
+  const fixture = createFixture([[["BRAND", "RAN"]]]);
+  const result = await fixture.source.search({ direction: "shell" }, 150);
+
+  assert.equal(result.page.limit, 100);
+});
+
 test("MySQL checks distinguish dictionary words from missing shell relationships", async () => {
   const related = createFixture([[["BRAND"]], [["RAN"]]]);
   const result = await related.source.check({ direction: "shell", word: "brand" });

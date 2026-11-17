@@ -420,13 +420,19 @@ export async function getShellWordPuzzle(db: any, gameData: any, seed: number): 
 export async function getCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
     const outerWords = aliasedTable(schema.words, "outer_words");
+    const innerWords = aliasedTable(schema.words, "inner_words");
     const pairs = await db.select({
       first: sql<string>`LEFT(${outerWords.word}, 1)`,
       last: sql<string>`RIGHT(${outerWords.word}, 1)`,
     })
       .from(schema.shellWords)
       .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
-      .where(and(eq(schema.shellWords.depth, 1), inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
+      .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
+      .where(and(
+        eq(schema.shellWords.depth, 1),
+        inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+        gte(innerWords.wordLength, 3),
+      ))
       .groupBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`)
       .having(sql`COUNT(*) >= 2`)
       .orderBy(sql`LEFT(${outerWords.word}, 1)`, sql`RIGHT(${outerWords.word}, 1)`);
@@ -459,13 +465,19 @@ export async function getDeepShellWordPuzzle(db: any, gameData: any, seed: numbe
 export async function getDeepCrackPuzzle(db: any, gameData: any, seed: number): Promise<{ first: string; last: string } | null> {
   try {
     const outerWords = aliasedTable(schema.words, "outer_words");
+    const innerWords = aliasedTable(schema.words, "inner_words");
     const pairs = await db.select({
       first: sql<string>`LEFT(${outerWords.word}, 2)`,
       last: sql<string>`RIGHT(${outerWords.word}, 2)`,
     })
       .from(schema.shellWords)
       .innerJoin(outerWords, eq(schema.shellWords.shellWordId, outerWords.id))
-      .where(and(eq(schema.shellWords.depth, 2), inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS)))
+      .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
+      .where(and(
+        eq(schema.shellWords.depth, 2),
+        inArray(outerWords.frequencyLevel, COMMON_FREQUENCY_LEVELS),
+        gte(innerWords.wordLength, 3),
+      ))
       .groupBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`)
       .having(sql`COUNT(*) >= 2`)
       .orderBy(sql`LEFT(${outerWords.word}, 2)`, sql`RIGHT(${outerWords.word}, 2)`);
@@ -489,6 +501,7 @@ export async function getDeepCrackAnswer(db: any, gameData: any, seed: number): 
       .innerJoin(innerWords, eq(schema.shellWords.innerWordId, innerWords.id))
       .where(and(
         eq(schema.shellWords.depth, 2),
+        gte(innerWords.wordLength, 3),
         sql`LEFT(${outerWords.word}, 2) = ${pair.first}`,
         sql`RIGHT(${outerWords.word}, 2) = ${pair.last}`,
       )).limit(1);
