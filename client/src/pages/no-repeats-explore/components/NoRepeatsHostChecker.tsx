@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import { checkNoRepeatsAnswer } from "../api";
 import type { NoRepeatsExploreFilters } from "../types";
 
@@ -48,13 +49,13 @@ export function NoRepeatsHostChecker({ filters }: Props) {
           autoComplete="off"
           maxLength={100}
         />
-        <button
+        <ExploreIconButton
           type="submit"
           disabled={!answer.trim() || checkMutation.isPending}
-          className="rounded-lg border px-4 py-2.5 font-medium disabled:opacity-50"
-        >
-          {checkMutation.isPending ? "Checking…" : "Check word"}
-        </button>
+          label="Check word"
+          isLoading={checkMutation.isPending}
+          variant="outline"
+        />
       </form>
       {checkMutation.isError && (
         <p className="mt-3 text-sm text-destructive" role="alert">{checkMutation.error.message}</p>

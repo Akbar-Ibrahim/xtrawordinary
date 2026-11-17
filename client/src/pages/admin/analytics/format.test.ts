@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatAnalyticsCount } from "./format";
+import { formatAnalyticsCount, formatExactAnalyticsCount } from "./format";
 
 test("analytics counts use uppercase compact units and keep small counts readable", () => {
   for (const [value, expected] of [
@@ -12,4 +12,9 @@ test("analytics counts use uppercase compact units and keep small counts readabl
   ] as const) {
     assert.equal(formatAnalyticsCount(value), expected);
   }
+});
+
+test("exact analytics counts use comma grouping without compact units", () => {
+  assert.equal(formatExactAnalyticsCount(10_657), "10,657");
+  assert.equal(formatExactAnalyticsCount(1_000_000), "1,000,000");
 });

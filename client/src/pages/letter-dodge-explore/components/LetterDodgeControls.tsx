@@ -1,5 +1,5 @@
-import { Search } from "lucide-react";
 import type { FormEvent } from "react";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 
 const EXAMPLES = [
   { letters: "AE", label: "Avoid A + E" },
@@ -54,15 +54,14 @@ export function LetterDodgeControls({
           aria-describedby="dodge-forbidden-help"
           data-testid="input-forbidden-letters"
         />
-        <button
+        <ExploreIconButton
           type="submit"
           disabled={!letters || isSearching}
-          className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-2.5 font-semibold text-destructive-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          label="Find words"
+          isLoading={isSearching}
+          className="self-end bg-destructive text-destructive-foreground sm:self-auto"
           data-testid="button-find-letter-dodge-words"
-        >
-          <Search size={17} aria-hidden="true" />
-          {isSearching ? "Searching…" : "Find words"}
-        </button>
+        />
       </form>
       <p id="dodge-forbidden-help" className="mt-2 text-xs text-muted-foreground">
         Enter one or more letters. Order and duplicates are normalized when you search.

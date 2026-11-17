@@ -62,3 +62,14 @@ test("Host rejects the base itself, unknown words and unavailable letters", asyn
     assert.equal((await wordMakerMemorySource.checkAnswer("PAINTING", answer)).dictionaryMatch, false);
   }
 });
+
+test("preview exact dictionary words are searchable and usable even below gameplay base length", async () => {
+  const search = await wordMakerMemorySource.searchBaseWords("heart", 20);
+  assert.equal(search.items[0]?.baseWord, "HEART");
+  const results = await wordMakerMemorySource.getWords("heart", 100);
+  assert.ok(results.items.length > 0 && results.items.length <= 12);
+  for (const { word } of results.items) {
+    assert.equal((await wordMakerMemorySource.checkAnswer("heart", word)).dictionaryMatch, true);
+  }
+  await assert.rejects(wordMakerMemorySource.getWords("ZZZZZZZZZZ", 100), /base word was not found/);
+});

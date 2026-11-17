@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AnalyticsToolbar } from "./analytics";
 import { AnalyticsSections } from "./analytics/AnalyticsSections";
+import { AnalyticsExactValueProvider } from "./analytics/AnalyticsExactValueProvider";
 import type { AdminOverviewStats } from "./analytics/AnalyticsSiteTotals";
 import { buildAnalyticsQuery } from "./analytics/query";
-import { formatAnalyticsCount } from "./analytics/format";
+import { AnalyticsCount } from "./analytics/AnalyticsCount";
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -71,49 +72,55 @@ export function AnalyticsOverview({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">First-party analytics</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight">Player growth and engagement</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Aggregate trends only—no IP addresses, answers, keystrokes, or device fingerprints.</p>
+    <AnalyticsExactValueProvider>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">First-party analytics</p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight">Player growth and engagement</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Aggregate trends only—no IP addresses, answers, keystrokes, or device fingerprints.</p>
+          </div>
+          <div className="flex gap-2">
+            {[7, 30, 90].map((days) => <Button key={days} type="button" variant="outline" size="sm" onClick={() => applyRange(days)}>Last {days} days</Button>)}
+          </div>
         </div>
-        <div className="flex gap-2">
-          {[7, 30, 90].map((days) => <Button key={days} type="button" variant="outline" size="sm" onClick={() => applyRange(days)}>Last {days} days</Button>)}
-        </div>
+
+        <AnalyticsToolbar
+          startDate={startDate}
+          endDate={endDate}
+          gameSlug={gameSlug}
+          gameMode={gameMode}
+          games={games}
+          isFetching={isFetching}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onGameChange={selectGame}
+          onModeChange={setGameMode}
+          onRefresh={() => void refetch()}
+          onExport={() => void exportCsv()}
+        />
+
+        {data && !error && (
+          <Card data-testid="card-retained-unique-visitors">
+            <CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">Total unique visitors in stored history</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Distinct tracked visitors across available analytics records, regardless of the date and game filters above. Records are kept for up to 730 days; this is not an all-time count.
+                </p>
+              </div>
+              <div data-testid="total-retained-unique-visitors">
+                <AnalyticsCount
+                  value={data.uniqueVisitorsInRetainedHistory}
+                  label="Unique visitors in stored history"
+                  className="shrink-0 text-3xl font-bold tabular-nums"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        <AnalyticsSections report={data} games={games} stats={stats} isLoading={isLoading} hasError={!!error} />
       </div>
-
-      <AnalyticsToolbar
-        startDate={startDate}
-        endDate={endDate}
-        gameSlug={gameSlug}
-        gameMode={gameMode}
-        games={games}
-        isFetching={isFetching}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onGameChange={selectGame}
-        onModeChange={setGameMode}
-        onRefresh={() => void refetch()}
-        onExport={() => void exportCsv()}
-      />
-
-      {data && !error && (
-        <Card data-testid="card-retained-unique-visitors">
-          <CardContent className="flex flex-col gap-2 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold">Total unique visitors in stored history</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Distinct tracked visitors across available analytics records, regardless of the date and game filters above. Records are kept for up to 730 days; this is not an all-time count.
-              </p>
-            </div>
-            <strong className="shrink-0 text-3xl tabular-nums" data-testid="total-retained-unique-visitors">
-              {formatAnalyticsCount(data.uniqueVisitorsInRetainedHistory)}
-            </strong>
-          </CardContent>
-        </Card>
-      )}
-      <AnalyticsSections report={data} games={games} stats={stats} isLoading={isLoading} hasError={!!error} />
-    </div>
+    </AnalyticsExactValueProvider>
   );
 }

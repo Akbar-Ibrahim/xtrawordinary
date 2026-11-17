@@ -23,7 +23,7 @@ function lowerWordExpression() {
   return sql`LOWER(${schema.words.word})`;
 }
 
-function baseWordConditions() {
+function randomBaseWordConditions() {
   return [
     between(schema.words.wordLength, BASE_WORD_MIN_LENGTH, BASE_WORD_MAX_LENGTH),
     inArray(schema.words.frequencyLevel, COMMON_FREQUENCY_LEVELS),
@@ -31,7 +31,7 @@ function baseWordConditions() {
   ];
 }
 
-async function getEligibleBaseWord(db: DbHandle, baseWord: string): Promise<BaseWordRow> {
+async function getBaseWord(db: DbHandle, baseWord: string): Promise<BaseWordRow> {
   const normalized = normalizeExploreWord(baseWord);
   const [base] = await db
     .select({
@@ -41,20 +41,16 @@ async function getEligibleBaseWord(db: DbHandle, baseWord: string): Promise<Base
       frequencyLevel: schema.words.frequencyLevel,
     })
     .from(schema.words)
-    .where(and(
-      eq(lowerWordExpression(), normalized.toLowerCase()),
-      ...baseWordConditions(),
-    ))
+    .where(eq(lowerWordExpression(), normalized.toLowerCase()))
     .limit(1);
 
   if (!base) throw new WordMakerBaseWordNotFoundError();
-  const [derivative] = await db
-    .select({ wordId: schema.wordDerivatives.wordId })
-    .from(schema.wordDerivatives)
-    .where(eq(schema.wordDerivatives.wordId, base.id))
-    .limit(1);
-  if (!derivative) throw new WordMakerBaseWordNotFoundError();
   return base as BaseWordRow;
+}
+
+function isGameplayBaseWord(base: BaseWordRow): boolean {
+  return base.wordLength >= BASE_WORD_MIN_LENGTH && base.wordLength <= BASE_WORD_MAX_LENGTH
+    && COMMON_FREQUENCY_LEVELS.some((level) => level === base.frequencyLevel);
 }
 
 function getMatchingLetterConditions(baseWord: string) {
@@ -111,7 +107,7 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
     async searchBaseWords(query, limit, cursor) {
       const normalizedQuery = normalizeExploreWord(query);
       const after = decodeExploreCursor(cursor, "word-maker-base-words", normalizedQuery);
-      const conditions = baseWordConditions();
+      const conditions = [sql`${lowerWordExpression()} REGEXP '^[a-z]+$'`];
       if (normalizedQuery) {
         conditions.push(like(lowerWordExpression(), `${normalizedQuery.toLowerCase()}%`));
       }
@@ -120,9 +116,7 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
       const rows = await db
         .select({ id: schema.words.id, word: schema.words.word })
         .from(schema.words)
-        .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
         .where(and(...conditions))
-        .groupBy(schema.words.id, schema.words.word)
         .orderBy(lowerWordExpression())
         .limit(limit + 1);
       const hasMore = rows.length > limit;
@@ -151,7 +145,7 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
         .innerJoin(schema.wordDerivatives, eq(schema.words.id, schema.wordDerivatives.wordId))
         .innerJoin(randomDerivative, eq(schema.wordDerivatives.derivativeId, randomDerivative.id))
         .where(and(
-          ...baseWordConditions(),
+          ...randomBaseWordConditions(),
           ...getCorrelatedLetterConditions(baseWord, candidateWord),
         ))
         .groupBy(schema.words.id, schema.words.word)
@@ -163,7 +157,7 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
 
     async getWords(baseWord, limit, cursor) {
       const normalizedBaseWord = normalizeExploreWord(baseWord);
-      const base = await getEligibleBaseWord(db, normalizedBaseWord);
+      const base = await getBaseWord(db, normalizedBaseWord);
       const after = decodeExploreCursor(cursor, "word-maker-results", normalizedBaseWord);
       const conditions = [
         eq(schema.wordDerivatives.wordId, base.id),
@@ -189,13 +183,13 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
       return {
         baseWord: normalizedBaseWord,
         items: resultRows.map((row: { id: number; word: string; wordLength: number }) => {
-          const isPlayable = row.wordLength >= 3;
-          const gameplayExclusion = row.wordLength < 3
-            ? "below_minimum_length"
-            : isPlayable ? null : "not_in_word_maker_derivatives";
+          const gameplayExclusion = !isGameplayBaseWord(base)
+            ? "base_not_in_regular_word_maker_pool"
+            : row.wordLength < 3
+              ? "below_minimum_length" : null;
           return {
             word: normalizeExploreWord(row.word),
-            playableInGame: isPlayable,
+            playableInGame: gameplayExclusion === null,
             gameplayExclusion,
           };
         }),
@@ -213,7 +207,8 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
     async checkAnswer(baseWord, answer) {
       const normalizedBaseWord = normalizeExploreWord(baseWord);
       const normalizedAnswer = normalizeExploreWord(answer);
-      const base = await getEligibleBaseWord(db, normalizedBaseWord);
+      const base = await getBaseWord(db, normalizedBaseWord);
+      const baseEligibleForGameplay = isGameplayBaseWord(base);
       const [candidate] = await db
         .select({
           id: schema.words.id,
@@ -250,7 +245,7 @@ export function createMySqlWordMakerExploreSource(db: DbHandle): WordMakerExplor
         true,
         normalizedAnswer,
         accepted ? new Set([normalizedAnswer]) : new Set(),
-        true,
+        baseEligibleForGameplay,
         "not_in_dictionary",
       );
     },

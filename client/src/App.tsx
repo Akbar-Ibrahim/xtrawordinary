@@ -28,6 +28,15 @@ import LetterPositionExplore from "@/pages/letter-position-explore";
 import LetterFrequencyExplore from "@/pages/letter-frequency-explore";
 import NoRepeatsExplore from "@/pages/no-repeats-explore";
 import LetterBalanceExplore from "@/pages/letter-balance-explore";
+import WordLengthExplore from "@/pages/word-length-explore";
+import ShellWordsExplore from "@/pages/shell-words-explore";
+import DeepShellWordsExplore from "@/pages/shell-words-explore/deep-index";
+import WordSplitExplore from "@/pages/word-split-explore";
+import WordFusionExplore from "@/pages/word-fusion-explore";
+import WordRootsExplore from "@/pages/word-roots-explore";
+import PrefixSearchExplore from "@/pages/letter-sequence-explore/prefix";
+import SuffixSearchExplore from "@/pages/letter-sequence-explore/suffix";
+import ContainsSearchExplore from "@/pages/letter-sequence-explore/contains";
 import Stats from "@/pages/stats";
 import Achievements from "@/pages/achievements";
 import DailyChallenge from "@/pages/daily-challenge";
@@ -90,6 +99,15 @@ function Router() {
       <Route path="/explore/letter-frequency" component={LetterFrequencyExplore} />
       <Route path="/explore/no-repeats" component={NoRepeatsExplore} />
       <Route path="/explore/letter-balance" component={LetterBalanceExplore} />
+      <Route path="/explore/word-length" component={WordLengthExplore} />
+      <Route path="/explore/shell-words" component={ShellWordsExplore} />
+      <Route path="/explore/deep-shell-words" component={DeepShellWordsExplore} />
+      <Route path="/explore/word-split" component={WordSplitExplore} />
+      <Route path="/explore/word-fusion" component={WordFusionExplore} />
+      <Route path="/explore/word-roots" component={WordRootsExplore} />
+      <Route path="/explore/prefix-search" component={PrefixSearchExplore} />
+      <Route path="/explore/suffix-search" component={SuffixSearchExplore} />
+      <Route path="/explore/contains-search" component={ContainsSearchExplore} />
       <Route path="/game/:slug" component={GameDetail} />
       <Route path="/stats" component={Stats} />
       <Route path="/achievements" component={Achievements} />

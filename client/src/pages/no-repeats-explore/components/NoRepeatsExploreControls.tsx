@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
+import { EXPLORE_MAX_WORD_LENGTH_FILTER } from "@shared/explore-limits";
 
 interface Props {
   length?: number;
@@ -37,7 +38,7 @@ export function NoRepeatsExploreControls({
             className="w-full rounded-md border bg-background px-3 py-2.5"
           >
             <option value="">Any length</option>
-            {Array.from({ length: 26 }, (_, index) => index + 1).map((value) => (
+            {Array.from({ length: EXPLORE_MAX_WORD_LENGTH_FILTER }, (_, index) => index + 1).map((value) => (
               <option key={value} value={value}>{value} {value === 1 ? "letter" : "letters"}</option>
             ))}
           </select>
@@ -61,9 +62,15 @@ export function NoRepeatsExploreControls({
         <p className="text-xs leading-relaxed text-muted-foreground">
           Explore includes any dictionary length, even under three letters. Normal game challenges use 3–9 letters.
         </p>
-        <Button type="submit" disabled={isSearching} data-testid="button-find-no-repeats-words">
-          {isSearching ? "Searching…" : "Find words"}
-        </Button>
+        <div className="flex justify-end">
+          <ExploreIconButton
+            type="submit"
+            disabled={isSearching}
+            label="Find words"
+            isLoading={isSearching}
+            data-testid="button-find-no-repeats-words"
+          />
+        </div>
       </form>
     </section>
   );

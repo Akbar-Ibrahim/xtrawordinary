@@ -54,7 +54,7 @@ export default function ExploreDirectory() {
             <h2 id="explore-tools-heading" className="sr-only">Explore word tools</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {EXPLORE_GAMES.map((game, index) => (
-                <ToolCard key={game.gameSlug} game={game} number={index + 1} />
+                <ToolCard key={game.path} game={game} number={index + 1} />
               ))}
             </div>
           </section>

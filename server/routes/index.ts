@@ -33,6 +33,12 @@ import { registerLetterPositionExploreRoutes } from "./letter-position-explore.r
 import { registerLetterFrequencyExploreRoutes } from "./letter-frequency-explore.routes";
 import { registerNoRepeatsExploreRoutes } from "./no-repeats-explore.routes";
 import { registerLetterBalanceExploreRoutes } from "./letter-balance-explore.routes";
+import { registerWordLengthExploreRoutes } from "./word-length-explore.routes";
+import { registerShellWordExploreRoutes } from "./shell-word-explore.routes";
+import { registerWordSplitExploreRoutes } from "./word-split-explore.routes";
+import { registerWordFusionExploreRoutes } from "./word-fusion-explore.routes";
+import { registerWordRootsExploreRoutes } from "./word-roots-explore.routes";
+import { registerLetterSequenceExploreRoutes } from "./letter-sequence-explore.routes";
 
 // Static pages included in the sitemap alongside game pages.
 const SITEMAP_STATIC_PATHS = [
@@ -113,6 +119,12 @@ export function registerAllRoutes(httpServer: Server, app: Express): Server {
   registerLetterFrequencyExploreRoutes(app);
   registerNoRepeatsExploreRoutes(app);
   registerLetterBalanceExploreRoutes(app);
+  registerWordLengthExploreRoutes(app);
+  registerShellWordExploreRoutes(app);
+  registerWordSplitExploreRoutes(app);
+  registerWordFusionExploreRoutes(app);
+  registerWordRootsExploreRoutes(app);
+  registerLetterSequenceExploreRoutes(app);
   registerAuthRoutes(app);
   registerStatsRoutes(app);
   registerLeaderboardRoutes(app);

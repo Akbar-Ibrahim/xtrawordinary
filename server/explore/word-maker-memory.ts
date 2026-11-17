@@ -1,4 +1,4 @@
-import { makerWords, wordDictionary } from "../game-data";
+import { anagramWordSets, makerWords, wordDictionary } from "../game-data";
 import { canFormFromLetters, getGameplayExclusion, isAlphabeticWord, normalizeExploreWord } from "./letter-matching";
 import { paginateSortedArray } from "./pagination";
 import type { WordMakerExploreSource, WordMakerExploreWord } from "./word-maker-types";
@@ -7,20 +7,24 @@ import { WordMakerBaseWordNotFoundError } from "./word-maker-types";
 const PREVIEW_RESULT_LIMIT = 12;
 const PREVIEW_SOURCE = "preview" as const;
 const baseWordMap = new Map(makerWords.map((entry) => [normalizeExploreWord(entry.baseWord), entry]));
-const staticDictionary = [...new Set(wordDictionary.map(normalizeExploreWord))]
+const staticDictionary = [...new Set([
+  ...wordDictionary,
+  ...anagramWordSets.flatMap(({ original, anagrams }) => [original, ...anagrams]),
+].map(normalizeExploreWord))]
   .filter(isAlphabeticWord)
   .sort((left, right) => left.localeCompare(right, "en"));
+const knownBaseWords = new Set([...baseWordMap.keys(), ...staticDictionary]);
 
 function getPreviewWords(baseWord: string): WordMakerExploreWord[] {
   const entry = baseWordMap.get(baseWord);
-  if (!entry) throw new WordMakerBaseWordNotFoundError();
+  if (!knownBaseWords.has(baseWord)) throw new WordMakerBaseWordNotFoundError();
 
-  const acceptedDerivatives = new Set(entry.derivatives.map(normalizeExploreWord));
+  const acceptedDerivatives = new Set(entry?.derivatives.map(normalizeExploreWord) ?? []);
   return staticDictionary
     .filter((word) => word !== baseWord && canFormFromLetters(baseWord, word))
     .slice(0, PREVIEW_RESULT_LIMIT)
     .map((word) => {
-      const gameplayExclusion = getGameplayExclusion(word, acceptedDerivatives, true);
+      const gameplayExclusion = getGameplayExclusion(word, acceptedDerivatives, Boolean(entry));
       return {
         word,
         playableInGame: gameplayExclusion === null,
@@ -32,7 +36,7 @@ function getPreviewWords(baseWord: string): WordMakerExploreWord[] {
 export const wordMakerMemorySource: WordMakerExploreSource = {
   async searchBaseWords(query, limit, cursor) {
     const normalizedQuery = normalizeExploreWord(query);
-    const items = [...baseWordMap.keys()]
+    const items = [...knownBaseWords]
       .filter((baseWord) => baseWord.startsWith(normalizedQuery))
       .sort((left, right) => left.localeCompare(right, "en"))
       .map((baseWord) => ({ baseWord }));
@@ -73,17 +77,17 @@ export const wordMakerMemorySource: WordMakerExploreSource = {
     const normalizedBaseWord = normalizeExploreWord(baseWord);
     const normalizedAnswer = normalizeExploreWord(answer);
     const entry = baseWordMap.get(normalizedBaseWord);
-    if (!entry) throw new WordMakerBaseWordNotFoundError();
+    if (!knownBaseWords.has(normalizedBaseWord)) throw new WordMakerBaseWordNotFoundError();
 
     // This small Explore-only fixture stands in for the database's derivative links.
     // Use exactly the same set for Browse and Host, without altering gameplay fixtures.
     const dictionaryMatch = getPreviewWords(normalizedBaseWord)
       .some((item) => item.word === normalizedAnswer);
-    const acceptedDerivatives = new Set(entry.derivatives.map(normalizeExploreWord));
+    const acceptedDerivatives = new Set(entry?.derivatives.map(normalizeExploreWord) ?? []);
     const gameplayExclusion = dictionaryMatch
       ? normalizedAnswer === normalizedBaseWord
         ? "base_word_not_a_subword"
-        : getGameplayExclusion(normalizedAnswer, acceptedDerivatives, true)
+        : getGameplayExclusion(normalizedAnswer, acceptedDerivatives, Boolean(entry))
       : !staticDictionary.includes(normalizedAnswer)
         ? "not_in_dictionary"
         : !canFormFromLetters(normalizedBaseWord, normalizedAnswer)

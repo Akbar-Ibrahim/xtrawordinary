@@ -19,6 +19,8 @@ test("Letter Dodge Explore uses a text input instead of letter buttons", () => {
   assert.match(html, /value="AE"/);
   assert.match(html, /sm:max-w-md/);
   assert.match(html, /data-testid="button-find-letter-dodge-words"/);
+  assert.match(html, /aria-label="Find words"/);
+  assert.doesNotMatch(html, />Find words</);
   assert.doesNotMatch(html, /data-letter-choice/);
   assert.doesNotMatch(html, /Select forbidden letters/);
 });

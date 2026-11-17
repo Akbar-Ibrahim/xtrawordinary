@@ -1,9 +1,11 @@
 import { Activity, CheckCircle2, Play, UserPlus, Users } from "lucide-react";
+import { useContext, type KeyboardEvent } from "react";
 import type { AnalyticsReport } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { formatAnalyticsCount } from "./format";
+import { AnalyticsExactValueContext } from "./AnalyticsExactValueProvider";
+import { formatAnalyticsCount, formatExactAnalyticsCount } from "./format";
 
 const series = [
   { key: "uniqueVisitors", label: "Visitors", color: "#e07a5f", icon: Users },
@@ -12,6 +14,42 @@ const series = [
   { key: "gameCompletions", label: "Completions", color: "#f2cc8f", icon: CheckCircle2 },
   { key: "registrations", label: "Sign-ups", color: "#6d597a", icon: UserPlus },
 ] as const;
+
+type AnalyticsAxisTickProps = {
+  x?: number;
+  y?: number;
+  payload?: { value?: number };
+};
+
+function AnalyticsAxisCountTick({ x = 0, y = 0, payload }: AnalyticsAxisTickProps) {
+  const showExactValue = useContext(AnalyticsExactValueContext);
+  const value = Number(payload?.value);
+  const compactValue = formatAnalyticsCount(value);
+  const exactValue = formatExactAnalyticsCount(value);
+  const isAbbreviated = compactValue !== exactValue;
+
+  const handleKeyDown = (event: KeyboardEvent<SVGGElement>) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    showExactValue?.({ value: exactValue, label: "Daily pulse chart axis value" });
+  };
+
+  return (
+    <g
+      transform={`translate(${x},${y})`}
+      role={isAbbreviated ? "button" : undefined}
+      tabIndex={isAbbreviated ? 0 : undefined}
+      aria-label={isAbbreviated ? `Show exact chart value: ${compactValue}` : undefined}
+      onClick={isAbbreviated ? () => showExactValue?.({ value: exactValue, label: "Daily pulse chart axis value" }) : undefined}
+      onKeyDown={isAbbreviated ? handleKeyDown : undefined}
+      className={isAbbreviated ? "cursor-zoom-in" : undefined}
+    >
+      <text x={0} y={0} dy={4} textAnchor="end" fill="currentColor">
+        {compactValue}
+      </text>
+    </g>
+  );
+}
 
 export function AnalyticsTrends({ report }: { report: AnalyticsReport }) {
   const data = report.daily.map((day) => ({ ...day, label: day.date.slice(5) }));
@@ -28,8 +66,8 @@ export function AnalyticsTrends({ report }: { report: AnalyticsReport }) {
             <defs>{series.map((item) => <linearGradient key={item.key} id={`fill-${item.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={item.color} stopOpacity={0.24} /><stop offset="100%" stopColor={item.color} stopOpacity={0} /></linearGradient>)}</defs>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
-            <YAxis tickLine={false} axisLine={false} allowDecimals={false} tickFormatter={formatAnalyticsCount} />
-            <ChartTooltip content={<ChartTooltipContent valueFormatter={formatAnalyticsCount} />} />
+            <YAxis tickLine={false} axisLine={false} allowDecimals={false} tick={<AnalyticsAxisCountTick />} />
+            <ChartTooltip content={<ChartTooltipContent valueFormatter={formatExactAnalyticsCount} />} />
             {series.map((item) => <Area key={item.key} type="monotone" dataKey={item.key} stroke={item.color} fill={`url(#fill-${item.key})`} strokeWidth={2} activeDot={{ r: 4 }} />)}
           </AreaChart>
         </ChartContainer> : <EmptyState label="No daily activity in this range." />}

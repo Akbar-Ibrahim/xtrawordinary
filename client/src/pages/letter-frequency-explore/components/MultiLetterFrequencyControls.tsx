@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import type { LetterFrequencyConstraint } from "../types";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -90,9 +91,15 @@ export function MultiLetterFrequencyControls({
           Add another letter
         </Button>
       )}
-      <Button type="submit" disabled={isSearching} data-testid="button-find-frequency-words">
-        {isSearching ? "Searching…" : "Find words"}
-      </Button>
+      <div className="flex justify-end">
+        <ExploreIconButton
+          type="submit"
+          disabled={isSearching}
+          label="Find words"
+          isLoading={isSearching}
+          data-testid="button-find-frequency-words"
+        />
+      </div>
     </form>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import { Input } from "@/components/ui/input";
 import { checkLetterBalanceWord } from "../api";
 import type { LetterBalanceExploreCheck, LetterBalanceExploreFilters } from "../types";
@@ -56,9 +57,13 @@ export function LetterBalanceHostChecker({ filters }: Props) {
             onChange={(event) => setAnswer(event.target.value.replace(/[^A-Za-z]/g, "").toUpperCase())}
             placeholder="ENTER A WORD"
           />
-          <Button type="submit" disabled={!answer.trim() || checkMutation.isPending} className="shrink-0">
-            {checkMutation.isPending ? "Checking…" : "Check word"}
-          </Button>
+          <ExploreIconButton
+            type="submit"
+            disabled={!answer.trim() || checkMutation.isPending}
+            label="Check word"
+            isLoading={checkMutation.isPending}
+            className="shrink-0"
+          />
         </form>
         {checkMutation.error && (
           <div className="mt-3 space-y-2">

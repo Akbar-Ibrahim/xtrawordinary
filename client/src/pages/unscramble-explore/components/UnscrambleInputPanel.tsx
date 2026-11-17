@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
-import { Dices, Shuffle } from "lucide-react";
+import { Shuffle } from "lucide-react";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 
 interface Props {
   letters: string;
@@ -52,10 +53,14 @@ export function UnscrambleInputPanel({
         <p id="unscramble-help" className="wmx-note">
           Enter letters in any order. Matches must use every letter exactly once.
         </p>
-        <button type="submit" className="wmx-random" disabled={!letters || submitting}>
-          <Dices size={16} aria-hidden="true" />
-          {submitting ? "Searching…" : "Find matching words"}
-        </button>
+        <div className="mt-2 flex justify-end">
+          <ExploreIconButton
+            type="submit"
+            disabled={!letters || submitting}
+            label="Find matching words"
+            isLoading={submitting}
+          />
+        </div>
       </form>
 
       <div className="wmx-session" aria-labelledby="unscramble-samples-heading">

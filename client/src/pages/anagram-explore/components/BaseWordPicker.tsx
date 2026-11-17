@@ -1,6 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Dices, Search, X } from "lucide-react";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import { readExploreJson } from "./api";
 import type { BaseWordsResponse } from "../types";
 
@@ -127,9 +128,14 @@ export function BaseWordPicker({ selectedBase, onSelectBase }: Props) {
         ) : !baseQuery.isFetching ? <div className="wmx-note">No exact match in the dictionary.</div> : null
       )}
       {searchText && normalize(searchText) !== selectedBase && (
-        <button type="button" className="wmx-random" onClick={() => selectBase(searchText)}>
-          <Search size={16} aria-hidden="true" /> Find anagrams of {normalize(searchText)}
-        </button>
+        <div className="mt-2 flex justify-end">
+          <ExploreIconButton
+            type="button"
+            label={`Find anagrams of ${normalize(searchText)}`}
+            onClick={() => selectBase(searchText)}
+            className="border-[#cbd7c9] bg-[#f3f6eb] text-[#314d3c] hover:bg-[#e8efdc]"
+          />
+        </div>
       )}
       <button type="button" className="wmx-random" disabled={randomMutation.isPending} onClick={() => randomMutation.mutate()}>
         <Dices size={16} aria-hidden="true" />

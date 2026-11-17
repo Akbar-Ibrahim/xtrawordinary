@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { Search } from "lucide-react";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 
 interface Props {
   letter: string;
@@ -65,14 +65,13 @@ export function LetterPositionExploreControls({
             </select>
           </div>
         </div>
-        <button
+        <ExploreIconButton
           type="submit"
           disabled={!letter || isSearching}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Search size={17} aria-hidden="true" />
-          {isSearching ? "Searching…" : "Find words"}
-        </button>
+          label="Find words"
+          isLoading={isSearching}
+          className="ml-auto bg-primary text-primary-foreground"
+        />
       </form>
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
         <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Try a pattern</span>

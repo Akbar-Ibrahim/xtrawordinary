@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import type { LetterFrequencyConstraint, LetterFrequencyMatch } from "../types";
 
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -71,9 +71,15 @@ export function SingleLetterFrequencyControls({
       <p className="text-xs leading-relaxed text-muted-foreground">
         Challenge Random changes its rule after each answer in the game. Here, choose one fixed rule to browse or check.
       </p>
-      <Button type="submit" disabled={isSearching} data-testid="button-find-frequency-words">
-        {isSearching ? "Searching…" : "Find words"}
-      </Button>
+      <div className="flex justify-end">
+        <ExploreIconButton
+          type="submit"
+          disabled={isSearching}
+          label="Find words"
+          isLoading={isSearching}
+          data-testid="button-find-frequency-words"
+        />
+      </div>
     </form>
   );
 }

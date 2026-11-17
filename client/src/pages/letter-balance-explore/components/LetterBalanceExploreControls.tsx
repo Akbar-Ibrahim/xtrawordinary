@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ExploreIconButton } from "@/components/explore/ExploreIconButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EXPLORE_MAX_WORD_LENGTH_FILTER } from "@shared/explore-limits";
 import type { LetterBalanceExploreFilters } from "../types";
 
 const PATTERNS: Array<{ value: LetterBalanceExploreFilters["category"]; label: string }> = [
@@ -38,8 +39,12 @@ export function LetterBalanceExploreControls({
       && filters.consonantCount !== undefined
       && filters.consonantCount >= 0
       && filters.consonantCount <= filters.length);
-  const canSearch = (usesCount ? validCount : true) && validLockedBalance;
   const countLabel = filters.category === "vowel_count" ? "Vowel count" : "Consonant count";
+  const validLength = filters.length === undefined
+    || (Number.isInteger(filters.length)
+      && filters.length >= 1
+      && filters.length <= EXPLORE_MAX_WORD_LENGTH_FILTER);
+  const canSearch = (usesCount ? validCount : true) && validLockedBalance && validLength;
 
   function update<K extends keyof LetterBalanceExploreFilters>(
     key: K,
@@ -103,7 +108,7 @@ export function LetterBalanceExploreControls({
               aria-label="Word length"
               type="number"
               min={1}
-              max={100}
+              max={EXPLORE_MAX_WORD_LENGTH_FILTER}
               placeholder={isLocked ? "For example, 6" : "Any length"}
               value={filters.length ?? ""}
               onChange={(event) => update("length", event.target.value === "" ? undefined : Number(event.target.value))}
@@ -138,9 +143,14 @@ export function LetterBalanceExploreControls({
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={!canSearch || isSearching}>
-            {isSearching ? "Searching…" : "Browse words"}
-          </Button>
+          <div className="flex justify-end">
+            <ExploreIconButton
+              type="submit"
+              disabled={!canSearch || isSearching}
+              label="Browse words"
+              isLoading={isSearching}
+            />
+          </div>
         </form>
       </CardContent>
     </Card>

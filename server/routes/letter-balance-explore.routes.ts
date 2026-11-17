@@ -1,5 +1,6 @@
 import type { Express, Response } from "express";
 import { z } from "zod";
+import { EXPLORE_MAX_WORD_LENGTH_FILTER } from "@shared/explore-limits";
 import { InvalidExploreCursorError } from "../explore/shared-types";
 import { LETTER_BALANCE_EXPLORE_CATEGORIES } from "../explore/letter-balance-types";
 import type { LetterBalanceExploreFilters } from "../explore/letter-balance-types";
@@ -8,7 +9,7 @@ import { withLetterBalanceExploreSource } from "../explore/letter-balance-servic
 const baseFiltersSchema = z.object({
   category: z.enum(LETTER_BALANCE_EXPLORE_CATEGORIES),
   count: z.coerce.number().int().min(0).max(100).optional(),
-  length: z.coerce.number().int().min(1).max(100).optional(),
+  length: z.coerce.number().int().min(1).max(EXPLORE_MAX_WORD_LENGTH_FILTER).optional(),
   consonantCount: z.coerce.number().int().min(0).max(100).optional(),
 });
 

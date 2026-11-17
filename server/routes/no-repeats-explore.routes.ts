@@ -1,5 +1,6 @@
 import type { Express, Response } from "express";
 import { z } from "zod";
+import { EXPLORE_MAX_WORD_LENGTH_FILTER } from "@shared/explore-limits";
 import { InvalidExploreCursorError } from "../explore/shared-types";
 import { normalizeRequiredLetters } from "../explore/no-repeats-utils";
 import { withNoRepeatsExploreSource } from "../explore/no-repeats-service";
@@ -13,7 +14,7 @@ const requiredLettersSchema = z.preprocess(
 
 const lengthSchema = z.preprocess(
   (value) => value === undefined || value === "" ? undefined : value,
-  z.coerce.number().int().min(1).max(26).optional(),
+  z.coerce.number().int().min(1).max(EXPLORE_MAX_WORD_LENGTH_FILTER).optional(),
 );
 
 const filtersSchema = z.object({
@@ -44,7 +45,7 @@ export function registerNoRepeatsExploreRoutes(app: Express): void {
     const parsed = searchSchema.safeParse(req.query);
     if (!parsed.success) {
       return res.status(400).json({
-        message: "Choose a length from 1 to 26 and unique required letters",
+        message: `Choose a length from 1 to ${EXPLORE_MAX_WORD_LENGTH_FILTER} and unique required letters`,
         errors: parsed.error.flatten(),
       });
     }
