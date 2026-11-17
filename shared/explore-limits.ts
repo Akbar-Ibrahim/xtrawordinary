@@ -1,0 +1,1 @@
+export const EXPLORE_MAX_WORD_LENGTH_FILTER = 20;
