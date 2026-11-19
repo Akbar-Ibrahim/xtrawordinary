@@ -101,7 +101,13 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
   if (showForgotPassword) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            document.getElementById("forgot-email")?.focus({ preventScroll: true });
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
           </DialogHeader>
@@ -133,7 +139,13 @@ export function AuthModal({ open, onOpenChange, initialTab = "signin" }: AuthMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          document.getElementById("login-email")?.focus({ preventScroll: true });
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Welcome to xtraWordinary</DialogTitle>
         </DialogHeader>

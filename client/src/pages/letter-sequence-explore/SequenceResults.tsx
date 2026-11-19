@@ -95,7 +95,7 @@ export function SequenceResults({
     <section className="min-w-0 rounded-2xl border border-[#e5dece] bg-[#fcfaf5] p-5 shadow-[0_5px_18px_rgba(73,57,32,0.035)] dark:border-[#42443c] dark:bg-[#20221e] sm:p-7" aria-labelledby="sequence-results-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#92764e] dark:text-[#d6c39a]">{heading.eyebrow} · Explore</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#70552f] dark:text-[#d6c39a]">{heading.eyebrow} · Explore</p>
           <h2 id="sequence-results-heading" className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{heading.title}</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{heading.description}</p>
         </div>

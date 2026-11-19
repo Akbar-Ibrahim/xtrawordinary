@@ -48,11 +48,11 @@ function AnagramExplorePage({ gameSlug }: { gameSlug: GameSlug }) {
             selectedBase={selectedBase}
             onSelectBase={selectBase}
           />
-          <main className="wmx-main">
+          <div className="wmx-main">
             <AnagramResults
               selectedBase={selectedBase}
             />
-          </main>
+          </div>
         </div>
       </div>
     </div>

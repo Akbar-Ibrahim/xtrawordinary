@@ -75,13 +75,15 @@ export function LetterHuntControls({
           </div>
         </div>
 
-        <ExploreIconButton
-          type="submit"
-          disabled={!letters || isSearching}
-          label="Find matching words"
-          isLoading={isSearching}
-          className="ml-auto bg-primary text-primary-foreground"
-        />
+        <div className="flex justify-center">
+          <ExploreIconButton
+            type="submit"
+            disabled={!letters || isSearching}
+            label="Find matching words"
+            isLoading={isSearching}
+            className="bg-primary text-primary-foreground"
+          />
+        </div>
       </form>
 
       <div className="mt-5 border-t pt-4">

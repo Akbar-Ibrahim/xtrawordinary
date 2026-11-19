@@ -17,7 +17,7 @@ export function Footer() {
 
         <p className="text-xs">© {year} xtraWordinary. All rights reserved.</p>
 
-        <nav className="flex items-center gap-4">
+        <nav aria-label="Footer" className="flex items-center gap-4">
           <Link href="/about">
             <span className="hover:text-foreground transition-colors cursor-pointer" data-testid="link-footer-about">
               About

@@ -128,7 +128,7 @@ export function BaseWordPicker({ selectedBase, onSelectBase }: Props) {
         ) : !baseQuery.isFetching ? <div className="wmx-note">No exact match in the dictionary.</div> : null
       )}
       {searchText && normalize(searchText) !== selectedBase && (
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex justify-center">
           <ExploreIconButton
             type="button"
             label={`Find anagrams of ${normalize(searchText)}`}

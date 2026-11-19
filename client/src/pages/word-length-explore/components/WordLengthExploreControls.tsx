@@ -110,13 +110,15 @@ export function WordLengthExploreControls({
           </div>
         )}
 
-        <ExploreIconButton
-          type="submit"
+        <div className="flex justify-center">
+          <ExploreIconButton
+            type="submit"
             disabled={!lettersReady || isSearching || !Number.isInteger(pattern.length) || pattern.length < 1 || pattern.length > WORD_LENGTH_EXPLORE_MAX_LENGTH}
-          label="Find words"
-          isLoading={isSearching}
-          className="ml-auto bg-primary text-primary-foreground"
-        />
+            label="Find words"
+            isLoading={isSearching}
+            className="bg-primary text-primary-foreground"
+          />
+        </div>
       </form>
     </section>
   );

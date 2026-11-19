@@ -542,12 +542,16 @@ export function Navigation() {
               const Icon = link.icon;
               const isDuels = link.href === "/duels";
               return (
-                <Link key={link.href} href={link.href}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    aria-current={isActive ? "page" : undefined}
-                    className="gap-1.5 relative shrink-0 h-8 px-3 text-xs"
+                <Button
+                  key={link.href}
+                  asChild
+                  variant={isActive ? "secondary" : "ghost"}
+                  size="sm"
+                  aria-current={isActive ? "page" : undefined}
+                  className="gap-1.5 relative shrink-0 h-8 px-3 text-xs"
+                >
+                  <Link
+                    href={link.href}
                     data-testid={`link-nav-${link.label.toLowerCase().replace(/\s+/g, "-")}`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -560,22 +564,22 @@ export function Navigation() {
                         {openDuelCount > 99 ? "99+" : openDuelCount}
                       </span>
                     )}
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               );
             })}
             {isAuthenticated && (
-              <Link href="/create-quiz">
-                <Button
-                  variant={location === "/create-quiz" ? "secondary" : "ghost"}
-                  size="sm"
-                  className="gap-1.5 shrink-0 h-8 px-3 text-xs"
-                  data-testid="link-nav-create-quiz"
-                >
+              <Button
+                asChild
+                variant={location === "/create-quiz" ? "secondary" : "ghost"}
+                size="sm"
+                className="gap-1.5 shrink-0 h-8 px-3 text-xs"
+              >
+                <Link href="/create-quiz" data-testid="link-nav-create-quiz">
                   <GraduationCap className="h-3.5 w-3.5" />
                   <span>Create Quiz</span>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
         </nav>

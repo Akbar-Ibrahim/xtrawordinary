@@ -88,7 +88,7 @@ export default function UnscrambleLettersExplore() {
             onChooseExample={search}
             onRetryExamples={() => examplesQuery.refetch()}
           />
-          <main className="wmx-main">
+          <div className="wmx-main">
             <UnscrambleResults
               submittedLetters={submittedLetters}
               isLoading={solveQuery.isLoading}
@@ -98,7 +98,7 @@ export default function UnscrambleLettersExplore() {
               onRetry={() => solveQuery.refetch()}
               onLoadMore={() => solveQuery.fetchNextPage()}
             />
-          </main>
+          </div>
         </div>
       </div>
     </div>

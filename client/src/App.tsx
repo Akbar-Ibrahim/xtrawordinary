@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
@@ -12,6 +12,7 @@ import { DuelNotificationsProvider } from "@/lib/duel-notifications-context";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { RouteAccessibility } from "@/components/accessibility/RouteAccessibility";
 import ExploreDirectory from "@/pages/explore";
 import { WhatsNewModal } from "@/components/whats-new-modal";
 import { GoogleWelcomeModal } from "@/components/google-welcome-modal";
@@ -30,7 +31,6 @@ import NoRepeatsExplore from "@/pages/no-repeats-explore";
 import LetterBalanceExplore from "@/pages/letter-balance-explore";
 import WordLengthExplore from "@/pages/word-length-explore";
 import ShellWordsExplore from "@/pages/shell-words-explore";
-import DeepShellWordsExplore from "@/pages/shell-words-explore/deep-index";
 import WordSplitExplore from "@/pages/word-split-explore";
 import WordFusionExplore from "@/pages/word-fusion-explore";
 import WordRootsExplore from "@/pages/word-roots-explore";
@@ -101,7 +101,9 @@ function Router() {
       <Route path="/explore/letter-balance" component={LetterBalanceExplore} />
       <Route path="/explore/word-length" component={WordLengthExplore} />
       <Route path="/explore/shell-words" component={ShellWordsExplore} />
-      <Route path="/explore/deep-shell-words" component={DeepShellWordsExplore} />
+      <Route path="/explore/deep-shell-words">
+        <Redirect to="/explore/shell-words" />
+      </Route>
       <Route path="/explore/word-split" component={WordSplitExplore} />
       <Route path="/explore/word-fusion" component={WordFusionExplore} />
       <Route path="/explore/word-roots" component={WordRootsExplore} />
@@ -160,9 +162,16 @@ function App() {
             <TooltipProvider>
             <MotionConfig reducedMotion="user">
             <div className="min-h-screen min-w-0 overflow-x-hidden bg-background flex flex-col">
+              <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                Skip to main content
+              </a>
               <Navigation />
+              <RouteAccessibility />
               <AnalyticsTracker />
-              <main className="flex-1">
+              <main id="main-content" tabIndex={-1} aria-label="Main content" className="flex-1 focus:outline-none">
                 <ErrorBoundary>
                   <Router />
                 </ErrorBoundary>

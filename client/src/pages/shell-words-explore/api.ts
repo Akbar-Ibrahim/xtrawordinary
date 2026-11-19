@@ -1,4 +1,9 @@
-import type { ExploreBrowseInput, ExploreDirection, ShellWordExploreCheck, ShellWordExplorePage } from "./types";
+import type {
+  ExploreBrowseInput,
+  ShellWordExploreCheck,
+  ShellWordExploreCheckInput,
+  ShellWordExplorePage,
+} from "./types";
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -13,7 +18,10 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 function browse(path: string, input: ExploreBrowseInput): Promise<ShellWordExplorePage> {
-  const params = new URLSearchParams({ direction: input.direction });
+  const params = new URLSearchParams({
+    depth: String(input.depth),
+    direction: input.direction,
+  });
   if (input.word) params.set("word", input.word);
   if (input.first) params.set("first", input.first);
   if (input.last) params.set("last", input.last);
@@ -21,7 +29,7 @@ function browse(path: string, input: ExploreBrowseInput): Promise<ShellWordExplo
   return readJson(`${path}/words?${params}`);
 }
 
-function check(path: string, input: { direction: ExploreDirection; word: string }) {
+function check(path: string, input: ShellWordExploreCheckInput) {
   return readJson<ShellWordExploreCheck>(`${path}/check`, {
     method: "POST",
     body: JSON.stringify(input),
@@ -32,14 +40,6 @@ export function browseShellWordExplore(input: ExploreBrowseInput) {
   return browse("/api/explore/shell-words", input);
 }
 
-export function checkShellWordExplore(input: { direction: ExploreDirection; word: string }) {
+export function checkShellWordExplore(input: ShellWordExploreCheckInput) {
   return check("/api/explore/shell-words", input);
-}
-
-export function browseDeepShellWordExplore(input: ExploreBrowseInput) {
-  return browse("/api/explore/deep-shell-words", input);
-}
-
-export function checkDeepShellWordExplore(input: { direction: ExploreDirection; word: string }) {
-  return check("/api/explore/deep-shell-words", input);
 }

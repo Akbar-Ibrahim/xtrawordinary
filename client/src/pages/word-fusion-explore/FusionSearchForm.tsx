@@ -94,7 +94,7 @@ export function FusionSearchForm({
         The resulting word must use every pooled letter, including duplicates, exactly once.
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <ExploreIconButton
           type="submit"
           disabled={isSearching}

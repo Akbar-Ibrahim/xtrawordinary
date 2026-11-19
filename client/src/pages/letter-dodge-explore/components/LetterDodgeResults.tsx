@@ -58,7 +58,7 @@ export function LetterDodgeResults({
         <div className="mt-6 py-8 text-center text-sm text-muted-foreground" role="status">Searching the dictionary…</div>
       ) : error && items.length === 0 ? (
         <div className="mt-6 rounded-xl border border-destructive/30 p-6 text-center" role="alert">
-          <p className="text-sm text-destructive">{errorMessage}</p>
+          <p className="text-sm text-[#b42318] dark:text-[#ff8a8a]">{errorMessage}</p>
           <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium underline">Try again</button>
         </div>
       ) : items.length ? (
@@ -84,7 +84,7 @@ export function LetterDodgeResults({
               source={result.source}
             />
           )}
-          {error && <p className="mt-3 text-sm text-destructive" role="alert">{errorMessage}</p>}
+          {error && <p className="mt-3 text-sm text-[#b42318] dark:text-[#ff8a8a]" role="alert">{errorMessage}</p>}
           {lastPage?.hasMore && (
             <button
               type="button"

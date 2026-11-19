@@ -69,7 +69,7 @@ export function SequenceExplorePage({ config }: { config: SequenceToolConfig }) 
   }
 
   return (
-    <main className="relative isolate min-h-[70dvh] overflow-hidden bg-[#f8f5ed] text-[#282c28] dark:bg-[#171916] dark:text-[#f1eee5]">
+    <div className="relative isolate min-h-[70dvh] overflow-hidden bg-[#f8f5ed] text-[#282c28] dark:bg-[#171916] dark:text-[#f1eee5]">
       <PageSEO title={config.seoTitle} description={config.seoDescription} path={config.path} />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] bg-[radial-gradient(ellipse_at_78%_8%,rgba(242,184,75,0.18),transparent_45%),linear-gradient(180deg,#f2eee3_0%,rgba(248,245,237,0)_100%)] dark:opacity-25" />
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-10 lg:px-8">
@@ -78,7 +78,7 @@ export function SequenceExplorePage({ config }: { config: SequenceToolConfig }) 
         </Link>
 
         <header className="mt-8 max-w-3xl">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#92764e] dark:text-[#d6c39a]">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#70552f] dark:text-[#d6c39a]">
             <Icon size={15} aria-hidden="true" /> {config.title} · Dictionary tool
           </p>
           <h1 className="mt-3 font-serif text-[2.5rem] font-semibold leading-[1.06] tracking-[-0.045em] text-[#242923] dark:text-[#f3efe4] sm:text-5xl">
@@ -107,7 +107,7 @@ export function SequenceExplorePage({ config }: { config: SequenceToolConfig }) 
               </p>
             )}
             <div className="rounded-2xl border border-[#e5dece] bg-[#f3efe5] p-5 dark:border-[#42443c] dark:bg-[#20221e]">
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#92764e] dark:text-[#d6c39a]">How it works</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#70552f] dark:text-[#d6c39a]">How it works</p>
               <p className="mt-2 text-sm leading-6 text-[#686b61] dark:text-[#b0b3aa]">{config.detail}</p>
             </div>
           </aside>
@@ -129,6 +129,6 @@ export function SequenceExplorePage({ config }: { config: SequenceToolConfig }) 
           />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

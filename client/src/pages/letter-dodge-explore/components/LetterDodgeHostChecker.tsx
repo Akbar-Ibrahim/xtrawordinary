@@ -44,7 +44,7 @@ export function LetterDodgeHostChecker({ forbiddenLetters }: Props) {
           variant="outline"
         />
       </form>
-      {checkMutation.isError && <p className="mt-3 text-sm text-destructive" role="alert">{checkMutation.error.message}</p>}
+      {checkMutation.isError && <p className="mt-3 text-sm text-[#b42318] dark:text-[#ff8a8a]" role="alert">{checkMutation.error.message}</p>}
       {checkMutation.data && (
         <div className={`mt-4 rounded-lg border p-3 ${checkMutation.data.dictionaryMatch && checkMutation.data.constraintMatch ? "border-emerald-500/40 bg-emerald-500/10" : "border-destructive/30 bg-destructive/5"}`} role="status">
           <p className="font-semibold">{checkMutation.data.word}</p>

@@ -28,12 +28,12 @@ export function LetterDodgeControls({
     <section className="rounded-2xl border bg-card p-5 shadow-sm" aria-labelledby="dodge-controls-heading">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-destructive">Forbidden letters</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b42318] dark:text-[#ff8a8a]">Forbidden letters</p>
           <h2 id="dodge-controls-heading" className="mt-1 text-xl font-semibold">Keep these out</h2>
           <p className="mt-1 text-sm text-muted-foreground">Type the letters that words must avoid.</p>
         </div>
         {letters && (
-          <span className="rounded-full bg-destructive/10 px-3 py-1 font-mono text-sm font-semibold text-destructive">
+          <span className="rounded-full bg-destructive/10 px-3 py-1 font-mono text-sm font-semibold text-[#b42318] dark:text-[#ff8a8a]">
             {letters.split("").join(" · ")}
           </span>
         )}
@@ -59,7 +59,7 @@ export function LetterDodgeControls({
           disabled={!letters || isSearching}
           label="Find words"
           isLoading={isSearching}
-          className="self-end bg-destructive text-destructive-foreground sm:self-auto"
+           className="self-center bg-[#b42318] text-white hover:bg-[#8f1d1d] dark:bg-[#b42318] dark:hover:bg-[#8f1d1d] sm:self-auto"
           data-testid="button-find-letter-dodge-words"
         />
       </form>
@@ -78,7 +78,7 @@ export function LetterDodgeControls({
               onSetLetters(example.letters);
               onSearch(example.letters);
             }}
-            className="rounded-full border px-3 py-1.5 text-xs hover:border-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="rounded-full border px-3 py-1.5 text-xs hover:border-[#b42318] hover:text-[#b42318] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:hover:border-[#ff8a8a] dark:hover:text-[#ff8a8a]"
           >
             {example.label}
           </button>

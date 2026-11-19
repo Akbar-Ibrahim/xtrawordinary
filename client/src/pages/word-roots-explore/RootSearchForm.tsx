@@ -119,7 +119,7 @@ export function RootSearchForm({
         Results are base words linked to every entry through the dictionary’s Word Roots relationships.
       </p>
 
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <ExploreIconButton
           type="submit"
           disabled={isSearching}

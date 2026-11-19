@@ -1,6 +1,8 @@
 import type {
   ShellWordExploreBrowseInput,
   ShellWordExploreCheck,
+  ShellWordExploreCheckInput,
+  ShellWordExploreDepth,
   ShellWordExploreDirection,
   ShellWordExploreItem,
   ShellWordExplorePage,
@@ -8,4 +10,4 @@ import type {
 
 export type ExploreDirection = ShellWordExploreDirection;
 export type ExploreBrowseInput = ShellWordExploreBrowseInput & { cursor?: string };
-export type { ShellWordExploreCheck, ShellWordExploreItem, ShellWordExplorePage };
+export type { ShellWordExploreCheck, ShellWordExploreCheckInput, ShellWordExploreDepth, ShellWordExploreItem, ShellWordExplorePage };

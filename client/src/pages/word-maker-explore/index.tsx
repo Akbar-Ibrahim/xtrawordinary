@@ -95,7 +95,7 @@ export default function WordMakerExplore() {
           <BaseWordPicker selectedBase={selectedBase} onSelectBase={setSelectedBase}
             displayedCount={wordsQuery.data ? displayedCount : null} />
 
-          <main className="wmx-main">
+          <div className="wmx-main">
             <section className="wmx-panel wmx-content" aria-labelledby="wmx-results-heading">
               <div className="wmx-content-head">
                 <div>
@@ -140,7 +140,7 @@ export default function WordMakerExplore() {
                 </>
               )}
             </section>
-          </main>
+          </div>
         </div>
       </div>
     </div>

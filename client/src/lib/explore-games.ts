@@ -69,14 +69,8 @@ export const EXPLORE_GAMES: ExploreGame[] = [
   {
     gameSlug: "shell-words",
     title: "Shell Words",
-    description: "Explore dictionary relationships between outer words and their revealed inner words.",
+    description: "Explore outer-to-inner dictionary relationships at four removal depths.",
     path: "/explore/shell-words",
-  },
-  {
-    gameSlug: "deep-shell-words",
-    title: "Deep Shell Words",
-    description: "Explore deeper word relationships formed by removing two letters from each end.",
-    path: "/explore/deep-shell-words",
   },
   {
     gameSlug: "word-split",
@@ -114,5 +108,10 @@ export const EXPLORE_GAMES: ExploreGame[] = [
 ];
 
 export function getExploreGame(gameSlug: string): ExploreGame | undefined {
-  return EXPLORE_GAMES.find((game) => game.gameSlug === gameSlug);
+  const matchingGame = EXPLORE_GAMES.find((game) => game.gameSlug === gameSlug);
+  if (matchingGame) return matchingGame;
+  if (gameSlug === "deep-shell-words") {
+    return EXPLORE_GAMES.find((game) => game.gameSlug === "shell-words");
+  }
+  return undefined;
 }

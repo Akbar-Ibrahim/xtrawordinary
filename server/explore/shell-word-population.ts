@@ -1,4 +1,5 @@
 import type { ShellWordExploreDepth } from "@shared/shell-word-explore";
+import { SHELL_WORD_EXPLORE_DEPTHS } from "@shared/shell-word-explore";
 
 export interface ShellWordDictionaryEntry {
   id: number;
@@ -31,7 +32,7 @@ export function deriveShellWordRelationships(
     if (!/^[A-Za-z]+$/.test(word)) continue;
 
     const shellWord = word.toUpperCase();
-    for (const depth of [1, 2] as const) {
+    for (const depth of SHELL_WORD_EXPLORE_DEPTHS) {
       if (shellWord.length <= depth * 2) continue;
 
       const innerWord = shellWord.slice(depth, -depth);

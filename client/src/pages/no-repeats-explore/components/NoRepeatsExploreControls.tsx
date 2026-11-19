@@ -62,7 +62,7 @@ export function NoRepeatsExploreControls({
         <p className="text-xs leading-relaxed text-muted-foreground">
           Explore includes any dictionary length, even under three letters. Normal game challenges use 3–9 letters.
         </p>
-        <div className="flex justify-end">
+        <div className="flex justify-center">
           <ExploreIconButton
             type="submit"
             disabled={isSearching}

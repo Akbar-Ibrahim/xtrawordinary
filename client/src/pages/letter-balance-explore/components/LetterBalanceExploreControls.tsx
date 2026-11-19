@@ -143,7 +143,7 @@ export function LetterBalanceExploreControls({
             </p>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-center">
             <ExploreIconButton
               type="submit"
               disabled={!canSearch || isSearching}

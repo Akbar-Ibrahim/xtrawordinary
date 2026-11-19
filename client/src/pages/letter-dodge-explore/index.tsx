@@ -45,7 +45,7 @@ export default function LetterDodgeExplore() {
       </Link>
 
       <header className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-destructive">Letter Dodge · Explore</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b42318] dark:text-[#ff8a8a]">Letter Dodge · Explore</p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Which letters should words avoid?</h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Enter letters to keep out of the word. Browse matching dictionary entries, including short words, or check whether a word avoids those letters.

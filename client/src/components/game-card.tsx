@@ -29,9 +29,9 @@ interface GameCardProps {
 }
 
 const difficultyColors = {
-  easy: "bg-accent text-accent-foreground",
-  medium: "bg-chart-3 text-white",
-  hard: "bg-destructive text-destructive-foreground",
+  easy: "bg-emerald-700 text-white",
+  medium: "bg-chart-3 text-[#4a2b00]",
+  hard: "bg-red-700 text-white",
 };
 
 export function GameCard({ game, index, onFavoriteChange, playedToday, waitingCount = 0 }: GameCardProps) {

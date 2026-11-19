@@ -53,7 +53,7 @@ export function UnscrambleInputPanel({
         <p id="unscramble-help" className="wmx-note">
           Enter letters in any order. Matches must use every letter exactly once.
         </p>
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex justify-center">
           <ExploreIconButton
             type="submit"
             disabled={!letters || submitting}

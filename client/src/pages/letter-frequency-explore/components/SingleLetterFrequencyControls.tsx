@@ -71,7 +71,7 @@ export function SingleLetterFrequencyControls({
       <p className="text-xs leading-relaxed text-muted-foreground">
         Challenge Random changes its rule after each answer in the game. Here, choose one fixed rule to browse or check.
       </p>
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <ExploreIconButton
           type="submit"
           disabled={isSearching}

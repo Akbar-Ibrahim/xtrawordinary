@@ -65,13 +65,15 @@ export function LetterPositionExploreControls({
             </select>
           </div>
         </div>
-        <ExploreIconButton
-          type="submit"
-          disabled={!letter || isSearching}
-          label="Find words"
-          isLoading={isSearching}
-          className="ml-auto bg-primary text-primary-foreground"
-        />
+        <div className="flex justify-center">
+          <ExploreIconButton
+            type="submit"
+            disabled={!letter || isSearching}
+            label="Find words"
+            isLoading={isSearching}
+            className="bg-primary text-primary-foreground"
+          />
+        </div>
       </form>
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
         <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Try a pattern</span>

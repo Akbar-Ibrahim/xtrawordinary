@@ -124,7 +124,7 @@ export function BaseWordPicker({ selectedBase, displayedCount, onSelectBase }: P
         ) : !baseQuery.isFetching ? <div className="wmx-note">No suggestions found. Press Enter to look up this word.</div> : null
       )}
       {normalizedSearch && normalizedSearch !== selectedBase && (
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex justify-center">
           <ExploreIconButton
             type="button"
             label={`Explore ${normalizedSearch}`}

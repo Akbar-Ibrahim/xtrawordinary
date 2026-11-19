@@ -19,11 +19,11 @@ export function ExploreBrowseResults({
     <section className="min-w-0 overflow-hidden rounded-2xl border border-[#d8d0c3] bg-[#fffdf8] shadow-[0_12px_35px_rgba(63,49,32,0.06)]" aria-labelledby="relationship-results-heading">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#e8e1d6] px-5 py-5 sm:px-7">
         <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#aa6048]">Word relationship index</p>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[#8e4532]">Word relationship index</p>
           <h2 id="relationship-results-heading" className="mt-1 font-serif text-2xl text-[#263b39]">{title}</h2>
-          <p className="mt-1 text-sm text-[#68716a]">Outer word → inner word · alphabetical by outer word</p>
+          <p className="mt-1 text-sm text-[#58625b]">Outer word → inner word · alphabetical by outer word</p>
         </div>
-        <span className="rounded-full border border-[#d8d0c3] px-3 py-1 font-mono text-xs text-[#68716a]">
+        <span className="rounded-full border border-[#d8d0c3] px-3 py-1 font-mono text-xs text-[#58625b]">
           {items.length}{result?.page.hasMore ? "+" : ""} entries
         </span>
       </header>
@@ -42,7 +42,7 @@ export function ExploreBrowseResults({
         {!isLoading && !hasError && items.length === 0 && (
           <div className="rounded-xl border border-dashed border-[#d8d0c3] px-5 py-12 text-center">
             <p className="font-serif text-xl text-[#263b39]">No recorded relationships</p>
-            <p className="mt-2 text-sm text-[#68716a]">Try widening the letters or searching in the other direction.</p>
+            <p className="mt-2 text-sm text-[#58625b]">Try widening the letters or searching in the other direction.</p>
           </div>
         )}
         {!isLoading && items.length > 0 && (
@@ -61,7 +61,7 @@ export function ExploreBrowseResults({
               </div>
             )}
             {result?.page.hasMore && !hasError && (
-              <button type="button" onClick={onLoadMore} disabled={isLoadingMore} className="mt-5 w-full rounded-lg border border-[#cfc5b6] px-4 py-3 text-sm font-semibold text-[#344c48] transition-colors hover:border-[#aa6048] hover:text-[#aa6048] disabled:cursor-wait disabled:opacity-60">
+              <button type="button" onClick={onLoadMore} disabled={isLoadingMore} className="mt-5 w-full rounded-lg border border-[#cfc5b6] px-4 py-3 text-sm font-semibold text-[#344c48] transition-colors hover:border-[#944c38] hover:text-[#944c38] disabled:cursor-wait disabled:opacity-60">
                 {isLoadingMore ? "Loading the next entries…" : "Load more alphabetically"}
               </button>
             )}
@@ -76,8 +76,8 @@ function RelationshipRow({ item }: { item: ShellWordExploreItem }) {
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-3 sm:gap-5 sm:py-3.5">
       <span className="min-w-0 break-words font-mono text-sm font-bold uppercase tracking-[0.08em] text-[#263b39] sm:text-base">{item.shellWord}</span>
-      <span className="font-mono text-[10px] uppercase tracking-widest text-[#ad7a64]" aria-hidden="true">contains</span>
-      <span className="min-w-0 break-words text-right font-mono text-sm uppercase tracking-[0.08em] text-[#68716a] sm:text-base">{item.innerWord}</span>
+      <span className="font-mono text-[10px] uppercase tracking-widest text-[#83543e]" aria-hidden="true">contains</span>
+      <span className="min-w-0 break-words text-right font-mono text-sm uppercase tracking-[0.08em] text-[#58625b] sm:text-base">{item.innerWord}</span>
     </li>
   );
 }

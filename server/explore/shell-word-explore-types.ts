@@ -1,7 +1,7 @@
 import type {
   ShellWordExploreBrowseInput,
   ShellWordExploreCheck,
-  ShellWordExploreDirection,
+  ShellWordExploreCheckInput,
   ShellWordExplorePage,
 } from "@shared/shell-word-explore";
 
@@ -11,8 +11,5 @@ export interface ShellWordExploreSource {
     limit: number,
     cursor?: string,
   ): Promise<ShellWordExplorePage>;
-  check(input: {
-    direction: ShellWordExploreDirection;
-    word: string;
-  }): Promise<ShellWordExploreCheck>;
+  check(input: ShellWordExploreCheckInput): Promise<ShellWordExploreCheck>;
 }

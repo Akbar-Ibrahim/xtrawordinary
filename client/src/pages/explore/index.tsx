@@ -60,9 +60,9 @@ export default function ExploreDirectory() {
           </section>
         )}
 
-        <footer className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-[#e4ddcf] pt-5 text-sm text-[#77776c] dark:border-[#3d3f38] dark:text-[#b0b3aa] sm:flex-row sm:items-center">
+        <footer className="mt-12 flex flex-col items-start justify-between gap-3 border-t border-[#e4ddcf] pt-5 text-sm text-[#5f6058] dark:border-[#3d3f38] dark:text-[#b0b3aa] sm:flex-row sm:items-center">
           <p>Made for trying things, settling things, and finding one more word.</p>
-          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[#9a8d76] dark:text-[#9e9c91]">Pick a pattern. Follow it.</p>
+          <p className="font-mono text-xs uppercase tracking-[0.12em] text-[#6e614d] dark:text-[#9e9c91]">Pick a pattern. Follow it.</p>
         </footer>
       </div>
     </div>
@@ -81,7 +81,7 @@ function ToolCard({ game, number }: { game: (typeof EXPLORE_GAMES)[number]; numb
           <div className="flex min-w-0 items-start gap-4">
             <LetterTile title={game.title} />
             <div className="min-w-0 pt-1">
-              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-[#a28d6b] dark:text-[#b7a57f]">
+              <p className="font-mono text-[10px] font-semibold tracking-[0.15em] text-[#735e3d] dark:text-[#b7a57f]">
                 TOOL {String(number).padStart(2, "0")}
               </p>
               <h3 className="mt-1.5 text-lg font-semibold tracking-[-0.02em] text-[#30332d] dark:text-[#f1eee5]">{game.title}</h3>
@@ -90,7 +90,7 @@ function ToolCard({ game, number }: { game: (typeof EXPLORE_GAMES)[number]; numb
           <ArrowUpRight
             size={17}
             aria-hidden="true"
-            className="mt-1 shrink-0 text-[#a28d6b] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 dark:text-[#b7a57f]"
+            className="mt-1 shrink-0 text-[#735e3d] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 dark:text-[#b7a57f]"
           />
         </div>
         <p className="mt-5 text-sm leading-6 text-[#73746b] dark:text-[#b0b3aa]">{game.description}</p>

@@ -91,7 +91,7 @@ export function MultiLetterFrequencyControls({
           Add another letter
         </Button>
       )}
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <ExploreIconButton
           type="submit"
           disabled={isSearching}

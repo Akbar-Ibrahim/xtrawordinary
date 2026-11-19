@@ -27,9 +27,9 @@ import { WordFusionGame } from "@/components/games/word-fusion";
 import { SpokenWordTransformationsGame } from "@/components/games/spoken-word-transformations";
 
 export const difficultyColors: Record<string, string> = {
-  easy: "bg-accent text-accent-foreground",
-  medium: "bg-chart-3 text-white",
-  hard: "bg-destructive text-destructive-foreground",
+  easy: "bg-emerald-700 text-white",
+  medium: "bg-chart-3 text-[#4a2b00]",
+  hard: "bg-red-700 text-white",
 };
 
 const LadderRushDoubleGame = (props: { groupSeed?: number; locked?: boolean }) =>

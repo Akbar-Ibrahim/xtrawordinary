@@ -30,7 +30,7 @@ export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
       <Button
         size="sm"
         onClick={goToPricing}
-        className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
+        className="gap-1.5 bg-amber-700 hover:bg-amber-800 text-white border-0"
         data-testid="button-go-premium-nav"
       >
         <Crown className="h-3.5 w-3.5" />
@@ -78,7 +78,7 @@ export function PremiumBanner({ variant = "banner" }: PremiumBannerProps) {
       <Button
         size="sm"
         onClick={(e) => { e.stopPropagation(); goToPricing(); }}
-        className="shrink-0 gap-1.5 bg-amber-500 hover:bg-amber-600 text-white border-0"
+        className="shrink-0 gap-1.5 bg-amber-700 hover:bg-amber-800 text-white border-0"
         data-testid="button-go-premium-banner"
       >
         <Crown className="h-3.5 w-3.5" />

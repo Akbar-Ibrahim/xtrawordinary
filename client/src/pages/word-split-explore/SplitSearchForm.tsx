@@ -73,7 +73,7 @@ export function SplitSearchForm({
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <ExploreIconButton
           type="submit"
           disabled={isSearching}

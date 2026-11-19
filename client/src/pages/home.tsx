@@ -202,7 +202,7 @@ export default function Home() {
                     : null}
                   Play today's challenge
                   {dailyChallenge?.game?.name && (
-                    <span className="opacity-70 font-normal">· {dailyChallenge.game.name}</span>
+                    <span className="font-normal">· {dailyChallenge.game.name}</span>
                   )}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -633,7 +633,7 @@ export default function Home() {
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full leading-4 ${
-                                game.difficulty === "easy" ? "bg-accent/15 text-accent-foreground" :
+                                game.difficulty === "easy" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
                                 game.difficulty === "medium" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" :
                                 "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                               }`}>

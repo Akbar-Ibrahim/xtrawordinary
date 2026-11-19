@@ -1,6 +1,10 @@
 export type ShellWordExploreDirection = "shell" | "inner";
-export type ShellWordExploreDepth = 1 | 2;
+export const SHELL_WORD_EXPLORE_DEPTHS = [1, 2, 3, 4] as const;
+export type ShellWordExploreDepth = (typeof SHELL_WORD_EXPLORE_DEPTHS)[number];
 export type ShellWordExploreSourceName = "preview" | "database";
+
+export const SHELL_WORD_EXPLORE_DEFAULT_PAGE_SIZE = 100;
+export const SHELL_WORD_EXPLORE_MAX_PAGE_SIZE = 100;
 
 export interface ShellWordExploreItem {
   shellWord: string;
@@ -19,6 +23,7 @@ export interface ShellWordExplorePage {
 
 export interface ShellWordExploreCheck {
   word: string;
+  depth: ShellWordExploreDepth;
   direction: ShellWordExploreDirection;
   dictionaryMatch: boolean;
   relationshipMatch: boolean;
@@ -28,6 +33,7 @@ export interface ShellWordExploreCheck {
 }
 
 export interface ShellWordExploreBrowseInput {
+  depth: ShellWordExploreDepth;
   direction: ShellWordExploreDirection;
   word?: string;
   first?: string;
@@ -35,6 +41,7 @@ export interface ShellWordExploreBrowseInput {
 }
 
 export interface ShellWordExploreCheckInput {
+  depth: ShellWordExploreDepth;
   direction: ShellWordExploreDirection;
   word: string;
 }
